@@ -92,3 +92,7 @@ LUT 采用固定曝光和高光映射，不恢复原片已剪切的高光。Pock
 在 Windows x64 上安装 .NET 8 SDK 和 Python 3.14，运行 build.ps1。构建使用 Windows App SDK 2.0.1，通过 NuGet 获取 Windows SDK 工具，生成 dist/FrameFlow.exe。界面为 WinUI 3，独立本地 worker 继续使用已验证的 FFmpeg 转换后端。
 
 单文件分发采用微软支持的自包含发布，运行时会将组件展开到当前用户的缓存目录。
+
+## 版本历史
+
+历史版本与 HDR 菜单问题的修复过程见 [CHANGELOG.md](CHANGELOG.md)。本仓库的早期提交由保留的真实源码包补录，来源与校验值见 [HISTORY.md](HISTORY.md)。

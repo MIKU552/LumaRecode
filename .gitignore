@@ -1,0 +1,22 @@
+# Keep project source and build inputs; exclude local experiments and generated files.
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/HISTORY.md
+!/CHANGELOG.md
+!/build.ps1
+!/App/
+!/Worker/
+!/Brand/
+!/qa/
+/App/app.ico
+/qa/*
+!/qa/LanguageChecks/
+**/bin/
+**/obj/
+**/__pycache__/
+*.py[cod]
+*.user
+*.suo
+.vs/

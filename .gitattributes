@@ -1,0 +1,4 @@
+# LUTs are text data, but multi-megabyte numeric diffs are not useful in reviews.
+*.cube -diff
+*.ico binary
+*.png binary
