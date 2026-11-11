@@ -35,10 +35,12 @@ class Options:
     audio: str = 'auto'
     source_kind: str = 'auto'
     cpu_decode: bool = False
+    container: str = 'auto'
 
     @property
     def suffix(self):
-        return '.mkv' if self.purpose == 'archive' else '.mp4'
+        chosen = ('mkv' if self.purpose == 'archive' else 'mp4') if self.container == 'auto' else self.container
+        return '.' + chosen
 
     @property
     def depth(self):
@@ -50,6 +52,8 @@ class Options:
 
 
 def validate(options, media):
+    if options.container not in {'auto', 'mp4', 'mkv'}:
+        raise ValueError('请选择自动、MP4 或 MKV 封装。')
     if options.purpose not in {'share', 'archive'} or options.codec not in {'hevc', 'av1', 'avc'}:
         raise ValueError('请选择有效的用途和编码器。')
     if options.output not in {'sdr', 'hdr'}:
@@ -297,6 +301,28 @@ class Job:
         with tempfile.TemporaryDirectory(prefix='.video-converter-', dir=output.parent) as scratch:
             temporary = Path(scratch) / output.name
             command, expected = build_command(tools, media, options, temporary)
+            audio = options.audio
+            if audio == 'auto':
+                audio = CONFIG['audio']['archive_default'] if options.purpose == 'archive' else CONFIG['audio']['share_default'][options.codec]
+            audio_streams = [stream for stream in media.streams if stream.get('codec_type') == 'audio']
+            if options.suffix == '.mp4' and audio == 'copy' and audio_streams:
+                self.check_cancelled()
+                emit('status', '正在检查 MP4 音轨兼容性…')
+                trial = Path(scratch) / 'audio-compatibility.mp4'
+                probe_command = [tools.ffmpeg, '-hide_banner', '-nostdin', '-v', 'error', '-xerror', '-n',
+                                 '-i', str(media.path), '-map', '0:a', '-vn', '-sn', '-dn',
+                                 '-map_metadata', '-1', '-c:a', 'copy', '-t', '0.08', '-f', 'mp4', str(trial)]
+                try:
+                    compatibility = subprocess.run(probe_command, capture_output=True, encoding='utf-8',
+                                                   errors='replace', creationflags=NO_WINDOW, timeout=20)
+                except subprocess.TimeoutExpired:
+                    self.check_cancelled()
+                    raise ValueError('MP4 原音轨兼容性检测超时。请选择 AAC 音轨或 MKV 封装。') from None
+                self.check_cancelled()
+                if compatibility.returncode:
+                    emit('log', compatibility.stderr.strip())
+                    codecs = ', '.join(sorted({stream.get('codec_name', '未知') for stream in audio_streams}))
+                    raise ValueError(f'当前 FFmpeg 无法将原音轨（{codecs}）直接封装为 MP4。请选择 AAC 音轨，或改用 MKV 封装。')
             if seconds:
                 command[-1:-1] = ['-t', str(seconds)]
             emit('log', subprocess.list2cmdline(command))

@@ -1,4 +1,4 @@
-# 视频转换 3.0 · WinUI 3
+# 视频转换 3.1 · WinUI 3
 
 这个版本使用 C# 和 Microsoft Windows App SDK / WinUI 3 构建原生 Windows 界面，使用原生控件、Mica 背景和系统主题资源。
 
@@ -27,6 +27,14 @@
 
 保留之前的实测编码质量档和三组色彩转换。
 
+“封装格式”独立提供“自动 / MP4 / MKV”。自动模式下，快速分享默认 MP4，软件归档默认 MKV；手动选择覆盖默认封装，编码器和质量档保持原选择。切换封装会同步文件后缀，保留手动指定的文件名和目录。
+
+软件归档选择 MP4 且复制原音轨时，会在视频编码之前用当前 FFmpeg 检查音轨是否能封装。遇到不支持的原音轨会提示改用 AAC 或 MKV，不会擅自改写音频策略。
+
+素材卡片显示视频编码 / Profile、分辨率、帧率、每分量位深、采样、可用的码率与色彩标签；逐条显示音轨的编码、声道、采样率和可用码率。位深读取自 ffprobe 的像素格式描述，不再笼统写“高位深”。
+
+参数摘要直接读取执行后端使用的配置，额外参数与编码器质量档一起显示。例如 x265 medium / CRF23 会显示 pools=16、rdoq-level=2、psy-rdoq=1。x264 的 AQ 参数和 SVT-AV1 的 tune、lp、量化矩阵等参数也会显示。
+
 | 分类 | 选项 |
 | --- | --- |
 | 快速分享 | Intel QSV HEVC TU4/ICQ24、AV1 TU4/ICQ26、H.264 TU4/ICQ22 |
@@ -35,7 +43,7 @@
 | 色彩转换 | Log → HLG HDR、Log → Rec.709 SDR、HLG/PQ HDR → SDR |
 | Log 曲线 | 小米 Mi-Log、Pocket 3 D-Log M、Samsung Log |
 
-HDR 始终输出 10 位，禁用 H.264 和 SDR8。SDR 快速分享输出 8 位，软件归档 HEVC/AV1 使用实测 10 位档。快速分享输出 MP4，归档输出 MKV。
+HDR 始终输出 10 位，禁用 H.264 和 SDR8。SDR 快速分享输出 8 位，软件归档 HEVC/AV1 使用实测 10 位档。封装可独立选择 MP4 / MKV。
 
 默认输出 4:2:0，4:2:2 原片在同一次转换中自动降采样，无须提前处理。软件归档 HEVC / H.264 可选 4:2:2，AV1 和快速分享使用 4:2:0。
 
@@ -69,6 +77,6 @@ LUT 采用固定曝光和高光映射，不恢复原片已剪切的高光。Pock
 
 ## 从源代码构建
 
-在 Windows x64 上安装 .NET 8 SDK 和 Python 3.14，运行 build.ps1。构建使用 Windows App SDK 1.8.260921001，通过 NuGet 获取 Windows SDK 工具，生成 dist/VideoConverter.WinUI.exe。界面为 WinUI 3，独立本地 worker 继续使用已验证的 FFmpeg 转换后端。
+在 Windows x64 上安装 .NET 8 SDK 和 Python 3.14，运行 build.ps1。构建使用 Windows App SDK 1.8.260921001，通过 NuGet 获取 Windows SDK 工具，生成 dist/VideoConverter.WinUI_3.1.exe。界面为 WinUI 3，独立本地 worker 继续使用已验证的 FFmpeg 转换后端。
 
 单文件分发采用微软支持的自包含发布，运行时会将组件展开到当前用户的缓存目录。

@@ -16,6 +16,7 @@ namespace VideoConverter;
 
 public sealed class MainWindow : Window
 {
+    private static readonly JsonElement encodingConfig = LoadEncodingConfig();
     private readonly Grid root;
     private readonly UserSettings settings = UserSettings.Load();
     private readonly Appearance appearance;
@@ -34,6 +35,7 @@ public sealed class MainWindow : Window
     private ComboBox Purpose => Control<ComboBox>("Purpose");
     private ComboBox Codec => Control<ComboBox>("Codec");
     private ComboBox Variant => Control<ComboBox>("Variant");
+    private ComboBox Container => Control<ComboBox>("Container");
     private RadioButtons Range => Control<RadioButtons>("OutputRange");
     private ComboBox Transform => Control<ComboBox>("Transform");
     private ComboBox Profile => Control<ComboBox>("Profile");
@@ -42,12 +44,13 @@ public sealed class MainWindow : Window
     private ComboBox Audio => Control<ComboBox>("Audio");
     private string Kind => Value(InputKind) == "auto" ? MediaText("kind", "unknown") : Value(InputKind);
     private bool Hdr => Range.SelectedIndex == 1;
-    private string Suffix => Value(Purpose) == "archive" ? ".mkv" : ".mp4";
+    private string previousSuffix = ".mp4";
+    private string Suffix => Value(Container) switch { "mp4" => ".mp4", "mkv" => ".mkv", _ => Value(Purpose) == "archive" ? ".mkv" : ".mp4" };
     private int Depth => Hdr || Value(Purpose) == "archive" && Value(Codec) != "avc" ? 10 : 8;
 
     public MainWindow()
     {
-        Title = "视频转换 · WinUI 3";
+        Title = "视频转换 3.1 · WinUI 3";
         SystemBackdrop = new MicaBackdrop();
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("VideoConverter.View.xaml.txt")!;
         using var reader = new StreamReader(stream);
@@ -97,6 +100,7 @@ public sealed class MainWindow : Window
         Choices(Purpose, ("share", "快速分享 · Intel 硬件"), ("archive", "软件归档 · CPU"));
         Choices(Codec, ("hevc", "HEVC"), ("av1", "AV1"), ("avc", "H.264 / AVC"));
         Choices(Variant, ("standard", "标准实测档"), ("fast", "AV1 更快备用档"));
+        Choices(Container, ("auto", "自动 · 按用途选择"), ("mp4", "MP4"), ("mkv", "MKV"));
         Choices(Transform, ("none", "不套用 · 保留 / 标准化"), ("log-hdr", "Log → HDR（HLG）"), ("log-sdr", "Log → SDR"), ("hdr-sdr", "HDR → SDR"));
         Choices(Profile, ("", "请选择 Log 曲线…"), ("milog", "小米 Mi-Log"), ("pocket3", "Pocket 3 D-Log M"), ("samsung", "Samsung Log"));
         Choices(Sampling, ("420", "4:2:0 · 播放兼容优先"), ("422", "4:2:2 · 软件归档"));
@@ -112,7 +116,7 @@ public sealed class MainWindow : Window
         Control<Button>("OpenFolder").Click += (_, _) => { if (File.Exists(completedOutput)) Process.Start(new ProcessStartInfo("explorer.exe", Path.GetDirectoryName(completedOutput)!) { UseShellExecute = true }); };
         Input.KeyDown += async (_, e) => { if (e.Key == Windows.System.VirtualKey.Enter) await InspectAsync(); };
         Input.LostFocus += async (_, _) => { if (File.Exists(Input.Text.Trim('"', ' '))) await InspectAsync(); };
-        foreach (var name in new[] { "Purpose", "Codec", "Variant", "Sampling", "Profile", "Audio" })
+        foreach (var name in new[] { "Purpose", "Codec", "Variant", "Container", "Sampling", "Profile", "Audio" })
             Control<ComboBox>(name).SelectionChanged += (_, _) => Refresh();
         Range.SelectionChanged += (_, _) => Refresh();
         InputKind.SelectionChanged += (_, _) => { if (!updating && Kind == "sdr") Range.SelectedIndex = 0; Refresh(); };
@@ -151,6 +155,28 @@ public sealed class MainWindow : Window
         ffmpeg = WorkerClient.FindTool("ffmpeg", settings.Ffmpeg);
         ffprobe = WorkerClient.FindTool("ffprobe", settings.Ffprobe);
     }
+    private static JsonElement LoadEncodingConfig()
+    {
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("VideoConverter.EncodingPresets.json")!;
+        using var document = JsonDocument.Parse(stream);
+        return document.RootElement.Clone();
+    }
+    private string DescribePreset()
+    {
+        var preset = Value(Variant) == "fast" ? encodingConfig.GetProperty("archive_fast_av1") : encodingConfig.GetProperty(Value(Purpose)).GetProperty(Value(Codec));
+        var encoder = preset.GetProperty("encoder").GetString() switch { "libx265" => "x265", "libx264" => "x264", "libsvtav1" => "SVT-AV1", var name => name };
+        var share = Value(Purpose) == "share";
+        var result = new List<string> { encoder ?? "", share ? $"TU{preset.GetProperty("preset")} / ICQ{preset.GetProperty("quality")}" : $"{preset.GetProperty("preset")} / CRF{preset.GetProperty("quality")}" };
+        if (share) { result.Add("low_power=1"); result.Add($"async_depth={preset.GetProperty("async_depth")}"); }
+        else
+        {
+            if (Value(Codec) == "hevc") result.Add("pools=16");
+            foreach (var key in new[] { "tune", "lp" }) if (preset.TryGetProperty(key, out var item)) result.Add(key + "=" + item);
+            if (preset.TryGetProperty("encoder_parameters", out var extra))
+                foreach (var item in extra.EnumerateObject()) result.Add(item.Name + "=" + item.Value);
+        }
+        return string.Join(" · ", result);
+    }
     private void Refresh()
     {
         if (updating) return;
@@ -180,9 +206,11 @@ public sealed class MainWindow : Window
             Control<TextBlock>("TargetNote").Text = Hdr ? $"BT.2020 {curve} · {Depth} 位 · {sampling}" : $"Rec.709 · {Depth} 位 · {sampling}";
             var codecName = Value(Codec) switch { "av1" => "AV1", "avc" => "H.264", _ => "HEVC" };
             Control<TextBlock>("PresetName").Text = $"{(Hdr ? "HDR" : "SDR")} · {codecName} · {(Value(Purpose) == "share" ? "快速分享" : "软件归档")}";
-            var quality = Value(Purpose) == "share" ? Value(Codec) switch { "av1" => "av1_qsv · TU4 / ICQ26", "avc" => "h264_qsv · TU4 / ICQ22", _ => "hevc_qsv · TU4 / ICQ24" }
-                : Value(Codec) switch { "av1" => Value(Variant) == "fast" ? "SVT-AV1 · preset6 / CRF32 / lp4" : "SVT-AV1 · preset4 / CRF32", "avc" => "x264 · medium / CRF21", _ => "x265 · medium / CRF23" };
+            var quality = DescribePreset();
             Control<TextBlock>("PresetDetail").Text = $"{quality}\n{Depth} 位 {sampling} · {Suffix[1..].ToUpperInvariant()}";
+            Control<TextBlock>("ContainerNote").Text = Value(Container) == "auto"
+                ? $"自动 → {Suffix[1..].ToUpperInvariant()}。快速分享默认 MP4，软件归档默认 MKV。"
+                : Suffix == ".mp4" ? "MP4。复制原音轨时，会在编码前检测封装兼容性。" : "MKV。封装独立于编码质量档和动态范围。";
             Control<TextBlock>("TransformNote").Text = Value(Transform) switch {
                 "log-hdr" => "使用对应相机的曲线，转换为 10 位 HLG。",
                 "log-sdr" => "解码对应 Log，并将高光映射到 Rec.709。",
@@ -201,6 +229,9 @@ public sealed class MainWindow : Window
                 automaticOutput = Path.Combine(Path.GetDirectoryName(source)!, $"{Path.GetFileNameWithoutExtension(source)}_{(Hdr ? "HDR" : "SDR")}_{Value(Codec)}_{Value(Purpose)}{Suffix}");
                 Output.Text = automaticOutput;
             }
+            else if (media is not null && previousSuffix != Suffix && new[] { ".mp4", ".mkv" }.Contains(Path.GetExtension(Output.Text).ToLowerInvariant()))
+                Output.Text = Path.ChangeExtension(Output.Text, Suffix);
+            previousSuffix = Suffix;
         }
         finally { updating = false; }
     }
@@ -214,8 +245,8 @@ public sealed class MainWindow : Window
     }
     private async Task ChooseOutputAsync()
     {
-        var picker = new FileSavePicker { SuggestedFileName = Path.GetFileNameWithoutExtension(Output.Text) };
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
+        var picker = new Microsoft.Windows.Storage.Pickers.FileSavePicker(AppWindow.Id) {
+            SuggestedFileName = Path.GetFileNameWithoutExtension(Output.Text), DefaultFileExtension = Suffix };
         picker.FileTypeChoices.Add(Suffix[1..].ToUpperInvariant(), new[] { Suffix });
         var file = await picker.PickSaveFileAsync();
         if (file is not null) Output.Text = file.Path;
@@ -229,6 +260,7 @@ public sealed class MainWindow : Window
         if (ffmpeg == "" || ffprobe == "") { await ConfigureToolsAsync(); if (ffmpeg == "" || ffprobe == "") return; }
         var token = ++generation;
         media = null; probing = true; SetStatus("正在读取相机元数据…");
+        foreach (var name in new[] { "SourceVideo", "SourceColor", "SourceAudio" }) Control<TextBlock>(name).Visibility = Visibility.Collapsed;
         Control<TextBlock>("SourceSummary").Text = "正在识别素材…"; Refresh();
         using var worker = new WorkerClient(); probes.Add(worker);
         try
@@ -253,16 +285,68 @@ public sealed class MainWindow : Window
         var name = MediaText("profile") switch { "milog" => "小米 Mi-Log", "pocket3" => "Pocket 3 D-Log M", "samsung" => "Samsung Log", _ => MediaText("kind") switch { "hlg" => "HLG HDR", "pq" => "PQ HDR", "sdr" => "SDR", "log" => "Log · 曲线待确认", _ => "色彩类型待确认" } };
         var pixel = video.GetProperty("pix_fmt").GetString() ?? "";
         var sampling = pixel.Contains("422") ? "4:2:2" : pixel.Contains("420") || pixel == "p010le" ? "4:2:0" : pixel;
-        var depth = System.Text.RegularExpressions.Regex.IsMatch(pixel, "10|12|16") ? "高位深" : "8 位";
+        var depths = data.TryGetProperty("component_depths", out var components) ? components.EnumerateArray().Select(item => item.GetInt32()).Distinct().ToArray() : [];
+        var depth = depths.Length > 0 ? string.Join("/", depths) + " 位" : video.TryGetProperty("bits_per_raw_sample", out var raw) && int.TryParse(raw.ToString(), out var bits) && bits > 0 ? bits + " 位" : "位深未标明";
+        if (data.TryGetProperty("pixel_float", out var floating) && floating.GetBoolean()) depth += "浮点";
         var duration = data.GetProperty("duration").GetDouble();
         completed = false; clock.Reset(); encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
         completedOutput = ""; Control<Button>("OpenFolder").IsEnabled = false;
         Control<ProgressBar>("Progress").Value = 0; UpdateTransferStats();
         Control<TextBlock>("SourceSummary").Text = $"{name} · {video.GetProperty("width")} × {video.GetProperty("height")} · {sampling}";
+        SetSourceDetail("SourceVideo", DescribeVideo(video, depth));
+        SetSourceDetail("SourceColor", DescribeColors(video));
+        SetSourceDetail("SourceAudio", DescribeAudio(data));
         Control<TextBlock>("SourceEvidence").Text = MediaText("evidence");
         Control<TextBlock>("SourceBadge").Text = $"{depth} · {duration:F1} 秒";
         SetStatus("已识别素材，默认选项已就绪");
         updating = false; Refresh();
+    }
+    private void SetSourceDetail(string name, string text)
+    {
+        var control = Control<TextBlock>(name); control.Text = text; control.Visibility = Visibility.Visible;
+    }
+    private static string Field(JsonElement item, string key, string fallback = "") => item.TryGetProperty(key, out var value) ? value.ToString() : fallback;
+    private static string Bitrate(JsonElement item)
+    {
+        return TryNumber(Field(item, "bit_rate"), out var rate) && rate > 0 ? rate >= 1_000_000 ? $"{rate / 1_000_000:0.0} Mb/s" : $"{rate / 1000:0.#} kb/s" : "";
+    }
+    private static string DescribeVideo(JsonElement video, string depth)
+    {
+        var parts = new List<string> { "视频：" + Field(video, "codec_name").ToUpperInvariant() };
+        var profile = Field(video, "profile"); if (profile != "" && profile != "unknown") parts.Add(profile);
+        foreach (var key in new[] { "avg_frame_rate", "r_frame_rate" })
+        {
+            var ratio = Field(video, key).Split('/');
+            if (ratio.Length == 2 && TryNumber(ratio[0], out var a) && TryNumber(ratio[1], out var b) && a > 0 && b > 0) { parts.Add($"{a / b:0.###} fps"); break; }
+        }
+        parts.Add(depth);
+        var bitrate = Bitrate(video); if (bitrate != "") parts.Add(bitrate);
+        return string.Join(" · ", parts);
+    }
+    private static string DescribeColors(JsonElement video)
+    {
+        var primaries = Field(video, "color_primaries") switch { "bt709" => "BT.709", "bt2020" => "BT.2020", "" or "unknown" => "色域未标明", var value => value };
+        var transfer = Field(video, "color_transfer") switch { "bt709" => "Rec.709 曲线", "arib-std-b67" => "HLG", "smpte2084" => "PQ", "" or "unknown" => "曲线未标明", var value => value };
+        var range = Field(video, "color_range") switch { "pc" => "全范围", "tv" => "有限范围", _ => "范围未标明" };
+        return $"色彩标签：{primaries} · {transfer} · {range}";
+    }
+    private static string DescribeAudio(JsonElement data)
+    {
+        if (!data.TryGetProperty("audio", out var audio) || audio.GetArrayLength() == 0) return "音轨：无";
+        var lines = new List<string>(); var index = 0;
+        foreach (var stream in audio.EnumerateArray())
+        {
+            var layout = Field(stream, "channel_layout") switch { "stereo" => "立体声", "mono" => "单声道", "" or "unknown" => Field(stream, "channels", "?") + " 声道", var value => value };
+            var parts = new List<string> { $"音轨 {++index}：{Field(stream, "codec_name").ToUpperInvariant()}", layout };
+            var profile = Field(stream, "profile"); if (profile != "" && profile != "unknown") parts.Insert(1, profile);
+            if (TryNumber(Field(stream, "sample_rate"), out var hz) && hz > 0) parts.Add($"{hz / 1000:0.###} kHz");
+            var audioBits = Field(stream, "bits_per_raw_sample");
+            if (!int.TryParse(audioBits, out var depth) || depth <= 0) int.TryParse(Field(stream, "bits_per_sample"), out depth);
+            if (depth > 0) parts.Add($"{depth} 位");
+            var bitrate = Bitrate(stream); if (bitrate != "") parts.Add(bitrate);
+            lines.Add(string.Join(" · ", parts));
+        }
+        return string.Join("\n", lines);
     }
     private async Task StartAsync()
     {
@@ -274,7 +358,7 @@ public sealed class MainWindow : Window
         var request = new { action = "convert", tools = ToolsObject(), path = MediaText("path"), output,
             options = new { purpose = Value(Purpose), codec = Value(Codec), output = Hdr ? "hdr" : "sdr", transform = Value(Transform),
                 profile = Value(Profile) == "" ? null : Value(Profile), sampling = Value(Sampling), variant = Value(Variant),
-                audio = Value(Audio), source_kind = Value(InputKind), cpu_decode = Control<CheckBox>("CpuDecode").IsChecked == true } };
+                audio = Value(Audio), container = Value(Container), source_kind = Value(InputKind), cpu_decode = Control<CheckBox>("CpuDecode").IsChecked == true } };
         using var worker = new WorkerClient(); activeJob = worker;
         completed = false; encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
         clock.Restart(); clockTimer.Start(); UpdateTransferStats();
@@ -329,7 +413,7 @@ public sealed class MainWindow : Window
     }
     private void SetBusy(bool busy)
     {
-        foreach (var name in new[] { "InputPath", "ChooseInput", "InputKind", "OutputRange", "Purpose", "Codec", "Variant", "Transform", "Profile", "Sampling", "Audio", "CpuDecode" })
+        foreach (var name in new[] { "InputPath", "ChooseInput", "InputKind", "OutputRange", "Purpose", "Codec", "Variant", "Container", "Transform", "Profile", "Sampling", "Audio", "CpuDecode" })
             Control<Microsoft.UI.Xaml.Controls.Control>(name).IsEnabled = !busy;
         Control<Button>("ToolsButton").IsEnabled = !busy;
         Output.IsEnabled = !busy; Control<Button>("ChooseOutput").IsEnabled = !busy;

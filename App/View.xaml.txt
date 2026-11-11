@@ -43,7 +43,13 @@
             </Grid>
             <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="240"/></Grid.ColumnDefinitions>
               <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="8" Width="48" Height="48"><FontIcon Glyph="&#xE8B2;" FontSize="22"/></Border>
-              <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center"><TextBlock x:Name="SourceSummary" Text="尚未选择素材" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap"/><TextBlock x:Name="SourceEvidence" Text="识别相机 Log、HDR 与常规 SDR。" Style="{StaticResource Secondary}"/></StackPanel>
+              <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
+                <TextBlock x:Name="SourceSummary" Text="尚未选择素材" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap"/>
+                <TextBlock x:Name="SourceVideo" Visibility="Collapsed" Style="{StaticResource Secondary}"/>
+                <TextBlock x:Name="SourceColor" Visibility="Collapsed" Style="{StaticResource Secondary}"/>
+                <TextBlock x:Name="SourceAudio" Visibility="Collapsed" Style="{StaticResource Secondary}"/>
+                <TextBlock x:Name="SourceEvidence" Text="识别相机 Log、HDR 与常规 SDR。" Style="{StaticResource Secondary}"/>
+              </StackPanel>
               <ComboBox x:Name="InputKind" Grid.Column="2" Header="输入解释" HorizontalAlignment="Stretch" AutomationProperties.Name="输入解释"/>
             </Grid>
           </StackPanel>
@@ -58,6 +64,8 @@
               <ComboBox x:Name="Codec" Grid.Column="1" Header="视频编码" HorizontalAlignment="Stretch" AutomationProperties.Name="视频编码"/>
             </Grid>
             <ComboBox x:Name="Variant" Header="质量档" HorizontalAlignment="Stretch" AutomationProperties.Name="质量档"/>
+            <ComboBox x:Name="Container" Header="封装格式" HorizontalAlignment="Stretch" AutomationProperties.Name="封装格式"/>
+            <TextBlock x:Name="ContainerNote" Style="{StaticResource Secondary}"/>
             <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="8" Padding="14,12"><StackPanel Spacing="5"><TextBlock x:Name="PresetName" FontWeight="SemiBold"/><TextBlock x:Name="PresetDetail" Style="{StaticResource Secondary}"/></StackPanel></Border>
           </StackPanel>
         </Border>
