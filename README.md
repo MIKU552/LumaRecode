@@ -1,5 +1,7 @@
 # 映流 · FrameFlow
 
+简体中文 | [English](README.en.md)
+
 面向 Windows 11 的视频转码工具，提供 FFmpeg 图形界面，可压缩普通视频、将相机 Log 转换为 HDR / SDR，或将 HDR 视频转换为 SDR。支持输出 MP4 / MKV，使用 HEVC、AV1 或 H.264 编码。
 
 [下载最新版本](https://github.com/MIKU552/FrameFlow/releases/latest) · [更新记录](CHANGELOG.md) · [从源码构建](#从源码构建)
@@ -37,6 +39,8 @@
 - **色度采样**：默认输出 4:2:0；软件归档的 HEVC / H.264 可选 4:2:2。
 
 编码器参数在界面中显示，完整预设见 [recommended-presets.json](Worker/assets/recommended-presets.json)。转换会重新编码视频；选择“复制原音轨”只影响音频处理。
+
+预设的核心参数来自维护者在 **Xiaomi Book Pro 14 / Core Ultra X7 358H / Arc B390 / 32 GB** 上的实际测试。测试方法、画质与体积、真实转码速度、参数取舍及原始结果摘录见[编码测试报告](docs/benchmarks/encoding-benchmark.zh-CN.md)。这些值是本机、特定素材和软件版本下的默认起点；HDR、SDR8、4:2:2 和 LUT 转换的功能验证不等于重新完成了整套画质调参。
 
 ## 色彩转换
 
@@ -102,10 +106,19 @@ Worker/assets/        LUT、编码预设与第三方许可
 Brand/                品牌图形与图标生成脚本
 qa/LanguageChecks/    语言策略、翻译及资源检查
 build.ps1             Windows 单文件 EXE 构建脚本
+docs/benchmarks/       编码实测报告、预设来源与可核对的数据
 ```
+
+## 开发方式与贡献
+
+本项目自主代码的编写、界面实现、构建和仓库维护工作，全部通过 **Windows 版 Codex** 完成，使用 **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** 模型和 **极高（xhigh）** 推理设置。维护者 **[MIKU552](https://github.com/MIKU552)** 负责提出需求、提供设备与素材、选择方案，并亲自进行实机使用和结果核验。
+
+以上说明针对本项目的开发过程；FFmpeg、WinUI 3、第三方 LUT 等组件保留各自作者与许可。人员、AI 工具的具体分工及 Git 署名方式见 [CONTRIBUTORS.md](CONTRIBUTORS.md)。
 
 ## 文档与第三方组件
 
+- [编码测试报告](docs/benchmarks/encoding-benchmark.zh-CN.md)：内置参数的实测依据、适用范围与数据来源。
+- [CONTRIBUTORS.md](CONTRIBUTORS.md)：维护者、AI 开发工具和提交署名说明。
 - [CHANGELOG.md](CHANGELOG.md)：版本更新记录。
 - [HISTORY.md](HISTORY.md)：早期源码快照的归档说明。
 - [THIRD_PARTY.md](Worker/assets/THIRD_PARTY.md)：组件许可及 LUT 来源。Pocket 3 的 D-Log M → HLG LUT 来自第三方 OpenOSV 项目。

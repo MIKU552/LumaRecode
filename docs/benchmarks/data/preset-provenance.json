@@ -1,0 +1,13 @@
+{
+  "test_batch": "2026-10-29",
+  "archived_on": "2026-11-11",
+  "source_preset_sha256": "cecafd8f37f7090c1fb5b4fb236eecc049283377521080ac13eeb620142e0977",
+  "frameflow_preset_sha256": "3c339935e488825fed6d66b3b5d1745e69dfd235ed8564018a2ebce209b01d1e",
+  "matching_sections": [
+    "archive",
+    "archive_fast_av1",
+    "share",
+    "audio"
+  ],
+  "note": "FrameFlow selects pixel depth and chroma at runtime. Equality of encoder settings is not a new HDR quality calibration."
+}

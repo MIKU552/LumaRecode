@@ -3,6 +3,9 @@
 !/.gitignore
 !/.gitattributes
 !/README.md
+!/README.en.md
+!/CONTRIBUTORS.md
+!/docs/
 !/HISTORY.md
 !/CHANGELOG.md
 !/build.ps1

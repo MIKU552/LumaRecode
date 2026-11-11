@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-29",
+  "timezone": "Asia/Shanghai",
+  "computer": "Xiaomi Book Pro 14",
+  "cpu": "Intel Core Ultra X7 358H",
+  "physical_cores": 16,
+  "logical_processors": 16,
+  "memory_bytes": 33873752064,
+  "gpu": "Intel Arc B390",
+  "gpu_driver": "32.0.101.9150",
+  "power_plan": "Balanced",
+  "ffmpeg": "9.0.2-full_build-www.gyan.dev",
+  "x264": "core 165 r3223 0480cb0",
+  "x265": "4.3+45-116b875",
+  "svt_av1": "4.2.0-123-g0c1c4deca",
+  "svt_parallelism": "lp=0 selected Level of Parallelism 5 on this machine; asm AVX2",
+  "obs": "33.0.0",
+  "handbrake": "1.11.2",
+  "sources": [
+    {
+      "file": "Timeline 1.mov",
+      "codec": "hevc",
+      "profile": "Main",
+      "width": 3840,
+      "height": 2160,
+      "fps": 30,
+      "pix_fmt": "yuv420p",
+      "color_primaries": "bt709",
+      "color_transfer": "bt709",
+      "color_space": "bt709",
+      "duration_s": 165,
+      "video_bps": 214845646,
+      "size_bytes": 4494609737
+    },
+    {
+      "file": "Timeline 1.XQ.mov",
+      "codec": "prores",
+      "profile": "XQ",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "pix_fmt": "yuv444p12le",
+      "color_primaries": "bt709",
+      "color_transfer": "unspecified",
+      "color_space": "bt709",
+      "duration_s": 165,
+      "video_bps": 487340515,
+      "size_bytes": 10114822119
+    }
+  ],
+  "sample_start_seconds": [
+    20,
+    75,
+    125
+  ],
+  "sample_duration_each_s": 4,
+  "sample_total_s": 12,
+  "normalized_reference": "Native resolution, 30 fps, YUV420 10-bit FFV1, BT.709 limited range; ProRes unspecified transfer treated as BT.709. Each resolution uses its own source and is not an identical-scene resolution scaling comparison.",
+  "quality_metric": "libvmaf default vmaf_v0.6.1, native resolution, every 3rd frame, mean and sampled P5, PSNR and float SSIM. The default VMAF model is used as an SDR relative proxy within each resolution, not a validated 4K viewing-distance or HDR score.",
+  "limitations": [
+    "No real HDR reference footage supplied",
+    "No actual game FPS benchmark",
+    "No power draw, package energy, or temperature measurement",
+    "30fps sources cannot represent unique-frame 60fps game motion; OBS renders them at 60fps",
+    "First exploratory OBS run failed before timer statistics; it is excluded and replaced by the sequential runs",
+    "FFV1 decode limits hardware quality-sweep throughput, so separate QSV decode/scale/encode timings are collected"
+  ]
+}
