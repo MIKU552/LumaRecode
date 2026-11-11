@@ -197,8 +197,18 @@ public sealed class Appearance
         content.Children.Add(restore);
         systemSwitch.Toggled += (_, _) => { if (applying) return; settings.SystemAccent = systemSwitch.IsOn; settings.Save(); ApplyAccent(true); };
         picker.ColorChanged += (_, e) => { if (!applying) ChooseColor(e.NewColor, false); };
+        // A windowed popup keeps its acrylic/shadow composition out of the main
+        // window's native Mica tree. Use an opaque, theme-aware menu surface so
+        // HDR does not blend a second in-app acrylic layer over the cards.
+        var presenterStyle = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
+            <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   TargetType="FlyoutPresenter" BasedOn="{StaticResource DefaultFlyoutPresenterStyle}">
+                <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}" />
+            </Style>
+            """);
         return new Flyout { Content = new ScrollViewer { Content = content, MaxHeight = 640,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
+            ShouldConstrainToRootBounds = false, FlyoutPresenterStyle = presenterStyle,
             Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight };
     }
 
