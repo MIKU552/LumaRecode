@@ -15,6 +15,7 @@ public sealed class Appearance
     private readonly UISettings system = new();
     private readonly AccessibilitySettings accessibility = new();
     private readonly List<string> overridden = new();
+    private readonly HdrBackdropCompatibility backdrop;
     private ComboBox? themeChoice;
     private bool applying;
     private bool disposed;
@@ -29,6 +30,7 @@ public sealed class Appearance
     {
         this.root = root; this.window = window; this.settings = settings;
         window.Closed += (_, _) => disposed = true;
+        backdrop = new HdrBackdropCompatibility((Grid)root, window);
         ((Button)root.FindName("PaletteButton")).Flyout = BuildPalette();
         root.ActualThemeChanged += (_, _) => { if (!applying) ApplyAccent(false); UpdateCaption(); };
         system.ColorValuesChanged += (_, _) => root.DispatcherQueue.TryEnqueue(() => { ApplyAccent(false); UpdateCaption(); });
@@ -119,6 +121,7 @@ public sealed class Appearance
             button.BorderThickness = new Thickness(!settings.SystemAccent && hex.Equals(settings.CustomColor, StringComparison.OrdinalIgnoreCase) ? 3 : 1);
             button.BorderBrush = new SolidColorBrush(dark ? Colors.White : Colors.Black) { Opacity = !settings.SystemAccent && hex.Equals(settings.CustomColor, StringComparison.OrdinalIgnoreCase) ? .9 : .15 };
         }
+        backdrop.Refresh();
         applying = false;
     }
 
@@ -180,11 +183,8 @@ public sealed class Appearance
         content.Children.Add(restore);
         systemSwitch.Toggled += (_, _) => { if (applying) return; settings.SystemAccent = systemSwitch.IsOn; settings.Save(); ApplyAccent(true); };
         picker.ColorChanged += (_, e) => { if (!applying) ChooseColor(e.NewColor, false); };
-        // The projected default shadow can leave a bright surface behind the flyout.
-        // Keep the native rounded surface and border without a separate shadow layer.
         return new Flyout { Content = new ScrollViewer { Content = content, MaxHeight = 640,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
-            FlyoutPresenterStyle = (Style)Application.Current.Resources["PaletteFlyoutPresenterStyle"],
             Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight };
     }
 
