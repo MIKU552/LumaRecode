@@ -2,3 +2,10 @@
 *.cube -diff
 *.ico binary
 *.png binary
+# Preserve upstream legal text bytes and the hashes in license-manifest.json.
+LICENSE -text
+NOTICE -text
+Worker/assets/**/*.txt -text -whitespace
+Worker/assets/OpenOSV/LICENSE -text
+Worker/assets/OpenOSV/NOTICE -text
+Worker/assets/OpenSSL-AUTHORS.md -text conflict-marker-size=32

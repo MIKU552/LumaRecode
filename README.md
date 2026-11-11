@@ -117,6 +117,12 @@ docs/benchmarks/       编码实测报告、预设来源与可核对的数据
 
 Git 提交由 [Codex](https://github.com/codex) 与 MIKU552 共同署名，并使用维护者现有的 GPG 密钥签名。
 
+## 开源许可
+
+本项目的自主代码、文档、原创图形及项目生成的 Mi-Log / Samsung Log LUT，采用 **[Apache License 2.0](LICENSE)**。允许商用、修改及闭源再分发，须遵守保留许可与相关声明、标明修改等条件；另见 [NOTICE](NOTICE)。
+
+第三方 LUT、Microsoft / Python 运行时等组件保留各自许可。当前 Windows 发行依赖仍有需要处理的预览使用与再分发条款，详见[第三方组件与发布事项](Worker/assets/THIRD_PARTY.md#发布事项--release-status)。本次添加源码许可没有重新发布旧版 EXE。
+
 ## 文档与第三方组件
 
 - [编码测试报告](docs/benchmarks/encoding-benchmark.zh-CN.md)：内置参数的实测依据、适用范围与数据来源。

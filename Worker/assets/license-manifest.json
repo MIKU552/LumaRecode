@@ -1,0 +1,224 @@
+{
+  "schema_version": 1,
+  "audited_on": "2026-11-11",
+  "audited_app_version": "3.4.7",
+  "scope": "Current source tree, resolved NuGet packages, and the retained ConverterWorker executable. This is not a clearance of every historical binary.",
+  "project_license": "Apache-2.0",
+  "third_party_files_keep_their_own_licenses": true,
+  "public_binary_release_cleared": false,
+  "release_issues": [
+    {
+      "id": "winui-preview-terms",
+      "status": "needs-resolution-before-public-binary-release",
+      "component": "Microsoft.WindowsAppSDK.WinUI/2.0.12",
+      "evidence": "Worker/assets/WindowsAppSDK-WinUI-LICENSE.txt",
+      "details": "The resolved package carries Engineering Preview terms including live-environment, duration, and distribution restrictions. Do not infer production redistribution rights from its numeric version or the parent package license."
+    },
+    {
+      "id": "vcruntime-redistribution-evidence",
+      "status": "needs-version-matched-terms-before-public-binary-release",
+      "component": "VCRUNTIME140.dll 14.51.36247.0",
+      "details": "Present in the retained Python worker. The matching Microsoft redistribution terms were not present among the existing bundled notices; do not treat this DLL as Apache-2.0 or Python-2.0."
+    },
+    {
+      "id": "existing-binary-notices",
+      "status": "rebuild-needed-after-release-issues-resolved",
+      "details": "Existing release EXEs predate these notice additions and have not been replaced by this source licensing update."
+    }
+  ],
+  "runtime_inspection": {
+    "python314.dll": "3.14.7",
+    "libcrypto-3.dll": "3.5.7",
+    "libssl-3.dll": "3.5.7",
+    "VCRUNTIME140.dll": "14.51.36247.0",
+    "Qt_or_PySide_dlls_in_worker": false
+  },
+  "files": [
+    {
+      "component": "FrameFlow original work",
+      "license": "Apache-2.0",
+      "path": "LICENSE",
+      "source": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "component": "OpenSSL 3.5.7",
+      "license": "Apache-2.0",
+      "path": "Worker/assets/OpenSSL-LICENSE.txt",
+      "source": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.7/LICENSE.txt",
+      "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"
+    },
+    {
+      "component": "OpenSSL 3.5.7",
+      "license": "Apache-2.0",
+      "path": "Worker/assets/OpenSSL-AUTHORS.md",
+      "source": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.7/AUTHORS.md",
+      "sha256": "b9f638dfc06b59c2d3b808186c3b30f713805a5db390f5b77b1703ac58acb83e"
+    },
+    {
+      "component": "microsoft.windowsappsdk/2.0.1",
+      "license": "Microsoft Windows App SDK terms",
+      "path": "Worker/assets/WindowsAppSDK-LICENSE.txt",
+      "source": "https://www.nuget.org/packages/microsoft.windowsappsdk/2.0.1",
+      "source_file_in_package": "license.txt",
+      "sha256": "5b11e6347756e40fe0274bc08c97f89201b94f0d50181a09a00f1f4740840501"
+    },
+    {
+      "component": "microsoft.windowsappsdk/2.0.1",
+      "license": "Third-party notices",
+      "path": "Worker/assets/WindowsAppSDK-NOTICE.txt",
+      "source": "https://www.nuget.org/packages/microsoft.windowsappsdk/2.0.1",
+      "source_file_in_package": "NOTICE.txt",
+      "sha256": "572b43d41dea717dae7dc5de69acb20a74df025e8f5a3c0aa6f7bca02615e23c"
+    },
+    {
+      "component": "microsoft.windowsappsdk.winui/2.0.12",
+      "license": "Microsoft Engineering Preview terms",
+      "path": "Worker/assets/WindowsAppSDK-WinUI-LICENSE.txt",
+      "source": "https://www.nuget.org/packages/microsoft.windowsappsdk.winui/2.0.12",
+      "source_file_in_package": "license.txt",
+      "sha256": "c2f1d9efba5864366335c007d51cab1d5b07005e9f1a67d7ca90b7b2a01fd615"
+    },
+    {
+      "component": "microsoft.windowsappsdk.winui/2.0.12",
+      "license": "Third-party notices",
+      "path": "Worker/assets/WindowsAppSDK-WinUI-NOTICE.txt",
+      "source": "https://www.nuget.org/packages/microsoft.windowsappsdk.winui/2.0.12",
+      "source_file_in_package": "NOTICE.txt",
+      "sha256": "e25393c0d340a1821827b093fa4dbbfcccd8feb7bf769e7fa773e3955cd5314b"
+    },
+    {
+      "component": "microsoft.windowsappsdk.winui/2.0.12",
+      "license": "Third-party notices",
+      "path": "Worker/assets/WindowsAppSDK-WinUI-Tools-NOTICE.txt",
+      "source": "https://www.nuget.org/packages/microsoft.windowsappsdk.winui/2.0.12",
+      "source_file_in_package": "tools/NOTICE.txt",
+      "sha256": "4a9321fd173ebf4e8bbc79130794d4c3fe233acccbf7db8765e0addb8fbfb8ca"
+    },
+    {
+      "component": "microsoft.windowsappsdk.ml/2.0.300",
+      "license": "Microsoft Windows ML terms",
+      "path": "Worker/assets/WindowsAppSDK-ML-LICENSE.txt",
+      "source": "https://www.nuget.org/packages/microsoft.windowsappsdk.ml/2.0.300",
+      "source_file_in_package": "license.txt",
+      "sha256": "656aab74c15aa9f9964bcdcc993eb2755cbdb4822d5e0e3bc61d2e281897f758"
+    },
+    {
+      "component": "microsoft.windows.ai.machinelearning/2.0.300",
+      "license": "Microsoft Windows ML terms",
+      "path": "Worker/assets/WindowsAI-MachineLearning-LICENSE.txt",
+      "source": "https://www.nuget.org/packages/microsoft.windows.ai.machinelearning/2.0.300",
+      "source_file_in_package": "license.txt",
+      "sha256": "66395f8cb219087fae2bd025010bd9076b736c14f03b48f20295471c0c376814"
+    },
+    {
+      "component": "microsoft.windows.ai.machinelearning/2.0.300",
+      "license": "Third-party notices",
+      "path": "Worker/assets/WindowsML-THIRD-PARTY-NOTICES.txt",
+      "source": "https://www.nuget.org/packages/microsoft.windows.ai.machinelearning/2.0.300",
+      "source_file_in_package": "ThirdPartyNotices.txt",
+      "sha256": "fb0af774b4d7cffc5b9d046f2aaeade2f37df2f80abf8033c95dfffcc77a8866"
+    },
+    {
+      "component": "microsoft.web.webview2/1.0.3719.77",
+      "license": "BSD-3-Clause",
+      "path": "Worker/assets/WebView2-LICENSE.txt",
+      "source": "https://www.nuget.org/packages/microsoft.web.webview2/1.0.3719.77",
+      "source_file_in_package": "LICENSE.txt",
+      "sha256": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55"
+    },
+    {
+      "component": "microsoft.web.webview2/1.0.3719.77",
+      "license": "Third-party notices",
+      "path": "Worker/assets/WebView2-NOTICE.txt",
+      "source": "https://www.nuget.org/packages/microsoft.web.webview2/1.0.3719.77",
+      "source_file_in_package": "NOTICE.txt",
+      "sha256": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90"
+    },
+    {
+      "component": "system.numerics.tensors/9.0.0",
+      "license": "MIT",
+      "path": "Worker/assets/SystemNumericsTensors-LICENSE.txt",
+      "source": "https://www.nuget.org/packages/system.numerics.tensors/9.0.0",
+      "source_file_in_package": "LICENSE.TXT",
+      "sha256": "d7a68596ab69b06f51ca278a6545148e4269a9381c26d597c13df5d88e08cf5b"
+    },
+    {
+      "component": "system.numerics.tensors/9.0.0",
+      "license": "Third-party notices",
+      "path": "Worker/assets/SystemNumericsTensors-THIRD-PARTY-NOTICES.txt",
+      "source": "https://www.nuget.org/packages/system.numerics.tensors/9.0.0",
+      "source_file_in_package": "THIRD-PARTY-NOTICES.TXT",
+      "sha256": "40686c6447a7d5b5d3693068e4571b5f483d7ed335aeee773ef662440de4c5d5"
+    },
+    {
+      "component": "OpenOSV v0.6.4 LUT only",
+      "license": "Apache-2.0",
+      "path": "Worker/assets/DJI_Osmo_DLogM_to_Rec2100_HLG_BT2408_Neutral.cube",
+      "source": "https://github.com/Kemerd/OpenOSV/blob/v0.6.4/luts/Rec2100_HLG/DJI_Osmo_DLogM_to_Rec2100_HLG_BT2408_Neutral.cube",
+      "sha256": "123114d3353e10b39e59ae930c97d2ffdb7531f79ae2d9e7d143af03620ecd1d",
+      "upstream_git_blob": "24d111efcdb8a82f08832345ce2a7ee09ec23950",
+      "unmodified": true
+    },
+    {
+      "component": "OpenOSV v0.6.4 LUT only",
+      "license": "Apache-2.0",
+      "path": "Worker/assets/OpenOSV/LICENSE",
+      "source": "https://github.com/Kemerd/OpenOSV/blob/v0.6.4/LICENSE",
+      "sha256": "26c0d7149cf1e41b8770a90b6d2fa86f67e89b3b81381e8277de985afe1a7f5f",
+      "upstream_git_blob": "b1dd449e617b56d93b4da046471f9e1473312915",
+      "unmodified": true
+    },
+    {
+      "component": "OpenOSV v0.6.4 LUT only",
+      "license": "Apache-2.0",
+      "path": "Worker/assets/OpenOSV/NOTICE",
+      "source": "https://github.com/Kemerd/OpenOSV/blob/v0.6.4/NOTICE",
+      "sha256": "85f9f545d5b0bf514f4d3c63dcfcef21fdc1cb81f18eeab7929dceefcc11943b",
+      "upstream_git_blob": "40ed228b55a7d3e051a70c39fd9e21812851daf4",
+      "unmodified": true
+    },
+    {
+      "component": ".NET 8 runtime",
+      "license": "MIT",
+      "path": "Worker/assets/DotNet-LICENSE.txt",
+      "source": "https://github.com/dotnet/runtime",
+      "sha256": "d7a68596ab69b06f51ca278a6545148e4269a9381c26d597c13df5d88e08cf5b"
+    },
+    {
+      "component": ".NET runtime dependencies",
+      "license": "Third-party notices",
+      "path": "Worker/assets/DotNet-THIRD-PARTY-NOTICES.txt",
+      "source": "https://github.com/dotnet/runtime",
+      "sha256": "b60b2912da28eaa6518593c9e2efb5334ee062d3c42e80d8fdfa806b3dc52977"
+    },
+    {
+      "component": "CPython 3.14.7 runtime",
+      "license": "Python-2.0 and bundled notices",
+      "path": "Worker/assets/Python-LICENSE.txt",
+      "source": "https://docs.python.org/3.14/license.html",
+      "sha256": "935cf13e19f8c31b497d20b05d73623431a226b230c3599bc30fa3348979bc68"
+    },
+    {
+      "component": "PyInstaller 6.22.3 runtime",
+      "license": "GPL-2.0 with Bootloader-exception; Apache-2.0 for designated files",
+      "path": "Worker/assets/PyInstaller-COPYING.txt",
+      "source": "https://pyinstaller.org/en/stable/license.html",
+      "sha256": "0598064c7d2718e38d7914a7d08343b2fa008e3bea9ebba2aa7a6ffa5900dd64"
+    }
+  ],
+  "generated_luts": [
+    {
+      "path": "Worker/assets/REDMI_K90_MiLog_to_Rec2100_HLG.cube",
+      "license": "Apache-2.0",
+      "generator": "Worker/tools/generate_hlg_luts.py",
+      "sha256": "8019f23548691365d81ac2dddf1a5300ed226269add338e3bbcd0b64c739a2f3"
+    },
+    {
+      "path": "Worker/assets/Samsung_Log_to_Rec2100_HLG.cube",
+      "license": "Apache-2.0",
+      "generator": "Worker/tools/generate_hlg_luts.py",
+      "sha256": "ecf1c7196aae39a734085be4bf50a3c0e87036397a84bb4984dc085407281ae1"
+    }
+  ]
+}

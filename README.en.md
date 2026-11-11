@@ -117,6 +117,12 @@ This describes the project's development process. FFmpeg, WinUI 3, third-party L
 
 Git commits credit both [Codex](https://github.com/codex) and MIKU552 and are signed with the maintainer's existing GPG key.
 
+## License
+
+Original project code, documentation, graphics, and the project's generated Mi-Log / Samsung Log LUTs use the **[Apache License 2.0](LICENSE)**. Commercial use, modification, and proprietary redistribution are permitted subject to its conditions, including license / notice retention and identification of changes. See [NOTICE](NOTICE).
+
+Third-party LUTs, Microsoft / Python runtimes, and other dependencies retain their own licenses. Current Windows distribution dependencies still have preview-use and redistribution terms to resolve; see [third-party components and release status](Worker/assets/THIRD_PARTY.md#发布事项--release-status). This source licensing update does not republish the existing EXEs.
+
 ## Documentation and third-party components
 
 - [Encoding benchmark report](docs/benchmarks/encoding-benchmark.en.md): empirical basis, scope, and data provenance for the built-in presets.
