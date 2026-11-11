@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net11.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PlatformTarget>x64</PlatformTarget>
@@ -24,17 +24,22 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <Version>3.4.7</Version>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <Version>3.5.0</Version>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.0.1" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7705" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.6.5" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Runtime" Version="2.6.5" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
     <Content Include="FrameFlow.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../Brand/FrameFlow.png" Link="Assets/FrameFlow.png" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="View.xaml.txt" />
     <EmbeddedResource Include="Strings.en.json" LogicalName="FrameFlow.Strings.en.json" WithCulture="false" />
     <EmbeddedResource Include="../Worker/assets/recommended-presets.json" LogicalName="VideoConverter.EncodingPresets.json" />
-    <Content Include="../Payload/**" Link="Payload/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Files read by path are deployment files, not MRT-qualified UI resources. -->
+    <None Include="../Payload/Worker/**" Link="Payload/Worker/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../Payload/Runtime/**" Condition="'$(SelfContained)' == 'true'" Link="Payload/Runtime/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../licenses/**" Link="licenses/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

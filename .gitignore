@@ -10,6 +10,9 @@
 !/HISTORY.md
 !/CHANGELOG.md
 !/build.ps1
+!/global.json
+!/tools/
+!/licenses/
 !/App/
 !/Worker/
 !/Brand/
@@ -17,6 +20,7 @@
 /App/app.ico
 /qa/*
 !/qa/LanguageChecks/
+!/qa/RuntimeChecks/
 **/bin/
 **/obj/
 **/__pycache__/

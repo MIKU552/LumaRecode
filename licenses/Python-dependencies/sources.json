@@ -1,0 +1,80 @@
+[
+  {
+    "file": "CPython-source-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/python/cpython/v3.15.2/LICENSE",
+    "sha256": "b0e25a78cffb43f4d92de8b61ccfa1f1f98ecbc22330b54b5251e7b6ba010231",
+    "excerpt": false
+  },
+  {
+    "file": "Expat-COPYING.txt",
+    "source": "https://raw.githubusercontent.com/libexpat/libexpat/R_2_9_0/expat/COPYING",
+    "sha256": "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87",
+    "excerpt": false
+  },
+  {
+    "file": "HACL-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/hacl-star/hacl-star/8ba599b2f6c9701b3dc961db895b0856a2210f76/LICENSE",
+    "sha256": "c5accbbd8546e94c34aed24afe689a617627d18eed5a6c48277e48db57c23851",
+    "excerpt": false
+  },
+  {
+    "file": "mpdecimal-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/python/cpython-source-deps/mpdecimal-4.0.0/COPYRIGHT.txt",
+    "sha256": "2713324211652ce4a60e6e21e54f9dc3004299e591b0933a352f1a89c5fb53c2",
+    "excerpt": false
+  },
+  {
+    "file": "OpenSSL-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/python/cpython-source-deps/openssl-3.5.9/LICENSE.txt",
+    "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a",
+    "excerpt": false
+  },
+  {
+    "file": "OpenSSL-AUTHORS.md",
+    "source": "https://raw.githubusercontent.com/python/cpython-source-deps/openssl-3.5.9/AUTHORS.md",
+    "sha256": "b9f638dfc06b59c2d3b808186c3b30f713805a5db390f5b77b1703ac58acb83e",
+    "excerpt": false
+  },
+  {
+    "file": "libffi-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/python/cpython-source-deps/libffi-3.4.4/LICENSE",
+    "sha256": "2c9c2acb9743e6b007b91350475308aee44691d96aa20eacef8e199988c8c388",
+    "excerpt": false
+  },
+  {
+    "file": "libtommath-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/python/cpython-source-deps/tcl-9.0.4.0/libtommath/LICENSE",
+    "sha256": "2fa64b163659f41965c9815882a8296d3d03ff546b76153e11445f9bdecf955a",
+    "excerpt": false
+  },
+  {
+    "file": "XZ-COPYING.txt",
+    "source": "https://raw.githubusercontent.com/python/cpython-source-deps/xz-5.8.1.1/COPYING",
+    "sha256": "616a3ad264ce29b8f1cb97e53037b139d406899ca8d1f799651e17bfa09830b8",
+    "excerpt": false
+  },
+  {
+    "file": "XZ-0BSD.txt",
+    "source": "https://raw.githubusercontent.com/python/cpython-source-deps/xz-5.8.1.1/COPYING.0BSD",
+    "sha256": "54a423f7b2c890a1e4d6541f88f4e5702c0414988ba3f6247f4578d3b8bca5b7",
+    "excerpt": false
+  },
+  {
+    "file": "zlib-ng-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/python/cpython-source-deps/zlib-ng-2.2.4/LICENSE.md",
+    "sha256": "6c9f0d975b41afaa34d22f55bb8986ce69e5cb7ad327cb2b28820cd425edf5ee",
+    "excerpt": false
+  },
+  {
+    "file": "zstd-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/python/cpython-source-deps/zstd-1.5.7/LICENSE",
+    "sha256": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8",
+    "excerpt": false
+  },
+  {
+    "file": "SQLite-public-domain-source.txt",
+    "source": "https://raw.githubusercontent.com/python/cpython-source-deps/sqlite-3.53.4.0/sqlite3.h",
+    "sha256": "85806d613cfda5901f848b3b5b4b04396c8c64e89c97c0af3706c42b0c44bb47",
+    "excerpt": true
+  }
+]

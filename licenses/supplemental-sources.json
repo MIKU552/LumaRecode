@@ -1,0 +1,43 @@
+{
+  "reviewed_on": "2026-11-12",
+  "dotnet_windows_component_mapping": "https://github.com/dotnet/core/blob/main/license-information-windows.md",
+  "windows_sdk_projection_redist_basis": "Microsoft.Windows.SDK.NET.Ref section of Windows SDK REDIST.TXT",
+  "files": [
+    {
+      "file": "DotNet-Library-LICENSE.html",
+      "source": "https://dotnet.microsoft.com/en-us/dotnet_library_license.htm",
+      "sha256": "0f69be2c8ac44c3980047664c3347ff22cba5842dc9d8b0a88a4f0914645a780",
+      "extracted_reading_copy": false
+    },
+    {
+      "file": "Windows-SDK-Net-Ref-LICENSE.rtf",
+      "source": "https://aka.ms/WinSDKLicenseURL",
+      "sha256": "dd07eb178e00c6bba4148457fc00ff77cd4887eb521d504186fe59c9ec8bbe62",
+      "extracted_reading_copy": false
+    },
+    {
+      "file": "Windows-SDK-Net-Ref-LICENSE.txt",
+      "source": "https://aka.ms/WinSDKLicenseURL",
+      "sha256": "e05c4563104790e42d73f0f33a8c267f6ff0466db656fd795efd75ac29e4ad5b",
+      "extracted_reading_copy": true
+    },
+    {
+      "file": "Windows-SDK-REDIST.html",
+      "source": "https://learn.microsoft.com/en-us/legal/windows-sdk/redist",
+      "sha256": "414a9951657aee1ec07f55b3ebabb207dcb0e6aac12ec9dbb5688fe03450eeae",
+      "extracted_reading_copy": false
+    },
+    {
+      "file": "DotNet-Library-LICENSE.txt",
+      "source": "https://dotnet.microsoft.com/en-us/dotnet_library_license.htm",
+      "sha256": "c2a59f8fb7863952d3b0862bb7faf2d43e757c1f7308b9c73809f4e23a3a6a6d",
+      "extracted_reading_copy": true
+    },
+    {
+      "file": "Microsoft-VC-V14-Runtime-2026-LICENSE.txt",
+      "source": "https://visualstudio.microsoft.com/wp-content/uploads/2025/10/Visual-C-V14-License-Redistributable_and_Runtime_ENU.docx",
+      "sha256": "c15f0776c632b97bc3b01dbc3090ae347bb406235ae7132601bbaba91624e4fc",
+      "extracted_reading_copy": true
+    }
+  ]
+}

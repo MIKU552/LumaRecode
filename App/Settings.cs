@@ -11,6 +11,8 @@ public sealed class UserSettings
     public string CustomColor { get; set; } = "#0078D4";
     public string Ffmpeg { get; set; } = "";
     public string Ffprobe { get; set; } = "";
+    public string Python { get; set; } = "";
+    public string AcceptedThirdPartyTerms { get; set; } = "";
     public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FrameFlow");
     private static string FileName => Path.Combine(Folder, "settings.json");
     public static UserSettings Load()

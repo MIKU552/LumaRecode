@@ -79,8 +79,11 @@ public sealed class MainWindow : Window
         ResolveTools(); Refresh();
         root.Loaded += async (_, _) =>
         {
+            dialogOpen = true;
+            try { if (!await LegalNotices.RequireAcceptanceAsync(root, settings)) { Close(); return; } }
+            finally { dialogOpen = false; }
             Reflow(root.ActualWidth);
-            if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe)) await ConfigureToolsAsync();
+            if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe) || !WorkerClient.HasBundledPython && WorkerClient.ExternalPython == "") await ConfigureToolsAsync();
             var args = Environment.GetCommandLineArgs();
             if (args.Length > 1 && File.Exists(args[1])) { Input.Text = args[1]; await InspectAsync(); }
         };
@@ -260,6 +263,7 @@ public sealed class MainWindow : Window
     {
         ffmpeg = WorkerClient.FindTool("ffmpeg", settings.Ffmpeg);
         ffprobe = WorkerClient.FindTool("ffprobe", settings.Ffprobe);
+        WorkerClient.ExternalPython = WorkerClient.FindTool("python", settings.Python);
     }
     private static JsonElement LoadEncodingConfig()
     {
@@ -324,6 +328,7 @@ public sealed class MainWindow : Window
                 _ => L.T("保留原片动态范围，按目标格式标准化色彩。") };
             var warning = "";
             if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe)) warning = L.T("未找到 FFmpeg / ffprobe，请设置工具路径。");
+            else if (!WorkerClient.HasBundledPython && WorkerClient.ExternalPython == "") warning = L.T("未找到 Python，请在工具路径中选择 Python 3.14 或更新版本。");
             else if (media is not null && Profile.IsEnabled && Value(Profile) == "") warning = L.T("请确认相机的 Log 曲线。");
             else if (media is not null && Kind == "unknown" && !Profile.IsEnabled) warning = L.T("没有可靠的曲线标记，请确认输入解释。");
             else if (media is { } m && Profile.IsEnabled && !System.Text.RegularExpressions.Regex.IsMatch(m.GetProperty("video").GetProperty("pix_fmt").GetString() ?? "", "10|12|16")) warning = L.T("Log 转换需要对应相机的高位深原片。");
@@ -366,7 +371,11 @@ public sealed class MainWindow : Window
         var path = Input.Text.Trim('"', ' ');
         if (path == "" || path.Equals(MediaText("path"), StringComparison.OrdinalIgnoreCase)) return;
         if (!File.Exists(path)) { await MessageAsync(L.T("无法读取"), L.T("请选择有效的视频文件。")); return; }
-        if (ffmpeg == "" || ffprobe == "") { await ConfigureToolsAsync(); if (ffmpeg == "" || ffprobe == "") return; }
+        if (ffmpeg == "" || ffprobe == "" || !WorkerClient.HasBundledPython && WorkerClient.ExternalPython == "")
+        {
+            await ConfigureToolsAsync();
+            if (ffmpeg == "" || ffprobe == "" || !WorkerClient.HasBundledPython && WorkerClient.ExternalPython == "") return;
+        }
         var token = ++generation;
         media = null; probing = true; SetStatus(L.T("正在读取相机元数据…"));
         foreach (var name in new[] { "SourceVideo", "SourceColor", "SourceAudio" }) Control<TextBlock>(name).Visibility = Visibility.Collapsed;
@@ -542,7 +551,9 @@ public sealed class MainWindow : Window
         var panel = new StackPanel { Spacing = 16, MinWidth = 460 };
         panel.Children.Add(new TextBlock { Text = L.T("自动查找 PATH，也可以选择自己的 FFmpeg 和 ffprobe。"), TextWrapping = TextWrapping.Wrap });
         var fields = new Dictionary<string, TextBox>();
-        foreach (var (name, value) in new[] { ("ffmpeg", ffmpeg), ("ffprobe", ffprobe) })
+        var toolFields = new List<(string name, string value)> { ("ffmpeg", ffmpeg), ("ffprobe", ffprobe) };
+        if (!WorkerClient.HasBundledPython) toolFields.Add(("python", WorkerClient.ExternalPython));
+        foreach (var (name, value) in toolFields)
         {
             var grid = new Grid { ColumnSpacing = 8 }; grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var box = new TextBox { Header = name + ".exe", Text = value, MinWidth = 340 };
@@ -553,11 +564,16 @@ public sealed class MainWindow : Window
                 var picker = new FileOpenPicker(); picker.FileTypeFilter.Add(".exe"); WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
                 var file = await picker.PickSingleFileAsync();
                 if (file is null) return; box.Text = file.Path;
-                var peer = name == "ffmpeg" ? "ffprobe" : "ffmpeg"; var candidate = Path.Combine(Path.GetDirectoryName(file.Path)!, peer + ".exe");
-                if (fields[peer].Text == "" && File.Exists(candidate)) fields[peer].Text = candidate;
+                if (name != "python")
+                {
+                    var peer = name == "ffmpeg" ? "ffprobe" : "ffmpeg"; var candidate = Path.Combine(Path.GetDirectoryName(file.Path)!, peer + ".exe");
+                    if (fields[peer].Text == "" && File.Exists(candidate)) fields[peer].Text = candidate;
+                }
             };
         }
         var notice = new InfoBar { IsClosable = false, Severity = InfoBarSeverity.Error, IsOpen = false }; panel.Children.Add(notice);
+        var legal = new HyperlinkButton { Content = L.T("查看完整许可与第三方声明") };
+        legal.Click += (_, _) => LegalNotices.OpenFolder(); panel.Children.Add(legal);
         var dialog = new ContentDialog { Title = L.T("工具路径"), Content = panel, PrimaryButtonText = L.T("检测并保存"), CloseButtonText = L.T("取消"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme };
         dialog.PrimaryButtonClick += async (_, e) =>
         {
@@ -567,6 +583,11 @@ public sealed class MainWindow : Window
                 foreach (var (name, box) in fields) await WorkerClient.CheckToolAsync(box.Text.Trim('"', ' '), name);
                 ffmpeg = fields["ffmpeg"].Text.Trim('"', ' '); ffprobe = fields["ffprobe"].Text.Trim('"', ' ');
                 settings.Ffmpeg = ffmpeg; settings.Ffprobe = ffprobe; settings.Save();
+                if (fields.TryGetValue("python", out var python))
+                {
+                    WorkerClient.ExternalPython = python.Text.Trim('"', ' ');
+                    settings.Python = WorkerClient.ExternalPython; settings.Save();
+                }
             }
             catch (Exception error) { e.Cancel = true; notice.Message = L.T(error.Message); notice.IsOpen = true; }
             finally { dialog.IsPrimaryButtonEnabled = true; deferral.Complete(); }

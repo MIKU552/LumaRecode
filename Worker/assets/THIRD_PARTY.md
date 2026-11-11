@@ -1,62 +1,55 @@
-# 第三方组件与许可 · Third-party components and licenses
+# 第三方组件与许可 · Third-party components
 
-审阅范围：2026-11-11 的 FrameFlow 3.4.7 源码、已解析的 NuGet 包和留存的转换组件。文件来源、版本与 SHA-256 见 [license-manifest.json](license-manifest.json)。这不是对所有历史二进制的许可结论。
+适用版本：FrameFlow 3.5.0，审阅日期 2026-11-12。当前运行时原始许可集中在 [licenses](../../licenses/)，NuGet 包与运行时记录见 [manifest.json](../../licenses/manifest.json)，LUT 来源与哈希见 [license-manifest.json](license-manifest.json)。此结论不追溯改变旧 EXE 内的组件或条款。
 
-Scope: the FrameFlow 3.4.7 source tree, resolved NuGet packages, and retained conversion worker reviewed on 2026-11-11. The manifest records provenance and hashes; it does not clear every historical binary.
+Scope: the current 3.5.0 build, reviewed 2026-11-12, not every historical binary. Full original terms and notices are retained under `licenses/`; the manifests separate runtime provenance from LUT provenance.
 
-## 项目许可范围 / Project license scope
+## 自主项目 / Original project
 
-根目录 `LICENSE` 是未修改的 Apache-2.0 正文，适用于自主代码、文档、项目内绘制的图形及项目生成的小米 / 三星 HLG LUT；第三方文件和运行时保留各自条款。根目录 `NOTICE` 记录项目及 LUT 来源。
+自主代码、文档、原创图形及项目生成的 Mi-Log / Samsung Log LUT 采用根目录 [Apache-2.0](../../LICENSE)，允许商用和闭源修改，须保留许可、适用声明及标明修改。第三方文件不因此改为 Apache-2.0；[NOTICE](../../NOTICE) 保留归属说明。许可不替使用者取得其他编解码器专利，也不解决名称商标问题。Codex 工具署名不等于将 OpenAI 列为版权人，也不能证明纯 AI 内容在各法域都有版权。
 
-The root Apache-2.0 license covers original code, documentation, graphics, and the generated Xiaomi / Samsung HLG tables. Third-party material retains its own terms below; the root NOTICE records attribution.
+Original project work uses Apache-2.0. Third-party components keep their own rights. Tool attribution does not establish copyright subsistence, third-party patent rights, trademark clearance, or OpenAI copyright ownership.
 
-许可允许商用与闭源衍生使用，要求保留许可及适用声明、标明修改。专利授权仅涉及贡献者有权授予的相关权利，不替使用者取得其他权利人的编解码器专利许可，也不解决项目名称的商标冲突。许可不能证明纯 AI 生成内容在所有法域均有可主张的版权；Codex 的工具署名不等同于将 OpenAI 列为项目版权人。[Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) · [美国版权局 AI 作者资格说明](https://www.copyright.gov/newsnet/2025/1060.html)
+## Windows 单文件版 / Windows single-file release
 
-Commercial and proprietary derivatives are allowed under Apache-2.0's notice and modification conditions. The grant does not obtain third-party patents or resolve branding conflicts. AI-tool attribution does not establish copyright subsistence or make OpenAI a project copyright holder; human-authorship rules remain jurisdiction-specific.
+| 组件 / Component | 分发依据 / Distribution basis |
+| --- | --- |
+| .NET 11.0.0 / apphost / ASP.NET runtime files | 多数文件为 MIT；Windows `coreclr.dll`、单文件内的运行时及指定 WPF 等二进制适用 .NET Library License，另有 Windows SDK 个别组件条款。保留全文与匹配第三方声明 / MIT plus Windows-specific binary licenses |
+| Windows SDK .NET 投影 | `Microsoft.Windows.SDK.NET.Ref 10.0.26100.87` 的许可 URL 指向 Windows SDK 条款，其 REDIST 清单的同名章节明确允许随程序分发未修改文件 / SDK terms and explicit projection-package REDIST grant |
+| Windows App SDK / WinUI 2.6.5 | 正式包 Microsoft Windows App SDK 条款第 3 节，允许随应用分发 NuGet 放入输出目录的代码，须满足分发要求 / Production package terms for NuGet-binplaced files |
+| WebView2 SDK | WinUI 传递依赖，保留 BSD-3-Clause LICENSE / NOTICE；未打包浏览器安装器 / Transitive SDK notices; no browser installer |
+| 官方 CPython 3.15.2 Windows 嵌入式包 | 完整保留官方包；PSF/Python 历史许可、嵌入组件条款，以及 LICENSE 中 Windows binary 附加条件 / Unmodified official package and its Windows-binary conditions |
+| Python 内 VC Runtime | 依据官方 Python Windows 二进制的授权链保留声明、平台限制和接收者条款；不是 PSF/Apache 许可 / Microsoft-specific conditions remain applicable |
+| Python 内 OpenSSL、Expat、HACL*、libffi、mpdecimal、libtommath、SQLite、XZ/liblzma、zlib-ng、zstd、bzip2 等 | 保留 PSF 汇总文本及[依赖原文和来源](../../licenses/Python-dependencies/sources.json)。zstd 选择 BSD 许可；只有 liblzma，不含 XZ 的 GPL 脚本 / Vendor libraries retain their individual terms |
+| Pocket 3 LUT | OpenOSV v0.6.4，Apache-2.0，LUT 与原始 [LICENSE](OpenOSV/LICENSE) / [NOTICE](OpenOSV/NOTICE) 未修改 |
 
-## 随包与传递依赖 / Included and transitive components
+首次启动要求接受随附第三方二进制的适用条款，并提供完整原文入口；之后可从“工具路径”打开许可目录。微软要求包括保留声明、不暗示背书、遵守分发及平台限制，并向后续接收者传递适用条款。这些条件仅针对对应组件，不把自主源码变成非商业许可。原始全文优先于此摘要。
 
-| 组件 / Component | 许可与范围 / License and scope | 保留文本 / Retained text |
-| --- | --- | --- |
-| OpenOSV v0.6.4 Pocket 3 HLG LUT | Apache-2.0；仅 LUT，文件未修改 / LUT only, unchanged | [LICENSE](OpenOSV/LICENSE)、[NOTICE](OpenOSV/NOTICE) |
-| Windows App SDK 2.0.1 / Base / Foundation / DWrite / InteractiveExperiences / Widgets / Runtime | Microsoft 软件条款，不将 NuGet 二进制整体改标 MIT / Microsoft package terms | [LICENSE](WindowsAppSDK-LICENSE.txt)、[完整声明 / full notices](WindowsAppSDK-NOTICE.txt) |
-| WinUI 2.0.12 | 包内 Engineering Preview 条款，见发布事项 / Engineering Preview terms; see release status | [LICENSE](WindowsAppSDK-WinUI-LICENSE.txt)、[NOTICE](WindowsAppSDK-WinUI-NOTICE.txt)、[tools NOTICE](WindowsAppSDK-WinUI-Tools-NOTICE.txt) |
-| Windows App SDK ML / Windows AI MachineLearning 2.0.300 | Microsoft Windows ML 与第三方条款；传递依赖 / Microsoft terms, transitive dependencies | [ML LICENSE](WindowsAppSDK-ML-LICENSE.txt)、[MachineLearning LICENSE](WindowsAI-MachineLearning-LICENSE.txt)、[NOTICES](WindowsML-THIRD-PARTY-NOTICES.txt) |
-| WebView2 SDK 1.0.3719.77 | BSD-3-Clause 与上游声明；未打包浏览器安装器 / BSD-3-Clause; no browser installer bundled | [LICENSE](WebView2-LICENSE.txt)、[NOTICE](WebView2-NOTICE.txt) |
-| .NET 8 | MIT 与第三方声明 / MIT and third-party notices | [LICENSE](DotNet-LICENSE.txt)、[NOTICES](DotNet-THIRD-PARTY-NOTICES.txt) |
-| System.Numerics.Tensors 9.0.0 | MIT 与第三方声明；传递依赖 / MIT, transitive dependency | [LICENSE](SystemNumericsTensors-LICENSE.txt)、[NOTICES](SystemNumericsTensors-THIRD-PARTY-NOTICES.txt) |
-| CPython 3.14.7 | Python / PSF 与历史、嵌入组件许可 / Python / PSF and included notices | [Python-LICENSE.txt](Python-LICENSE.txt) |
-| PyInstaller 6.22.3 运行时 / runtime | GPL-2.0 与打包例外，部分文件为 Apache-2.0 / bootloader exception; designated Apache-2.0 files | [COPYING](PyInstaller-COPYING.txt)、[上游说明](https://pyinstaller.org/en/stable/license.html) |
-| OpenSSL 3.5.7：libcrypto-3.dll / libssl-3.dll | Apache-2.0；在转换组件中检出 / found in the retained worker | [LICENSE](OpenSSL-LICENSE.txt)、[AUTHORS](OpenSSL-AUTHORS.md) |
-| VCRUNTIME140.dll 14.51.36247.0 | Microsoft 运行库分发条款；不是 Python 或项目的 Apache 许可 / Microsoft runtime terms | 精确版本的分发依据仍需补证 / version-matched evidence pending |
+The first-start agreement and Tool paths link expose the full component terms. Preserve notices, avoid implied endorsement, obey platform and distribution restrictions, and pass required terms to recipients. These obligations apply to the respective third-party binaries, not the original Apache-2.0 source. Original texts govern.
 
-传递包出现在解析清单中，不表示应用使用了其中每个功能或发布了所有文件。Future releases must review the actual payload, not assume that every resolved package is used or shipped. The ML dependencies do not mean that FrameFlow performs AI inference.
+### WinUI 与开源、旧结论修正 / WinUI and open source
+
+WinUI 可以用于开源项目。源码许可与微软编译分发包的条款需要分别看待；应用开源不要求所有运行时都使用同一个许可。旧审计检出的 WinUI 2.0.12 确实携带 Engineering Preview 文本；新版已换为 2.6.5，逐包检查实际 LICENSE，并在构建中阻止再次混入该预览许可。不能据一个旧包推导“WinUI 不允许开源”。
+
+此前“必须为 VC DLL 每个精确补丁版本找到独立分发条款”的表述过于保守。官方 Python LICENSE 已有 **Additional Conditions for this Windows binary build**，明确给出该 Windows 二进制再分发微软代码的条件。现在的依据是完整保留官方 Python 包和这些条件；不是声称通用 VC 最终用户协议本身给任意发布者转发权。微软最终用户条款也保留供接收者阅读。
+
+The old preview finding concerned one package, not a ban on open-source WinUI apps. Current production terms have been checked. The earlier VC blocker overlooked explicit conditions in the official Python Windows LICENSE; that distribution chain is the basis here, rather than treating a standalone VC end-user EULA as a publisher grant.
+
+还须区分 .NET 源码 MIT 与 Windows 二进制例外：微软的[逐组件说明](https://github.com/dotnet/core/blob/main/license-information-windows.md)明确列出单文件运行时等适用 .NET Library License，不能把整个 Windows EXE 都标作 MIT。[该许可](../../licenses/DotNet-Library-LICENSE.html)第 3 节允许随应用分发目标代码；[Windows SDK REDIST](https://learn.microsoft.com/en-us/legal/windows-sdk/redist#microsoftwindowssdknetref)明确包含 .NET 投影包。原文与阅读副本均保留在许可目录。The .NET Windows distribution has binary-license exceptions; source MIT is not a blanket binary license. The component-specific grants and full terms are retained.
 
 ## LUT 来源 / LUT provenance
 
-- **Pocket 3**：使用 [OpenOSV v0.6.4](https://github.com/Kemerd/OpenOSV/releases/tag/v0.6.4) 的 `luts/Rec2100_HLG/DJI_Osmo_DLogM_to_Rec2100_HLG_BT2408_Neutral.cube`。LUT、LICENSE、NOTICE 均逐字节核对上游 Git blob，保持原样。这是独立项目的拟合转换，不是 DJI 官方 HDR LUT。上游 NOTICE 同时说明整个 OpenOSV 应用的依赖，保留它不代表 FrameFlow 集成了那些运行库。
-- **Mi-Log / Samsung Log**：由 [generate_hlg_luts.py](../tools/generate_hlg_luts.py) 根据公开传递函数参数及本项目固定曝光、高光映射独立生成，仅使用 Python 标准库。运行 `python Worker/tools/generate_hlg_luts.py --check` 可核对现有两张表。仓库不包含厂商原始 Rec.709 LUT、DCTL 或白皮书，也不把“可下载”当作转发官方文件的许可。
-- 技术参考：[小米 Mi-Log / ACES 资料说明](https://web.vip.miui.com/page/info/mio/mio/detail?fromPathname=mioSingleBoard&postId=47863325)、[Samsung Log Video / White Paper](https://developer.samsung.com/mobile/samsung-log-video.html)。品牌名仅说明兼容性，不代表厂商认证或背书；固定 LUT 不能恢复已剪切的高光。
+- **Pocket 3**：来自 [OpenOSV v0.6.4](https://github.com/Kemerd/OpenOSV/releases/tag/v0.6.4) 的 `luts/Rec2100_HLG/DJI_Osmo_DLogM_to_Rec2100_HLG_BT2408_Neutral.cube`。LUT、LICENSE、NOTICE 已核对上游字节。这是独立项目的拟合转换，不是 DJI 官方 HDR LUT。上游 NOTICE 涵盖整个 OpenOSV 的依赖，保留它不代表 FrameFlow 集成了这些运行时。
+- **Mi-Log / Samsung Log**：由 [generate_hlg_luts.py](../tools/generate_hlg_luts.py) 根据公开数值参数和本项目固定高光映射独立生成，只用标准库。`python Worker/tools/generate_hlg_luts.py --check` 可核对。没有分发厂商原始 LUT、DCTL 或白皮书。[小米资料](https://web.vip.miui.com/page/info/mio/mio/detail?fromPathname=mioSingleBoard&postId=47863325) · [Samsung Log 文档](https://developer.samsung.com/mobile/samsung-log-video.html)
 
-The Pocket 3 LUT and its LICENSE / NOTICE match OpenOSV v0.6.4 byte for byte. Xiaomi / Samsung tables are independently generated from published numerical transfer-function parameters and the project's mapping. The generator reproduces the committed tables; vendor LUTs, DCTL source and white papers are not redistributed. Manufacturer names describe compatibility, not endorsement.
+The Pocket 3 LUT is an unchanged third-party fit. Xiaomi/Samsung tables are independently generated from published numerical parameters and project mapping. Manufacturer names describe compatibility, not endorsement. Fixed LUTs cannot recover clipped highlights.
 
-## 外部与开发依赖 / External and development dependencies
+## 外部与开发工具 / External and development tools
 
-- **FFmpeg / ffprobe**：由使用者提供，以独立子进程调用；不打包它们、不链接 `libav*`、不复制其源码。具体构建可能含 LGPL、GPL 或其他受限组件，不能一概称为 LGPL。现有独立调用方式没有仅因使用 FFmpeg 就要求把项目改成 GPL 的依据。未来若集成库、打包二进制或修改源码，应重新核对义务。[官方许可说明](https://ffmpeg.org/legal.html)
-- **PySide6 / Qt**：仅用于 `Brand/render_icon.py` 将项目原创 SVG 绘制为 PNG / ICO。当前转换组件没有检出 Qt / PySide DLL。重绘工具仍受所用 Qt 模块的 LGPL / GPL / 商业条款约束，不将这些库重新标为 Apache-2.0。[Qt 许可](https://doc.qt.io/qtforpython-6/licenses.html)
-- **Windows SDK BuildTools / MSIX / .NET ILLink / PyInstaller 构建工具**：按各自安装许可使用；不在源码仓库中再分发整套 SDK 或安装包。
-- **图形与字体**：品牌 SVG、简单箭头由项目内代码绘制。WinUI FontIcon 使用系统字体，未将 Segoe 字体文件复制进仓库；系统字体不属于本项目授权的素材。
+- **FFmpeg / ffprobe**：用户提供，以独立子进程调用，不链接 `libav*`、不转发。具体构建可能含 LGPL、GPL 或其他条款，不统一称作 LGPL。独立调用不因 FFmpeg 自身使用 GPL 就自动把界面源码改为 GPL；将来若改为链接、转发或修改，应重新审阅。[FFmpeg 法律说明](https://ffmpeg.org/legal.html)
+- **PySide6 / Qt**：仅用于可选图标重绘，版本见 `Brand/requirements.txt`；未随界面或 worker 分发 Qt DLL，所用模块仍受 LGPL/GPL/商业条款约束。[Qt for Python 许可](https://doc.qt.io/qtforpython-6/licenses.html)
+- **SDK / BuildTools / MSIX**：按开发工具条款使用，没有转发整套 SDK 安装包；自包含输出包含的文件保留对应许可与声明。
+- **图形与字体**：品牌 SVG、箭头为项目绘制；FontIcon 使用系统字体，没有复制 Segoe 字体文件。
+- **PyInstaller**：3.5.0 起不再使用或分发。
 
-FFmpeg is a separate user-supplied program, not linked or bundled. PySide / Qt are optional artwork-generation tools, not the current UI runtime. Build tools and system fonts retain their own rights. A future bundled or linked FFmpeg release requires another review.
-
-## 发布事项 / Release status
-
-**自主源码采用 Apache-2.0；现有 Windows EXE 尚未据此获得完整的公开再分发结论。** 当前需要处理的实证事项：
-
-1. **WinUI 预览条款**：已解析的 `Microsoft.WindowsAppSDK.WinUI 2.0.12` 在[官方 NuGet 许可页](https://www.nuget.org/packages/Microsoft.WindowsAppSDK.WinUI/2.0.12/License)及本地包中均带 Engineering Preview 条款，涉及开发 / 测试、正式环境、期限及再分发限制。不能只凭版本号或父包的一般许可推定可正式发行。应使用具有明确正式分发授权的依赖组合，或取得微软适用授权 / 澄清，再验证 HDR Mica、弹出层和布局。
-2. **VC 运行库证据**：留存转换组件确有 `VCRUNTIME140.dll 14.51.36247.0`，现有许可目录没有这个精确版本的原始分发条款。公开发行前须从实际运行库 / Python 分发来源补齐适用的 Microsoft 分发依据及文本；本次未将其他 Visual Studio 版本的许可冒充为它的许可。
-3. **旧 EXE 未更新**：本次补齐源码库法律文本和构建复制步骤，没有重打包旧 Release，也没有更改仓库可见性。公开二进制前须先解决前两项并重建，让接收者取得随包许可与声明。构建会将许可嵌入转换组件，并额外输出可读的 `dist/licenses/` 目录。
-
-**The source license is Apache-2.0; this does not clear existing Windows EXEs for public redistribution.** Resolve the WinUI package's preview restrictions, obtain the version-matched VC runtime redistribution evidence, and rebuild with complete accessible notices before public binary distribution. Existing release attachments and repository visibility are unchanged.
-
-清单和哈希记录已核对的文件，不是法律担保，也不替代未来版本及实际发行地区的复核。
+FFmpeg is external; Qt is an optional artwork tool; SDK installers and system fonts are not copied. PyInstaller has been removed. Future payload changes require review of the actual files.

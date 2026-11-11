@@ -1,0 +1,2 @@
+# Optional icon rendering only; not an application or packaging dependency.
+PySide6==6.12.0

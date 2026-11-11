@@ -7,17 +7,26 @@ namespace VideoConverter;
 
 public sealed class WorkerClient : IDisposable
 {
+    public static string ExternalPython { get; set; } = "";
+    public static bool HasBundledPython => File.Exists(Path.Combine(AppContext.BaseDirectory, "Payload", "Runtime", "python.exe"));
     private Process? process;
     public bool Running => process is { HasExited: false };
     public async Task RunAsync(object request, Action<string, JsonElement> receive)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Payload", "ConverterWorker.exe");
+        var folder = Path.Combine(AppContext.BaseDirectory, "Payload", "Worker");
+        var path = Path.Combine(folder, "worker.py");
         if (!File.Exists(path)) throw new FileNotFoundException(L.T("程序的转换组件缺失，请重新下载完整 EXE。"), path);
-        using var child = new Process { StartInfo = new ProcessStartInfo(path) {
+        var python = HasBundledPython ? Path.Combine(AppContext.BaseDirectory, "Payload", "Runtime", "python.exe") : FindTool("python", ExternalPython);
+        if (python == "") throw new FileNotFoundException(L.T("未找到 Python，请在工具路径中选择 Python 3.14 或更新版本。"));
+        using var child = new Process { StartInfo = new ProcessStartInfo(python) {
             UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true,
             RedirectStandardOutput = true, RedirectStandardError = true,
             StandardInputEncoding = new UTF8Encoding(false), StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8 } };
+        // Isolate the interpreter from user site/PYTHONPATH and add only our worker folder.
+        // Explicit insertion also supports the official embeddable Python's ._pth mode.
+        foreach (var argument in new[] { "-I", "-B", "-c", "import runpy,sys;sys.path.insert(0,sys.argv[1]);runpy.run_path(sys.argv[2],run_name='__main__')", folder, path })
+            child.StartInfo.ArgumentList.Add(argument);
         process = child;
         child.Start();
         var errors = child.StandardError.ReadToEndAsync();
@@ -60,6 +69,7 @@ public sealed class WorkerClient : IDisposable
     }
     public static async Task CheckToolAsync(string path, string name)
     {
+        if (name == "python") { await CheckPythonAsync(path); return; }
         if (!File.Exists(path)) throw new InvalidOperationException(L.T($"请选择 {name}.exe。"));
         using var child = Process.Start(new ProcessStartInfo(path) { UseShellExecute = false, CreateNoWindow = true,
             RedirectStandardOutput = true, RedirectStandardError = true, ArgumentList = { "-version" } })!;
@@ -71,5 +81,25 @@ public sealed class WorkerClient : IDisposable
         if (child.ExitCode != 0 || !(await output).Contains(name + " version", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException(L.T($"所选文件未通过 {name} 版本检测。"));
         await error;
+    }
+    public static async Task CheckPythonAsync(string path)
+    {
+        if (!File.Exists(path)) throw new InvalidOperationException(L.T("请选择 python.exe。"));
+        using var child = Process.Start(new ProcessStartInfo(path) { UseShellExecute = false, CreateNoWindow = true,
+            RedirectStandardOutput = true, RedirectStandardError = true,
+            ArgumentList = { "-I", "-c", "import json,sys;print(json.dumps(list(sys.version_info[:3])))" } })!;
+        var output = child.StandardOutput.ReadToEndAsync();
+        var error = child.StandardError.ReadToEndAsync();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        try { await child.WaitForExitAsync(timeout.Token); }
+        catch (OperationCanceledException) { child.Kill(entireProcessTree: true); throw new InvalidOperationException(L.T("Python 版本检测超时。")); }
+        var text = await output; await error;
+        try
+        {
+            var version = JsonSerializer.Deserialize<int[]>(text.Trim());
+            if (child.ExitCode == 0 && version is { Length: 3 } && version[0] == 3 && version[1] >= 14) return;
+        }
+        catch (JsonException) { }
+        throw new InvalidOperationException(L.T("需要 Python 3.14 或更新版本，推荐 Python 3.15.2。"));
     }
 }

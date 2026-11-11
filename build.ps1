@@ -1,27 +1,55 @@
+param([ValidateSet('SelfContained','FrameworkDependent')][string]$Deployment = 'SelfContained')
 $ErrorActionPreference = 'Stop'
 Push-Location -LiteralPath $PSScriptRoot
 try {
-    if (-not (Test-Path -LiteralPath '.venv/Scripts/python.exe')) {
-        python -m venv .venv
-        if ($LASTEXITCODE -ne 0) { throw 'Cannot create Python environment.' }
+    $taskBundled = $Deployment -eq 'SelfContained'
+    $taskRoot = [IO.Path]::GetFullPath($PSScriptRoot).TrimEnd([IO.Path]::DirectorySeparatorChar)
+    function Reset-GeneratedDirectory([string]$RelativePath) {
+        $taskTarget = [IO.Path]::GetFullPath((Join-Path $taskRoot $RelativePath))
+        if (-not $taskTarget.StartsWith($taskRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Invalid generated directory.' }
+        if ($RelativePath -notin @('Payload/Worker','Payload/Runtime','dist/SelfContained','dist/FrameworkDependent')) { throw 'Unexpected generated directory.' }
+        if (Test-Path -LiteralPath $taskTarget) { Remove-Item -LiteralPath $taskTarget -Recurse -Force }
+        New-Item -ItemType Directory -Path $taskTarget -Force | Out-Null
     }
-    & .venv/Scripts/python.exe -m pip install 'PyInstaller==6.22.3'
-    if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
-    $taskPreviousPath = $env:PATH
-    try {
-        $env:PATH = "$env:SystemRoot/System32;$env:SystemRoot"
-        & .venv/Scripts/python.exe -m PyInstaller --noconfirm --onefile --console --name ConverterWorker --add-data 'Worker/assets;assets' --add-data 'LICENSE;assets/FrameFlow' --add-data 'NOTICE;assets/FrameFlow' --distpath Payload --workpath worker-build --specpath . Worker/worker.py
-        if ($LASTEXITCODE -ne 0) { throw 'Worker build failed.' }
-    } finally { $env:PATH = $taskPreviousPath }
-    dotnet publish App/VideoConverter.WinUI.csproj -c Release -r win-x64 -p:Platform=x64 -o dist
-    if ($LASTEXITCODE -ne 0) { throw 'WinUI build failed.' }
-    # Readable legal material for release preparation; the worker embeds it too.
-    $taskLicenseOutput = Join-Path $PSScriptRoot 'dist/licenses'
-    New-Item -ItemType Directory -Path $taskLicenseOutput -Force | Out-Null
-    Copy-Item -LiteralPath 'LICENSE', 'NOTICE' -Destination $taskLicenseOutput -Force
-    Copy-Item -LiteralPath 'Worker/assets/THIRD_PARTY.md', 'Worker/assets/license-manifest.json' -Destination $taskLicenseOutput -Force
-    Get-ChildItem -LiteralPath 'Worker/assets' -File | Where-Object { $_.Name -match '(?i)license|notice|copying|authors' -and $_.Name -ne 'license-manifest.json' } | Copy-Item -Destination $taskLicenseOutput -Force
-    Copy-Item -LiteralPath 'Worker/assets/OpenOSV' -Destination $taskLicenseOutput -Recurse -Force
-    Write-Host 'Built dist/FrameFlow.exe'
-    Write-Host 'Review dist/licenses and the release issues in Worker/assets/license-manifest.json before distributing a binary.'
+    $taskOutput = Join-Path $taskRoot "dist/$Deployment"
+    Reset-GeneratedDirectory "dist/$Deployment"
+    Reset-GeneratedDirectory 'Payload/Worker'
+    Get-ChildItem -LiteralPath 'Worker' -Filter '*.py' -File | Copy-Item -Destination 'Payload/Worker'
+    New-Item -ItemType Directory -Path 'Payload/Worker/assets' -Force | Out-Null
+    Get-ChildItem -LiteralPath 'Worker/assets' -Filter '*.cube' -File | Copy-Item -Destination 'Payload/Worker/assets'
+    Copy-Item -LiteralPath 'Worker/assets/recommended-presets.json' -Destination 'Payload/Worker/assets'
+
+    $taskPython = $null
+    if ($taskBundled) {
+        $taskCache = Join-Path $taskRoot 'build-cache'
+        New-Item -ItemType Directory -Path $taskCache -Force | Out-Null
+        $taskArchive = Join-Path $taskCache 'python-3.15.2-embed-amd64.zip'
+        $taskExpected = 'd012f3aa29cf07436dae8aea1fec0fd195c2612a0b059b1f915ae0afb9ad1f62'
+        if (-not (Test-Path -LiteralPath $taskArchive)) {
+            Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.15.2/python-3.15.2-embed-amd64.zip' -OutFile $taskArchive
+        }
+        if ((Get-FileHash -LiteralPath $taskArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $taskExpected) { throw 'Official Python archive checksum mismatch.' }
+        Reset-GeneratedDirectory 'Payload/Runtime'
+        Expand-Archive -LiteralPath $taskArchive -DestinationPath 'Payload/Runtime'
+        $taskPython = Join-Path $taskRoot 'Payload/Runtime'
+    }
+
+    if (Test-Path -LiteralPath 'build-cache/nuget') {
+        dotnet restore App/VideoConverter.WinUI.csproj -r win-x64 --locked-mode --source https://api.nuget.org/v3/index.json --source (Join-Path $taskRoot 'build-cache/nuget')
+    } else { dotnet restore App/VideoConverter.WinUI.csproj -r win-x64 --locked-mode }
+    if ($LASTEXITCODE -ne 0) { throw 'Dependency restore failed.' }
+    & (Join-Path $taskRoot 'tools/Collect-Licenses.ps1') -ProjectRoot $taskRoot -PythonRuntime $taskPython
+    $taskPublish = @('publish','App/VideoConverter.WinUI.csproj','--no-restore','-c','Release','-r','win-x64','-p:Platform=x64','-o',$taskOutput)
+    foreach ($taskName in @('SelfContained','WindowsAppSDKSelfContained','PublishSingleFile','IncludeAllContentForSelfExtract','EnableCompressionInSingleFile')) {
+        $taskPublish += "-p:$taskName=$($taskBundled.ToString().ToLowerInvariant())"
+    }
+    dotnet @taskPublish
+    if ($LASTEXITCODE -ne 0) { throw 'WinUI publish failed.' }
+    $taskVersion = ([xml](Get-Content -LiteralPath 'App/VideoConverter.WinUI.csproj' -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+    if ($taskBundled) { Write-Output "Built self-contained EXE: $taskOutput/FrameFlow.exe" }
+    else {
+        $taskZip = Join-Path $taskRoot "dist/FrameFlow-$taskVersion-win-x64-framework-dependent.zip"
+        Compress-Archive -Path "$taskOutput/*" -DestinationPath $taskZip -Force
+        Write-Output "Built framework-dependent ZIP: $taskZip"
+    }
 } finally { Pop-Location }
