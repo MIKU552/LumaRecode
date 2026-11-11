@@ -25,11 +25,12 @@
   <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" Padding="32,20,32,24">
     <StackPanel Spacing="24" MaxWidth="1240" HorizontalAlignment="Stretch">
       <Grid ColumnSpacing="12">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel Spacing="4"><TextBlock Text="映流" FontSize="30" FontWeight="SemiBold"/><TextBlock Text="FrameFlow · 视频转码与色彩转换" Style="{StaticResource Secondary}"/></StackPanel>
         <DropDownButton x:Name="ThemeButton" Grid.Column="1" VerticalAlignment="Center" AutomationProperties.Name="主题模式"/>
-        <Button x:Name="PaletteButton" Grid.Column="2" VerticalAlignment="Center" ToolTipService.ToolTip="界面配色" AutomationProperties.Name="界面配色"><FontIcon Glyph="&#xE790;" FontSize="16"/></Button>
-        <Button x:Name="ToolsButton" Grid.Column="3" VerticalAlignment="Center" ToolTipService.ToolTip="FFmpeg 工具路径" AutomationProperties.Name="工具路径"><FontIcon Glyph="&#xE713;" FontSize="16"/></Button>
+        <DropDownButton x:Name="LanguageButton" Grid.Column="2" VerticalAlignment="Center" AutomationProperties.Name="界面语言"/>
+        <Button x:Name="PaletteButton" Grid.Column="3" VerticalAlignment="Center" ToolTipService.ToolTip="界面配色" AutomationProperties.Name="界面配色"><FontIcon Glyph="&#xE790;" FontSize="16"/></Button>
+        <Button x:Name="ToolsButton" Grid.Column="4" VerticalAlignment="Center" ToolTipService.ToolTip="FFmpeg 工具路径" AutomationProperties.Name="工具路径"><FontIcon Glyph="&#xE713;" FontSize="16"/></Button>
       </Grid>
       <Grid x:Name="SettingsGrid" ColumnSpacing="24" RowSpacing="24">
         <Grid.ColumnDefinitions><ColumnDefinition Width="3*" MinWidth="380"/><ColumnDefinition Width="2*" MinWidth="300"/></Grid.ColumnDefinitions>

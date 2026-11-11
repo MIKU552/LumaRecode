@@ -13,7 +13,13 @@ internal static class Program
         Application.Start(parameters =>
         {
             SynchronizationContext.SetSynchronizationContext(new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));
-            _ = new ConverterApp();
+            try { _ = new ConverterApp(); }
+            catch (Exception error)
+            {
+                Directory.CreateDirectory(UserSettings.Folder);
+                File.WriteAllText(Path.Combine(UserSettings.Folder, "error.log"), error.ToString());
+                throw;
+            }
         });
     }
 }
@@ -30,6 +36,7 @@ public sealed partial class ConverterApp : Application
             Directory.CreateDirectory(folder);
             File.WriteAllText(Path.Combine(folder, "error.log"), e.Exception.ToString());
         };
+        L.Configure(UserSettings.Load().Language);
     }
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {

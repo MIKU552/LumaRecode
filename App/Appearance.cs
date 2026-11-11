@@ -32,7 +32,7 @@ public sealed class Appearance
         window.Closed += (_, _) => disposed = true;
         themeButton = (DropDownButton)root.FindName("ThemeButton");
         var menu = new MenuFlyout();
-        foreach (var (key, name) in new[] { ("system", "跟随系统"), ("light", "浅色"), ("dark", "深色") })
+        foreach (var (key, name) in new[] { ("system", L.T("跟随系统")), ("light", L.T("浅色")), ("dark", L.T("深色")) })
         {
             var item = new RadioMenuFlyoutItem { Text = name, GroupName = "AppTheme", IsChecked = settings.Theme == key };
             item.Click += (_, _) => { settings.Theme = key; settings.Save(); ApplyTheme(); };
@@ -61,8 +61,18 @@ public sealed class Appearance
         root.RequestedTheme = settings.Theme switch { "dark" => ElementTheme.Dark, "light" => ElementTheme.Light, _ => ElementTheme.Default };
         applying = false;
         foreach (var (key, item) in themeItems) item.IsChecked = key == settings.Theme;
-        themeButton.Content = settings.Theme switch { "dark" => "深色", "light" => "浅色", _ => "跟随系统" };
+        themeButton.Content = settings.Theme switch { "dark" => L.T("深色"), "light" => L.T("浅色"), _ => L.T("跟随系统") };
         ApplyAccent(true); UpdateCaption();
+    }
+
+    public void Relocalize()
+    {
+        foreach (var (key, item) in themeItems)
+            item.Text = key switch { "dark" => L.T("深色"), "light" => L.T("浅色"), _ => L.T("跟随系统") };
+        themeButton.Content = settings.Theme switch { "dark" => L.T("深色"), "light" => L.T("浅色"), _ => L.T("跟随系统") };
+        swatches.Clear();
+        ((Button)root.FindName("PaletteButton")).Flyout = BuildPalette();
+        ApplyAccent(false);
     }
 
     private void ApplyAccent(bool refresh)
@@ -115,7 +125,7 @@ public sealed class Appearance
             root.RequestedTheme = theme;
         }
         if (accentPreview is not null) accentPreview.Background = new SolidColorBrush(color);
-        if (accentLabel is not null) accentLabel.Text = (settings.SystemAccent ? "Windows 强调色 · " : "自定义 · ") + Hex(color);
+        if (accentLabel is not null) accentLabel.Text = (settings.SystemAccent ? L.T("Windows 强调色 · ") : L.T("自定义 · ")) + Hex(color);
         foreach (var (button, hex) in swatches)
         {
             button.BorderThickness = new Thickness(!settings.SystemAccent && hex.Equals(settings.CustomColor, StringComparison.OrdinalIgnoreCase) ? 3 : 1);
@@ -129,10 +139,10 @@ public sealed class Appearance
     private Flyout BuildPalette()
     {
         var content = new StackPanel { Width = 300, Spacing = 16 };
-        content.Children.Add(new TextBlock { Text = "界面配色", FontSize = 20, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-        var note = new TextBlock { Text = "为按钮、选择状态和进度设置强调色。", TextWrapping = TextWrapping.Wrap, Opacity = .65, FontSize = 13 };
+        content.Children.Add(new TextBlock { Text = L.T("界面配色"), FontSize = 20, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        var note = new TextBlock { Text = L.T("为按钮、选择状态和进度设置强调色。"), TextWrapping = TextWrapping.Wrap, Opacity = .65, FontSize = 13 };
         content.Children.Add(note);
-        systemSwitch = new ToggleSwitch { Header = "使用系统强调色", IsOn = settings.SystemAccent, OnContent = "跟随 Windows", OffContent = "自定义颜色" };
+        systemSwitch = new ToggleSwitch { Header = L.T("使用系统强调色"), IsOn = settings.SystemAccent, OnContent = L.T("跟随 Windows"), OffContent = L.T("自定义颜色") };
         content.Children.Add(systemSwitch);
         var preview = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
         accentPreview = new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(6) };
@@ -147,7 +157,7 @@ public sealed class Appearance
         {
             var hex = colors[i];
             var button = new Button { Background = new SolidColorBrush(Parse(hex)), Width = 41, Height = 34, CornerRadius = new CornerRadius(6) };
-            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, "配色 " + hex);
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, L.T("配色 ") + hex);
             ToolTipService.SetToolTip(button, hex);
             button.Click += (_, _) => ChooseColor(Parse(hex));
             swatches.Add((button, hex)); Grid.SetColumn(button, i % 6); Grid.SetRow(button, i / 6); grid.Children.Add(button);
@@ -156,10 +166,10 @@ public sealed class Appearance
         picker = new ColorPicker { Color = Parse(settings.CustomColor), IsAlphaEnabled = false, IsAlphaSliderVisible = false,
             IsAlphaTextInputVisible = false, IsHexInputVisible = true, IsColorChannelTextInputVisible = true,
             IsColorSliderVisible = true, IsColorSpectrumVisible = true, HorizontalAlignment = HorizontalAlignment.Stretch };
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(picker, "自定义强调色");
-        var advanced = new Expander { Header = "自定义颜色", Content = picker, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(picker, L.T("自定义强调色"));
+        var advanced = new Expander { Header = L.T("自定义颜色"), Content = picker, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         content.Children.Add(advanced);
-        var restore = new Button { Content = "恢复默认外观", HorizontalAlignment = HorizontalAlignment.Stretch };
+        var restore = new Button { Content = L.T("恢复默认外观"), HorizontalAlignment = HorizontalAlignment.Stretch };
         restore.Click += (_, _) => { settings.Theme = "system"; settings.SystemAccent = true; settings.CustomColor = "#0078D4"; systemSwitch.IsOn = true; picker.Color = Parse(settings.CustomColor); settings.Save(); ApplyTheme(); };
         content.Children.Add(restore);
         systemSwitch.Toggled += (_, _) => { if (applying) return; settings.SystemAccent = systemSwitch.IsOn; settings.Save(); ApplyAccent(true); };

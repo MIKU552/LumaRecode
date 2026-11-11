@@ -12,7 +12,7 @@ public sealed class WorkerClient : IDisposable
     public async Task RunAsync(object request, Action<string, JsonElement> receive)
     {
         var path = Path.Combine(AppContext.BaseDirectory, "Payload", "ConverterWorker.exe");
-        if (!File.Exists(path)) throw new FileNotFoundException("程序的转换组件缺失，请重新下载完整 EXE。", path);
+        if (!File.Exists(path)) throw new FileNotFoundException(L.T("程序的转换组件缺失，请重新下载完整 EXE。"), path);
         using var child = new Process { StartInfo = new ProcessStartInfo(path) {
             UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true,
             RedirectStandardOutput = true, RedirectStandardError = true,
@@ -34,7 +34,7 @@ public sealed class WorkerClient : IDisposable
         await child.WaitForExitAsync();
         var diagnostic = await errors;
         process = null;
-        if (!terminal) throw new InvalidOperationException("转换组件意外退出。" + (diagnostic.Length > 1500 ? diagnostic[^1500..] : diagnostic));
+        if (!terminal) throw new InvalidOperationException(L.T("转换组件意外退出。") + (diagnostic.Length > 1500 ? diagnostic[^1500..] : diagnostic));
     }
     public async Task CancelAsync()
     {
@@ -60,16 +60,16 @@ public sealed class WorkerClient : IDisposable
     }
     public static async Task CheckToolAsync(string path, string name)
     {
-        if (!File.Exists(path)) throw new InvalidOperationException($"请选择 {name}.exe。");
+        if (!File.Exists(path)) throw new InvalidOperationException(L.T($"请选择 {name}.exe。"));
         using var child = Process.Start(new ProcessStartInfo(path) { UseShellExecute = false, CreateNoWindow = true,
             RedirectStandardOutput = true, RedirectStandardError = true, ArgumentList = { "-version" } })!;
         var output = child.StandardOutput.ReadToEndAsync();
         var error = child.StandardError.ReadToEndAsync();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         try { await child.WaitForExitAsync(timeout.Token); }
-        catch (OperationCanceledException) { child.Kill(entireProcessTree: true); throw new InvalidOperationException($"{name} 版本检测超时。"); }
+        catch (OperationCanceledException) { child.Kill(entireProcessTree: true); throw new InvalidOperationException(L.T($"{name} 版本检测超时。")); }
         if (child.ExitCode != 0 || !(await output).Contains(name + " version", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"所选文件未通过 {name} 版本检测。");
+            throw new InvalidOperationException(L.T($"所选文件未通过 {name} 版本检测。"));
         await error;
     }
 }

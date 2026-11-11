@@ -5,6 +5,7 @@ namespace VideoConverter;
 public sealed class UserSettings
 {
     public string Theme { get; set; } = "system";
+    public string Language { get; set; } = "system";
     public bool SystemAccent { get; set; } = true;
     public string CustomColor { get; set; } = "#0078D4";
     public string Ffmpeg { get; set; } = "";
