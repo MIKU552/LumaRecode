@@ -7,6 +7,20 @@ $taskAssets = Get-Content -LiteralPath (Join-Path $taskRoot 'App/obj/project.ass
 $taskPackages = @($taskAssets.packageFolders.PSObject.Properties.Name)
 $taskRecords = [Collections.Generic.List[object]]::new()
 $taskByHash = @{}
+# Stable key ordering keeps tracked provenance identical across clean builds.
+function ConvertTo-CanonicalObject($Value) {
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [Collections.IDictionary]) {
+        $taskSorted = [ordered]@{}
+        foreach ($taskKey in @($Value.Keys | Sort-Object)) { $taskSorted[$taskKey] = ConvertTo-CanonicalObject $Value[$taskKey] }
+        return $taskSorted
+    }
+    if ($Value -is [Collections.IEnumerable] -and $Value -isnot [string]) {
+        $taskArray = @(foreach ($taskEntry in $Value) { ConvertTo-CanonicalObject $taskEntry })
+        return ,$taskArray
+    }
+    return $Value
+}
 $taskLibraries = @($taskAssets.libraries.PSObject.Properties | Sort-Object Name)
 foreach ($taskLibrary in $taskLibraries) {
     if ($taskLibrary.Value.type -ne 'package') { continue }
@@ -51,7 +65,7 @@ foreach ($taskDependency in $taskImplicit) {
     }
     if (-not $taskDirectory) { throw "Implicit dependency legal evidence missing: $taskRuntime/$taskRuntimeVersion" }
     $taskFiles = @()
-    foreach ($taskFile in (Get-ChildItem -LiteralPath $taskDirectory -File | Where-Object Name -Match '(?i)license|notice')) {
+    foreach ($taskFile in (Get-ChildItem -LiteralPath $taskDirectory -File | Where-Object Name -Match '(?i)license|notice' | Sort-Object Name)) {
         $taskName = "$taskRuntime-$taskRuntimeVersion-$($taskFile.Name)"
         Copy-Item -LiteralPath $taskFile.FullName -Destination (Join-Path $taskOutput $taskName) -Force
         $taskFiles += @{file=$taskName;sha256=(Get-FileHash -LiteralPath $taskFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}
@@ -81,6 +95,6 @@ $taskPythonFiles = @(if ($PythonRuntime) {
     }
 })
 $taskManifest = [ordered]@{schema_version=2;project_license='Apache-2.0';app_version='3.5.0';reviewed_on='2026-11-12';packages=$taskRecords.ToArray();implicit_runtime_packs=$taskRuntimeRecords.ToArray();dotnet_sdk='11.0.100';python_bundled=[bool]$PythonRuntime;python_runtime='3.15.2';python_archive_sha256='d012f3aa29cf07436dae8aea1fec0fd195c2612a0b059b1f915ae0afb9ad1f62';distribution_basis=@('Windows App SDK production package terms, section 3, for files placed with the application by NuGet','.NET Library License for designated Windows binaries and single-file runtime; MIT and notices for remaining files; Windows SDK terms where applicable','Windows SDK license and its Microsoft.Windows.SDK.NET.Ref REDIST list for unmodified WinRT projection binaries','Official CPython Windows binary license including its Additional Conditions for this Windows binary build','Unmodified OpenOSV LUT under Apache-2.0 with its original LICENSE and NOTICE');third_party_rights_separate=$true}
-$taskManifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $taskOutput 'manifest.json') -Encoding utf8
-$taskPythonFiles | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $taskOutput 'Python-payload-sha256.json') -Encoding utf8
+ConvertTo-CanonicalObject $taskManifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $taskOutput 'manifest.json') -Encoding utf8
+ConvertTo-CanonicalObject $taskPythonFiles | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $taskOutput 'Python-payload-sha256.json') -Encoding utf8
 Write-Output "Collected legal text for $($taskRecords.Count) resolved NuGet packages."

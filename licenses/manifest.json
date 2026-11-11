@@ -1,160 +1,13 @@
 {
-  "schema_version": 2,
-  "project_license": "Apache-2.0",
   "app_version": "3.5.0",
-  "reviewed_on": "2026-11-12",
-  "packages": [
-    {
-      "source": "https://www.nuget.org/packages/Microsoft.NET.ILLink.Tasks/11.0.0",
-      "license": "MIT",
-      "files": [
-        {
-          "sha256": "e3a241a6cf35167d82bf7e081de9641c59d10d2dbd8824409817bed31980d407",
-          "source_file_in_package": "THIRD-PARTY-NOTICES.TXT",
-          "file": "Microsoft.NET.ILLink.Tasks-11.0.0-THIRD-PARTY-NOTICES.TXT"
-        }
-      ],
-      "package": "Microsoft.NET.ILLink.Tasks",
-      "package_sha512_base64": "RkPFHxgjzoPhOne9ujHLjGj1PnxtWTUbuntGPA0tRp4mXzvTamWNqO5h5JUj2FmPsPWlj73wY5JBUVWtWi13/A==",
-      "version": "11.0.0"
-    },
-    {
-      "source": "https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.3719.77",
-      "license": "LICENSE.txt",
-      "files": [
-        {
-          "sha256": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55",
-          "source_file_in_package": "LICENSE.txt",
-          "file": "Microsoft.Web.WebView2-1.0.3719.77-LICENSE.txt"
-        },
-        {
-          "sha256": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90",
-          "source_file_in_package": "NOTICE.txt",
-          "file": "Microsoft.Web.WebView2-1.0.3719.77-NOTICE.txt"
-        }
-      ],
-      "package": "Microsoft.Web.WebView2",
-      "package_sha512_base64": "Cpq7EGgijiCN0lg1RlTZuZcRkzyo/USU9cEJMSPh6FG4PLjmTEpJ5NKuJqQ06ONnVVARCcTLf31IjjhFJUrApw==",
-      "version": "1.0.3719.77"
-    },
-    {
-      "source": "https://www.nuget.org/packages/Microsoft.Windows.SDK.BuildTools.MSIX/1.7.251221100",
-      "license": "sdk_license.txt",
-      "files": [
-        {
-          "sha256": "f09ebf5de6a5c8e7ebc900bb2e52af2f75e13610a1cf91e1514530e448d956c3",
-          "source_file_in_package": "NOTICE.txt",
-          "file": "Microsoft.Windows.SDK.BuildTools.MSIX-1.7.251221100-NOTICE.txt"
-        },
-        {
-          "sha256": "a7a5c7e7ff998558983d6aca2702117c328aeb0c6404d298cb275f5623c6fd13",
-          "source_file_in_package": "sdk_license.txt",
-          "file": "Microsoft.Windows.SDK.BuildTools.MSIX-1.7.251221100-sdk_license.txt"
-        }
-      ],
-      "package": "Microsoft.Windows.SDK.BuildTools.MSIX",
-      "package_sha512_base64": "3OEJjmDvPQH649p73taTt2n4AeY9dMg/gaDdZHQZh4xOOTAjdfuzuuw2FxSedpQuP9Pbki7FNGoE1mM4kjf0Mw==",
-      "version": "1.7.251221100"
-    },
-    {
-      "source": "https://www.nuget.org/packages/Microsoft.Windows.SDK.BuildTools/10.0.28000.2957",
-      "license": "See package terms",
-      "files": [],
-      "package": "Microsoft.Windows.SDK.BuildTools",
-      "package_sha512_base64": "PhfL6f1d9c2CXCD2fyQkwBBFR6/csgVxWDWDj/9uIY3PU5aUR3vtoAJn7HP1d/cMrHGQhuSH1FXHvaZIjOIajw==",
-      "version": "10.0.28000.2957"
-    },
-    {
-      "source": "https://www.nuget.org/packages/Microsoft.WindowsAppSDK.Base/2.6.5",
-      "license": "license.txt",
-      "files": [
-        {
-          "sha256": "5b11e6347756e40fe0274bc08c97f89201b94f0d50181a09a00f1f4740840501",
-          "source_file_in_package": "license.txt",
-          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-license.txt"
-        },
-        {
-          "sha256": "572b43d41dea717dae7dc5de69acb20a74df025e8f5a3c0aa6f7bca02615e23c",
-          "source_file_in_package": "NOTICE.txt",
-          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-NOTICE.txt"
-        }
-      ],
-      "package": "Microsoft.WindowsAppSDK.Base",
-      "package_sha512_base64": "0myyoC/C/xjqdwzznC9p8un2C/CK6OTLyxJx3DIV4GdUdK4gOE5zW3g5bveNt4cDMibG+AWuJS/hBt8NoIUXRw==",
-      "version": "2.6.5"
-    },
-    {
-      "source": "https://www.nuget.org/packages/Microsoft.WindowsAppSDK.Foundation/2.6.5",
-      "license": "license.txt",
-      "files": [
-        {
-          "sha256": "5b11e6347756e40fe0274bc08c97f89201b94f0d50181a09a00f1f4740840501",
-          "source_file_in_package": "license.txt",
-          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-license.txt"
-        }
-      ],
-      "package": "Microsoft.WindowsAppSDK.Foundation",
-      "package_sha512_base64": "Tr1MqgcGrxmRsxVXimykQyuCRe9pQfv0HWliR9gQA2Jk7cVngWmUZl4vbMFUzvlyEwa7W7edjDOizeTiiGvcDQ==",
-      "version": "2.6.5"
-    },
-    {
-      "source": "https://www.nuget.org/packages/Microsoft.WindowsAppSDK.InteractiveExperiences/2.6.5",
-      "license": "license.txt",
-      "files": [
-        {
-          "sha256": "5b11e6347756e40fe0274bc08c97f89201b94f0d50181a09a00f1f4740840501",
-          "source_file_in_package": "license.txt",
-          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-license.txt"
-        }
-      ],
-      "package": "Microsoft.WindowsAppSDK.InteractiveExperiences",
-      "package_sha512_base64": "IIwhM0Qec/hdm3Y9r6awMAMTv9mR5FA+TWJvRJzai3Gs2fYL5j4ah4yChkEVVn89F6n1btiVxczUECT5vy5diw==",
-      "version": "2.6.5"
-    },
-    {
-      "source": "https://www.nuget.org/packages/Microsoft.WindowsAppSDK.Runtime/2.6.5",
-      "license": "license.txt",
-      "files": [
-        {
-          "sha256": "5b11e6347756e40fe0274bc08c97f89201b94f0d50181a09a00f1f4740840501",
-          "source_file_in_package": "license.txt",
-          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-license.txt"
-        },
-        {
-          "sha256": "572b43d41dea717dae7dc5de69acb20a74df025e8f5a3c0aa6f7bca02615e23c",
-          "source_file_in_package": "NOTICE.txt",
-          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-NOTICE.txt"
-        }
-      ],
-      "package": "Microsoft.WindowsAppSDK.Runtime",
-      "package_sha512_base64": "i2SDGAY6nfJI1UHmBpK84T26sNIq6HTa0vOXpE9BQBBieoKYt7RQ/BRpeT2P4/jg6Y8FSpgaZYLitJC8TagsrQ==",
-      "version": "2.6.5"
-    },
-    {
-      "source": "https://www.nuget.org/packages/Microsoft.WindowsAppSDK.WinUI/2.6.5",
-      "license": "license.txt",
-      "files": [
-        {
-          "sha256": "5b11e6347756e40fe0274bc08c97f89201b94f0d50181a09a00f1f4740840501",
-          "source_file_in_package": "license.txt",
-          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-license.txt"
-        },
-        {
-          "sha256": "e25393c0d340a1821827b093fa4dbbfcccd8feb7bf769e7fa773e3955cd5314b",
-          "source_file_in_package": "NOTICE.txt",
-          "file": "Microsoft.WindowsAppSDK.WinUI-2.6.5-NOTICE.txt"
-        },
-        {
-          "sha256": "4a9321fd173ebf4e8bbc79130794d4c3fe233acccbf7db8765e0addb8fbfb8ca",
-          "source_file_in_package": "tools\\NOTICE.txt",
-          "file": "Microsoft.WindowsAppSDK.WinUI-2.6.5-tools_NOTICE.txt"
-        }
-      ],
-      "package": "Microsoft.WindowsAppSDK.WinUI",
-      "package_sha512_base64": "eNmFFLMf3NrkvJDhXCHVfIYcS+xjldnWSHzRZt2REmtQsaRcJvdpfiqBVTqWrPntI30M+urxCQuDoag+4NH4rw==",
-      "version": "2.6.5"
-    }
+  "distribution_basis": [
+    "Windows App SDK production package terms, section 3, for files placed with the application by NuGet",
+    ".NET Library License for designated Windows binaries and single-file runtime; MIT and notices for remaining files; Windows SDK terms where applicable",
+    "Windows SDK license and its Microsoft.Windows.SDK.NET.Ref REDIST list for unmodified WinRT projection binaries",
+    "Official CPython Windows binary license including its Additional Conditions for this Windows binary build",
+    "Unmodified OpenOSV LUT under Apache-2.0 with its original LICENSE and NOTICE"
   ],
+  "dotnet_sdk": "11.0.100",
   "implicit_runtime_packs": [
     {
       "files": [
@@ -167,9 +20,9 @@
           "sha256": "c7448ed684305802981ef06c3eb142eeac58a48ffc98e8789a010b75fa07f123"
         }
       ],
-      "version": "11.0.0",
       "package": "microsoft.aspnetcore.app.runtime.win-x64",
-      "source": "https://www.nuget.org/packages/microsoft.aspnetcore.app.runtime.win-x64/11.0.0"
+      "source": "https://www.nuget.org/packages/microsoft.aspnetcore.app.runtime.win-x64/11.0.0",
+      "version": "11.0.0"
     },
     {
       "files": [
@@ -182,31 +35,31 @@
           "sha256": "e3a241a6cf35167d82bf7e081de9641c59d10d2dbd8824409817bed31980d407"
         }
       ],
-      "version": "11.0.0",
       "package": "microsoft.netcore.app.runtime.win-x64",
-      "source": "https://www.nuget.org/packages/microsoft.netcore.app.runtime.win-x64/11.0.0"
+      "source": "https://www.nuget.org/packages/microsoft.netcore.app.runtime.win-x64/11.0.0",
+      "version": "11.0.0"
     },
     {
       "files": [
         {
+          "file": "Windows-SDK-Net-Ref-LICENSE.rtf",
           "sha256": "dd07eb178e00c6bba4148457fc00ff77cd4887eb521d504186fe59c9ec8bbe62",
-          "source": "https://aka.ms/WinSDKLicenseURL",
-          "file": "Windows-SDK-Net-Ref-LICENSE.rtf"
+          "source": "https://aka.ms/WinSDKLicenseURL"
         },
         {
+          "file": "Windows-SDK-Net-Ref-LICENSE.txt",
           "sha256": "e05c4563104790e42d73f0f33a8c267f6ff0466db656fd795efd75ac29e4ad5b",
-          "source": "https://aka.ms/WinSDKLicenseURL",
-          "file": "Windows-SDK-Net-Ref-LICENSE.txt"
+          "source": "https://aka.ms/WinSDKLicenseURL"
         },
         {
+          "file": "Windows-SDK-REDIST.html",
           "sha256": "414a9951657aee1ec07f55b3ebabb207dcb0e6aac12ec9dbb5688fe03450eeae",
-          "source": "https://aka.ms/WinSDKLicenseURL",
-          "file": "Windows-SDK-REDIST.html"
+          "source": "https://aka.ms/WinSDKLicenseURL"
         }
       ],
-      "version": "10.0.26100.87",
       "package": "microsoft.windows.sdk.net.ref",
-      "source": "https://www.nuget.org/packages/microsoft.windows.sdk.net.ref/10.0.26100.87"
+      "source": "https://www.nuget.org/packages/microsoft.windows.sdk.net.ref/10.0.26100.87",
+      "version": "10.0.26100.87"
     },
     {
       "files": [
@@ -215,21 +68,168 @@
           "sha256": "a89886665765362eb77e0f8e26602c924520041d1711b2eedc136434fe4d01ab"
         }
       ],
-      "version": "11.0.0",
       "package": "microsoft.windowsdesktop.app.runtime.win-x64",
-      "source": "https://www.nuget.org/packages/microsoft.windowsdesktop.app.runtime.win-x64/11.0.0"
+      "source": "https://www.nuget.org/packages/microsoft.windowsdesktop.app.runtime.win-x64/11.0.0",
+      "version": "11.0.0"
     }
   ],
-  "dotnet_sdk": "11.0.100",
+  "packages": [
+    {
+      "files": [
+        {
+          "file": "Microsoft.NET.ILLink.Tasks-11.0.0-THIRD-PARTY-NOTICES.TXT",
+          "sha256": "e3a241a6cf35167d82bf7e081de9641c59d10d2dbd8824409817bed31980d407",
+          "source_file_in_package": "THIRD-PARTY-NOTICES.TXT"
+        }
+      ],
+      "license": "MIT",
+      "package": "Microsoft.NET.ILLink.Tasks",
+      "package_sha512_base64": "RkPFHxgjzoPhOne9ujHLjGj1PnxtWTUbuntGPA0tRp4mXzvTamWNqO5h5JUj2FmPsPWlj73wY5JBUVWtWi13/A==",
+      "source": "https://www.nuget.org/packages/Microsoft.NET.ILLink.Tasks/11.0.0",
+      "version": "11.0.0"
+    },
+    {
+      "files": [
+        {
+          "file": "Microsoft.Web.WebView2-1.0.3719.77-LICENSE.txt",
+          "sha256": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55",
+          "source_file_in_package": "LICENSE.txt"
+        },
+        {
+          "file": "Microsoft.Web.WebView2-1.0.3719.77-NOTICE.txt",
+          "sha256": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90",
+          "source_file_in_package": "NOTICE.txt"
+        }
+      ],
+      "license": "LICENSE.txt",
+      "package": "Microsoft.Web.WebView2",
+      "package_sha512_base64": "Cpq7EGgijiCN0lg1RlTZuZcRkzyo/USU9cEJMSPh6FG4PLjmTEpJ5NKuJqQ06ONnVVARCcTLf31IjjhFJUrApw==",
+      "source": "https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.3719.77",
+      "version": "1.0.3719.77"
+    },
+    {
+      "files": [
+        {
+          "file": "Microsoft.Windows.SDK.BuildTools.MSIX-1.7.251221100-NOTICE.txt",
+          "sha256": "f09ebf5de6a5c8e7ebc900bb2e52af2f75e13610a1cf91e1514530e448d956c3",
+          "source_file_in_package": "NOTICE.txt"
+        },
+        {
+          "file": "Microsoft.Windows.SDK.BuildTools.MSIX-1.7.251221100-sdk_license.txt",
+          "sha256": "a7a5c7e7ff998558983d6aca2702117c328aeb0c6404d298cb275f5623c6fd13",
+          "source_file_in_package": "sdk_license.txt"
+        }
+      ],
+      "license": "sdk_license.txt",
+      "package": "Microsoft.Windows.SDK.BuildTools.MSIX",
+      "package_sha512_base64": "3OEJjmDvPQH649p73taTt2n4AeY9dMg/gaDdZHQZh4xOOTAjdfuzuuw2FxSedpQuP9Pbki7FNGoE1mM4kjf0Mw==",
+      "source": "https://www.nuget.org/packages/Microsoft.Windows.SDK.BuildTools.MSIX/1.7.251221100",
+      "version": "1.7.251221100"
+    },
+    {
+      "files": [],
+      "license": "See package terms",
+      "package": "Microsoft.Windows.SDK.BuildTools",
+      "package_sha512_base64": "PhfL6f1d9c2CXCD2fyQkwBBFR6/csgVxWDWDj/9uIY3PU5aUR3vtoAJn7HP1d/cMrHGQhuSH1FXHvaZIjOIajw==",
+      "source": "https://www.nuget.org/packages/Microsoft.Windows.SDK.BuildTools/10.0.28000.2957",
+      "version": "10.0.28000.2957"
+    },
+    {
+      "files": [
+        {
+          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-license.txt",
+          "sha256": "5b11e6347756e40fe0274bc08c97f89201b94f0d50181a09a00f1f4740840501",
+          "source_file_in_package": "license.txt"
+        },
+        {
+          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-NOTICE.txt",
+          "sha256": "572b43d41dea717dae7dc5de69acb20a74df025e8f5a3c0aa6f7bca02615e23c",
+          "source_file_in_package": "NOTICE.txt"
+        }
+      ],
+      "license": "license.txt",
+      "package": "Microsoft.WindowsAppSDK.Base",
+      "package_sha512_base64": "0myyoC/C/xjqdwzznC9p8un2C/CK6OTLyxJx3DIV4GdUdK4gOE5zW3g5bveNt4cDMibG+AWuJS/hBt8NoIUXRw==",
+      "source": "https://www.nuget.org/packages/Microsoft.WindowsAppSDK.Base/2.6.5",
+      "version": "2.6.5"
+    },
+    {
+      "files": [
+        {
+          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-license.txt",
+          "sha256": "5b11e6347756e40fe0274bc08c97f89201b94f0d50181a09a00f1f4740840501",
+          "source_file_in_package": "license.txt"
+        }
+      ],
+      "license": "license.txt",
+      "package": "Microsoft.WindowsAppSDK.Foundation",
+      "package_sha512_base64": "Tr1MqgcGrxmRsxVXimykQyuCRe9pQfv0HWliR9gQA2Jk7cVngWmUZl4vbMFUzvlyEwa7W7edjDOizeTiiGvcDQ==",
+      "source": "https://www.nuget.org/packages/Microsoft.WindowsAppSDK.Foundation/2.6.5",
+      "version": "2.6.5"
+    },
+    {
+      "files": [
+        {
+          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-license.txt",
+          "sha256": "5b11e6347756e40fe0274bc08c97f89201b94f0d50181a09a00f1f4740840501",
+          "source_file_in_package": "license.txt"
+        }
+      ],
+      "license": "license.txt",
+      "package": "Microsoft.WindowsAppSDK.InteractiveExperiences",
+      "package_sha512_base64": "IIwhM0Qec/hdm3Y9r6awMAMTv9mR5FA+TWJvRJzai3Gs2fYL5j4ah4yChkEVVn89F6n1btiVxczUECT5vy5diw==",
+      "source": "https://www.nuget.org/packages/Microsoft.WindowsAppSDK.InteractiveExperiences/2.6.5",
+      "version": "2.6.5"
+    },
+    {
+      "files": [
+        {
+          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-license.txt",
+          "sha256": "5b11e6347756e40fe0274bc08c97f89201b94f0d50181a09a00f1f4740840501",
+          "source_file_in_package": "license.txt"
+        },
+        {
+          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-NOTICE.txt",
+          "sha256": "572b43d41dea717dae7dc5de69acb20a74df025e8f5a3c0aa6f7bca02615e23c",
+          "source_file_in_package": "NOTICE.txt"
+        }
+      ],
+      "license": "license.txt",
+      "package": "Microsoft.WindowsAppSDK.Runtime",
+      "package_sha512_base64": "i2SDGAY6nfJI1UHmBpK84T26sNIq6HTa0vOXpE9BQBBieoKYt7RQ/BRpeT2P4/jg6Y8FSpgaZYLitJC8TagsrQ==",
+      "source": "https://www.nuget.org/packages/Microsoft.WindowsAppSDK.Runtime/2.6.5",
+      "version": "2.6.5"
+    },
+    {
+      "files": [
+        {
+          "file": "Microsoft.WindowsAppSDK.Base-2.6.5-license.txt",
+          "sha256": "5b11e6347756e40fe0274bc08c97f89201b94f0d50181a09a00f1f4740840501",
+          "source_file_in_package": "license.txt"
+        },
+        {
+          "file": "Microsoft.WindowsAppSDK.WinUI-2.6.5-NOTICE.txt",
+          "sha256": "e25393c0d340a1821827b093fa4dbbfcccd8feb7bf769e7fa773e3955cd5314b",
+          "source_file_in_package": "NOTICE.txt"
+        },
+        {
+          "file": "Microsoft.WindowsAppSDK.WinUI-2.6.5-tools_NOTICE.txt",
+          "sha256": "4a9321fd173ebf4e8bbc79130794d4c3fe233acccbf7db8765e0addb8fbfb8ca",
+          "source_file_in_package": "tools\\NOTICE.txt"
+        }
+      ],
+      "license": "license.txt",
+      "package": "Microsoft.WindowsAppSDK.WinUI",
+      "package_sha512_base64": "eNmFFLMf3NrkvJDhXCHVfIYcS+xjldnWSHzRZt2REmtQsaRcJvdpfiqBVTqWrPntI30M+urxCQuDoag+4NH4rw==",
+      "source": "https://www.nuget.org/packages/Microsoft.WindowsAppSDK.WinUI/2.6.5",
+      "version": "2.6.5"
+    }
+  ],
+  "project_license": "Apache-2.0",
+  "python_archive_sha256": "d012f3aa29cf07436dae8aea1fec0fd195c2612a0b059b1f915ae0afb9ad1f62",
   "python_bundled": true,
   "python_runtime": "3.15.2",
-  "python_archive_sha256": "d012f3aa29cf07436dae8aea1fec0fd195c2612a0b059b1f915ae0afb9ad1f62",
-  "distribution_basis": [
-    "Windows App SDK production package terms, section 3, for files placed with the application by NuGet",
-    ".NET Library License for designated Windows binaries and single-file runtime; MIT and notices for remaining files; Windows SDK terms where applicable",
-    "Windows SDK license and its Microsoft.Windows.SDK.NET.Ref REDIST list for unmodified WinRT projection binaries",
-    "Official CPython Windows binary license including its Additional Conditions for this Windows binary build",
-    "Unmodified OpenOSV LUT under Apache-2.0 with its original LICENSE and NOTICE"
-  ],
+  "reviewed_on": "2026-11-12",
+  "schema_version": 2,
   "third_party_rights_separate": true
 }
