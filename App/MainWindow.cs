@@ -79,6 +79,7 @@ public sealed class MainWindow : Window
         ResolveTools(); Refresh();
         root.Loaded += async (_, _) =>
         {
+            Reflow(root.ActualWidth);
             if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe)) await ConfigureToolsAsync();
             var args = Environment.GetCommandLineArgs();
             if (args.Length > 1 && File.Exists(args[1])) { Input.Text = args[1]; await InspectAsync(); }
@@ -105,7 +106,11 @@ public sealed class MainWindow : Window
     }
     private void BuildLanguageMenu()
     {
-        var menu = new MenuFlyout();
+        var menu = new MenuFlyout
+        {
+            Placement = FlyoutPlacementMode.BottomEdgeAlignedRight,
+            ShouldConstrainToRootBounds = false
+        };
         foreach (var (key, name) in new[] { ("system", L.T("跟随系统")), ("zh", "简体中文"), ("en", "English") })
         {
             var item = new RadioMenuFlyoutItem { Text = name, GroupName = "AppLanguage", IsChecked = settings.Language == key };
@@ -122,7 +127,31 @@ public sealed class MainWindow : Window
     {
         foreach (var (key, item) in languageItems) item.IsChecked = key == settings.Language;
         languageItems["system"].Text = L.T("跟随系统");
-        Control<DropDownButton>("LanguageButton").Content = settings.Language switch { "zh" => "简体中文", "en" => "English", _ => L.T("语言 · 系统") };
+        var button = Control<DropDownButton>("LanguageButton");
+        button.Content = settings.Language switch { "zh" => "简体中文", "en" => "English", _ => L.T("语言 · 系统") };
+
+        // Size both surfaces from every label, including the menu's check column.
+        // Changing the selected language must not leave a narrow button above a
+        // wider menu when switching between System, Chinese and English.
+        double TextWidth(string text)
+        {
+            var label = new TextBlock { Text = text, FontFamily = button.FontFamily,
+                FontSize = button.FontSize, FontWeight = button.FontWeight, Language = root.Language };
+            label.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+            return label.DesiredSize.Width;
+        }
+        var menuWidth = languageItems.Values.Max(item => TextWidth(item.Text)) + 64;
+        var buttonWidth = new[] { L.T("语言 · 系统"), "简体中文", "English" }.Max(TextWidth) + 48;
+        var width = 4 * Math.Ceiling(Math.Max(128, Math.Max(menuWidth, buttonWidth)) / 4);
+        button.Width = width;
+        var presenter = (Style)XamlReader.Load("""
+            <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   TargetType="MenuFlyoutPresenter" BasedOn="{StaticResource DefaultMenuFlyoutPresenterStyle}" />
+            """);
+        presenter.Setters.Add(new Setter(FrameworkElement.WidthProperty, width));
+        presenter.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, width));
+        presenter.Setters.Add(new Setter(FrameworkElement.MaxWidthProperty, width));
+        ((MenuFlyout)button.Flyout).MenuFlyoutPresenterStyle = presenter;
     }
     private void Relocalize()
     {
@@ -189,19 +218,40 @@ public sealed class MainWindow : Window
             var files = await e.DataView.GetStorageItemsAsync();
             if (files.Count == 1) { Input.Text = files[0].Path; await InspectAsync(); }
         };
-        root.SizeChanged += (_, e) => Reflow(e.NewSize.Width < 960);
+        root.SizeChanged += (_, e) => Reflow(e.NewSize.Width);
     }
-    private void Reflow(bool narrow)
+    private void Reflow(double width)
     {
+        var narrow = width < 960;
         var grid = Control<Grid>("SettingsGrid");
-        while (grid.RowDefinitions.Count < 3) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        var rows = narrow ? 3 : 2;
+        while (grid.RowDefinitions.Count < rows) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        while (grid.RowDefinitions.Count > rows) grid.RowDefinitions.RemoveAt(grid.RowDefinitions.Count - 1);
         grid.ColumnDefinitions[0].MinWidth = narrow ? 0 : 380;
         grid.ColumnDefinitions[1].MinWidth = narrow ? 0 : 300;
         grid.ColumnDefinitions[0].Width = new GridLength(narrow ? 1 : 3, GridUnitType.Star);
         grid.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : new GridLength(2, GridUnitType.Star);
-        Grid.SetColumnSpan((FrameworkElement)grid.Children[0], narrow ? 1 : 2);
-        Grid.SetColumn((FrameworkElement)grid.Children[2], narrow ? 0 : 1);
-        Grid.SetRow((FrameworkElement)grid.Children[2], narrow ? 2 : 1);
+        grid.ColumnSpacing = narrow ? 0 : 24;
+        Grid.SetColumnSpan(Control<Border>("SourceCard"), narrow ? 1 : 2);
+        var color = Control<StackPanel>("ColorSettings");
+        Grid.SetColumn(color, narrow ? 0 : 1);
+        Grid.SetRow(color, narrow ? 2 : 1);
+
+        var compact = width < 760;
+        var details = Control<Grid>("SourceDetails");
+        details.ColumnDefinitions[2].Width = new GridLength(compact ? 0 : 240);
+        details.RowSpacing = compact ? 16 : 0;
+        Grid.SetColumnSpan(Control<StackPanel>("SourceInfo"), compact ? 2 : 1);
+        Grid.SetColumn(InputKind, compact ? 1 : 2);
+        Grid.SetRow(InputKind, compact ? 1 : 0);
+        Grid.SetColumnSpan(InputKind, compact ? 2 : 1);
+
+        var buttons = Control<StackPanel>("ActionButtons");
+        Grid.SetColumn(buttons, compact ? 0 : 1);
+        Grid.SetRow(buttons, compact ? 1 : 0);
+        Grid.SetColumnSpan(buttons, compact ? 2 : 1);
+        Grid.SetColumnSpan(Control<TextBlock>("Status"), compact ? 2 : 1);
+        Control<Grid>("ActionGrid").RowSpacing = compact ? 12 : 0;
     }
     private string MediaText(string key, string fallback = "") => media is { } item && item.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() ?? fallback : fallback;
     private void SetStatus(string text) => Control<TextBlock>("Status").Text = L.T(text);
@@ -278,6 +328,9 @@ public sealed class MainWindow : Window
             else if (media is not null && Kind == "unknown" && !Profile.IsEnabled) warning = L.T("没有可靠的曲线标记，请确认输入解释。");
             else if (media is { } m && Profile.IsEnabled && !System.Text.RegularExpressions.Regex.IsMatch(m.GetProperty("video").GetProperty("pix_fmt").GetString() ?? "", "10|12|16")) warning = L.T("Log 转换需要对应相机的高位深原片。");
             var notice = Control<InfoBar>("Notice"); notice.Message = warning; notice.IsOpen = warning != "";
+            var chooseInput = Control<Button>("ChooseInput");
+            chooseInput.Content = L.T(media is null ? "选择视频" : "更换视频");
+            chooseInput.Style = media is null ? (Style)root.Resources["SourceChooserAccent"] : null;
             Control<Button>("Start").IsEnabled = media is not null && !probing && activeJob is null && warning == "";
             if (media is not null && (Output.Text == "" || Output.Text == automaticOutput))
             {

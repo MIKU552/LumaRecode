@@ -15,6 +15,7 @@
       <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}"/>
       <Setter Property="TextWrapping" Value="Wrap"/><Setter Property="FontSize" Value="13"/>
     </Style>
+    <Style x:Key="SourceChooserAccent" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}"/>
   </Grid.Resources>
   <Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <Grid x:Name="TitleDrag" Margin="16,0,150,0">
@@ -26,26 +27,29 @@
     <!-- Keep the scroll host at viewport width; constrain only the inner content. -->
     <Grid>
     <StackPanel Spacing="24" MaxWidth="1240" HorizontalAlignment="Stretch">
-      <Grid ColumnSpacing="12">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <Grid ColumnSpacing="24">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel Spacing="4"><TextBlock Text="映流" FontSize="30" FontWeight="SemiBold"/><TextBlock Text="FrameFlow · 视频转码与色彩转换" Style="{StaticResource Secondary}"/></StackPanel>
-        <DropDownButton x:Name="LanguageButton" Grid.Column="1" VerticalAlignment="Center" AutomationProperties.Name="界面语言"/>
-        <Button x:Name="PaletteButton" Grid.Column="2" VerticalAlignment="Center" ToolTipService.ToolTip="界面配色" AutomationProperties.Name="界面配色"><FontIcon Glyph="&#xE790;" FontSize="16"/></Button>
-        <Button x:Name="ToolsButton" Grid.Column="3" VerticalAlignment="Center" ToolTipService.ToolTip="FFmpeg 工具路径" AutomationProperties.Name="工具路径"><FontIcon Glyph="&#xE713;" FontSize="16"/></Button>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <DropDownButton x:Name="LanguageButton" MinHeight="36" VerticalAlignment="Center" AutomationProperties.Name="界面语言"/>
+          <Button x:Name="PaletteButton" Width="40" Height="36" Padding="0" ToolTipService.ToolTip="界面配色" AutomationProperties.Name="界面配色"><FontIcon Glyph="&#xE790;" FontSize="18"/></Button>
+          <Button x:Name="ToolsButton" Width="40" Height="36" Padding="0" ToolTipService.ToolTip="工具路径" AutomationProperties.Name="工具路径"><FontIcon Glyph="&#xE713;" FontSize="18"/></Button>
+        </StackPanel>
       </Grid>
       <Grid x:Name="SettingsGrid" ColumnSpacing="24" RowSpacing="24">
         <Grid.ColumnDefinitions><ColumnDefinition Width="3*" MinWidth="380"/><ColumnDefinition Width="2*" MinWidth="300"/></Grid.ColumnDefinitions>
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Border Grid.ColumnSpan="2" Style="{StaticResource Card}" AllowDrop="True" x:Name="SourceCard">
-          <StackPanel Spacing="16">
-            <Grid><TextBlock Text="视频素材" Style="{StaticResource Section}"/><TextBlock x:Name="SourceBadge" Text="等待添加" HorizontalAlignment="Right" Style="{StaticResource Secondary}" VerticalAlignment="Center"/></Grid>
+          <StackPanel Spacing="20">
+            <Grid><TextBlock Text="视频素材" Style="{StaticResource Section}" VerticalAlignment="Center"/><Border HorizontalAlignment="Right" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="4" Padding="10,4"><TextBlock x:Name="SourceBadge" Text="等待添加" Style="{StaticResource Secondary}" FontSize="12" VerticalAlignment="Center"/></Border></Grid>
             <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
               <TextBox x:Name="InputPath" PlaceholderText="拖入视频，或粘贴文件路径" AutomationProperties.Name="视频路径"/>
-              <Button x:Name="ChooseInput" Grid.Column="1" Content="选择视频" Padding="20,8"/>
+              <Button x:Name="ChooseInput" Grid.Column="1" Content="选择视频" Style="{StaticResource SourceChooserAccent}" MinWidth="116" Height="36" Padding="20,6"/>
             </Grid>
-            <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="240"/></Grid.ColumnDefinitions>
-              <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="8" Width="48" Height="48"><FontIcon Glyph="&#xE8B2;" FontSize="22"/></Border>
-              <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
+            <Grid x:Name="SourceDetails" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="240"/></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+              <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="12" Width="48" Height="48" VerticalAlignment="Top"><FontIcon Glyph="&#xE8B2;" FontSize="22" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/></Border>
+              <StackPanel x:Name="SourceInfo" Grid.Column="1" Spacing="6" VerticalAlignment="Center">
                 <TextBlock x:Name="SourceSummary" Text="尚未选择素材" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap"/>
                 <TextBlock x:Name="SourceVideo" Visibility="Collapsed" Style="{StaticResource Secondary}"/>
                 <TextBlock x:Name="SourceColor" Visibility="Collapsed" Style="{StaticResource Secondary}"/>
@@ -56,9 +60,9 @@
             </Grid>
           </StackPanel>
         </Border>
-        <Border Grid.Row="1" Style="{StaticResource Card}">
+        <Border x:Name="OutputCard" Grid.Row="1" Style="{StaticResource Card}">
           <StackPanel Spacing="20">
-            <TextBlock Text="输出与压缩" Style="{StaticResource Section}"/>
+            <StackPanel Orientation="Horizontal" Spacing="12"><Border Width="32" Height="32" CornerRadius="8" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><SymbolIcon Symbol="Save" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/></Border><TextBlock Text="输出与压缩" Style="{StaticResource Section}" VerticalAlignment="Center"/></StackPanel>
             <RadioButtons x:Name="OutputRange" Header="动态范围" MaxColumns="2" SelectedIndex="0" AutomationProperties.Name="动态范围"><RadioButton x:Name="SdrChoice" Content="SDR · 通用播放"/><RadioButton x:Name="HdrChoice" Content="HDR · 保留高光"/></RadioButtons>
             <TextBlock x:Name="TargetNote" Style="{StaticResource Secondary}"/>
             <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -68,28 +72,29 @@
             <ComboBox x:Name="Variant" Header="质量档" HorizontalAlignment="Stretch" AutomationProperties.Name="质量档"/>
             <ComboBox x:Name="Container" Header="封装格式" HorizontalAlignment="Stretch" AutomationProperties.Name="封装格式"/>
             <TextBlock x:Name="ContainerNote" Style="{StaticResource Secondary}"/>
-            <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="8" Padding="14,12"><StackPanel Spacing="5"><TextBlock x:Name="PresetName" FontWeight="SemiBold"/><TextBlock x:Name="PresetDetail" Style="{StaticResource Secondary}"/></StackPanel></Border>
+            <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="8" Padding="16,14"><StackPanel Spacing="6"><TextBlock x:Name="PresetName" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock x:Name="PresetDetail" Style="{StaticResource Secondary}"/></StackPanel></Border>
           </StackPanel>
         </Border>
-        <StackPanel Grid.Row="1" Grid.Column="1" Spacing="16">
+        <StackPanel x:Name="ColorSettings" Grid.Row="1" Grid.Column="1" Spacing="20">
           <Border Style="{StaticResource Card}"><StackPanel Spacing="16">
-            <TextBlock Text="色彩转换" Style="{StaticResource Section}"/>
+            <StackPanel Orientation="Horizontal" Spacing="12"><Border Width="32" Height="32" CornerRadius="8" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><FontIcon Glyph="&#xE790;" FontSize="20" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/></Border><TextBlock Text="色彩转换" Style="{StaticResource Section}" VerticalAlignment="Center"/></StackPanel>
             <ComboBox x:Name="Transform" Header="LUT / 色调映射" HorizontalAlignment="Stretch" AutomationProperties.Name="色彩转换"/>
             <ComboBox x:Name="Profile" Header="相机曲线" HorizontalAlignment="Stretch" AutomationProperties.Name="相机曲线"/>
             <TextBlock x:Name="TransformNote" Style="{StaticResource Secondary}"/>
             <InfoBar x:Name="Notice" IsOpen="False" IsClosable="False" Severity="Warning"/>
           </StackPanel></Border>
-          <Expander Header="格式与音频" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" IsExpanded="False">
+          <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" IsExpanded="False" AutomationProperties.Name="格式与音频">
+            <Expander.Header><StackPanel Orientation="Horizontal" Spacing="12"><SymbolIcon Symbol="Volume" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/><TextBlock Text="格式与音频" FontSize="14" VerticalAlignment="Center"/></StackPanel></Expander.Header>
             <StackPanel Spacing="16"><ComboBox x:Name="Sampling" Header="色度采样" HorizontalAlignment="Stretch"/><ComboBox x:Name="Audio" Header="音轨" HorizontalAlignment="Stretch"/><CheckBox x:Name="CpuDecode" Content="使用软件解码"/><TextBlock Text="4:2:2 输入默认自动转为 4:2:0。" Style="{StaticResource Secondary}"/></StackPanel>
           </Expander>
         </StackPanel>
       </Grid>
-      <Expander x:Name="LogPanel" Header="转换日志" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"><TextBox x:Name="Log" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Height="160" FontFamily="Consolas" FontSize="12" ScrollViewer.VerticalScrollBarVisibility="Auto"/></Expander>
+      <Expander x:Name="LogPanel" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="转换日志"><Expander.Header><StackPanel Orientation="Horizontal" Spacing="12"><SymbolIcon Symbol="Document" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/><TextBlock Text="转换日志" FontSize="14" VerticalAlignment="Center"/></StackPanel></Expander.Header><TextBox x:Name="Log" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Height="160" FontFamily="Consolas" FontSize="12" ScrollViewer.VerticalScrollBarVisibility="Auto"/></Expander>
     </StackPanel>
     </Grid>
   </ScrollViewer>
   <Border Grid.Row="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="32,18,32,20">
-    <StackPanel Spacing="14">
+    <Grid><StackPanel Spacing="14" MaxWidth="1240" HorizontalAlignment="Stretch">
       <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="保存到" VerticalAlignment="Center"/><TextBox x:Name="Destination" Grid.Column="1" PlaceholderText="选择视频后自动生成" AutomationProperties.Name="输出路径"/><Button x:Name="ChooseOutput" Grid.Column="2" Content="更改…"/></Grid>
       <ProgressBar x:Name="Progress" Minimum="0" Maximum="1000" Value="0" Height="6"/>
       <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -98,12 +103,14 @@
         <TextBlock x:Name="ElapsedTime" Grid.Column="2" Text="已用 00:00" Style="{StaticResource Secondary}" FontSize="12"/>
         <TextBlock x:Name="RemainingTime" Grid.Column="3" Text="剩余 —" Style="{StaticResource Secondary}" FontSize="12"/>
       </Grid>
-      <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <Grid x:Name="ActionGrid" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <TextBlock x:Name="Status" Text="添加素材后开始" Style="{StaticResource Secondary}" VerticalAlignment="Center"/>
-        <Button x:Name="OpenFolder" Grid.Column="1" Content="打开目录" IsEnabled="False"/>
-        <Button x:Name="Cancel" Grid.Column="2" Content="取消" IsEnabled="False"/>
-        <Button x:Name="Start" Grid.Column="3" Content="开始转换" Style="{ThemeResource AccentButtonStyle}" MinWidth="132" IsEnabled="False"/>
+        <StackPanel x:Name="ActionButtons" Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+          <Button x:Name="OpenFolder" Content="打开目录" Height="36" IsEnabled="False"/>
+          <Button x:Name="Cancel" Content="取消" Height="36" Padding="20,6" IsEnabled="False"/>
+          <Button x:Name="Start" Style="{ThemeResource AccentButtonStyle}" MinWidth="140" Height="36" Padding="20,6" IsEnabled="False" AutomationProperties.Name="开始转换"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE768;" FontSize="12"/><TextBlock Text="开始转换"/></StackPanel></Button>
+        </StackPanel>
       </Grid>
-    </StackPanel>
+    </StackPanel></Grid>
   </Border>
 </Grid>

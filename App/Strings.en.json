@@ -27,7 +27,7 @@
   "复制原音轨": "Copy source audio",
   "格式与音频": "Format & audio",
   "跟随 Windows": "Follow Windows",
-  "跟随系统": "Follow system",
+  "跟随系统": "System",
   "更改…": "Change…",
   "工具路径": "Tool paths",
   "估算中": "Estimating",
@@ -143,7 +143,7 @@
   "SDR · 通用播放": "SDR · Standard playback",
   "Windows 强调色 · ": "Windows accent · ",
   "界面语言": "Interface language",
-  "语言 · 系统": "Language · System",
+  "语言 · 系统": "System",
   "小米相机元数据确认 Mi-Log": "Xiaomi camera metadata confirms Mi-Log",
   "三星相机元数据确认 Samsung Log": "Samsung camera metadata confirms Samsung Log",
   "DJI 专用元数据确认 D-Log M": "DJI metadata confirms D-Log M",
@@ -197,5 +197,6 @@
   "窗口材质": "Window material",
   "原生云母 · Mica": "Native Mica",
   "纯色 · 兼容模式": "Solid · Compatibility",
-  "保留系统云母观感；遇到显示异常时可切换纯色背景。": "Use native Mica, or choose a solid background if display artifacts appear."
+  "保留系统云母观感；遇到显示异常时可切换纯色背景。": "Use native Mica, or choose a solid background if display artifacts appear.",
+  "更换视频": "Change video"
 }
