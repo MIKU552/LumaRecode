@@ -1,100 +1,111 @@
-# 映流 · FrameFlow 3.4.6
+# 映流 · FrameFlow
 
-“映”指影像与色彩，“流”指素材从拍摄格式流转到分享与归档格式。新版标志以两段渐变流带形成抽象 F，保留透明、自由的外轮廓。
-新版名称已用于 EXE、窗口、任务栏图标和程序内部标题。图标提供可编辑 SVG、透明 PNG，以及包含 16～256 像素共 10 档分辨率的 Windows ICO。
-图标使用矢量路径与渐变绘制；源文件与生成脚本位于 Brand 目录。
+面向 Windows 11 的视频转码工具，提供 FFmpeg 图形界面，可压缩普通视频、将相机 Log 转换为 HDR / SDR，或将 HDR 视频转换为 SDR。支持输出 MP4 / MKV，使用 HEVC、AV1 或 H.264 编码。
 
-这个版本使用 C# 和 Microsoft Windows App SDK / WinUI 3 构建原生 Windows 界面，使用原生控件、Mica 背景和系统主题资源。
+[下载最新版本](https://github.com/MIKU552/FrameFlow/releases/latest) · [更新记录](CHANGELOG.md) · [从源码构建](#从源码构建)
 
-## 外观设置
+## 快速开始
 
-右上角语言按钮提供“跟随系统 / 简体中文 / English”，即时更新界面。首次运行默认跟随系统的首选界面语言：中文（含 zh-CN / zh-TW / zh-HK 等）使用简体中文，英文及其他语言使用英文。手动选择会保存，下次启动继续使用。
+1. 从 [Releases](https://github.com/MIKU552/FrameFlow/releases) 下载 **FrameFlow.exe** 并运行。发布版为 Windows x64 单文件程序，已包含界面运行时、转换组件和 LUT，无须安装 .NET 或 Python。
+2. 准备 Windows 版 [FFmpeg](https://ffmpeg.org/download.html)，下载页的 **Windows EXE Files** 区域提供预编译版本链接。需要同时包含 **ffmpeg.exe** 和 **ffprobe.exe**。程序优先从 `PATH` 查找；未找到时，在弹出的窗口中选择这两个文件。右上角齿轮可随时修改路径。
+3. 将视频拖入素材区域，或点击“选择视频”。程序会读取分辨率、帧率、位深、色彩标签和音轨，并识别可用的 Log / HDR 标记。
+4. 确认 SDR / HDR 输出、用途和视频编码。普通 SDR 默认输出 SDR，HDR 默认保留 HDR，已识别曲线的 Log 默认转换为 HLG HDR。
+5. 确认保存位置，点击“开始转换”。底部显示进度、转码帧率、当前编码位置和预估剩余时间；详细 FFmpeg 命令与错误信息位于“转换日志”。
 
-语言切换覆盖主界面、素材信息、外观面板、进度与程序提示，保留素材、输出路径和编码选项；转换过程中也可切换。相机曲线、编码器与 FFmpeg 原始日志保留其技术名称和原始内容。
+**首次使用：**“快速分享”使用 Intel QSV 硬件编码，需要显卡支持所选编码器。没有相应 Intel 硬件时，选择“软件归档”使用 CPU 编码。
 
-右上角的调色盘按钮打开“界面配色”面板。“主题模式”提供“跟随系统 / 浅色 / 深色”，与强调色设置集中放在同一个面板中。首次运行默认跟随系统，手动选择后会保存，下次启动继续使用。
+## 主要功能
 
-配色面板保留 WinUI 原生圆角、阴影和开关动画。3.4.5 将面板放到独立的原生弹出窗口中，面板底色使用随浅色 / 深色 / 高对比度更新的不透明系统画刷，避免在主窗口的 Mica 上叠加一层亚克力。已在本机开启 HDR 时实测，白色亮带和关闭时的白块滞后消失。
+- **视频压缩**：按“快速分享 / 软件归档”分类选择编码档，支持 HEVC、AV1、H.264。
+- **色彩转换**：内置相机 Log → HLG HDR、Log → Rec.709 SDR、HLG / PQ HDR → SDR 三组转换。
+- **格式控制**：独立选择 MP4 / MKV、色度采样和音频策略；4:2:2 原片可直接输入并转换为 4:2:0。
+- **素材识别**：显示视频与逐条音轨信息，根据原片元数据设置默认选项；无法确认的输入类型或相机曲线可手动指定。
+- **输出检查**：完成后核对位深、采样、色彩标签及所需 HDR 静态元数据；保留原片，避免覆盖已有输出，取消时清理本次临时文件。
+- **原生 Windows 界面**：WinUI 3、Mica、浅色 / 深色 / 跟随系统、系统或自定义强调色，中英文即时切换。
 
-主界面的“窗口材质”默认选择“原生云母 · Mica”：SDR 使用窗口级 Mica，HDR 使用新版 WinUI 的 SystemBackdropElement 在界面层中绘制原生 Mica，保留真实系统云母材质。切换 HDR 或移动到其他显示器时自动更新，不更改 Windows HDR 设置，也不影响视频转换的 HDR / SDR 选择。
+## 编码与输出
 
-如果当前系统、驱动或显示器仍存在透明合成异常，可以手动选择“纯色 · 兼容模式”，程序记住选择。高对比度模式优先使用系统颜色。使用系统强调色时不再反复切换主题来刷新颜色。
+| 用途 | 编码器 | 自动封装 | 音频默认策略 |
+| --- | --- | --- | --- |
+| 快速分享 | Intel QSV：HEVC / AV1 / H.264 | MP4 | HEVC、H.264 使用 AAC；AV1 使用 Opus |
+| 软件归档 | CPU：x265 / SVT-AV1 / x264 | MKV | 复制原音轨 |
 
-- “使用系统强调色”默认开启，读取 Windows 的强调色。
-- 点击预设色块可切换为自定义强调色。
-- 展开“自定义颜色”可使用原生 ColorPicker 的色谱、通道与十六进制输入。
-- 强调色用于主按钮、单选/勾选状态、输入焦点和进度。
-- “恢复默认外观”同时恢复跟随系统主题和系统强调色。
+封装和音频均可手动调整。在“格式与音频”中可选择 AAC、Opus 或复制原音轨。MP4 配合音轨复制时，程序会先检查封装兼容性。
 
-外观设置只改变界面，不改变视频画面。高对比度模式优先使用系统可访问性颜色。
+- **HDR**：输出 10 位，使用 HEVC 或 AV1。
+- **SDR**：快速分享输出 8 位；软件归档的 HEVC / AV1 输出 10 位，H.264 输出 8 位。
+- **色度采样**：默认输出 4:2:0；软件归档的 HEVC / H.264 可选 4:2:2。
 
-启动窗口会按显示器工作区限制尺寸并居中，底部操作区保留在屏幕内。
+编码器参数在界面中显示，完整预设见 [recommended-presets.json](Worker/assets/recommended-presets.json)。转换会重新编码视频；选择“复制原音轨”只影响音频处理。
 
-3.4.6 修复宽窗口下内容整体右移和右侧控件被裁切的问题。宽屏中内容限制最大宽度并对称居中，普通窗口随可用宽度伸展，窄窗口继续使用单列布局。
+## 色彩转换
 
-## 转换视频
+| 输入素材 | 转换方式 | 输出 |
+| --- | --- | --- |
+| 普通 SDR | 不套用 LUT，保留 / 标准化 | Rec.709 SDR |
+| 相机 Log | 使用对应曲线的内置 LUT | BT.2020 HLG HDR，或 Rec.709 SDR |
+| HLG / PQ HDR | 保留 HDR | 保留原 HLG / PQ 类型 |
+| HLG / PQ HDR | HDR → SDR 色调映射 | Rec.709 SDR |
 
-1. 拖入素材或点击“选择视频”。也可以粘贴完整路径后按 Enter。
-2. 确认 SDR / HDR、用途和编码器；相机 Log 会自动选择匹配的 HLG 转换。
-3. 需要调整采样或音频时，展开“格式与音频”。
-4. 确认输出路径，点击“开始转换”。
+内置曲线支持 **小米 Mi-Log、DJI Osmo Pocket 3 D-Log M、Samsung Log**。自动识别依赖原片元数据；标记缺失或曲线无法确认时，需要核对“输入解释”和“相机曲线”。
 
-保留之前的实测编码质量档和三组色彩转换。
+使用范围：
 
-“封装格式”独立提供“自动 / MP4 / MKV”。自动模式下，快速分享默认 MP4，软件归档默认 MKV；手动选择覆盖默认封装，编码器和质量档保持原选择。切换封装会同步文件后缀，保留手动指定的文件名和目录。
+- Log 转换需要对应相机的高位深原片。内置 LUT 使用固定的曝光和高光映射，不能恢复原片已剪切的高光。
+- 当前不提供 SDR → HDR 转换，也不负责 HDR10+ / Dolby Vision 动态元数据的重建。
+- HDR 文件在接收端能否以 HDR 显示，取决于播放设备、软件和分享平台。
 
-软件归档选择 MP4 且复制原音轨时，会在视频编码之前用当前 FFmpeg 检查音轨是否能封装。遇到不支持的原音轨会提示改用 AAC 或 MKV，不会擅自改写音频策略。
+## 运行要求
 
-素材卡片显示视频编码 / Profile、分辨率、帧率、每分量位深、采样、可用的码率与色彩标签；逐条显示音轨的编码、声道、采样率和可用码率。位深读取自 ffprobe 的像素格式描述，不再笼统写“高位深”。
-
-参数摘要直接读取执行后端使用的配置，额外参数与编码器质量档一起显示。例如 x265 medium / CRF23 会显示 pools=16、rdoq-level=2、psy-rdoq=1。x264 的 AQ 参数和 SVT-AV1 的 tune、lp、量化矩阵等参数也会显示。
-
-| 分类 | 选项 |
+| 组件 | 要求 |
 | --- | --- |
-| 快速分享 | Intel QSV HEVC TU4/ICQ24、AV1 TU4/ICQ26、H.264 TU4/ICQ22 |
-| 软件归档 | x265 medium/CRF23、SVT-AV1 preset4/CRF32、x264 medium/CRF21 |
-| AV1 更快备用 | SVT-AV1 preset6/CRF32/lp4 |
-| 色彩转换 | Log → HLG HDR、Log → Rec.709 SDR、HLG/PQ HDR → SDR |
-| Log 曲线 | 小米 Mi-Log、Pocket 3 D-Log M、Samsung Log |
+| 系统 | Windows 11 x64 |
+| FFmpeg / ffprobe | 由使用者提供；所选构建需包含任务使用的解码器、编码器和滤镜 |
+| Intel QSV | 仅“快速分享”需要；所选编码格式须受显卡及驱动支持 |
+| Log 转换 | FFmpeg 的 `zscale`、`lut3d` 滤镜 |
+| Log / HDR → SDR | FFmpeg 的 `libplacebo` 滤镜及可用的 Vulkan 驱动；Log 输入还需上述 Log 转换滤镜 |
 
-HDR 始终输出 10 位，禁用 H.264 和 SDR8。SDR 快速分享输出 8 位，软件归档 HEVC/AV1 使用实测 10 位档。封装可独立选择 MP4 / MKV。
+可读取的输入格式取决于所选 FFmpeg 的解码能力。缺少编码器或滤镜时，程序会显示所需组件，工具路径可在右上角齿轮中更换。
 
-默认输出 4:2:0，4:2:2 原片在同一次转换中自动降采样，无须提前处理。软件归档 HEVC / H.264 可选 4:2:2，AV1 和快速分享使用 4:2:0。
+界面语言和主题默认跟随系统。中文系统使用简体中文，其他系统语言默认使用英文。设置保存在 `%LOCALAPPDATA%\FrameFlow\settings.json`。
 
-快速分享需要支持对应编码器的 Intel 显卡。套 LUT、4:2:2 输入及软件归档使用软件解码；“使用软件解码”也可手动开启。套 LUT 和修改画面会重新编码视频。
+## 从源码构建
 
-## FFmpeg
+需要 Windows x64、**.NET 8 SDK** 和 **Python 3.14**，并确保 `dotnet`、`python` 可在命令行中调用。
 
-单文件 EXE 已包含原生界面运行时、本地转换组件和 LUT，不需要安装 .NET 或 Python。FFmpeg / ffprobe 没有打包，优先从 PATH 查找；缺少时会显示工具路径窗口，支持自行选择并记住路径。右上角齿轮可以随时更换工具。
+```powershell
+git clone https://github.com/MIKU552/FrameFlow.git
+cd FrameFlow
+.\build.ps1
+```
 
-APV 输入需要支持 APV 解码的 FFmpeg，本次验证使用 FFmpeg 9.0.2 full build。Log → SDR 与 HDR → SDR 使用 zscale / lut3d / libplacebo 和可用的 Vulkan 驱动。
+构建脚本会创建 Python 虚拟环境，使用 PyInstaller 打包转换组件，再通过 .NET 发布 WinUI 3 前端。首次构建需要从 PyPI 和 NuGet 下载依赖。
 
-## 识别与色彩说明
+构建产物：
 
-小米读取 record_log 标记，三星读取 logvideo 标记，Pocket 3 读取 DJI djmd 专用元数据。你提供的 Pocket 3 样片虽然标记 BT.709，仍能从专用元数据识别 D-Log M。
+```text
+dist/FrameFlow.exe
+```
 
-元数据不足时，需要手动确认输入类型或相机曲线。仅凭画面不能可靠区分所有丢失标记的 Log。
+运行语言与资源检查：
 
-原生 HDR 保留原 HLG / PQ 类型。Log 直接分享方案输出 HLG。HDR → SDR 使用 BT.2390 色调映射，清理 HDR 元数据。HDR10+ 可转 SDR，当前不负责重新生成动态 HDR；Dolby Vision 使用专门流程。
+```powershell
+dotnet run --project qa/LanguageChecks/LanguageChecks.csproj -c Release
+```
 
-LUT 采用固定曝光和高光映射，不恢复原片已剪切的高光。Pocket 3 LUT 来自 OpenOSV v0.6.4 拟合模型，是第三方转换。
+## 项目结构
 
-参考来源：[小米](https://www.mi.com/global/product/aces/)、[Samsung](https://developer.samsung.com/mobile/samsung-log-video.html)、[OpenOSV](https://github.com/Kemerd/OpenOSV/releases/tag/v0.6.4)。
+```text
+App/                  WinUI 3 界面、主题、本地化与任务交互
+Worker/               素材识别、FFmpeg 命令生成与输出校验
+Worker/assets/        LUT、编码预设与第三方许可
+Brand/                品牌图形与图标生成脚本
+qa/LanguageChecks/    语言策略、翻译及资源检查
+build.ps1             Windows 单文件 EXE 构建脚本
+```
 
-## 保存和取消
+## 文档与第三方组件
 
-不覆盖已有文件，也不修改原片。转换成功后先核对色彩标签、位深、采样和所需 HDR 静态元数据，再保存到最终位置。取消清理本次临时输出。“转换日志”包含 FFmpeg 命令和错误信息。
-
-底部显示进度条、完成百分比及“当前编码位置 / 总时长”、实时转码帧率（fps）、已用时间与预估剩余时间。估算基于实际编码进度和速度，会随滤镜、场景复杂度和硬件负载变化；刚开始转换时先显示“估算中”。
-
-设置保存在当前用户的 `%LOCALAPPDATA%/FrameFlow/settings.json`。首次运行会自动沿用旧版 VideoConverterWinUI 的主题与 FFmpeg 路径设置，旧设置文件保留。
-
-## 从源代码构建
-
-在 Windows x64 上安装 .NET 8 SDK 和 Python 3.14，运行 build.ps1。构建使用 Windows App SDK 2.0.1，通过 NuGet 获取 Windows SDK 工具，生成 dist/FrameFlow.exe。界面为 WinUI 3，独立本地 worker 继续使用已验证的 FFmpeg 转换后端。
-
-单文件分发采用微软支持的自包含发布，运行时会将组件展开到当前用户的缓存目录。
-
-## 版本历史
-
-历史版本与 HDR 菜单问题的修复过程见 [CHANGELOG.md](CHANGELOG.md)。本仓库的早期提交由保留的真实源码包补录，来源与校验值见 [HISTORY.md](HISTORY.md)。
+- [CHANGELOG.md](CHANGELOG.md)：版本更新记录。
+- [HISTORY.md](HISTORY.md)：早期源码快照的归档说明。
+- [THIRD_PARTY.md](Worker/assets/THIRD_PARTY.md)：组件许可及 LUT 来源。Pocket 3 的 D-Log M → HLG LUT 来自第三方 OpenOSV 项目。
