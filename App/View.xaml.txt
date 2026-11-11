@@ -19,14 +19,14 @@
   <Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <Grid x:Name="TitleDrag" Margin="16,0,150,0">
     <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" IsHitTestVisible="False">
-      <FontIcon Glyph="&#xE714;" FontSize="16"/><TextBlock Text="视频转换" FontSize="12" VerticalAlignment="Center"/>
+      <Image Source="ms-appx:///Assets/FrameFlow.png" Width="20" Height="20"/><TextBlock Text="映流 · FrameFlow" FontSize="12" VerticalAlignment="Center"/>
     </StackPanel>
   </Grid>
   <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" Padding="32,20,32,24">
     <StackPanel Spacing="24" MaxWidth="1240" HorizontalAlignment="Stretch">
       <Grid ColumnSpacing="12">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <StackPanel Spacing="4"><TextBlock Text="转换视频" FontSize="30" FontWeight="SemiBold"/><TextBlock Text="为分享选择格式，让色彩保持正确。" Style="{StaticResource Secondary}"/></StackPanel>
+        <StackPanel Spacing="4"><TextBlock Text="映流" FontSize="30" FontWeight="SemiBold"/><TextBlock Text="FrameFlow · 视频转码与色彩转换" Style="{StaticResource Secondary}"/></StackPanel>
         <DropDownButton x:Name="ThemeButton" Grid.Column="1" VerticalAlignment="Center" AutomationProperties.Name="主题模式"/>
         <Button x:Name="PaletteButton" Grid.Column="2" VerticalAlignment="Center" ToolTipService.ToolTip="界面配色" AutomationProperties.Name="界面配色"><FontIcon Glyph="&#xE790;" FontSize="16"/></Button>
         <Button x:Name="ToolsButton" Grid.Column="3" VerticalAlignment="Center" ToolTipService.ToolTip="FFmpeg 工具路径" AutomationProperties.Name="工具路径"><FontIcon Glyph="&#xE713;" FontSize="16"/></Button>

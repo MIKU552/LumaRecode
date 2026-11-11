@@ -9,11 +9,18 @@ public sealed class UserSettings
     public string CustomColor { get; set; } = "#0078D4";
     public string Ffmpeg { get; set; } = "";
     public string Ffprobe { get; set; } = "";
-    public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VideoConverterWinUI");
+    public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FrameFlow");
     private static string FileName => Path.Combine(Folder, "settings.json");
     public static UserSettings Load()
     {
-        try { return JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(FileName)) ?? new(); }
+        try
+        {
+            var legacy = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VideoConverterWinUI", "settings.json");
+            var source = File.Exists(FileName) ? FileName : legacy;
+            var settings = JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(source)) ?? new();
+            if (source == legacy) settings.Save();
+            return settings;
+        }
         catch { return new(); }
     }
     public void Save()

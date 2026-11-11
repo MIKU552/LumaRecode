@@ -1,4 +1,8 @@
-# 视频转换 3.1 · WinUI 3
+# 映流 · FrameFlow 3.2
+
+“映”指影像与色彩，“流”指素材从拍摄格式流转到分享与归档格式。英文名 FrameFlow 与叠放画面帧的图标呼应。
+新版名称已用于 EXE、窗口、任务栏图标和程序内部标题。图标提供可编辑 SVG、透明 PNG，以及包含 16～256 像素共 10 档分辨率的 Windows ICO。
+图标使用矢量路径与渐变绘制；源文件与生成脚本位于 Brand 目录。
 
 这个版本使用 C# 和 Microsoft Windows App SDK / WinUI 3 构建原生 Windows 界面，使用原生控件、Mica 背景和系统主题资源。
 
@@ -73,10 +77,10 @@ LUT 采用固定曝光和高光映射，不恢复原片已剪切的高光。Pock
 
 底部显示进度条、完成百分比及“当前编码位置 / 总时长”、实时转码帧率（fps）、已用时间与预估剩余时间。估算基于实际编码进度和速度，会随滤镜、场景复杂度和硬件负载变化；刚开始转换时先显示“估算中”。
 
-设置保存在当前用户的 `%LOCALAPPDATA%/VideoConverterWinUI/settings.json`。
+设置保存在当前用户的 `%LOCALAPPDATA%/FrameFlow/settings.json`。首次运行会自动沿用旧版 VideoConverterWinUI 的主题与 FFmpeg 路径设置，旧设置文件保留。
 
 ## 从源代码构建
 
-在 Windows x64 上安装 .NET 8 SDK 和 Python 3.14，运行 build.ps1。构建使用 Windows App SDK 1.8.260921001，通过 NuGet 获取 Windows SDK 工具，生成 dist/VideoConverter.WinUI_3.1.exe。界面为 WinUI 3，独立本地 worker 继续使用已验证的 FFmpeg 转换后端。
+在 Windows x64 上安装 .NET 8 SDK 和 Python 3.14，运行 build.ps1。构建使用 Windows App SDK 1.8.260921001，通过 NuGet 获取 Windows SDK 工具，生成 dist/FrameFlow.exe。界面为 WinUI 3，独立本地 worker 继续使用已验证的 FFmpeg 转换后端。
 
 单文件分发采用微软支持的自包含发布，运行时会将组件展开到当前用户的缓存目录。

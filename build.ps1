@@ -15,5 +15,5 @@ try {
     } finally { $env:PATH = $taskPreviousPath }
     dotnet publish App/VideoConverter.WinUI.csproj -c Release -r win-x64 -p:Platform=x64 -o dist
     if ($LASTEXITCODE -ne 0) { throw 'WinUI build failed.' }
-    Write-Host 'Built dist/VideoConverter.WinUI_3.1.exe'
+    Write-Host 'Built dist/FrameFlow.exe'
 } finally { Pop-Location }

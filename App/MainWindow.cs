@@ -50,7 +50,7 @@ public sealed class MainWindow : Window
 
     public MainWindow()
     {
-        Title = "视频转换 3.1 · WinUI 3";
+        Title = "映流 · FrameFlow";
         SystemBackdrop = new MicaBackdrop();
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("VideoConverter.View.xaml.txt")!;
         using var reader = new StreamReader(stream);
@@ -58,7 +58,7 @@ public sealed class MainWindow : Window
         Content = root;
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(Control<Grid>("TitleDrag"));
-        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "app.ico"));
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "FrameFlow.ico"));
         var dpi = GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)) / 96d;
         var work = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(AppWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Primary).WorkArea;
         var width = (int)Math.Min(1120 * dpi, work.Width - 64 * dpi);

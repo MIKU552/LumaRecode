@@ -26,7 +26,7 @@ public sealed partial class ConverterApp : Application
         InitializeComponent();
         UnhandledException += (_, e) =>
         {
-            var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VideoConverterWinUI");
+            var folder = UserSettings.Folder;
             Directory.CreateDirectory(folder);
             File.WriteAllText(Path.Combine(folder, "error.log"), e.Exception.ToString());
         };
