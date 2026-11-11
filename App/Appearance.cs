@@ -14,9 +14,8 @@ public sealed class Appearance
     private readonly UserSettings settings;
     private readonly UISettings system = new();
     private readonly AccessibilitySettings accessibility = new();
-    private readonly DropDownButton themeButton;
     private readonly List<string> overridden = new();
-    private readonly Dictionary<string, RadioMenuFlyoutItem> themeItems = new();
+    private ComboBox? themeChoice;
     private bool applying;
     private bool disposed;
     private bool highContrast;
@@ -30,15 +29,6 @@ public sealed class Appearance
     {
         this.root = root; this.window = window; this.settings = settings;
         window.Closed += (_, _) => disposed = true;
-        themeButton = (DropDownButton)root.FindName("ThemeButton");
-        var menu = new MenuFlyout();
-        foreach (var (key, name) in new[] { ("system", L.T("跟随系统")), ("light", L.T("浅色")), ("dark", L.T("深色")) })
-        {
-            var item = new RadioMenuFlyoutItem { Text = name, GroupName = "AppTheme", IsChecked = settings.Theme == key };
-            item.Click += (_, _) => { settings.Theme = key; settings.Save(); ApplyTheme(); };
-            menu.Items.Add(item); themeItems[key] = item;
-        }
-        themeButton.Flyout = menu;
         ((Button)root.FindName("PaletteButton")).Flyout = BuildPalette();
         root.ActualThemeChanged += (_, _) => { if (!applying) ApplyAccent(false); UpdateCaption(); };
         system.ColorValuesChanged += (_, _) => root.DispatcherQueue.TryEnqueue(() => { ApplyAccent(false); UpdateCaption(); });
@@ -59,17 +49,14 @@ public sealed class Appearance
         applying = true;
         highContrast = accessibility.HighContrast;
         root.RequestedTheme = settings.Theme switch { "dark" => ElementTheme.Dark, "light" => ElementTheme.Light, _ => ElementTheme.Default };
+        if (themeChoice is not null)
+            themeChoice.SelectedItem = themeChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => (string)item.Tag == settings.Theme) ?? themeChoice.Items[0];
         applying = false;
-        foreach (var (key, item) in themeItems) item.IsChecked = key == settings.Theme;
-        themeButton.Content = settings.Theme switch { "dark" => L.T("深色"), "light" => L.T("浅色"), _ => L.T("跟随系统") };
         ApplyAccent(true); UpdateCaption();
     }
 
     public void Relocalize()
     {
-        foreach (var (key, item) in themeItems)
-            item.Text = key switch { "dark" => L.T("深色"), "light" => L.T("浅色"), _ => L.T("跟随系统") };
-        themeButton.Content = settings.Theme switch { "dark" => L.T("深色"), "light" => L.T("浅色"), _ => L.T("跟随系统") };
         swatches.Clear();
         ((Button)root.FindName("PaletteButton")).Flyout = BuildPalette();
         ApplyAccent(false);
@@ -140,6 +127,17 @@ public sealed class Appearance
     {
         var content = new StackPanel { Width = 300, Spacing = 16 };
         content.Children.Add(new TextBlock { Text = L.T("界面配色"), FontSize = 20, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        themeChoice = new ComboBox { Header = L.T("主题模式"), HorizontalAlignment = HorizontalAlignment.Stretch };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(themeChoice, L.T("主题模式"));
+        foreach (var (key, name) in new[] { ("system", L.T("跟随系统")), ("light", L.T("浅色")), ("dark", L.T("深色")) })
+            themeChoice.Items.Add(new ComboBoxItem { Tag = key, Content = name });
+        themeChoice.SelectedItem = themeChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => (string)item.Tag == settings.Theme) ?? themeChoice.Items[0];
+        themeChoice.SelectionChanged += (_, _) =>
+        {
+            if (applying || themeChoice.SelectedItem is not ComboBoxItem { Tag: string key } || settings.Theme == key) return;
+            settings.Theme = key; settings.Save(); ApplyTheme();
+        };
+        content.Children.Add(themeChoice);
         var note = new TextBlock { Text = L.T("为按钮、选择状态和进度设置强调色。"), TextWrapping = TextWrapping.Wrap, Opacity = .65, FontSize = 13 };
         content.Children.Add(note);
         systemSwitch = new ToggleSwitch { Header = L.T("使用系统强调色"), IsOn = settings.SystemAccent, OnContent = L.T("跟随 Windows"), OffContent = L.T("自定义颜色") };
@@ -170,11 +168,20 @@ public sealed class Appearance
         var advanced = new Expander { Header = L.T("自定义颜色"), Content = picker, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         content.Children.Add(advanced);
         var restore = new Button { Content = L.T("恢复默认外观"), HorizontalAlignment = HorizontalAlignment.Stretch };
-        restore.Click += (_, _) => { settings.Theme = "system"; settings.SystemAccent = true; settings.CustomColor = "#0078D4"; systemSwitch.IsOn = true; picker.Color = Parse(settings.CustomColor); settings.Save(); ApplyTheme(); };
+        restore.Click += (_, _) =>
+        {
+            applying = true;
+            settings.Theme = "system"; settings.SystemAccent = true; settings.CustomColor = "#0078D4";
+            systemSwitch.IsOn = true; picker.Color = Parse(settings.CustomColor);
+            applying = false;
+            settings.Save(); ApplyTheme();
+        };
         content.Children.Add(restore);
         systemSwitch.Toggled += (_, _) => { if (applying) return; settings.SystemAccent = systemSwitch.IsOn; settings.Save(); ApplyAccent(true); };
         picker.ColorChanged += (_, e) => { if (!applying) ChooseColor(e.NewColor, false); };
-        return new Flyout { Content = content, Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight };
+        return new Flyout { Content = new ScrollViewer { Content = content, MaxHeight = 640,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
+            Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight };
     }
 
     private void ChooseColor(Color color, bool syncPicker = true)
