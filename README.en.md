@@ -113,12 +113,13 @@ docs/benchmarks/      Encoding reports, preset provenance, and retained measurem
 
 All original project code, UI implementation, build work, and repository maintenance were completed through **Codex for Windows**, using **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** with **Extra high (`xhigh`)** reasoning. The maintainer, **[MIKU552](https://github.com/MIKU552)**, defines requirements, supplies hardware and source footage, chooses approaches, and personally verifies behavior and results on the actual device.
 
-This describes the project's development process. FFmpeg, WinUI 3, third-party LUTs, and other dependencies retain their original authorship and licenses. See [CONTRIBUTORS.md](CONTRIBUTORS.md) for human and AI roles and Git attribution.
+This describes the project's development process. FFmpeg, WinUI 3, third-party LUTs, and other dependencies retain their original authorship and licenses.
+
+Git commits credit both [Codex](https://github.com/codex) and MIKU552 and are signed with the maintainer's existing GPG key.
 
 ## Documentation and third-party components
 
 - [Encoding benchmark report](docs/benchmarks/encoding-benchmark.en.md): empirical basis, scope, and data provenance for the built-in presets.
-- [CONTRIBUTORS.md](CONTRIBUTORS.md): maintainer, AI development tool, and commit attribution.
 - [CHANGELOG.md](CHANGELOG.md): release history, in Chinese.
 - [HISTORY.md](HISTORY.md): provenance of the imported early source snapshots, in Chinese.
 - [THIRD_PARTY.md](Worker/assets/THIRD_PARTY.md): licenses and LUT sources. The Pocket 3 D-Log M → HLG LUT comes from the third-party OpenOSV project.

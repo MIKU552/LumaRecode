@@ -113,12 +113,13 @@ docs/benchmarks/       编码实测报告、预设来源与可核对的数据
 
 本项目自主代码的编写、界面实现、构建和仓库维护工作，全部通过 **Windows 版 Codex** 完成，使用 **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** 模型和 **极高（xhigh）** 推理设置。维护者 **[MIKU552](https://github.com/MIKU552)** 负责提出需求、提供设备与素材、选择方案，并亲自进行实机使用和结果核验。
 
-以上说明针对本项目的开发过程；FFmpeg、WinUI 3、第三方 LUT 等组件保留各自作者与许可。人员、AI 工具的具体分工及 Git 署名方式见 [CONTRIBUTORS.md](CONTRIBUTORS.md)。
+以上说明针对本项目的开发过程；FFmpeg、WinUI 3、第三方 LUT 等组件保留各自作者与许可。
+
+Git 提交由 [Codex](https://github.com/codex) 与 MIKU552 共同署名，并使用维护者现有的 GPG 密钥签名。
 
 ## 文档与第三方组件
 
 - [编码测试报告](docs/benchmarks/encoding-benchmark.zh-CN.md)：内置参数的实测依据、适用范围与数据来源。
-- [CONTRIBUTORS.md](CONTRIBUTORS.md)：维护者、AI 开发工具和提交署名说明。
 - [CHANGELOG.md](CHANGELOG.md)：版本更新记录。
 - [HISTORY.md](HISTORY.md)：早期源码快照的归档说明。
 - [THIRD_PARTY.md](Worker/assets/THIRD_PARTY.md)：组件许可及 LUT 来源。Pocket 3 的 D-Log M → HLG LUT 来自第三方 OpenOSV 项目。
