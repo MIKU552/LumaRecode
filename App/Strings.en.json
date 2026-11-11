@@ -193,5 +193,9 @@
   "FFmpeg 转码失败（{0}）。请查看日志，或改用软件归档 / 软件解码。": "FFmpeg conversion failed ({0}). Check the log, or try software archive / software decoding.",
   "正在核对输出色彩和采样格式…": "Verifying output color and pixel format…",
   "未知": "Unknown",
-  "Log → HDR（HLG）": "Log → HDR (HLG)"
+  "Log → HDR（HLG）": "Log → HDR (HLG)",
+  "窗口材质": "Window material",
+  "原生云母 · Mica": "Native Mica",
+  "纯色 · 兼容模式": "Solid · Compatibility",
+  "保留系统云母观感；遇到显示异常时可切换纯色背景。": "Use native Mica, or choose a solid background if display artifacts appear."
 }

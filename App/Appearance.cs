@@ -17,6 +17,7 @@ public sealed class Appearance
     private readonly List<string> overridden = new();
     private readonly HdrBackdropCompatibility backdrop;
     private ComboBox? themeChoice;
+    private ComboBox? materialChoice;
     private bool applying;
     private bool disposed;
     private bool highContrast;
@@ -30,7 +31,7 @@ public sealed class Appearance
     {
         this.root = root; this.window = window; this.settings = settings;
         window.Closed += (_, _) => disposed = true;
-        backdrop = new HdrBackdropCompatibility((Grid)root, window);
+        backdrop = new HdrBackdropCompatibility((Grid)root, window, settings);
         ((Button)root.FindName("PaletteButton")).Flyout = BuildPalette();
         root.ActualThemeChanged += (_, _) => { if (!applying) ApplyAccent(false); UpdateCaption(); };
         system.ColorValuesChanged += (_, _) => root.DispatcherQueue.TryEnqueue(() => { ApplyAccent(false); UpdateCaption(); });
@@ -142,6 +143,18 @@ public sealed class Appearance
             settings.Theme = key; settings.Save(); ApplyTheme();
         };
         content.Children.Add(themeChoice);
+        materialChoice = new ComboBox { Header = L.T("窗口材质"), HorizontalAlignment = HorizontalAlignment.Stretch };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(materialChoice, L.T("窗口材质"));
+        materialChoice.Items.Add(new ComboBoxItem { Tag = "mica", Content = L.T("原生云母 · Mica") });
+        materialChoice.Items.Add(new ComboBoxItem { Tag = "solid", Content = L.T("纯色 · 兼容模式") });
+        materialChoice.SelectedIndex = settings.Backdrop == "solid" ? 1 : 0;
+        materialChoice.SelectionChanged += (_, _) =>
+        {
+            if (applying || materialChoice.SelectedItem is not ComboBoxItem { Tag: string key } || settings.Backdrop == key) return;
+            settings.Backdrop = key; settings.Save(); backdrop.Refresh();
+        };
+        content.Children.Add(materialChoice);
+        content.Children.Add(new TextBlock { Text = L.T("保留系统云母观感；遇到显示异常时可切换纯色背景。"), TextWrapping = TextWrapping.Wrap, Opacity = .65, FontSize = 12 });
         var note = new TextBlock { Text = L.T("为按钮、选择状态和进度设置强调色。"), TextWrapping = TextWrapping.Wrap, Opacity = .65, FontSize = 13 };
         content.Children.Add(note);
         systemSwitch = new ToggleSwitch { Header = L.T("使用系统强调色"), IsOn = settings.SystemAccent, OnContent = L.T("跟随 Windows"), OffContent = L.T("自定义颜色") };
@@ -175,7 +188,8 @@ public sealed class Appearance
         restore.Click += (_, _) =>
         {
             applying = true;
-            settings.Theme = "system"; settings.SystemAccent = true; settings.CustomColor = "#0078D4";
+            settings.Theme = "system"; settings.Backdrop = "mica"; settings.SystemAccent = true; settings.CustomColor = "#0078D4";
+            materialChoice.SelectedIndex = 0;
             systemSwitch.IsOn = true; picker.Color = Parse(settings.CustomColor);
             applying = false;
             settings.Save(); ApplyTheme();
