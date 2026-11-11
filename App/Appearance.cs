@@ -67,6 +67,7 @@ public sealed class Appearance
         if (applying || disposed) return;
         applying = true;
         highContrast = accessibility.HighContrast;
+        var hadOverrides = overridden.Count > 0;
         foreach (var key in overridden) { Application.Current.Resources.Remove(key); root.Resources.Remove(key); }
         overridden.Clear();
         var color = settings.SystemAccent ? system.GetColorValue(UIColorType.Accent) : Parse(settings.CustomColor);
@@ -105,7 +106,7 @@ public sealed class Appearance
                 Put(key + "Pressed", new SolidColorBrush(foreground) { Opacity = .85 });
             }
         }
-        if (refresh)
+        if (refresh && (hadOverrides || overridden.Count > 0))
         {
             var theme = root.RequestedTheme;
             root.RequestedTheme = dark ? ElementTheme.Light : ElementTheme.Dark;
@@ -179,8 +180,11 @@ public sealed class Appearance
         content.Children.Add(restore);
         systemSwitch.Toggled += (_, _) => { if (applying) return; settings.SystemAccent = systemSwitch.IsOn; settings.Save(); ApplyAccent(true); };
         picker.ColorChanged += (_, e) => { if (!applying) ChooseColor(e.NewColor, false); };
+        // The projected default shadow can leave a bright surface behind the flyout.
+        // Keep the native rounded surface and border without a separate shadow layer.
         return new Flyout { Content = new ScrollViewer { Content = content, MaxHeight = 640,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
+            FlyoutPresenterStyle = (Style)Application.Current.Resources["PaletteFlyoutPresenterStyle"],
             Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight };
     }
 
