@@ -2,6 +2,15 @@
 
 以下记录依据保留的源码版本整理；快照来源和补录方式见 [HISTORY.md](HISTORY.md)。
 
+## 3.5.0
+
+- 开发与发布环境升级到 .NET SDK 11.0.100 / .NET 11.0.0、Windows App SDK 2.6.5、Windows SDK BuildTools 10.0.28000.2957、官方 Python 3.15.2；固定 SDK 和 NuGet 锁文件。
+- 仅引用需要的 WinUI / Runtime 组件，移除未使用的 AI、ML、Search、Widgets 依赖；保留原生 Mica、HDR 独立弹出层、布局及语言菜单。
+- 移除 PyInstaller，直接打包完整官方嵌入式 Python。默认仍提供包含运行时的单文件 EXE，FFmpeg / ffprobe 继续使用 PATH 或用户选择的版本。
+- 可选构建不含运行时的 framework-dependent ZIP，并在工具设置中支持选择外部 Python。
+- 重整第三方许可、上游来源及哈希，使用 WinUI 正式分发条款，补齐 Python Windows 构建和 VC 运行库授权链；首次运行显示组件条款，工具窗口提供全文入口。
+- 编码预设和 LUT 数值保持不变。新增实际 worker 集成检查，覆盖 SDR、10 位 HLG、三组 Log LUT、4:2:2、音频、进度与取消清理；同步中英文构建说明。
+
 ## 3.4.7
 
 保留舒展的独立卡片布局，统一原生 WinUI 3 按钮、分组图标与信息层级；突出空状态的素材导入操作，底部操作区与页面内容对齐。修复工具栏图标裁切，语言菜单向下展开、右侧对齐并与选择框同宽，英文系统选项简化为 System；窄窗口下输入解释和操作按钮自动换行。保留 Mica、系统强调色、中英文和原生菜单阴影与动画。

@@ -75,7 +75,7 @@
 
 ## 从源码构建
 
-需要 Windows x64、**.NET 8 SDK** 和 **Python 3.14**，并确保 `dotnet`、`python` 可在命令行中调用。
+需要 Windows 11 x64、**.NET SDK 11.0.100**（由 `global.json` 固定）及 PowerShell 7。默认构建不需要预装 Python。
 
 ```powershell
 git clone https://github.com/MIKU552/FrameFlow.git
@@ -83,13 +83,17 @@ cd FrameFlow
 .\build.ps1
 ```
 
-构建脚本会创建 Python 虚拟环境，使用 PyInstaller 打包转换组件，再通过 .NET 发布 WinUI 3 前端。首次构建需要从 PyPI 和 NuGet 下载依赖。
+构建脚本从 NuGet 还原锁定依赖，下载并校验官方 Python 3.15.2 嵌入式运行时，收集完整许可，最后生成包含 .NET 11、Windows App SDK 2.6.5 与 Python 的单文件 EXE。没有使用 PyInstaller；FFmpeg 仍由用户提供。首次启动需要接受随附第三方二进制组件的适用条款，可在工具路径窗口查看完整许可。
 
 构建产物：
 
 ```text
-dist/FrameFlow.exe
+dist/SelfContained/FrameFlow.exe
 ```
+
+另有 `./build.ps1 -Deployment FrameworkDependent` 可构建精简 ZIP，需要用户自行安装 .NET 11 Desktop Runtime、Windows App Runtime 2.6 与 Python 3.14 或更新版本，并在程序内指定工具路径；默认发布使用上面的完整单文件版本。
+
+可选图标重绘工具的版本在 `Brand/requirements.txt`，常规构建不需要 Qt / PySide6。依赖版本、支持周期和分发依据见[依赖说明](docs/dependencies.md)。
 
 运行语言与资源检查：
 
@@ -102,7 +106,9 @@ dotnet run --project qa/LanguageChecks/LanguageChecks.csproj -c Release
 ```text
 App/                  WinUI 3 界面、主题、本地化与任务交互
 Worker/               素材识别、FFmpeg 命令生成与输出校验
-Worker/assets/        LUT、编码预设与第三方许可
+Worker/assets/        LUT、编码预设与 LUT 来源
+licenses/             随程序分发的原始许可、声明和版本清单
+tools/                许可收集与发布检查
 Brand/                品牌图形与图标生成脚本
 qa/LanguageChecks/    语言策略、翻译及资源检查
 build.ps1             Windows 单文件 EXE 构建脚本
@@ -121,7 +127,7 @@ Git 提交由 [Codex](https://github.com/codex) 与 MIKU552 共同署名，并�
 
 本项目的自主代码、文档、原创图形及项目生成的 Mi-Log / Samsung Log LUT，采用 **[Apache License 2.0](LICENSE)**。允许商用、修改及闭源再分发，须遵守保留许可与相关声明、标明修改等条件；另见 [NOTICE](NOTICE)。
 
-第三方 LUT、Microsoft / Python 运行时等组件保留各自许可。当前 Windows 发行依赖仍有需要处理的预览使用与再分发条款，详见[第三方组件与发布事项](Worker/assets/THIRD_PARTY.md#发布事项--release-status)。本次添加源码许可没有重新发布旧版 EXE。
+第三方 LUT 与运行时保留各自许可。3.5.0 使用正式版 Windows App SDK，并随程序保留所需许可、声明和组件条款；详见[第三方组件](Worker/assets/THIRD_PARTY.md)与[依赖及分发说明](docs/dependencies.md)。
 
 ## 文档与第三方组件
 

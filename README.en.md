@@ -75,7 +75,7 @@ Language and theme follow the system by default. Chinese system locales use Simp
 
 ## Build from source
 
-Use Windows x64 with the **.NET 8 SDK** and **Python 3.14**, both available on the command line.
+Use Windows 11 x64, **.NET SDK 11.0.100** (pinned by `global.json`), and PowerShell 7. The default build does not require an installed Python interpreter.
 
 ```powershell
 git clone https://github.com/MIKU552/FrameFlow.git
@@ -83,13 +83,17 @@ cd FrameFlow
 .\build.ps1
 ```
 
-The script creates a Python virtual environment, packages the conversion worker with PyInstaller, then publishes the WinUI 3 frontend. The first build downloads dependencies from PyPI and NuGet.
+The script restores locked NuGet dependencies, downloads and verifies the official Python 3.15.2 embeddable distribution, collects full legal notices, and publishes a single EXE containing .NET 11, Windows App SDK 2.6.5, and Python. PyInstaller is no longer used. FFmpeg remains user-supplied. First launch requests acceptance of the bundled third-party binary terms; full notices remain accessible from Tool paths.
 
 Output:
 
 ```text
-dist/FrameFlow.exe
+dist/SelfContained/FrameFlow.exe
 ```
+
+`./build.ps1 -Deployment FrameworkDependent` optionally builds a smaller ZIP requiring a separately installed .NET 11 Desktop Runtime, Windows App Runtime 2.6, and Python 3.14 or later, with tool paths configured in the app. The default release is the complete single EXE above.
+
+Optional artwork tools are pinned in `Brand/requirements.txt`; normal builds do not require Qt / PySide6. See [dependency notes](docs/dependencies.md) for versions, support, and distribution evidence.
 
 Run the language and resource checks:
 
@@ -102,7 +106,9 @@ dotnet run --project qa/LanguageChecks/LanguageChecks.csproj -c Release
 ```text
 App/                  WinUI 3 UI, appearance, localization, and job interaction
 Worker/               Source inspection, FFmpeg commands, and output verification
-Worker/assets/        LUTs, encoding presets, and third-party licenses
+Worker/assets/        LUTs, encoding presets, and LUT provenance
+licenses/             Original legal texts, notices, and version manifest
+tools/                Legal collection and release checks
 Brand/                Branding assets and icon-generation scripts
 qa/LanguageChecks/    Language-policy, translation, and resource checks
 build.ps1             Windows single-file EXE build script
@@ -121,7 +127,7 @@ Git commits credit both [Codex](https://github.com/codex) and MIKU552 and are si
 
 Original project code, documentation, graphics, and the project's generated Mi-Log / Samsung Log LUTs use the **[Apache License 2.0](LICENSE)**. Commercial use, modification, and proprietary redistribution are permitted subject to its conditions, including license / notice retention and identification of changes. See [NOTICE](NOTICE).
 
-Third-party LUTs, Microsoft / Python runtimes, and other dependencies retain their own licenses. Current Windows distribution dependencies still have preview-use and redistribution terms to resolve; see [third-party components and release status](Worker/assets/THIRD_PARTY.md#发布事项--release-status). This source licensing update does not republish the existing EXEs.
+Third-party LUTs and runtimes retain their own terms. Version 3.5.0 uses production Windows App SDK packages and includes applicable licenses, notices, and component terms. See [third-party components](Worker/assets/THIRD_PARTY.md) and [dependency and distribution notes](docs/dependencies.md).
 
 ## Documentation and third-party components
 
