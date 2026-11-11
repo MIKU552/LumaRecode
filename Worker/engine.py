@@ -311,7 +311,7 @@ class Job:
                     for line in stream:
                         line = line.strip()
                         key, separator, value = line.partition('=')
-                        if key in {'frame', 'out_time_us', 'speed'}:
+                        if key in {'frame', 'out_time_us', 'speed', 'fps'}:
                             progress[key] = value.strip()
                         elif key == 'progress':
                             progress['duration'] = seconds or media.duration

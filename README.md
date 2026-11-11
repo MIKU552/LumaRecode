@@ -1,66 +1,74 @@
-# 视频转换 2.0
+# 视频转换 3.0 · WinUI 3
 
-双击 VideoConverter.exe 即可运行，不需要安装 Python。界面采用 Windows 11 Fluent 视觉风格，使用 PySide6 / Qt 实现。
+这个版本使用 C# 和 Microsoft Windows App SDK / WinUI 3 构建原生 Windows 界面，使用原生控件、Mica 背景和系统主题资源。
 
-## 开始使用
+## 外观设置
 
-1. 拖入视频，或点击“选择文件”。
-2. 程序读取相机元数据，自动选择 SDR / HDR、HEVC 快速分享和匹配的 Log 曲线。
-3. 需要普通视频就选 SDR，需要 HDR 就选 HDR。确认保存位置后点击“开始转换”。
+右上角的主题按钮提供“跟随系统 / 浅色 / 深色”。首次运行默认跟随系统，手动选择后会保存，下次启动继续使用。
 
-首次运行优先查找 PATH 中的 ffmpeg.exe 和 ffprobe.exe。缺少时会弹出路径窗口，可以自行选择，两项路径保存在当前用户设置中。EXE 内置界面运行环境和 LUT，没有内置 FFmpeg。APV 输入需要支持 APV 解码的 FFmpeg；本次使用 9.0.2 full build 验证。
+旁边的调色盘按钮打开“界面配色”面板。
 
-## 编码选择
+- “使用系统强调色”默认开启，读取 Windows 的强调色。
+- 点击预设色块可切换为自定义强调色。
+- 展开“自定义颜色”可使用原生 ColorPicker 的色谱、通道与十六进制输入。
+- 强调色用于主按钮、单选/勾选状态、输入焦点和进度。
+- “恢复默认外观”同时恢复跟随系统主题和系统强调色。
 
-依次选择“用途 → 编码器 → 质量档”。原实测质量参数保留。
+外观设置只改变界面，不改变视频画面。高对比度模式优先使用系统可访问性颜色。
 
-| 用途 | 编码 | 原实测参数 | 默认音频 |
-| --- | --- | --- | --- |
-| 快速分享 | HEVC | Intel QSV TU4 / ICQ24 | AAC 256 kbps |
-| 快速分享 | AV1 | Intel QSV TU4 / ICQ26 | Opus 192 kbps |
-| 快速分享 | H.264 | Intel QSV TU4 / ICQ22 | AAC 256 kbps |
-| 软件归档 | HEVC | x265 medium / CRF23 | 复制 |
-| 软件归档 | AV1 | SVT-AV1 preset4 / CRF32 | 复制 |
-| 软件归档 | AV1 更快备用 | SVT-AV1 preset6 / CRF32 / lp4 | 复制 |
-| 软件归档 | H.264 | x264 medium / CRF21 | 复制 |
+启动窗口会按显示器工作区限制尺寸并居中，底部操作区保留在屏幕内。
 
-快速分享使用 Intel QSV，需要受支持的 Intel 显卡和驱动。软件归档用 CPU 编码。音轨可以自行选择 AAC / Opus / 复制。快速分享输出 MP4，归档输出 MKV。
+## 转换视频
 
-SDR 快速分享使用 SDR8，HDR 始终 10 位并禁用 H.264。SDR 软件归档 HEVC / AV1 使用实测的 10 位档，H.264 为 8 位。
+1. 拖入素材或点击“选择视频”。也可以粘贴完整路径后按 Enter。
+2. 确认 SDR / HDR、用途和编码器；相机 Log 会自动选择匹配的 HLG 转换。
+3. 需要调整采样或音频时，展开“格式与音频”。
+4. 确认输出路径，点击“开始转换”。
 
-## 三组色彩转换
+保留之前的实测编码质量档和三组色彩转换。
 
-- Log → HDR：Mi-Log、Pocket 3 D-Log M、Samsung Log 分别使用匹配的 LUT，输出 BT.2020 HLG。
-- Log → SDR：先使用对应 LUT 解码，再通过 BT.2390 色调映射到 Rec.709。
-- HDR → SDR：按 HLG / PQ 原片色彩做 BT.2390 色调映射，输出 Rec.709。
-- 已是 SDR 或 HDR 的素材可以选择“不套用”。HDR 原片保留原 HLG / PQ 类型。
+| 分类 | 选项 |
+| --- | --- |
+| 快速分享 | Intel QSV HEVC TU4/ICQ24、AV1 TU4/ICQ26、H.264 TU4/ICQ22 |
+| 软件归档 | x265 medium/CRF23、SVT-AV1 preset4/CRF32、x264 medium/CRF21 |
+| AV1 更快备用 | SVT-AV1 preset6/CRF32/lp4 |
+| 色彩转换 | Log → HLG HDR、Log → Rec.709 SDR、HLG/PQ HDR → SDR |
+| Log 曲线 | 小米 Mi-Log、Pocket 3 D-Log M、Samsung Log |
 
-这些操作在一个 FFmpeg 转码过程中完成，会重新编码视频。修改色彩像素需要重新编码。
-Log → SDR 和 HDR → SDR 使用 libplacebo 色调映射，界面保留统一的三组入口；需要 FFmpeg 支持 lut3d、zscale、libplacebo 和可用的 Vulkan 驱动。
+HDR 始终输出 10 位，禁用 H.264 和 SDR8。SDR 快速分享输出 8 位，软件归档 HEVC/AV1 使用实测 10 位档。快速分享输出 MP4，归档输出 MKV。
 
-HLG 方案适合直接分享，平台是否保留 HDR 仍取决于接收端。LUT 使用固定曝光和高光映射，过曝、欠曝和白平衡问题仍可能影响成片。Pocket 3 LUT 来自 OpenOSV 拟合模型，不是 DJI 官方 HDR LUT。第三方说明见 src/assets/THIRD_PARTY.md。
+默认输出 4:2:0，4:2:2 原片在同一次转换中自动降采样，无须提前处理。软件归档 HEVC / H.264 可选 4:2:2，AV1 和快速分享使用 4:2:0。
 
-曲线与 LUT 来源：[小米 Mi-Log](https://www.mi.com/global/product/aces/)、[Samsung Log](https://developer.samsung.com/mobile/samsung-log-video.html)、[OpenOSV v0.6.4](https://github.com/Kemerd/OpenOSV/releases/tag/v0.6.4)。
+快速分享需要支持对应编码器的 Intel 显卡。套 LUT、4:2:2 输入及软件归档使用软件解码；“使用软件解码”也可手动开启。套 LUT 和修改画面会重新编码视频。
 
-## 自动识别与采样格式
+## FFmpeg
 
-- 小米读取相机的 record_log 标记。
-- 三星读取相机的 logvideo 标记，能识别 APV Log。
-- Pocket 3 读取 djmd 专用元数据，避免仅凭 BT.709 标签误判这次样片的 D-Log M。
-- 标准 HDR 读取 HLG / PQ 曲线；SDR 读取常规传递曲线。
-- 只知道是 Log、无法确定曲线时，会要求手动选择。标签完全丢失的 Log 可能与普通 SDR 无法自动区分，可以手动指定“输入解释 → Log”。
+单文件 EXE 已包含原生界面运行时、本地转换组件和 LUT，不需要安装 .NET 或 Python。FFmpeg / ffprobe 没有打包，优先从 PATH 查找；缺少时会显示工具路径窗口，支持自行选择并记住路径。右上角齿轮可以随时更换工具。
 
-默认输出 4:2:0。输入 4:2:2 会在同一次转换中自动降采样，不需要预先转换。4:2:2 输出可用于 HEVC / H.264 软件归档。当前快速分享档和 AV1 只开放 4:2:0。把 4:2:0 改为 4:2:2 不会补回缺失的色彩细节。
+APV 输入需要支持 APV 解码的 FFmpeg，本次验证使用 FFmpeg 9.0.2 full build。Log → SDR 与 HDR → SDR 使用 zscale / lut3d / libplacebo 和可用的 Vulkan 驱动。
 
-## 输出检查
+## 识别与色彩说明
 
-转码完成后自动核对位深、采样、传递曲线、色域和范围，再保存最终文件。PQ / HLG 原片保留流程还会检查原有 HDR 静态元数据。SDR 转换清除 HDR 元数据。
+小米读取 record_log 标记，三星读取 logvideo 标记，Pocket 3 读取 DJI djmd 专用元数据。你提供的 Pocket 3 样片虽然标记 BT.709，仍能从专用元数据识别 D-Log M。
 
-HDR10+ 可转换 SDR；当前版本不负责重新生成或保留动态 HDR 元数据。带 Dolby Vision 的素材会提示使用专门流程。
-不会覆盖现有文件。取消操作清理本次临时输出，原片不会修改。错误信息可在“查看日志”读取。
+元数据不足时，需要手动确认输入类型或相机曲线。仅凭画面不能可靠区分所有丢失标记的 Log。
+
+原生 HDR 保留原 HLG / PQ 类型。Log 直接分享方案输出 HLG。HDR → SDR 使用 BT.2390 色调映射，清理 HDR 元数据。HDR10+ 可转 SDR，当前不负责重新生成动态 HDR；Dolby Vision 使用专门流程。
+
+LUT 采用固定曝光和高光映射，不恢复原片已剪切的高光。Pocket 3 LUT 来自 OpenOSV v0.6.4 拟合模型，是第三方转换。
+
+参考来源：[小米](https://www.mi.com/global/product/aces/)、[Samsung](https://developer.samsung.com/mobile/samsung-log-video.html)、[OpenOSV](https://github.com/Kemerd/OpenOSV/releases/tag/v0.6.4)。
+
+## 保存和取消
+
+不覆盖已有文件，也不修改原片。转换成功后先核对色彩标签、位深、采样和所需 HDR 静态元数据，再保存到最终位置。取消清理本次临时输出。“转换日志”包含 FFmpeg 命令和错误信息。
+
+底部显示进度条、完成百分比及“当前编码位置 / 总时长”、实时转码帧率（fps）、已用时间与预估剩余时间。估算基于实际编码进度和速度，会随滤镜、场景复杂度和硬件负载变化；刚开始转换时先显示“估算中”。
+
+设置保存在当前用户的 `%LOCALAPPDATA%/VideoConverterWinUI/settings.json`。
 
 ## 从源代码构建
 
-在安装 Python 3.14 x64 的 Windows 上，运行 build.ps1。脚本在本目录创建隔离环境，生成 dist/VideoConverter.exe。可更换 requirements.txt 中的 PySide / Qt 版本后重新构建。
+在 Windows x64 上安装 .NET 8 SDK 和 Python 3.14，运行 build.ps1。构建使用 Windows App SDK 1.8.260921001，通过 NuGet 获取 Windows SDK 工具，生成 dist/VideoConverter.WinUI.exe。界面为 WinUI 3，独立本地 worker 继续使用已验证的 FFmpeg 转换后端。
 
-验证包括三类 Log、HLG / PQ、SDR、APV 4:2:2 → 4:2:0、三种硬件编码、软件归档和取消操作。长片转换速度取决于滤镜、分辨率与硬件。
+单文件分发采用微软支持的自包含发布，运行时会将组件展开到当前用户的缓存目录。
