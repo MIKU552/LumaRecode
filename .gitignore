@@ -25,6 +25,7 @@
 !/qa/CliChecks/
 !/qa/MemoryChecks/
 !/qa/SerializationChecks/
+!/qa/FormatChecks/
 **/bin/
 **/obj/
 **/__pycache__/

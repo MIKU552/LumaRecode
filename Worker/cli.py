@@ -15,7 +15,7 @@ import sys
 import threading
 import time
 
-from engine import ASSETS, CONFIG, PROFILES, Cancelled, Job, Options, build_command, validate
+from engine import ASSETS, CONFIG, PROFILES, Cancelled, Job, Options, build_command, resolve_format, validate
 from media import NO_WINDOW, Tools, inspect_media
 from worker import public_media
 
@@ -23,8 +23,9 @@ VERSION = os.environ.get('FRAMEFLOW_VERSION', 'development')
 VIDEO_TYPES = {'.mp4', '.mov', '.mkv', '.m4v', '.webm', '.avi', '.mts', '.m2ts', '.ts', '.mxf', '.mpg', '.mpeg', '.wmv'}
 CHOICES = dict(purpose=('share', 'archive'), codec=('hevc', 'av1', 'avc'),
                range=('auto', 'sdr', 'hdr'), transform=('auto', 'none', 'log-hdr', 'log-sdr', 'hdr-sdr'),
-               profile=('auto', *PROFILES), sampling=('420', '422'), variant=('standard', 'fast'),
-               audio=('auto', 'copy', 'aac', 'opus'), input_kind=('auto', 'sdr', 'hlg', 'pq', 'log'))
+               profile=('auto', *PROFILES), sampling=('auto', 'source', '420', '422', '444'), variant=('standard', 'fast'),
+               audio=('auto', 'copy', 'aac', 'opus', 'flac'), input_kind=('auto', 'sdr', 'hlg', 'pq', 'log'),
+               color_range=('auto', 'source', 'limited', 'full'))
 CHOICES['container'] = ('auto', 'mp4', 'mkv')
 LANG = 'en'
 TRANSLATIONS = {}
@@ -247,7 +248,7 @@ def resolve_options(values, media):
         validate(options, media)
     except ValueError as error:
         raise CliError('invalid_options', str(error)) from error
-    return options
+    return resolve_format(options, media)
 
 
 class Reporter:
@@ -350,11 +351,11 @@ def main(argv=None):
                 if result.returncode or f'{name} version' not in result.stdout:
                     raise CliError('tool_unavailable', f'Invalid {name} executable: {executable}', 3)
                 values[name+'_version'] = result.stdout.splitlines()[0]
-            for flag, key, wanted in [('-encoders', 'encoders', ('hevc_qsv','av1_qsv','h264_qsv','libx265','libsvtav1','libx264')), ('-filters','filters',('zscale','lut3d','libplacebo'))]:
+            for flag, key, wanted in [('-encoders', 'encoders', ('hevc_qsv','av1_qsv','h264_qsv','libx265','libsvtav1','libx264','aac','libopus','flac')), ('-filters','filters',('zscale','lut3d','libplacebo'))]:
                 result = subprocess.run([tools.ffmpeg, '-hide_banner', flag], capture_output=True, encoding='utf-8', errors='replace', creationflags=NO_WINDOW, timeout=15)
                 if result.returncode: raise CliError('tool_unavailable', result.stderr, 3)
                 values[key] = {name: bool(re.search(r'\b'+re.escape(name)+r'\b', result.stdout)) for name in wanted}
-            values['note'] = 'Listed encoders do not prove that this GPU/driver supports every mode.'
+            values['note'] = 'Hardware encoding modes depend on the GPU and driver.'
             output(values); return 0
         if args.command == 'probe':
             if not args.input.is_file(): raise CliError('input_unavailable', str(args.input), 4)

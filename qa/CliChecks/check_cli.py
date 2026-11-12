@@ -61,7 +61,7 @@ def main():
         assert not result.stderr, result.stderr
         return [json.loads(line) for line in result.stdout.splitlines()]
     assert 'FrameFlow.exe' in call('--help', raw=True).stdout
-    assert '3.6.4' in call('--version', raw=True).stdout
+    assert '3.7.0' in call('--version', raw=True).stdout
     assert '同一个 EXE' in call('--lang', 'zh', '--help', raw=True).stdout
     assert len(call('--json', 'presets')['presets']) == 7
     assert {p['id'] for p in call('profiles', '--json')['profiles']} == {'milog','pocket3','samsung'}
@@ -83,6 +83,19 @@ def main():
         assert media['kind']=='sdr' and media['component_depths']==[10]*3 and media['audio']
         plan = events('plan', source, '--preset','archive-hevc','--sampling','422')
         assert plan[0]['data']['pixel_format']=='yuv422p10le'
+        plan = events('plan', source, '--preset','archive-hevc','--color-range','full','--sampling','444')
+        assert plan[0]['data']['pixel_format']=='yuv444p10le'
+        assert plan[0]['data']['expected_colors']['color_range']=='pc'
+        events('plan', source, '--audio', 'flac', status=2)
+        pcm=folder/'pcm.mkv'
+        subprocess.run([shutil.which('ffmpeg'), '-v','error','-i',str(source),'-f','lavfi','-i',
+            'anoisesrc=r=48000:d=0.5:seed=7','-map','0:v','-map','1:a','-c:v','copy','-c:a','pcm_s24le',
+            '-t','0.5',str(pcm)],check=True)
+        flac=folder/'flac.mkv'
+        result=events('convert',pcm,'--preset','archive-hevc','--audio','flac','--color-range','full','-o',flac)
+        assert result[-1]['data']['completed']==1
+        converted=call('probe',flac,'--no-settings','--accept-terms','--json')
+        assert converted['audio'][0]['codec_name']=='flac' and converted['video']['color_range']=='pc'
         assert not list(folder.glob('*_SDR*')), 'Dry-run created an output video'
         for profile in ('milog','pocket3','samsung'):
             plan = events('plan',source,'--input-kind','log','--profile',profile)

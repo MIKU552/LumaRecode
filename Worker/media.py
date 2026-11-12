@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from pathlib import Path
+from functools import lru_cache
 import json
 import re
 import subprocess
@@ -28,6 +29,7 @@ class Media:
     evidence: str
     duration: float = 0
     streams: list = field(default_factory=list)
+    pixel: dict = field(default_factory=dict)
 
 
 def run_probe(tools, arguments, timeout=25):
@@ -53,6 +55,12 @@ def run_probe(tools, arguments, timeout=25):
     if code:
         raise ValueError(errors.strip() or '无法读取视频。')
     return json.loads(output)
+
+
+@lru_cache(maxsize=8)
+def pixel_formats(ffprobe):
+    result = run_probe(Tools('', ffprobe), ['-show_pixel_formats', '-of', 'json'])
+    return {item['name']: item for item in result.get('pixel_formats', [])}
 
 
 def pb_fields(data):
@@ -158,14 +166,38 @@ def classify(video, tags, dji=None):
     return 'unknown', None, '传递曲线未标明，请确认输入类型或选择 Log 转换'
 
 
+def avc_monochrome(video):
+    """Read coded chroma from SPS; H.264 decoders can expose monochrome as 4:2:0."""
+    if video.get('codec_name') != 'h264':
+        return False
+    try:
+        data = bytes.fromhex(''.join(line.split(':', 1)[1].split('  ', 1)[0].replace(' ', '')
+                                     for line in video.get('extradata', '').splitlines() if ':' in line))
+        if data[:1] == b'\x01':
+            if len(data) < 8 or not data[5] & 31: return False
+            data = data[8:8+int.from_bytes(data[6:8], 'big')]
+        else:
+            data = next(n for n in re.split(b'\x00\x00\x00?\x01', data) if n and n[0] & 31 == 7)
+        if not data or data[0] & 31 != 7: return False
+        rbsp = data[1:].replace(b'\x00\x00\x03', b'\x00\x00')
+        if rbsp[0] not in {44, 83, 86, 100, 110, 118, 122, 128, 134, 135, 138, 139, 144, 244}: return False
+        bits = ''.join(f'{byte:08b}' for byte in rbsp[3:])
+        zeros = bits.index('1')
+        # Skip seq_parameter_set_id (unsigned Exp-Golomb); chroma_format_idc follows.
+        return bits[2*zeros+1:2*zeros+2] == '1'
+    except (ValueError, IndexError, StopIteration):
+        return False
+
+
 def inspect_media(tools, path):
     path = Path(path).resolve()
-    data = run_probe(tools, ['-show_streams', '-show_format', '-of', 'json', str(path)])
+    data = run_probe(tools, ['-show_streams', '-show_format', '-show_data', '-of', 'json', str(path)])
     streams = data.get('streams', [])
     video = next((item for item in streams if item.get('codec_type') == 'video'
                   and not item.get('disposition', {}).get('attached_pic')), None)
     if video is None:
         raise ValueError('文件中没有可用的视频轨。')
+    video['_monochrome'] = avc_monochrome(video)
     frame_data = run_probe(tools, ['-select_streams', str(video['index']), '-read_intervals', '%+#1',
                                   '-show_frames', '-of', 'json', str(path)])
     frames = frame_data.get('frames', [])
@@ -178,4 +210,5 @@ def inspect_media(tools, path):
     dji = dji_color(tools, path, streams)
     kind, profile, evidence = classify(video, tags, dji)
     duration = float(data.get('format', {}).get('duration') or video.get('duration') or 0)
-    return Media(path, video, frames, tags, kind, profile, evidence, duration, streams)
+    pixel = pixel_formats(tools.ffprobe).get(video.get('pix_fmt'), {})
+    return Media(path, video, frames, tags, kind, profile, evidence, duration, streams, pixel)

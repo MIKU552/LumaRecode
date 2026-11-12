@@ -27,6 +27,7 @@ var root = document.RootElement;
 Check(root.GetProperty("action").GetString() == "convert" && root.GetProperty("path").GetString() == request.Path && root.GetProperty("output").GetString() == request.Output, "Worker envelope changed");
 Check(root.GetProperty("tools").GetProperty("ffmpeg").GetString() == tools.Ffmpeg, "Tool path contract changed");
 var encoded = root.GetProperty("options");
+Check(encoded.GetProperty("color_range").GetString() == "auto", "Default color range must follow purpose");
 var expected = new Dictionary<string, string> { ["purpose"]="share", ["codec"]="hevc", ["output"]="hdr", ["transform"]="log-hdr", ["profile"]="pocket3", ["sampling"]="420", ["variant"]="standard", ["audio"]="auto", ["container"]="auto", ["source_kind"]="auto" };
 foreach (var (key, value) in expected) Check(encoded.GetProperty(key).GetString() == value, "Worker option changed: " + key);
 Check(!encoded.GetProperty("cpu_decode").GetBoolean(), "CPU decode boolean changed");

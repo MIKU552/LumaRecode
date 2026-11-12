@@ -48,15 +48,20 @@ Every command supports `--help`. Probe/catalog/doctor/license results are JSON. 
 | `--transform` | `auto` (default), `none`, `log-hdr`, `log-sdr`, `hdr-sdr` |
 | `--profile` | `auto`, `milog`, `pocket3`, `samsung` |
 | `--input-kind` | `auto`, `sdr`, `hlg`, `pq`, `log` |
-| `--sampling` | `420` (default), `422` (software HEVC/AVC only) |
+| `--sampling` | `auto` (default), `source`, `420`, `422`, `444`; Auto keeps source sampling for archive and selects 4:2:0 for share; 422 / 444 use software HEVC/AVC |
+| `--color-range` | `auto` (default), `source`, `limited`, `full`; Auto keeps source range for archive and converts to Limited for share |
 | `--container` | `auto` (share MP4, archive MKV), `mp4`, `mkv` |
-| `--audio` | `auto`, `aac`, `opus`, `copy`; defaults match the GUI |
+| `--audio` | `auto`, `aac`, `opus`, `copy`, `flac`; defaults match the GUI |
 | `--variant` | `standard`, `fast` (software AV1 only) |
 | `--cpu-decode` / `--no-cpu-decode` | Force software decode / choose the automatic decode path |
 | `--duration SECONDS` | Encode a positive finite duration for a sample |
 | `--config FILE.json` | Load encoding options, overridden by explicit CLI fields |
 
-Auto mode selects SDR → SDR, HLG / PQ → HDR, and Log → HLG. Use `--profile` to select a Log curve and `--input-kind` to set the source type. HDR output uses HEVC / AV1; 4:2:2 output uses software HEVC / AVC.
+Auto mode selects SDR → SDR, HLG / PQ → HDR, and Log → HLG. Use `--profile` to select a Log curve and `--input-kind` to set the source type. HDR output uses HEVC / AV1.
+
+`--sampling source` converts RGB to 4:4:4 YCbCr and keeps grayscale for software HEVC / AVC. If the encoder cannot keep the source sampling, select another encoder or specify sampling explicitly. Range conversion processes pixel values. For sources with missing range tags, pixel format and camera profile determine the input interpretation.
+
+`--audio flac` checks every audio track and accepts confirmed lossless integer input, preserving sample rates, channels, and integer precision. FLAC audio uses MKV.
 
 ```powershell
 ./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
@@ -65,6 +70,7 @@ Auto mode selects SDR → SDR, HLG / PQ → HDR, and Log → HLG. Use `--profile
 ./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range sdr | Out-Host
 ./FrameFlow.exe convert input.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
 ./FrameFlow.exe plan clip.mp4 --preset archive-av1-fast --json | ConvertFrom-Json
+./FrameFlow.exe convert lossless.mov --preset archive-hevc --sampling source --color-range source --audio flac | Out-Host
 ```
 
 HDR/Log-to-SDR needs FFmpeg libplacebo and Vulkan. A JSON config accepts the encoding fields above, using underscore keys, plus `preset`:
@@ -73,7 +79,7 @@ HDR/Log-to-SDR needs FFmpeg libplacebo and Vulkan. A JSON config accepts the enc
 {"preset":"archive-hevc","range":"auto","sampling":"422","audio":"copy","cpu_decode":true}
 ```
 
-Precedence: GUI-equivalent defaults → chosen preset → config fields → explicit CLI fields. CLI `--preset` selects the preset in preference to the config's preset; other config fields still apply. `range` describes dynamic range; file destinations use `--output`.
+Precedence: GUI-equivalent defaults → chosen preset → config fields → explicit CLI fields. CLI `--preset` selects the preset in preference to the config's preset; other config fields still apply. Config keys use underscores, such as `color_range`. `range` describes dynamic range; file destinations use `--output`.
 
 ## Batch and destination policy
 

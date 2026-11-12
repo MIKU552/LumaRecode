@@ -14,7 +14,7 @@ Video transcoding and color conversion for Windows 11. FrameFlow provides a nati
 - Quick share and Software archive presets for HEVC, AV1, and H.264, with MP4 / MKV output.
 - Mi-Log, Pocket 3 D-Log M, and Samsung Log to HLG HDR or Rec.709 SDR; HLG / PQ to SDR.
 - Source inspection for resolution, frame rate, bit depth, color tags, and audio tracks, with automatic defaults.
-- Chroma and audio controls, including 4:2:2 to 4:2:0 conversion.
+- Chroma sampling, Limited / Full range, and audio controls, including lossless FLAC audio.
 - Progress, encoding fps, position, remaining time, and output format verification.
 - Mica, light / dark / system themes, accent colors, and Chinese / English switching.
 - Batch processing, configuration files, command previews, and JSON events through the CLI.
@@ -35,7 +35,11 @@ Quick share uses Intel QSV. Software archive uses CPU encoding.
 | Quick share | Intel QSV: HEVC / AV1 / H.264 | MP4 | AAC for HEVC / H.264; Opus for AV1 |
 | Software archive | x265 / SVT-AV1 / x264 | MKV | Copy source tracks |
 
-Container, chroma sampling, and audio can be selected separately. HDR uses 10-bit HEVC or AV1; SDR Quick share uses 8-bit. Software HEVC / AV1 archive uses 10-bit, and H.264 uses 8-bit. Software HEVC / H.264 supports 4:2:2 output.
+Container, chroma sampling, color range, and audio can be selected separately. HDR uses 10-bit HEVC or AV1; SDR Quick share uses 8-bit. Software HEVC / AV1 archive uses 10-bit, and H.264 uses 8-bit.
+
+Software archive keeps source sampling and Limited / Full range by default. Quick share defaults to 4:2:0 and Limited. Software HEVC / H.264 supports 4:2:0, 4:2:2, 4:4:4, and grayscale; SVT-AV1 uses 4:2:0. RGB input converts to 4:4:4 YCbCr when keeping source sampling. Output controls are in **Format & audio**.
+
+FLAC accepts confirmed lossless integer audio, including integer PCM, and preserves each track's sample rate, channels, and integer precision. FLAC audio uses MKV.
 
 SDR sources default to SDR output, HLG / PQ sources retain HDR, and recognized Log profiles convert to HLG. Input interpretation and Camera profile let you select the source type manually.
 

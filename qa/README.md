@@ -24,6 +24,14 @@ python qa/RuntimeChecks/check_worker.py --deployment dist/NativeAot
 
 集成检查需要 FFmpeg、ffprobe、可用的 Intel QSV 编码器和 Vulkan / libplacebo。它们执行实际编码、输出校验、PowerShell 管道、取消和临时文件清理。测试使用临时目录与合成输入。
 
+## 采样、范围与音频
+
+```powershell
+python qa/FormatChecks/check_formats.py
+```
+
+检查 SDR / HLG / PQ 编码后的黑白像素值、4:2:0 / 4:2:2 / 4:4:4 / RGB / 灰度输入，以及 FLAC 多音轨的解码样本哈希。需要 Intel QSV 和 Vulkan / libplacebo。
+
 ## 内存采样
 
 保持窗口大小、主题、HDR 和输入法一致，每次仅运行一个待测实例，在菜单操作和编码之前采样：

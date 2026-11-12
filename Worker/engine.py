@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 import json
 import re
@@ -9,6 +9,7 @@ import threading
 
 from media import HDR_KINDS, NO_WINDOW, UNSPECIFIED, inspect_media
 from metadata_helpers import compare_static_metadata, hdr_metadata, nominal_fps, side_data
+from output_policy import audio_streams, flac_tracks, is_rgb, source_range, source_sampling
 
 ASSETS = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'assets'
 CONFIG = json.loads((ASSETS / 'recommended-presets.json').read_text(encoding='utf-8'))
@@ -30,16 +31,17 @@ class Options:
     output: str = 'sdr'
     transform: str = 'none'
     profile: str | None = None
-    sampling: str = '420'
+    sampling: str = 'auto'
     variant: str = 'standard'
     audio: str = 'auto'
     source_kind: str = 'auto'
     cpu_decode: bool = False
     container: str = 'auto'
+    color_range: str = 'auto'
 
     @property
     def suffix(self):
-        chosen = ('mkv' if self.purpose == 'archive' else 'mp4') if self.container == 'auto' else self.container
+        chosen = ('mkv' if self.purpose == 'archive' or self.audio == 'flac' else 'mp4') if self.container == 'auto' else self.container
         return '.' + chosen
 
     @property
@@ -48,10 +50,38 @@ class Options:
 
     @property
     def pixel_format(self):
+        if self.sampling == 'gray':
+            return 'gray10le' if self.depth == 10 else 'gray'
         return f'yuv{self.sampling}p' + ('10le' if self.depth == 10 else '')
 
 
+def resolve_format(options, media):
+    if options.sampling not in {'auto', 'source', '420', '422', '444', 'gray'}:
+        raise ValueError('请选择自动、保持原采样、4:2:0、4:2:2 或 4:4:4。')
+    sampling = options.sampling
+    if sampling == 'auto':
+        sampling = 'source' if options.purpose == 'archive' else '420'
+    if sampling == 'source':
+        if media.pixel.get('flags', {}).get('alpha'):
+            raise ValueError('素材含透明通道。请选择具体采样格式，输出为不带透明通道的视频。')
+        sampling = source_sampling(media)
+    if sampling not in {'420', '422', '444', 'gray'}:
+        raise ValueError('当前编码器无法保持原采样，请手动选择 4:2:0、4:2:2 或 4:4:4。')
+    if sampling != '420' and (options.purpose != 'archive' or options.codec == 'av1'):
+        raise ValueError('保持此采样需要软件 HEVC 或 H.264；也可手动选择 4:2:0。')
+    if options.color_range not in {'auto', 'source', 'limited', 'full'}:
+        raise ValueError('请选择自动、保持原范围、Limited 或 Full。')
+    data_range = options.color_range
+    if data_range == 'auto':
+        data_range = 'source' if options.purpose == 'archive' else 'limited'
+    if data_range == 'source':
+        fallback = PROFILES[options.profile][3] if options.transform.startswith('log-') and options.profile in PROFILES else None
+        data_range = source_range(media, fallback)
+    return replace(options, sampling=sampling, color_range=data_range)
+
+
 def validate(options, media):
+    options = resolve_format(options, media)
     if options.container not in {'auto', 'mp4', 'mkv'}:
         raise ValueError('请选择自动、MP4 或 MKV 封装。')
     if options.purpose not in {'share', 'archive'} or options.codec not in {'hevc', 'av1', 'avc'}:
@@ -60,10 +90,12 @@ def validate(options, media):
         raise ValueError('请选择 SDR 或 HDR 输出。')
     if options.output == 'hdr' and options.codec == 'avc':
         raise ValueError('HDR 输出请选择 HEVC 或 AV1。')
-    if options.sampling not in {'420', '422'}:
-        raise ValueError('请选择 4:2:0 或 4:2:2。')
-    if options.sampling == '422' and (options.purpose != 'archive' or options.codec == 'av1'):
-        raise ValueError('4:2:2 输出支持软件归档的 HEVC 和 H.264。快速分享和 AV1 使用 4:2:0。')
+    if options.audio not in {'auto', 'copy', 'aac', 'opus', 'flac'}:
+        raise ValueError('请选择有效的音轨格式。')
+    if options.audio == 'flac':
+        if options.container == 'mp4':
+            raise ValueError('FLAC 音轨请选择 MKV 封装，以保留声道布局。')
+        flac_tracks(media)
     if options.variant not in {'standard', 'fast'} or (options.variant == 'fast' and
             (options.purpose != 'archive' or options.codec != 'av1')):
         raise ValueError('快速备用质量档仅用于软件归档 AV1。')
@@ -109,15 +141,13 @@ def frame_tags(colors):
     return 'setparams=' + ':'.join(values)
 
 
-def tone_map_filter(pixel_format):
-    intermediate = 'nv12' if pixel_format == 'yuv420p' else 'yuv444p16le'
+def tone_map_filter(data_range):
     return ','.join((
-        f'libplacebo=format={intermediate}:colorspace=bt709:color_primaries=bt709:'
-        'color_trc=bt709:range=tv:tonemapping=bt.2390:apply_dolbyvision=0',
+        'libplacebo=format=yuv444p16le:colorspace=bt709:color_primaries=bt709:'
+        f'color_trc=bt709:range={data_range}:tonemapping=bt.2390:apply_dolbyvision=0',
         'sidedata=delete:type=MASTERING_DISPLAY_METADATA',
         'sidedata=delete:type=CONTENT_LIGHT_LEVEL',
         'sidedata=delete:type=DYNAMIC_HDR_PLUS',
-        f'format={pixel_format}',
     ))
 
 
@@ -125,7 +155,7 @@ def log_filter(video, profile):
     _, filename, default_matrix, default_range = PROFILES[profile]
     matrix = video.get('color_space')
     data_range = video.get('color_range')
-    matrix = {'bt709': '709', 'bt2020nc': '2020_ncl', 'smpte170m': '170m', 'bt470bg': '470bg'}.get(matrix, default_matrix)
+    matrix = {'gbr': 'gbr', 'bt709': '709', 'bt2020nc': '2020_ncl', 'smpte170m': '170m', 'bt470bg': '470bg'}.get(matrix, default_matrix)
     data_range = {'pc': 'full', 'tv': 'limited'}.get(data_range, default_range)
     return ','.join((
         f'zscale=matrixin={matrix}:rangein={data_range}:range=full',
@@ -139,7 +169,10 @@ def log_filter(video, profile):
 
 def build_command(tools, media, options, destination):
     kind = validate(options, media)
+    options = resolve_format(options, media)
     video = dict(media.video)
+    fallback = PROFILES[options.profile][3] if kind == 'log' else None
+    video['color_range'] = 'pc' if source_range(media, fallback) == 'full' else 'tv'
     if kind in HDR_KINDS:
         video.update(color_transfer='arib-std-b67' if kind == 'hlg' else 'smpte2084')
         for name, value in HLG.items():
@@ -149,8 +182,13 @@ def build_command(tools, media, options, destination):
         for name, value in REC709.items():
             if video.get(name) in UNSPECIFIED:
                 video[name] = value
-    output_colors = REC709 if options.output == 'sdr' else HLG if kind == 'log' else {
+    if is_rgb(media):
+        video['color_space'] = 'gbr'
+    output_colors = dict(REC709) if options.output == 'sdr' else dict(HLG) if kind == 'log' else {
         key: video.get(key) for key in COLOR_FLAGS}
+    if output_colors.get('color_space') == 'gbr':
+        output_colors['color_space'] = 'bt2020nc' if options.output == 'hdr' else 'bt709'
+    output_colors['color_range'] = 'pc' if options.color_range == 'full' else 'tv'
     side = side_data(media.video, media.frames)
     dynamic = [item.get('side_data_type', '') for item in side
                if any(term in item.get('side_data_type', '') for term in ('DOVI', 'Dolby Vision', 'HDR Dynamic'))]
@@ -160,8 +198,8 @@ def build_command(tools, media, options, destination):
     config = CONFIG['archive_fast_av1'] if options.variant == 'fast' else CONFIG[options.purpose][options.codec]
     pixel_format = options.pixel_format
     filters = []
-    normalize_sdr = options.output == 'sdr' and any(video.get(key) != value for key, value in REC709.items())
-    software_frames = options.transform != 'none' or options.purpose == 'archive' or options.cpu_decode or normalize_sdr
+    color_conversion = any(video.get(key) != value for key, value in output_colors.items())
+    software_frames = options.transform != 'none' or options.purpose == 'archive' or options.cpu_decode or color_conversion
     decoder = {'h264': 'h264_qsv', 'hevc': 'hevc_qsv', 'av1': 'av1_qsv'}.get(video.get('codec_name'))
     gpu_decode = not software_frames and decoder and video.get('pix_fmt') in {'yuv420p', 'yuv420p10le', 'p010le'}
     args = [tools.ffmpeg, '-hide_banner', '-nostdin', '-n', '-xerror', '-loglevel', 'warning',
@@ -172,19 +210,28 @@ def build_command(tools, media, options, destination):
              '-map_metadata', '-1' if options.transform.startswith('log-') else '0',
              '-map_chapters', '0', '-sn', '-dn']
     if kind == 'log':
+        if is_rgb(media):
+            filters.append('format=gbrpf32le')
         filters.append(log_filter(video, options.profile))
     elif not gpu_decode:
+        if is_rgb(media):
+            filters.append('format=' + ('gbrpf32le' if media.pixel.get('flags', {}).get('float') else 'gbrp16le'))
         filters.append(frame_tags(video))
     if options.transform in {'hdr-sdr', 'log-sdr'}:
-        filters.append(tone_map_filter(pixel_format))
-    elif options.output == 'sdr' and not gpu_decode and any(video.get(key) != value for key, value in REC709.items()):
-        filters.append('zscale=primaries=709:transfer=709:matrix=709:range=limited:dither=error_diffusion')
+        filters.append(tone_map_filter('pc' if options.color_range == 'full' else 'tv'))
 
     if gpu_decode:
         qsv_format = 'p010le' if options.depth == 10 else 'nv12'
-        color_options = ':out_color_matrix=bt709:out_color_primaries=bt709:out_color_transfer=bt709:out_range=tv' if options.output == 'sdr' else ''
+        color_options = ':out_range=' + output_colors['color_range']
+        if options.output == 'sdr':
+            color_options += ':out_color_matrix=bt709:out_color_primaries=bt709:out_color_transfer=bt709'
         filters.append(f'vpp_qsv=format={qsv_format}{color_options}')
     else:
+        conversion = ['range=' + options.color_range, 'dither=error_diffusion']
+        conversion += [target + '=' + output_colors[key] for key, target in
+                       (('color_primaries', 'primaries'), ('color_transfer', 'transfer'), ('color_space', 'matrix'))
+                       if output_colors.get(key) not in UNSPECIFIED]
+        filters.append('zscale=' + ':'.join(conversion))
         filters.append(f'format={"p010le" if options.purpose == "share" and options.depth == 10 else pixel_format}')
         filters.append(frame_tags(output_colors))
     args += ['-vf', ','.join(filters), '-c:v', config['encoder'], '-preset', str(config['preset'])]
@@ -217,6 +264,13 @@ def build_command(tools, media, options, destination):
         audio = CONFIG['audio']['archive_default'] if options.purpose == 'archive' else CONFIG['audio']['share_default'][options.codec]
     if audio == 'copy':
         args += ['-c:a', 'copy']
+    elif audio == 'flac':
+        for index, (stream, depth) in enumerate(flac_tracks(media)):
+            args += [f'-c:a:{index}', 'flac', f'-compression_level:a:{index}', '8',
+                     f'-sample_fmt:a:{index}', 's16' if depth <= 16 else 's32',
+                     f'-bits_per_raw_sample:a:{index}', str(depth)]
+            if depth > 24:
+                args += [f'-strict:a:{index}', 'experimental']
     else:
         policy = CONFIG['audio'][audio]
         args += ['-c:a', policy['encoder'], '-b:a', f'{policy["bitrate_kbps"]}k', '-ac', str(policy['channels'])]
@@ -231,16 +285,22 @@ def build_command(tools, media, options, destination):
     return args, output_colors
 
 
-def check_requirements(tools, options):
+def check_requirements(tools, options, command):
     encoder = CONFIG[options.purpose][options.codec]['encoder']
     result = subprocess.run([tools.ffmpeg, '-hide_banner', '-encoders'], capture_output=True,
                             encoding='utf-8', errors='replace', creationflags=NO_WINDOW, timeout=15)
     if result.returncode or not re.search(rf'\b{re.escape(encoder)}\b', result.stdout):
         raise ValueError(f'选中的 FFmpeg 缺少 {encoder} 编码器，请在工具路径里选择完整版本。')
-    if options.transform != 'none':
-        required = {'zscale', 'lut3d'} if options.transform.startswith('log-') else set()
-        if options.transform in {'log-sdr', 'hdr-sdr'}:
-            required.add('libplacebo')
+    if options.audio == 'flac' and not re.search(r'\bflac\b', result.stdout):
+        raise ValueError('选中的 FFmpeg 缺少 FLAC 编码器。')
+    if options.purpose == 'archive':
+        result = subprocess.run([tools.ffmpeg, '-hide_banner', '-h', 'encoder=' + encoder], capture_output=True,
+                                encoding='utf-8', errors='replace', creationflags=NO_WINDOW, timeout=15)
+        supported = re.search(r'Supported pixel formats:\s*([^\r\n]+)', result.stdout)
+        if supported and options.pixel_format not in supported[1].split():
+            raise ValueError(f'当前 FFmpeg 的 {encoder} 不支持 {options.pixel_format}，请更换编码器或采样格式。')
+    required = {name for name in ('zscale', 'lut3d', 'libplacebo') if name + '=' in command[command.index('-vf') + 1]}
+    if required:
         result = subprocess.run([tools.ffmpeg, '-hide_banner', '-filters'], capture_output=True,
                                 encoding='utf-8', errors='replace', creationflags=NO_WINDOW, timeout=15)
         missing = [name for name in sorted(required) if not re.search(rf'\b{name}\b', result.stdout)]
@@ -249,12 +309,22 @@ def check_requirements(tools, options):
 
 
 def verify_result(tools, source, options, expected_colors, output):
+    options = resolve_format(options, source)
     result = inspect_media(tools, output)
-    if result.video.get('pix_fmt') != options.pixel_format:
+    if result.video.get('pix_fmt', '').replace('yuvj', 'yuv') != options.pixel_format and not (
+            options.sampling == 'gray' and result.video.get('_monochrome')):
         raise ValueError(f'输出像素格式与选择不符，得到 {result.video.get("pix_fmt")}。')
     for key, value in expected_colors.items():
         if value not in UNSPECIFIED and result.video.get(key) != value:
             raise ValueError(f'输出色彩标签不符：{key}。')
+    if options.audio == 'flac':
+        before, after = flac_tracks(source), audio_streams(result)
+        if len(before) != len(after) or any(target.get('codec_name') != 'flac' or
+                target.get('sample_rate') != stream.get('sample_rate') or target.get('channels') != stream.get('channels') or
+                stream.get('channel_layout') not in UNSPECIFIED and target.get('channel_layout') != stream.get('channel_layout') or
+                int(target.get('bits_per_raw_sample') or 0) < depth
+                for (stream, depth), target in zip(before, after)):
+            raise ValueError('FLAC 输出的音轨、采样率、声道或位深与原片不符。')
     if options.output == 'sdr' and any(any(term in item.get('side_data_type', '') for term in
                                          ('HDR', 'Dolby', 'Mastering display metadata', 'Content light level metadata'))
                                        for item in side_data(result.video, result.frames)):
@@ -299,10 +369,11 @@ class Job:
         if not output.parent.is_dir() or output.suffix.lower() != options.suffix:
             raise ValueError(f'请选择已有的输出目录，文件后缀应为 {options.suffix}。')
         validate(options, media)
-        check_requirements(tools, options)
+        options = resolve_format(options, media)
         with tempfile.TemporaryDirectory(prefix='.video-converter-', dir=output.parent) as scratch:
             temporary = Path(scratch) / output.name
             command, expected = build_command(tools, media, options, temporary)
+            check_requirements(tools, options, command)
             audio = options.audio
             if audio == 'auto':
                 audio = CONFIG['audio']['archive_default'] if options.purpose == 'archive' else CONFIG['audio']['share_default'][options.codec]
