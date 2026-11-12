@@ -2,6 +2,14 @@
 
 以下记录依据保留的源码版本整理；快照来源和补录方式见 [HISTORY.md](HISTORY.md)。
 
+## 3.6.0
+
+- 增加完整命令行入口：probe、convert、plan、presets、profiles、doctor、license，支持全部 GUI 编码/色彩选项、自动默认值、配置文件和路径覆盖。
+- 支持多文件、目录、递归通配符、JSON Lines 进度/日志、fps 与剩余时间、批量跳过/继续、稳定退出码，以及 Ctrl+C / Ctrl+Break 取消。
+- 新增原生 FrameFlow.com，保证 PowerShell/cmd 的等待、管道与退出码；GUI EXE 维持无终端窗口启动。便携 ZIP 只放 EXE 与 COM。
+- 覆盖输出时先在临时文件中完成编码和校验，再原子替换；禁止覆盖源文件，失败或取消保留旧输出并清理临时文件。
+- 补充中英文命令行文档、实际终端/编码集成检查；预设和三张 LUT 的数值不变。
+
 ## 3.5.1
 
 - 自主代码、文档、原创图形及项目生成的 Mi-Log / Samsung Log LUT 改用 MIT，允许商用与闭源修改，保留版权和许可声明即可。

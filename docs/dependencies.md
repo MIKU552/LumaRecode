@@ -1,6 +1,6 @@
 # 开发环境与分发 / Development and distribution
 
-当前版本：3.5.1。“最新稳定”核对于 **2026-11-12**，是版本快照，不承诺永远最新。正式构建不使用 preview / experimental 包。
+当前版本：3.6.0。“最新稳定”核对于 **2026-11-12**，是版本快照，不承诺永远最新。正式构建不使用 preview / experimental 包。
 
 | 项目 / Item | 版本 / Version | 用途 / Purpose |
 | --- | --- | --- |
@@ -10,6 +10,7 @@
 | Windows SDK BuildTools | 10.0.28000.2957 | 构建 Windows 资源、清单 |
 | Windows target contract | 10.0.26100.0 | Windows API 编译合约，与 BuildTools 版本用途不同 |
 | CPython | 3.15.2 | 官方嵌入式 x64 包，随默认 EXE 分发 |
+| MinGW-w64 GCC | 16.2.0 | 原生终端入口，仅构建时使用，不转发编译器或运行时 |
 | PySide6 | 6.12.0 | 可选图标生成工具，不属于应用运行时 |
 
 直接工具与依赖已更新，传递依赖使用供应商指定的兼容组合并由 `App/packages.lock.json` 记录。WebView2 SDK / BuildTools.MSIX 以及 Python 内 OpenSSL、SQLite 等由上游发行包选择，不擅自替换官方 Python 包内 DLL。FFmpeg 是用户选定的外部工具；[原编码测试报告](benchmarks/encoding-benchmark.zh-CN.md)仍记录历史环境，升级 GUI 不表示在新版 FFmpeg 上重做了画质参数扫描。
@@ -26,11 +27,13 @@ Windows App SDK 2.6.5 属于 Stable，服务周期见[官方发布渠道](https:
 
 ## 发布 / Deployment
 
-默认 `./build.ps1` 生成 `dist/SelfContained/FrameFlow.exe`，包含 .NET、所需 Windows App SDK 文件、官方 Python、worker 与 LUT；FFmpeg / ffprobe 仍由用户提供。单文件首次启动解压到 .NET 的用户临时缓存，不要求管理员权限或全局安装运行时。
+默认 `./build.ps1` 生成 `dist/FrameFlow-3.6.0-win-x64.zip`，内含 `FrameFlow.exe` 与 `FrameFlow.com`，包含 .NET、所需 Windows App SDK 文件、官方 Python、worker 与 LUT；FFmpeg / ffprobe 仍由用户提供。单文件首次启动解压到 .NET 的用户临时缓存，不要求管理员权限或全局安装运行时。
 
 WinUI 资源和 Python 子进程需要磁盘文件，故保留 `IncludeAllContentForSelfExtract`。这是 .NET 单文件兼容提取模式，.NET 11 会提示 NETSDK1244；不表示使用旧版 .NET 或编译失败。不能为消除提示而破坏资源、许可或 worker 路径。
 
-`./build.ps1 -Deployment FrameworkDependent` 可选构建精简 ZIP，用户需安装 .NET 11 Desktop Runtime、Windows App Runtime 2.6、Python ≥3.14 并配置工具路径；默认下载仍是完整单 EXE。
+`./build.ps1 -Deployment FrameworkDependent` 可选构建精简 ZIP，用户需安装 .NET 11 Runtime、Windows App Runtime 2.6、Python ≥3.14 并配置工具路径；默认下载为内置运行时的 GUI + CLI 便携 ZIP。
+
+3.6.0 起便携 ZIP 内为 GUI EXE 与原生终端入口 FrameFlow.com；两者须在同一目录。COM 不链接 CRT/libgcc，仅导入 Windows 系统 kernel32.dll，已核对 PE 导入表。完整 [CLI 说明](cli.zh-CN.md)。
 
 Default deployment bundles runtimes for download-and-run use. Extraction is intentional because WinUI resources and the Python subprocess need on-disk files. The optional framework-dependent ZIP requires external runtimes. Neither mode bundles FFmpeg.
 

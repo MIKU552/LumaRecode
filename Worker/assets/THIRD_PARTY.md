@@ -1,8 +1,8 @@
 # 第三方组件与许可 · Third-party components
 
-适用版本：FrameFlow 3.5.1，审阅日期 2026-11-12。当前运行时原始许可集中在 [licenses](../../licenses/)，NuGet 包与运行时记录见 [manifest.json](../../licenses/manifest.json)，LUT 来源与哈希见 [license-manifest.json](license-manifest.json)。此结论不追溯改变旧 EXE 内的组件或条款。
+适用版本：FrameFlow 3.6.0，审阅日期 2026-11-12。当前运行时原始许可集中在 [licenses](../../licenses/)，NuGet 包与运行时记录见 [manifest.json](../../licenses/manifest.json)，LUT 来源与哈希见 [license-manifest.json](license-manifest.json)。此结论不追溯改变旧 EXE 内的组件或条款。
 
-Scope: the current 3.5.1 build, reviewed 2026-11-12, not every historical binary. Full original terms and notices are retained under `licenses/`; the manifests separate runtime provenance from LUT provenance.
+Scope: the current 3.6.0 build, reviewed 2026-11-12, not every historical binary. Full original terms and notices are retained under `licenses/`; the manifests separate runtime provenance from LUT provenance.
 
 ## 自主项目 / Original project
 
@@ -50,6 +50,7 @@ The Pocket 3 LUT is an unchanged third-party fit. Xiaomi/Samsung tables are inde
 - **PySide6 / Qt**：仅用于可选图标重绘，版本见 `Brand/requirements.txt`；未随界面或 worker 分发 Qt DLL，所用模块仍受 LGPL/GPL/商业条款约束。[Qt for Python 许可](https://doc.qt.io/qtforpython-6/licenses.html)
 - **SDK / BuildTools / MSIX**：按开发工具条款使用，没有转发整套 SDK 安装包；自包含输出包含的文件保留对应许可与声明。
 - **图形与字体**：品牌 SVG、箭头为项目绘制；FontIcon 使用系统字体，没有复制 Segoe 字体文件。
+- **原生 CLI 启动器**：项目原创 MIT C 源码，用 MinGW-w64 GCC 构建；不链接或分发 GCC/CRT/libgcc 运行时，PE 仅导入系统 kernel32.dll。编译器只属于开发环境。
 - **PyInstaller**：3.5.0 起不再使用或分发。
 
 FFmpeg is external; Qt is an optional artwork tool; SDK installers and system fonts are not copied. PyInstaller has been removed. Future payload changes require review of the actual files.
