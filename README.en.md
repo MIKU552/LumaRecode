@@ -37,7 +37,7 @@ Quick share uses Intel QSV. Software archive uses CPU encoding.
 
 Container, chroma sampling, color range, and audio can be selected separately. HDR uses 10-bit HEVC or AV1; SDR Quick share uses 8-bit. Software HEVC / AV1 archive uses 10-bit, and H.264 uses 8-bit.
 
-Software archive keeps source sampling and Limited / Full range by default. Quick share defaults to 4:2:0 and Limited. Software HEVC / H.264 supports 4:2:0, 4:2:2, 4:4:4, and grayscale; SVT-AV1 uses 4:2:0. RGB input converts to 4:4:4 YCbCr when keeping source sampling. Output controls are in **Format & audio**.
+Software archive keeps source sampling and Limited / Full range by default. Quick share defaults to 4:2:0 and Limited. Software HEVC / H.264 supports 4:2:0, 4:2:2, 4:4:4, and grayscale; SVT-AV1 uses 4:2:0. RGB input converts to 4:4:4 YCbCr when keeping source sampling. Sampling and range controls are in **Color conversion**; container and audio controls are in **Format & audio**.
 
 FLAC accepts confirmed lossless integer audio, including integer PCM, and preserves each track's sample rate, channels, and integer precision. FLAC audio uses MKV.
 

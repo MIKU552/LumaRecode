@@ -25,7 +25,7 @@ public sealed class MainWindow : Window
     private readonly UserSettings settings = UserSettings.Load();
     private readonly Appearance appearance;
     private WorkerClient? activeJob;
-    private bool updating, probing, closing, dialogOpen;
+    private bool updating, probing, closing, dialogOpen, audioUsesDefault = true;
     private int generation;
     private string ffmpeg = "", ffprobe = "", automaticOutput = "", completedOutput = "";
     private JsonElement? media;
@@ -196,9 +196,22 @@ public sealed class MainWindow : Window
         Choices(Container, ("auto", L.T("自动 · 按用途选择")), ("mp4", "MP4"), ("mkv", "MKV"));
         Choices(Transform, ("none", L.T("不套用 · 保留 / 标准化")), ("log-hdr", L.T("Log → HDR（HLG）")), ("log-sdr", "Log → SDR"), ("hdr-sdr", "HDR → SDR"));
         Choices(Profile, ("", L.T("请选择 Log 曲线…")), ("milog", L.T("小米 Mi-Log")), ("pocket3", "Pocket 3 D-Log M"), ("samsung", "Samsung Log"));
-        Choices(Sampling, ("auto", L.T("按用途默认")), ("source", L.T("保持原采样")), ("420", "4:2:0"), ("422", "4:2:2"), ("444", "4:4:4"));
-        Choices(ColorRange, ("auto", L.T("按用途默认")), ("source", L.T("保持原范围")), ("limited", L.T("Limited · 有限范围")), ("full", L.T("Full · 全范围")));
-        Choices(Audio, ("auto", L.T("按编码档默认")), ("aac", "AAC · 256 kbps"), ("opus", "Opus · 192 kbps"), ("copy", L.T("复制原音轨")), ("flac", L.T("FLAC · 无损")));
+        Choices(Sampling, ("source", L.T("保持原采样")), ("420", "4:2:0"), ("422", "4:2:2"), ("444", "4:4:4"));
+        Choices(ColorRange, ("source", L.T("保持原范围")), ("limited", L.T("Limited · 有限范围")), ("full", L.T("Full · 全范围")));
+        Choices(Audio, ("copy", L.T("复制原音轨")), ("aac", "AAC · 256 kbps"), ("opus", "Opus · 192 kbps"), ("flac", L.T("FLAC · 无损")));
+        ApplyPurposeDefaults();
+    }
+    private void ApplyDefaultAudio()
+    {
+        var audio = encodingConfig.GetProperty("audio");
+        Select(Audio, (Value(Purpose) == "archive" ? audio.GetProperty("archive_default") : audio.GetProperty("share_default").GetProperty(Value(Codec))).GetString());
+    }
+    private void ApplyPurposeDefaults()
+    {
+        var archive = Value(Purpose) == "archive";
+        Select(Sampling, archive ? "source" : "420");
+        Select(ColorRange, archive ? "source" : "limited");
+        audioUsesDefault = true; ApplyDefaultAudio();
     }
     private void WireEvents()
     {
@@ -217,8 +230,25 @@ public sealed class MainWindow : Window
         Control<Button>("OpenFolder").Click += (_, _) => { if (File.Exists(completedOutput)) Process.Start(new ProcessStartInfo("explorer.exe", Path.GetDirectoryName(completedOutput)!) { UseShellExecute = true }); };
         Input.KeyDown += async (_, e) => { if (e.Key == Windows.System.VirtualKey.Enter) await InspectAsync(); };
         Input.LostFocus += async (_, _) => { if (File.Exists(Input.Text.Trim('"', ' '))) await InspectAsync(); };
-        foreach (var name in new[] { "Purpose", "Codec", "Variant", "Container", "Sampling", "ColorRange", "Profile", "Audio" })
+        foreach (var name in new[] { "Variant", "Container", "Sampling", "ColorRange", "Profile" })
             Control<ComboBox>(name).SelectionChanged += (_, _) => Refresh();
+        Purpose.SelectionChanged += (_, _) =>
+        {
+            if (updating) return;
+            updating = true;
+            try { ApplyPurposeDefaults(); }
+            finally { updating = false; }
+            Refresh();
+        };
+        Codec.SelectionChanged += (_, _) =>
+        {
+            if (updating) return;
+            updating = true;
+            try { if (audioUsesDefault) ApplyDefaultAudio(); }
+            finally { updating = false; }
+            Refresh();
+        };
+        Audio.SelectionChanged += (_, _) => { if (!updating) { audioUsesDefault = false; Refresh(); } };
         Range.SelectionChanged += (_, _) => Refresh();
         InputKind.SelectionChanged += (_, _) => { if (!updating && Kind == "sdr") Range.SelectedIndex = 0; Refresh(); };
         Transform.SelectionChanged += (_, _) =>
@@ -240,20 +270,34 @@ public sealed class MainWindow : Window
     {
         var narrow = width < 960;
         var grid = Control<Grid>("SettingsGrid");
-        var rows = narrow ? 3 : 2;
+        var rows = narrow ? 4 : 3;
         while (grid.RowDefinitions.Count < rows) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         while (grid.RowDefinitions.Count > rows) grid.RowDefinitions.RemoveAt(grid.RowDefinitions.Count - 1);
         grid.ColumnDefinitions[0].MinWidth = narrow ? 0 : 380;
         grid.ColumnDefinitions[1].MinWidth = narrow ? 0 : 300;
-        grid.ColumnDefinitions[0].Width = new GridLength(narrow ? 1 : 3, GridUnitType.Star);
-        grid.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : new GridLength(2, GridUnitType.Star);
+        grid.ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star);
+        grid.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         grid.ColumnSpacing = narrow ? 0 : 24;
         Grid.SetColumnSpan(Control<Border>("SourceCard"), narrow ? 1 : 2);
         var color = Control<StackPanel>("ColorSettings");
         Grid.SetColumn(color, narrow ? 0 : 1);
         Grid.SetRow(color, narrow ? 2 : 1);
+        var format = Control<Border>("FormatCard");
+        Grid.SetRow(format, narrow ? 3 : 2);
+        Grid.SetColumnSpan(format, narrow ? 1 : 2);
 
         var compact = width < 760;
+        var fields = Control<Grid>("FormatFields");
+        var fieldRows = compact ? 4 : 2;
+        while (fields.RowDefinitions.Count < fieldRows) fields.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        while (fields.RowDefinitions.Count > fieldRows) fields.RowDefinitions.RemoveAt(fields.RowDefinitions.Count - 1);
+        fields.ColumnDefinitions[1].Width = compact ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        fields.ColumnSpacing = compact ? 0 : 24;
+        Grid.SetColumn(Audio, compact ? 0 : 1);
+        Grid.SetRow(Audio, compact ? 2 : 0);
+        var audioNote = Control<TextBlock>("AudioNote");
+        Grid.SetColumn(audioNote, compact ? 0 : 1);
+        Grid.SetRow(audioNote, compact ? 3 : 1);
         var details = Control<Grid>("SourceDetails");
         details.ColumnDefinitions[2].Width = new GridLength(compact ? 0 : 240);
         details.RowSpacing = compact ? 16 : 0;
@@ -304,13 +348,11 @@ public sealed class MainWindow : Window
     private string SelectedSampling()
     {
         var selected = Value(Sampling);
-        if (selected == "auto") selected = Value(Purpose) == "archive" ? "source" : "420";
         return selected == "source" ? MediaText("source_sampling", "420") : selected;
     }
     private string SelectedColorRange()
     {
         var selected = Value(ColorRange);
-        if (selected == "auto") selected = Value(Purpose) == "archive" ? "source" : "limited";
         if (selected != "source") return selected;
         return SourceColorRange();
     }
@@ -328,9 +370,9 @@ public sealed class MainWindow : Window
             var fullSampling = Value(Purpose) == "archive" && Value(Codec) != "av1";
             foreach (var item in Sampling.Items.OfType<ComboBoxItem>())
                 item.IsEnabled = (string)item.Tag is not ("422" or "444") || fullSampling;
-            if (!fullSampling && Value(Sampling) is "422" or "444") Select(Sampling, "auto");
+            if (!fullSampling && Value(Sampling) is "422" or "444") Select(Sampling, Value(Purpose) == "archive" ? "source" : "420");
             var flacAllowed = MediaFlag("flac_eligible");
-            ((ComboBoxItem)Audio.Items[4]).IsEnabled = flacAllowed;
+            Audio.Items.OfType<ComboBoxItem>().Single(item => (string)item.Tag == "flac").IsEnabled = flacAllowed;
             ((ComboBoxItem)Container.Items[1]).IsEnabled = Value(Audio) != "flac";
             if (Value(Audio) == "flac" && Value(Container) == "mp4") Select(Container, "mkv");
             Control<TextBlock>("AudioNote").Text = Value(Audio) == "flac" ? L.T("保留每条音轨的采样率、声道与整数精度。")
@@ -375,7 +417,7 @@ public sealed class MainWindow : Window
             else if (media is { } m && Profile.IsEnabled && !System.Text.RegularExpressions.Regex.IsMatch(m.GetProperty("video").GetProperty("pix_fmt").GetString() ?? "", "10|12|16")) warning = L.T("Log 转换需要对应相机的高位深原片。");
             else if (media is not null && !new[] { "420", "422", "444", "gray" }.Contains(chosenSampling)) warning = L.T("当前编码器无法保持原采样，请手动选择 4:2:0、4:2:2 或 4:4:4。");
             else if (media is not null && chosenSampling != "420" && !fullSampling) warning = L.T("保持此采样需要软件 HEVC 或 H.264；也可手动选择 4:2:0。");
-            else if (MediaFlag("pixel_alpha") && (Value(Sampling) == "source" || Value(Sampling) == "auto" && Value(Purpose) == "archive")) warning = L.T("素材含透明通道。请选择具体采样格式，输出为不带透明通道的视频。");
+            else if (MediaFlag("pixel_alpha") && Value(Sampling) == "source") warning = L.T("素材含透明通道。请选择具体采样格式，输出为不带透明通道的视频。");
             else if (Value(Audio) == "flac" && !flacAllowed) warning = L.T(MediaText("flac_reason"));
             var notice = Control<InfoBar>("Notice"); notice.Message = warning; notice.IsOpen = warning != "";
             var chooseInput = Control<Button>("ChooseInput");
@@ -441,7 +483,7 @@ public sealed class MainWindow : Window
     private void ApplyMedia(JsonElement data)
     {
         updating = true; media = data; Select(InputKind, "auto"); Select(Purpose, "share"); Select(Codec, "hevc");
-        Select(Variant, "standard"); Select(Sampling, "auto"); Select(ColorRange, "auto"); Select(Audio, "auto");
+        Select(Variant, "standard"); ApplyPurposeDefaults();
         Range.SelectedIndex = MediaText("kind") is "log" or "hlg" or "pq" ? 1 : 0;
         Select(Profile, MediaText("profile")); Output.Text = ""; automaticOutput = "";
         completed = false; clock.Reset(); encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
