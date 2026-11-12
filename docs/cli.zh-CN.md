@@ -52,8 +52,9 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | `--transform` | `auto` / `none` / `log-hdr` / `log-sdr` / `hdr-sdr` |
 | `--profile` | `auto` / `milog` / `pocket3` / `samsung` |
 | `--input-kind` | `auto` / `sdr` / `hlg` / `pq` / `log`；用于人工纠正原片标签 |
-| `--sampling` | `auto` / `source` / `420` / `422` / `444`；默认 `auto`：软件 HEVC / AVC 归档保持原采样，RGB 使用 4:4:4；AV1 和分享使用 4:2:0；422 / 444 需要软件 HEVC / AVC |
+| `--sampling` | `auto` / `source` / `420` / `422` / `444` / `gray`；默认 `auto`：软件 HEVC / AVC 归档保持原采样，RGB 使用 4:4:4；AV1 和分享使用 4:2:0；422 / 444 / gray 需要软件 HEVC / AVC |
 | `--color-range` | `auto` / `source` / `limited` / `full`；默认 `auto`：归档保持原范围，分享转换为 Limited |
+| `--bit-depth` | `auto` / `8` / `10` / `12`；归档按原片位深和编码器上限选择，分享默认 SDR 8 位、HDR 10 位 |
 | `--container` | `auto` / `mp4` / `mkv`；分享默认 MP4、归档默认 MKV |
 | `--audio` | `auto` / `aac` / `opus` / `copy` / `flac`；自动策略与 GUI 一致 |
 | `--variant` | `standard` / `fast`；fast 仅用于软件 AV1 备用档 |
@@ -63,7 +64,9 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 
 自动模式使用 SDR → SDR、HLG / PQ → HDR、Log → HLG。可通过 `--profile` 指定 Log 曲线，通过 `--input-kind` 指定素材类型。HDR 使用 HEVC / AV1。
 
-`--sampling source` 将 RGB 转为 4:4:4 YCbCr，灰度在软件 HEVC / AVC 下保持灰度。源采样与编码器不兼容时，选择其他编码器或显式指定采样。范围转换处理实际像素值；范围标签缺失时，程序参考像素格式与相机曲线解释输入。
+采样和位深按原片上限校验。例如，8 位 4:2:0 可输出 8 位 4:2:0；10 位 4:2:2 可选择 8 / 10 位、4:2:0 / 4:2:2。软件 HEVC 支持 8 / 10 / 12 位，软件 AVC 与 AV1 支持 8 / 10 位。`--sampling source` 将 RGB 转为 4:4:4 YCbCr，灰度可使用 `source` 或 `gray`。
+
+范围转换处理实际像素值；范围标签缺失时，程序参考像素格式与相机曲线解释输入。
 
 `--audio flac` 检查全部音轨，仅接受可确认的无损整数输入，保留采样率、声道和整数精度，使用 MKV 封装。
 
@@ -79,7 +82,7 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 ./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range sdr | Out-Host
 
 # 422 归档并保留原音轨
-./FrameFlow.exe convert input.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
+./FrameFlow.exe convert source-422.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
 
 # 预览转换参数
 ./FrameFlow.exe plan clip.mp4 --preset archive-av1-fast --json | ConvertFrom-Json
@@ -91,7 +94,7 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 配置文件使用下划线字段名；`range` 对应动态范围，输出文件路径通过 `--output` 指定。
 
 ```json
-{"preset":"archive-hevc","range":"auto","sampling":"422","audio":"copy","cpu_decode":true}
+{"preset":"archive-hevc","range":"auto","sampling":"420","bit_depth":8,"audio":"copy","cpu_decode":true}
 ```
 
 配置字段为上表编码选项和 `preset`，例如 `color_range` 对应 `--color-range`。优先级为：GUI 等价默认值 → 预设 → 配置字段 → 显式命令行字段。若命令指定 `--preset`，其预设选择覆盖配置中的 `preset`，其他配置字段仍生效。

@@ -81,11 +81,22 @@ def main():
         source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
         media = call('probe', source, '--no-settings', '--accept-terms','--json')
         assert media['kind']=='sdr' and media['component_depths']==[10]*3 and media['audio']
-        plan = events('plan', source, '--preset','archive-hevc','--sampling','422')
-        assert plan[0]['data']['pixel_format']=='yuv422p10le'
-        plan = events('plan', source, '--preset','archive-hevc','--color-range','full','--sampling','444')
-        assert plan[0]['data']['pixel_format']=='yuv444p10le'
+        plan = events('plan', source, '--preset','archive-hevc','--sampling','420')
+        assert plan[0]['data']['pixel_format']=='yuv420p10le'
+        events('plan',source,'--preset','archive-hevc','--sampling','422',status=2)
+        events('plan',source,'--preset','archive-hevc','--sampling','444',status=2)
+        plan = events('plan', source, '--preset','archive-hevc','--color-range','full','--sampling','420')
+        assert plan[0]['data']['pixel_format']=='yuv420p10le'
         assert plan[0]['data']['expected_colors']['color_range']=='pc'
+        plan = events('plan',source,'--preset','archive-avc')
+        assert plan[0]['data']['pixel_format']=='yuv420p10le'
+        source8=folder/'8bit420.mp4'
+        subprocess.run([shutil.which('ffmpeg'),'-v','error','-i',str(source),'-map','0:v',
+            '-c:v','libx264','-pix_fmt','yuv420p','-color_primaries','bt709','-color_trc','bt709',
+            '-colorspace','bt709',str(source8)],check=True)
+        plan=events('plan',source8,'--preset','archive-hevc')
+        assert plan[0]['data']['pixel_format']=='yuv420p' and plan[0]['data']['options']['bit_depth']=='8'
+        events('plan',source8,'--preset','archive-hevc','--bit-depth','10',status=2)
         events('plan', source, '--audio', 'flac', status=2)
         events('plan', source, '--input-kind', 'sdr', '--transform', 'log-sdr', '--profile', 'milog', status=2)
         pcm=folder/'pcm.mkv'
@@ -107,6 +118,9 @@ def main():
         config=folder/'config.json';config.write_text(json.dumps({'preset':'archive-hevc','sampling':'422'}))
         plan=events('plan',source,'--config',config,'--preset','share-hevc','--sampling','420')
         assert plan[0]['data']['options']['purpose']=='share'
+        config.write_text(json.dumps({'preset':'archive-hevc','bit_depth':8}))
+        plan=events('plan',source,'--config',config)
+        assert plan[0]['data']['pixel_format']=='yuv420p'
         output=folder/'share output.mp4';log=folder/'events.jsonl'
         result=events('convert',source,'-o',output,'--log',log)
         assert output.is_file() and any(e['event']=='progress' and 'fps' in e['data'] for e in result)

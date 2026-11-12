@@ -30,7 +30,7 @@ python qa/RuntimeChecks/check_worker.py --deployment dist/NativeAot
 python qa/FormatChecks/check_formats.py
 ```
 
-检查 SDR / HLG / PQ 编码后的黑白像素值、4:2:0 / 4:2:2 / 4:4:4 / RGB / 灰度输入，以及 FLAC 多音轨的解码样本哈希。需要 Intel QSV 和 Vulkan / libplacebo。
+检查 SDR / HLG / PQ 编码后的黑白像素值、8 / 10 / 12 位与 4:2:0 / 4:2:2 / 4:4:4 / RGB / 灰度输入、源格式上限，以及 FLAC 多音轨的解码样本哈希。需要 Intel QSV 和 Vulkan / libplacebo。
 
 ## 内存采样
 

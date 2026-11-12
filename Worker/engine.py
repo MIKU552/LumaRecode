@@ -9,7 +9,7 @@ import threading
 
 from media import HDR_KINDS, NO_WINDOW, UNSPECIFIED, inspect_media
 from metadata_helpers import compare_static_metadata, hdr_metadata, nominal_fps, side_data
-from output_policy import audio_streams, default_sampling, flac_tracks, is_rgb, source_range, source_sampling
+from output_policy import audio_streams, default_depth, default_sampling, depth_choices, flac_tracks, is_rgb, sampling_choices, source_depth, source_range, source_sampling
 
 ASSETS = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'assets'
 CONFIG = json.loads((ASSETS / 'recommended-presets.json').read_text(encoding='utf-8'))
@@ -38,6 +38,7 @@ class Options:
     cpu_decode: bool = False
     container: str = 'auto'
     color_range: str = 'auto'
+    bit_depth: str = 'auto'
 
     @property
     def suffix(self):
@@ -46,16 +47,20 @@ class Options:
 
     @property
     def depth(self):
-        return 10 if self.output == 'hdr' or (self.purpose == 'archive' and self.codec != 'avc') else 8
+        return int(self.bit_depth)
 
     @property
     def pixel_format(self):
         if self.sampling == 'gray':
-            return 'gray10le' if self.depth == 10 else 'gray'
-        return f'yuv{self.sampling}p' + ('10le' if self.depth == 10 else '')
+            return f'gray{self.depth}le' if self.depth > 8 else 'gray'
+        return f'yuv{self.sampling}p' + (f'{self.depth}le' if self.depth > 8 else '')
 
 
 def resolve_format(options, media):
+    if options.purpose not in {'share', 'archive'} or options.codec not in {'hevc', 'av1', 'avc'}:
+        raise ValueError('请选择有效的用途和编码器。')
+    if options.output == 'hdr' and options.codec == 'avc':
+        raise ValueError('HDR 输出请选择 HEVC 或 AV1。')
     if options.sampling not in {'auto', 'source', '420', '422', '444', 'gray'}:
         raise ValueError('请选择自动、保持原采样、4:2:0、4:2:2 或 4:4:4。')
     sampling = options.sampling
@@ -67,6 +72,8 @@ def resolve_format(options, media):
         sampling = source_sampling(media)
     if sampling not in {'420', '422', '444', 'gray'}:
         raise ValueError('当前编码器无法保持原采样，请手动选择 4:2:0、4:2:2 或 4:4:4。')
+    if sampling not in sampling_choices(media):
+        raise ValueError('输出采样须在原片采样上限内选择。')
     if sampling != '420' and (options.purpose != 'archive' or options.codec == 'av1'):
         raise ValueError('保持此采样需要软件 HEVC 或 H.264；也可手动选择 4:2:0。')
     if options.color_range not in {'auto', 'source', 'limited', 'full'}:
@@ -77,7 +84,15 @@ def resolve_format(options, media):
     if data_range == 'source':
         fallback = PROFILES[options.profile][3] if options.transform.startswith('log-') and options.profile in PROFILES else None
         data_range = source_range(media, fallback)
-    return replace(options, sampling=sampling, color_range=data_range)
+    if str(options.bit_depth) not in {'auto', '8', '10', '12'}:
+        raise ValueError('请选择自动、8、10 或 12 位输出。')
+    depths = depth_choices(media, options.purpose, options.codec, options.output)
+    if not depths:
+        raise ValueError('HDR 输出需要至少 10 位的源素材，请选择 SDR 或高位深原片。')
+    depth = default_depth(media, options.purpose, options.codec, options.output) if options.bit_depth == 'auto' else int(options.bit_depth)
+    if depth not in depths:
+        raise ValueError('输出位深须在原片和编码器的位深上限内选择；HDR 至少需要 10 位。')
+    return replace(options, sampling=sampling, color_range=data_range, bit_depth=str(depth))
 
 
 def validate(options, media):
@@ -110,7 +125,7 @@ def validate(options, media):
             raise ValueError('Log 转换目标需要与 SDR/HDR 输出一致。')
         if kind != 'log':
             raise ValueError('Log 转换需要将输入解释指定为 Log。')
-        if not re.search(r'(10|12|16)', media.video.get('pix_fmt', '')):
+        if source_depth(media) < 10:
             raise ValueError('这些 Log 转换需要对应相机的高位深原片。')
         return 'log'
     if transform == 'hdr-sdr':

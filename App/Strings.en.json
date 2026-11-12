@@ -248,5 +248,11 @@
   "FLAC 音轨请选择 MKV 封装，以保留声道布局。": "Select MKV for FLAC audio to preserve channel layouts.",
   "Log 转换需要将输入解释指定为 Log。": "Log conversion requires Log input interpretation.",
   "RGB 输入转换为 YCbCr。": "RGB input converts to YCbCr.",
-  "输出为不带透明通道的视频。": "Output video has no alpha channel."
+  "输出为不带透明通道的视频。": "Output video has no alpha channel.",
+  "位深": "Bit depth",
+  "使用对应相机的曲线，转换为 {0} 位 HLG。": "Use the matching camera curve to convert to {0}-bit HLG.",
+  "输出采样须在原片采样上限内选择。": "Choose output sampling within the source sampling limits.",
+  "请选择自动、8、10 或 12 位输出。": "Choose Auto, 8-bit, 10-bit, or 12-bit output.",
+  "HDR 输出需要至少 10 位的源素材，请选择 SDR 或高位深原片。": "HDR output requires at least 10-bit source footage. Select SDR or a higher-bit-depth source.",
+  "输出位深须在原片和编码器的位深上限内选择；HDR 至少需要 10 位。": "Choose a bit depth within the source and encoder limits. HDR requires at least 10 bits."
 }

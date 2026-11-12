@@ -113,7 +113,7 @@ with tempfile.TemporaryDirectory(prefix='frameflow-formats-') as temporary:
         desired = 'yuv444p10le' if pixel.startswith('gbr') else pixel
         assert result.video['pix_fmt'] == desired
         _, result = encode(media, Options(purpose='archive', codec='avc'), 'avc-'+pixel)
-        assert result.video['pix_fmt'].replace('yuvj', 'yuv') == desired.replace('10le', '') or (
+        assert result.video['pix_fmt'].replace('yuvj', 'yuv') == desired or (
             pixel == 'gray10le' and result.video['_monochrome'])
         if pixel != 'yuv420p10le':
             reject(media, Options(purpose='archive', codec='av1', sampling='source'))
@@ -126,7 +126,7 @@ with tempfile.TemporaryDirectory(prefix='frameflow-formats-') as temporary:
         media = inspect_media(tools, fixture)
         reject(media, Options(purpose='archive', sampling='source'))
         _, converted = encode(media, Options(purpose='archive'), 'default-'+pixel)
-        assert converted.video['pix_fmt'] == 'yuv444p10le'
+        assert converted.video['pix_fmt'] == ('yuv420p' if pixel == 'yuv440p' else 'yuv444p10le')
         encode(media, Options(purpose='archive', sampling='420'), 'explicit-'+pixel)
 
     for profile in ('milog', 'pocket3', 'samsung'):
@@ -136,6 +136,34 @@ with tempfile.TemporaryDirectory(prefix='frameflow-formats-') as temporary:
             _, result = encode(source, options, profile+'-'+target)
             assert result.video['color_range'] == 'pc'
             assert result.video['color_transfer'] == ('arib-std-b67' if target == 'hdr' else 'bt709')
+
+    for depth in (8, 12):
+        for sampling in ('420', '422', '444'):
+            pixel = f'yuv{sampling}p' + (f'{depth}le' if depth > 8 else '')
+            fixture = folder / f'limits-{depth}-{sampling}.mkv'
+            run(['-i', base, '-vf', 'format='+pixel, '-c:v', 'ffv1', '-color_range', 'pc', fixture])
+            media = inspect_media(tools, fixture)
+            assert public_media(media, tools)['source_depth'] == depth
+            for codec in ('hevc', 'avc', 'av1'):
+                wanted_depth = min(depth, 12 if codec == 'hevc' else 10)
+                wanted_sampling = '420' if codec == 'av1' else sampling
+                options = Options(purpose='archive', codec=codec, variant='fast' if codec == 'av1' else 'standard')
+                _, result = encode(media, options, f'limits-{depth}-{sampling}-{codec}')
+                wanted_pixel = f'yuv{wanted_sampling}p' + (f'{wanted_depth}le' if wanted_depth > 8 else '')
+                assert result.video['pix_fmt'].replace('yuvj', 'yuv') == wanted_pixel
+                if depth == 8:
+                    for higher in ('10', '12'): reject(media, replace(options, bit_depth=higher))
+                if depth == 12 and codec != 'hevc': reject(media, replace(options, bit_depth='12'))
+            if sampling == '420':
+                reject(media, Options(purpose='archive', sampling='422'))
+                reject(media, Options(purpose='archive', sampling='444'))
+            if sampling == '422': reject(media, Options(purpose='archive', sampling='444'))
+            if depth == 8: reject(media, Options(output='hdr', source_kind='hlg'))
+    for codec in ('hevc', 'avc', 'av1'):
+        _, result = encode(source, Options(purpose='archive', codec=codec, bit_depth='8',
+                           variant='fast' if codec == 'av1' else 'standard'), 'down-depth-'+codec)
+        assert result.pixel['components'][0]['bit_depth'] == 8
+    print('PASS source limits: 8/10/12-bit, 420/422/444, downward conversion and 10-bit software AVC', flush=True)
 
     pcm = folder/'pcm.mkv'
     run(['-i', base, '-f', 'lavfi', '-i', 'sine=r=44100:d=0.5', '-f', 'lavfi', '-i', 'anoisesrc=r=48000:d=0.5:seed=7',

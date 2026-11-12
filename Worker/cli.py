@@ -23,9 +23,9 @@ VERSION = os.environ.get('FRAMEFLOW_VERSION', 'development')
 VIDEO_TYPES = {'.mp4', '.mov', '.mkv', '.m4v', '.webm', '.avi', '.mts', '.m2ts', '.ts', '.mxf', '.mpg', '.mpeg', '.wmv'}
 CHOICES = dict(purpose=('share', 'archive'), codec=('hevc', 'av1', 'avc'),
                range=('auto', 'sdr', 'hdr'), transform=('auto', 'none', 'log-hdr', 'log-sdr', 'hdr-sdr'),
-               profile=('auto', *PROFILES), sampling=('auto', 'source', '420', '422', '444'), variant=('standard', 'fast'),
+               profile=('auto', *PROFILES), sampling=('auto', 'source', '420', '422', '444', 'gray'), variant=('standard', 'fast'),
                audio=('auto', 'copy', 'aac', 'opus', 'flac'), input_kind=('auto', 'sdr', 'hlg', 'pq', 'log'),
-               color_range=('auto', 'source', 'limited', 'full'))
+               color_range=('auto', 'source', 'limited', 'full'), bit_depth=('auto', '8', '10', '12'))
 CHOICES['container'] = ('auto', 'mp4', 'mkv')
 LANG = 'en'
 TRANSLATIONS = {}
@@ -212,6 +212,8 @@ def option_values(args):
     result = dict(chosen or {})
     result.update(values)
     result.update({key: getattr(args, key) for key in (*CHOICES, 'cpu_decode') if getattr(args, key) is not None})
+    if isinstance(result.get('bit_depth'), int) and not isinstance(result['bit_depth'], bool):
+        result['bit_depth'] = str(result['bit_depth'])
     for key, choices in CHOICES.items():
         if key in result and result[key] not in choices:
             raise CliError('invalid_config', f'Invalid {key}: {result[key]}')

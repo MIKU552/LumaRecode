@@ -25,7 +25,7 @@ public sealed class MainWindow : Window
     private readonly UserSettings settings = UserSettings.Load();
     private readonly Appearance appearance;
     private WorkerClient? activeJob;
-    private bool updating, probing, closing, dialogOpen, audioUsesDefault = true;
+    private bool updating, probing, closing, dialogOpen, audioUsesDefault = true, depthUsesDefault = true;
     private int generation;
     private string ffmpeg = "", ffprobe = "", automaticOutput = "", completedOutput = "";
     private JsonElement? media;
@@ -45,13 +45,15 @@ public sealed class MainWindow : Window
     private ComboBox Profile => Control<ComboBox>("Profile");
     private ComboBox InputKind => Control<ComboBox>("InputKind");
     private ComboBox Sampling => Control<ComboBox>("Sampling");
+    private ComboBox BitDepth => Control<ComboBox>("BitDepth");
     private ComboBox ColorRange => Control<ComboBox>("ColorRange");
     private ComboBox Audio => Control<ComboBox>("Audio");
     private string Kind => Value(InputKind) == "auto" ? MediaText("kind", "unknown") : Value(InputKind);
     private bool Hdr => Range.SelectedIndex == 1;
     private string previousSuffix = ".mp4";
     private string Suffix => Value(Container) switch { "mp4" => ".mp4", "mkv" => ".mkv", _ => Value(Purpose) == "archive" || Value(Audio) == "flac" ? ".mkv" : ".mp4" };
-    private int Depth => Hdr || Value(Purpose) == "archive" && Value(Codec) != "avc" ? 10 : 8;
+    private int Depth => int.TryParse(Value(BitDepth), out var depth) ? depth : 8;
+    private int SourceDepth => media is { } item && item.TryGetProperty("source_depth", out var value) ? value.GetInt32() : 8;
 
     public MainWindow()
     {
@@ -173,7 +175,7 @@ public sealed class MainWindow : Window
         try
         {
             foreach (var (item, original) in choiceLabels) item.Content = L.T(original);
-            foreach (var name in new[] { "InputKind", "Purpose", "Codec", "Variant", "Container", "Transform", "Profile", "Sampling", "ColorRange", "Audio" })
+            foreach (var name in new[] { "InputKind", "Purpose", "Codec", "Variant", "Container", "Transform", "Profile", "Sampling", "BitDepth", "ColorRange", "Audio" })
             {
                 var combo = Control<ComboBox>(name); var selected = combo.SelectedIndex;
                 // WinUI caches the selected label separately from the item's Content.
@@ -196,7 +198,8 @@ public sealed class MainWindow : Window
         Choices(Container, ("auto", L.T("自动 · 按用途选择")), ("mp4", "MP4"), ("mkv", "MKV"));
         Choices(Transform, ("none", L.T("不套用 · 保留 / 标准化")), ("log-hdr", L.T("Log → HDR（HLG）")), ("log-sdr", "Log → SDR"), ("hdr-sdr", "HDR → SDR"));
         Choices(Profile, ("", L.T("请选择 Log 曲线…")), ("milog", L.T("小米 Mi-Log")), ("pocket3", "Pocket 3 D-Log M"), ("samsung", "Samsung Log"));
-        Choices(Sampling, ("source", L.T("保持原采样")), ("420", "4:2:0"), ("422", "4:2:2"), ("444", "4:4:4"));
+        Choices(Sampling, ("source", L.T("保持原采样")), ("420", "4:2:0"), ("422", "4:2:2"), ("444", "4:4:4"), ("gray", L.T("灰度")));
+        Choices(BitDepth, ("8", L.T("8 位")), ("10", L.T("10 位")), ("12", L.T("12 位")));
         Choices(ColorRange, ("source", L.T("保持原范围")), ("limited", L.T("Limited · 有限范围")), ("full", L.T("Full · 全范围")));
         Choices(Audio, ("copy", L.T("复制原音轨")), ("aac", "AAC · 256 kbps"), ("opus", "Opus · 192 kbps"), ("flac", L.T("FLAC · 无损")));
         ApplyPurposeDefaults();
@@ -212,6 +215,7 @@ public sealed class MainWindow : Window
         Select(Sampling, DefaultSampling());
         Select(ColorRange, archive ? "source" : "limited");
         audioUsesDefault = true; ApplyDefaultAudio();
+        depthUsesDefault = true;
     }
     private string DefaultSampling() => Value(Purpose) == "archive" && Value(Codec) != "av1" ? MediaText("archive_sampling", "source") : "420";
     private void WireEvents()
@@ -260,12 +264,13 @@ public sealed class MainWindow : Window
             Refresh();
         };
         Audio.SelectionChanged += (_, _) => { if (!updating) { audioUsesDefault = false; Refresh(); } };
+        BitDepth.SelectionChanged += (_, _) => { if (!updating) { depthUsesDefault = false; Refresh(); } };
         Range.SelectionChanged += (_, _) => Refresh();
         InputKind.SelectionChanged += (_, _) =>
         {
             if (updating) return;
             updating = true;
-            try { Range.SelectedIndex = Kind is "hlg" or "pq" or "log" ? 1 : 0; }
+            try { Range.SelectedIndex = Kind is "hlg" or "pq" or "log" ? 1 : 0; depthUsesDefault = true; }
             finally { updating = false; }
             Refresh();
         };
@@ -371,6 +376,22 @@ public sealed class MainWindow : Window
         return SourceColorRange();
     }
     private string SourceColorRange() => MediaFlag("range_inferred") && Value(Profile) == "milog" && Value(Transform).StartsWith("log-") ? "full" : MediaText("source_color_range", "limited");
+    private string[] SourceSamplingChoices() => media is { } item && item.TryGetProperty("allowed_sampling", out var values)
+        ? values.EnumerateArray().Select(value => value.GetString() ?? "").ToArray() : ["420"];
+    private int[] AllowedDepths()
+    {
+        int[] supported = Value(Purpose) == "share" && Value(Codec) == "avc" ? [8]
+            : Value(Purpose) == "archive" && Value(Codec) == "hevc" ? [8, 10, 12] : [8, 10];
+        return supported.Where(depth => depth <= Math.Max(8, SourceDepth) && (!Hdr || depth >= 10)).ToArray();
+    }
+    private void UpdateDepthChoices()
+    {
+        var allowed = AllowedDepths();
+        foreach (var item in BitDepth.Items.OfType<ComboBoxItem>()) item.IsEnabled = allowed.Contains(int.Parse((string)item.Tag));
+        if (allowed.Length == 0) { BitDepth.SelectedIndex = -1; return; }
+        if (depthUsesDefault || !allowed.Contains(Depth))
+            Select(BitDepth, (Value(Purpose) == "archive" ? allowed.Max() : Hdr ? 10 : 8).ToString(CultureInfo.InvariantCulture));
+    }
     private void Refresh()
     {
         if (updating) return;
@@ -380,10 +401,16 @@ public sealed class MainWindow : Window
             if (Kind == "sdr" && Hdr) Range.SelectedIndex = 0;
             Control<RadioButton>("HdrChoice").IsEnabled = Kind is "hlg" or "pq" or "log";
             if (Hdr && Value(Codec) == "avc") Select(Codec, "hevc");
+            UpdateDepthChoices();
             foreach (var item in Codec.Items.OfType<ComboBoxItem>()) item.IsEnabled = !Hdr || (string)item.Tag != "avc";
             var fullSampling = Value(Purpose) == "archive" && Value(Codec) != "av1";
+            var sourceChoices = SourceSamplingChoices();
             foreach (var item in Sampling.Items.OfType<ComboBoxItem>())
-                item.IsEnabled = (string)item.Tag == "420" || fullSampling && ((string)item.Tag != "source" || DefaultSampling() == "source");
+            {
+                var key = (string)item.Tag;
+                item.IsEnabled = key == "source" ? fullSampling && DefaultSampling() == "source" && sourceChoices.Contains(MediaText("source_sampling", "420"))
+                    : sourceChoices.Contains(key) && (fullSampling || key == "420");
+            }
             if (Sampling.SelectedItem is ComboBoxItem selectedSampling && !selectedSampling.IsEnabled) Select(Sampling, DefaultSampling());
             var flacAllowed = MediaFlag("flac_eligible");
             Audio.Items.OfType<ComboBoxItem>().Single(item => (string)item.Tag == "flac").IsEnabled = flacAllowed;
@@ -422,7 +449,7 @@ public sealed class MainWindow : Window
                 ? Value(Audio) == "flac" ? L.T("自动 → MKV。FLAC 音轨默认使用 MKV 封装。") : L.T($"自动 → {Suffix[1..].ToUpperInvariant()}。快速分享默认 MP4，软件归档默认 MKV。")
                 : Suffix == ".mp4" ? L.T("MP4。复制原音轨时，会在编码前检测封装兼容性。") : L.T("MKV。封装独立于编码质量档和动态范围。");
             Control<TextBlock>("TransformNote").Text = Value(Transform) switch {
-                "log-hdr" => L.T("使用对应相机的曲线，转换为 10 位 HLG。"),
+                "log-hdr" => L.T($"使用对应相机的曲线，转换为 {Depth} 位 HLG。"),
                 "log-sdr" => L.T("解码对应 Log，并将高光映射到 Rec.709。"),
                 "hdr-sdr" => L.T("按 HLG / PQ 原片做色调映射，输出 Rec.709。"),
                 _ => L.T("保留原片动态范围，按目标格式标准化色彩。") };
@@ -431,7 +458,9 @@ public sealed class MainWindow : Window
             else if (!WorkerClient.HasBundledPython && WorkerClient.ExternalPython == "") warning = L.T("未找到 Python，请在工具路径中选择 Python 3.14 或更新版本。");
             else if (media is not null && Profile.IsEnabled && Value(Profile) == "") warning = L.T("请确认相机的 Log 曲线。");
             else if (media is not null && Kind == "unknown" && !Profile.IsEnabled) warning = L.T("没有可靠的曲线标记，请确认输入解释。");
-            else if (media is { } m && Profile.IsEnabled && !System.Text.RegularExpressions.Regex.IsMatch(m.GetProperty("video").GetProperty("pix_fmt").GetString() ?? "", "10|12|16")) warning = L.T("Log 转换需要对应相机的高位深原片。");
+            else if (media is not null && Profile.IsEnabled && SourceDepth < 10) warning = L.T("Log 转换需要对应相机的高位深原片。");
+            else if (media is not null && AllowedDepths().Length == 0) warning = L.T("HDR 输出需要至少 10 位的源素材，请选择 SDR 或高位深原片。");
+            else if (media is not null && !sourceChoices.Contains(chosenSampling)) warning = L.T("输出采样须在原片采样上限内选择。");
             else if (media is not null && !new[] { "420", "422", "444", "gray" }.Contains(chosenSampling)) warning = L.T("当前编码器无法保持原采样，请手动选择 4:2:0、4:2:2 或 4:4:4。");
             else if (media is not null && chosenSampling != "420" && !fullSampling) warning = L.T("保持此采样需要软件 HEVC 或 H.264；也可手动选择 4:2:0。");
             else if (MediaFlag("pixel_alpha") && Value(Sampling) == "source") warning = L.T("素材含透明通道。请选择具体采样格式，输出为不带透明通道的视频。");
@@ -602,7 +631,7 @@ public sealed class MainWindow : Window
         var request = new WorkerRequest("convert", ToolsObject(), MediaText("path"), output,
             new WorkerOptions(Value(Purpose), Value(Codec), Hdr ? "hdr" : "sdr", Value(Transform),
                 Value(Profile) == "" ? null : Value(Profile), Value(Sampling), Value(Variant),
-                Value(Audio), Value(Container), Value(InputKind), Control<CheckBox>("CpuDecode").IsChecked == true, Value(ColorRange)));
+                Value(Audio), Value(Container), Value(InputKind), Control<CheckBox>("CpuDecode").IsChecked == true, Value(ColorRange), Value(BitDepth)));
         using var worker = new WorkerClient(); activeJob = worker;
         completed = false; encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
         clock.Restart(); clockTimer.Start(); UpdateTransferStats();
@@ -670,6 +699,7 @@ public sealed class MainWindow : Window
         foreach (var name in new[] { "InputKind", "OutputRange", "Purpose", "Codec", "Variant", "Container", "Transform", "Sampling", "ColorRange", "Audio", "CpuDecode" })
             Control<Microsoft.UI.Xaml.Controls.Control>(name).IsEnabled = enabled;
         Profile.IsEnabled = enabled && Value(Transform).StartsWith("log-");
+        BitDepth.IsEnabled = enabled && AllowedDepths().Length > 0;
         Output.IsEnabled = enabled;
         Control<Button>("ChooseOutput").IsEnabled = enabled;
     }

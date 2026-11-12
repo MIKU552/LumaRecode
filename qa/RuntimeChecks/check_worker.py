@@ -75,7 +75,7 @@ def main():
         print('PASS isolated bundled Python: probe, Unicode path, video/audio bit depth', flush=True)
         cases = [
             ('sdr-share', {'codec': 'hevc'}, 'yuv420p', 'bt709'),
-            ('sdr-archive-422', {'purpose': 'archive', 'sampling': '422'}, 'yuv422p10le', 'bt709'),
+            ('sdr-archive-source', {'purpose': 'archive'}, 'yuv420p10le', 'bt709'),
             *[(f'log-{profile}', {'output': 'hdr', 'transform': 'log-hdr',
                'source_kind': 'log', 'profile': profile}, 'yuv420p10le', 'arib-std-b67')
               for profile in ('milog', 'pocket3', 'samsung')],

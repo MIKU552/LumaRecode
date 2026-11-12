@@ -42,6 +42,8 @@ internal static class ViewText
         ("Profile", "AutomationProperties.Name", "相机曲线"),
         ("Sampling", "Header", "色度采样"),
         ("Sampling", "AutomationProperties.Name", "色度采样"),
+        ("BitDepth", "Header", "位深"),
+        ("BitDepth", "AutomationProperties.Name", "位深"),
         ("ColorRange", "Header", "色彩范围"),
         ("ColorRange", "AutomationProperties.Name", "色彩范围"),
         ("LocalizedElement38", "Text", "格式与音频"),

@@ -48,8 +48,9 @@ Every command supports `--help`. Probe/catalog/doctor/license results are JSON. 
 | `--transform` | `auto` (default), `none`, `log-hdr`, `log-sdr`, `hdr-sdr` |
 | `--profile` | `auto`, `milog`, `pocket3`, `samsung` |
 | `--input-kind` | `auto`, `sdr`, `hlg`, `pq`, `log` |
-| `--sampling` | `auto` (default), `source`, `420`, `422`, `444`; Auto keeps source sampling for software HEVC/AVC archive, selects 4:4:4 for RGB, and uses 4:2:0 for AV1/share; 422 / 444 use software HEVC/AVC |
+| `--sampling` | `auto` (default), `source`, `420`, `422`, `444`, `gray`; Auto keeps source sampling for software HEVC/AVC archive, selects 4:4:4 for RGB, and uses 4:2:0 for AV1/share; 422 / 444 / gray use software HEVC/AVC |
 | `--color-range` | `auto` (default), `source`, `limited`, `full`; Auto keeps source range for archive and converts to Limited for share |
+| `--bit-depth` | `auto`, `8`, `10`, `12`; archive follows source depth and encoder limits; share defaults to 8-bit SDR / 10-bit HDR |
 | `--container` | `auto` (share MP4, archive MKV), `mp4`, `mkv` |
 | `--audio` | `auto`, `aac`, `opus`, `copy`, `flac`; defaults match the GUI |
 | `--variant` | `standard`, `fast` (software AV1 only) |
@@ -59,7 +60,9 @@ Every command supports `--help`. Probe/catalog/doctor/license results are JSON. 
 
 Auto mode selects SDR → SDR, HLG / PQ → HDR, and Log → HLG. Use `--profile` to select a Log curve and `--input-kind` to set the source type. HDR output uses HEVC / AV1.
 
-`--sampling source` converts RGB to 4:4:4 YCbCr and keeps grayscale for software HEVC / AVC. If the encoder cannot keep the source sampling, select another encoder or specify sampling explicitly. Range conversion processes pixel values. For sources with missing range tags, pixel format and camera profile determine the input interpretation.
+Sampling and depth are checked against the source. An 8-bit 4:2:0 source stays 8-bit 4:2:0; a 10-bit 4:2:2 source allows 8 / 10 bits and 4:2:0 / 4:2:2. Software HEVC supports 8 / 10 / 12 bits; software AVC and AV1 support 8 / 10 bits. `--sampling source` converts RGB to 4:4:4 YCbCr. Grayscale can use `source` or `gray`.
+
+Range conversion processes pixel values. For sources with missing range tags, pixel format and camera profile determine the input interpretation.
 
 `--audio flac` checks every audio track and accepts confirmed lossless integer input, preserving sample rates, channels, and integer precision. FLAC audio uses MKV.
 
@@ -68,7 +71,7 @@ Auto mode selects SDR → SDR, HLG / PQ → HDR, and Log → HLG. Use `--profile
 ./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
 ./FrameFlow.exe convert hdr.mp4 --range sdr | Out-Host
 ./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range sdr | Out-Host
-./FrameFlow.exe convert input.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
+./FrameFlow.exe convert source-422.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
 ./FrameFlow.exe plan clip.mp4 --preset archive-av1-fast --json | ConvertFrom-Json
 ./FrameFlow.exe convert lossless.mov --preset archive-hevc --sampling source --color-range source --audio flac | Out-Host
 ```
@@ -76,7 +79,7 @@ Auto mode selects SDR → SDR, HLG / PQ → HDR, and Log → HLG. Use `--profile
 HDR/Log-to-SDR needs FFmpeg libplacebo and Vulkan. A JSON config accepts the encoding fields above, using underscore keys, plus `preset`:
 
 ```json
-{"preset":"archive-hevc","range":"auto","sampling":"422","audio":"copy","cpu_decode":true}
+{"preset":"archive-hevc","range":"auto","sampling":"420","bit_depth":8,"audio":"copy","cpu_decode":true}
 ```
 
 Precedence: GUI-equivalent defaults → chosen preset → config fields → explicit CLI fields. CLI `--preset` selects the preset in preference to the config's preset; other config fields still apply. Config keys use underscores, such as `color_range`. `range` describes dynamic range; file destinations use `--output`.

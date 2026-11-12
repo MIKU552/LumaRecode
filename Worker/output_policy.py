@@ -30,14 +30,54 @@ def is_rgb(media):
                 media.video.get('pix_fmt') == 'pal8')
 
 
+def source_depth(media):
+    components = media.pixel.get('components', [])
+    if media.pixel.get('flags', {}).get('alpha') and len(components) > 1:
+        components = components[:-1]
+    depths = [item['bit_depth'] for item in components if item.get('bit_depth', 0) > 0]
+    raw_depth = 0
+    for key in ('bits_per_raw_sample', 'bits_per_sample'):
+        value = str(media.video.get(key, ''))
+        if value.isdigit() and int(value) > 0:
+            raw_depth = int(value)
+            break
+    if depths:
+        return min(max(depths), raw_depth) if raw_depth else max(depths)
+    if raw_depth: return raw_depth
+    match = re.search(r'(?:p|gray)(10|12|14|16)', media.video.get('pix_fmt', ''))
+    return int(match[1]) if match else 8
+
+
+def sampling_choices(media):
+    sampling = source_sampling(media)
+    if sampling == 'gray': return ['gray', '420']
+    shifts = {'444': (0, 0), '422': (1, 0), '420': (1, 1), '440': (0, 1), '411': (2, 0), '410': (2, 2)}
+    original = shifts.get(sampling)
+    return [name for name in ('420', '422', '444') if original is not None and
+            all(target >= source for target, source in zip(shifts[name], original))]
+
+
+def depth_choices(media, purpose, codec, output):
+    supported = (8,) if purpose == 'share' and codec == 'avc' else (8, 10, 12) if purpose == 'archive' and codec == 'hevc' else (8, 10)
+    ceiling = max(8, source_depth(media))
+    return [depth for depth in supported if depth <= ceiling and (output != 'hdr' or depth >= 10)]
+
+
+def default_depth(media, purpose, codec, output):
+    choices = depth_choices(media, purpose, codec, output)
+    if not choices: return None
+    return max(choices) if purpose == 'archive' else 10 if output == 'hdr' else 8
+
+
 def default_sampling(media, purpose, codec):
     if purpose == 'share' or codec == 'av1':
         return '420'
     sampling = source_sampling(media)
-    if is_rgb(media) or sampling in {'440', '411', '410'}:
+    if is_rgb(media):
         return '444'
+    if sampling == '440': return '420'
     if media.pixel.get('flags', {}).get('alpha'):
-        return sampling if sampling in {'420', '422', '444'} else '444'
+        return sampling if sampling in {'420', '422', '444', 'gray'} else '420'
     return 'source'
 
 
