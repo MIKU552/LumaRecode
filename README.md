@@ -16,7 +16,7 @@
 - 读取分辨率、帧率、位深、色彩标签及音轨，按素材设置默认选项。
 - 设置色度采样、Limited / Full 范围及音轨，支持 FLAC 无损音频。
 - 显示进度、编码帧率、当前位置与剩余时间，完成后校验输出格式。
-- 提供 Mica、浅色 / 深色 / 系统主题、强调色和中英文切换。
+- 提供 Mica、浅色 / 深色 / 系统主题、强调色，以及简体中文、English、日本語和 Español。
 - 命令行支持批量、配置文件、参数预演和 JSON 事件输出。
 
 ## 快速开始
@@ -52,7 +52,7 @@ SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线�
 - 快速分享需要相应 Intel QSV 支持。
 - Log 转换需要 `zscale`、`lut3d`；HDR / Log 转 SDR 还需要 `libplacebo` 和 Vulkan。
 
-语言和主题默认跟随系统；中文系统使用简体中文，其他语言系统默认英文。设置保存在 `%LOCALAPPDATA%\FrameFlow\settings.json`。
+语言和主题默认跟随系统，支持中文、英语、日语和西班牙语系统；其他语言系统默认英文。设置保存在 `%LOCALAPPDATA%\FrameFlow\settings.json`。
 
 ## 命令行
 

@@ -16,7 +16,7 @@ Video transcoding and color conversion for Windows 11. FrameFlow provides a nati
 - Source inspection for resolution, frame rate, bit depth, color tags, and audio tracks, with automatic defaults.
 - Chroma sampling, Limited / Full range, and audio controls, including lossless FLAC audio.
 - Progress, encoding fps, position, remaining time, and output format verification.
-- Mica, light / dark / system themes, accent colors, and Chinese / English switching.
+- Mica, light / dark / system themes, accent colors, and Simplified Chinese, English, Japanese and Spanish.
 - Batch processing, configuration files, command previews, and JSON events through the CLI.
 
 ## Quick start
@@ -52,7 +52,7 @@ Video is re-encoded with the selected preset; audio can be copied or transcoded.
 - Intel QSV support for Quick share.
 - `zscale` and `lut3d` for Log conversion; `libplacebo` and Vulkan for HDR / Log to SDR.
 
-Language and theme follow the system by default. Chinese systems use Simplified Chinese; other system languages default to English. Settings are stored at `%LOCALAPPDATA%\FrameFlow\settings.json`.
+Language and theme follow the system by default. Chinese, English, Japanese and Spanish system languages are recognized; other languages default to English. Settings are stored at `%LOCALAPPDATA%\FrameFlow\settings.json`.
 
 ## Command line
 

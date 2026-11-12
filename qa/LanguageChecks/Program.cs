@@ -12,16 +12,34 @@ void Equal(string expected, string actual)
     count++;
 }
 foreach (var tag in new[] { "zh", "zh-CN", "zh-TW", "zh-HK", "zh-SG", "ZH_cn" }) Equal("zh", LanguagePolicy.Resolve("system", tag));
-foreach (var tag in new[] { "en", "en-US", "en-GB", "fr-FR", "ja-JP", "de-DE", "", null }) Equal("en", LanguagePolicy.Resolve("system", tag));
+foreach (var tag in new[] { "ja", "ja-JP", "JA_jp" }) Equal("ja", LanguagePolicy.Resolve("system", tag));
+foreach (var tag in new[] { "es", "es-ES", "es-MX", "es-419", "ES_ar" }) Equal("es", LanguagePolicy.Resolve("system", tag));
+foreach (var tag in new[] { "en", "en-US", "en-GB", "fr-FR", "de-DE", "", null }) Equal("en", LanguagePolicy.Resolve("system", tag));
 Equal("en", LanguagePolicy.Resolve("en", "zh-CN")); Equal("zh", LanguagePolicy.Resolve("zh", "fr-FR"));
+Equal("ja", LanguagePolicy.Resolve("ja", "es-MX")); Equal("es", LanguagePolicy.Resolve("es", "ja-JP"));
+Equal("en", LanguagePolicy.Resolve("unknown", "fr-FR"));
+Equal("ja-JP", LanguagePolicy.Culture("ja")); Equal("es-ES", LanguagePolicy.XamlLanguage("es"));
 var app = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../App"));
 var resources = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(app, "Strings.en.json")))!;
-var catalog = new TranslationCatalog(resources);
-foreach (var (zh, en) in resources)
+var languages = new[] { "en", "ja", "es" }.ToDictionary(code => code, code =>
+    JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(app, $"Strings.{code}.json")))!);
+var catalog = new TranslationCatalog(languages);
+string Placeholders(string value) => string.Join(",", Regex.Matches(value, @"\{\d+\}").Select(match => match.Value).Order());
+foreach (var (code, values) in languages)
 {
-    if (string.IsNullOrWhiteSpace(en)) throw new Exception("Missing translation: " + zh);
-    Equal(en, catalog.Translate(zh, "en"));
-    Equal(zh, catalog.Translate(zh, "zh"));
+    if (!resources.Keys.ToHashSet().SetEquals(values.Keys)) throw new Exception($"Translation key mismatch: {code}");
+    foreach (var (zh, translated) in values)
+    {
+        if (string.IsNullOrWhiteSpace(translated)) throw new Exception($"Missing {code} translation: {zh}");
+        Equal(Placeholders(zh), Placeholders(translated));
+        Equal(translated, catalog.Translate(zh, code));
+        Equal(zh, catalog.Translate(zh, "zh"));
+        if (!zh.Contains("{0}")) continue;
+        var arguments = Enumerable.Range(0, Regex.Matches(zh, @"\{(\d+)\}").Max(match => int.Parse(match.Groups[1].Value)) + 1)
+            .Select(i => (object)$"ARG_{i}").ToArray();
+        foreach (var from in new[] { "zh", "en", "ja", "es" })
+            Equal(string.Format(translated, arguments), catalog.Translate(string.Format(from == "zh" ? zh : languages[from][zh], arguments), code));
+    }
 }
 var xml = XDocument.Load(Path.Combine(app, "MainView.xaml"));
 foreach (var attribute in xml.Descendants().Attributes().Where(a => Regex.IsMatch(a.Value, "[\\p{IsCJKUnifiedIdeographs}]")))
@@ -44,14 +62,25 @@ Equal("正在转换 · 123 帧", catalog.Translate("Converting · 123 frames", "
 Equal("Speed 48.5 fps", catalog.Translate("速度 48.5 fps", "en"));
 Equal("x265 · medium / CRF23\n10-bit 4:2:0 · MKV", catalog.Translate("x265 · medium / CRF23\n10 位 4:2:0 · MKV", "en"));
 Equal("The selected FFmpeg lacks required filters: libplacebo, zscale. Select a full build.", catalog.Translate("选中的 FFmpeg 缺少所需滤镜 libplacebo, zscale，请选择完整版本。", "en"));
+Equal("10 ビット", catalog.Translate("10-bit", "ja"));
+Equal("10 bits", catalog.Translate("10 ビット", "es"));
+Equal("10 位", catalog.Translate("10 bits", "zh"));
+Equal("BT.2020 HLG · 10 bits · 4:2:0", catalog.Translate("BT.2020 HLG · 10 ビット · 4:2:0", "es"));
+Equal("Convirtiendo · 123 fotogramas", catalog.Translate("変換中 · 123 フレーム", "es"));
+Equal("Audio 2: AAC", catalog.Translate("音声 2：AAC", "es"));
+foreach (var (code, _) in LanguagePolicy.Choices)
+    if (!File.Exists(Path.Combine(app, "../licenses", LanguagePolicy.TermsFile(code)))) throw new Exception("Missing terms: " + code);
 foreach (var path in new[] { @"C:\视频\测试 位.mp4", @"C:\Users\Public\Videos\sample.mp4", "HEVC Main 10", "p010le", "", "10.0% · 00:03 / 00:30" })
-{ Equal(path, catalog.Translate(path, "en")); Equal(path, catalog.Translate(path, "zh")); }
+    foreach (var code in new[] { "zh", "en", "ja", "es" }) Equal(path, catalog.Translate(path, code));
 if (args.Length > 0)
 {
     using var stream = File.OpenRead(args[0]); using var pe = new PEReader(stream);
     var metadata = pe.GetMetadataReader();
     var embedded = metadata.ManifestResources.Select(handle => metadata.GetString(metadata.GetManifestResource(handle).Name)).ToArray();
-    if (!embedded.Contains("FrameFlow.Strings.en.json")) throw new Exception("English resource missing from built application assembly");
-    count++;
+    foreach (var code in languages.Keys)
+    {
+        if (!embedded.Contains($"FrameFlow.Strings.{code}.json")) throw new Exception($"Missing embedded resource: {code}");
+        count++;
+    }
 }
 Console.WriteLine($"Passed {count} language-policy, translation, template and path-preservation checks; {resources.Count} translated entries, complete XAML coverage.");

@@ -121,7 +121,7 @@ public sealed class MainWindow : Window
             Placement = FlyoutPlacementMode.BottomEdgeAlignedRight,
             ShouldConstrainToRootBounds = false
         };
-        foreach (var (key, name) in new[] { ("system", L.T("跟随系统")), ("zh", "简体中文"), ("en", "English") })
+        foreach (var (key, name) in new[] { ("system", L.T("跟随系统")) }.Concat(LanguagePolicy.Choices))
         {
             var item = new RadioMenuFlyoutItem { Text = name, GroupName = "AppLanguage", IsChecked = settings.Language == key };
             item.Click += (_, _) =>
@@ -138,11 +138,9 @@ public sealed class MainWindow : Window
         foreach (var (key, item) in languageItems) item.IsChecked = key == settings.Language;
         languageItems["system"].Text = L.T("跟随系统");
         var button = Control<DropDownButton>("LanguageButton");
-        button.Content = settings.Language switch { "zh" => "简体中文", "en" => "English", _ => L.T("语言 · 系统") };
+        button.Content = LanguagePolicy.Choices.FirstOrDefault(choice => choice.Code == settings.Language).Name ?? L.T("语言 · 系统");
 
         // Size both surfaces from every label, including the menu's check column.
-        // Changing the selected language must not leave a narrow button above a
-        // wider menu when switching between System, Chinese and English.
         double TextWidth(string text)
         {
             var label = new TextBlock { Text = text, FontFamily = button.FontFamily,
@@ -151,7 +149,7 @@ public sealed class MainWindow : Window
             return label.DesiredSize.Width;
         }
         var menuWidth = languageItems.Values.Max(item => TextWidth(item.Text)) + 64;
-        var buttonWidth = new[] { L.T("语言 · 系统"), "简体中文", "English" }.Max(TextWidth) + 48;
+        var buttonWidth = LanguagePolicy.Choices.Select(choice => choice.Name).Append(L.T("语言 · 系统")).Max(TextWidth) + 48;
         var width = 4 * Math.Ceiling(Math.Max(128, Math.Max(menuWidth, buttonWidth)) / 4);
         button.Width = width;
         var presenter = (Style)XamlReader.Load("""

@@ -30,6 +30,7 @@ internal static class CommandLineHost
             foreach (var arg in args) info.ArgumentList.Add(arg);
             info.Environment["FRAMEFLOW_HOSTED"] = "1";
             info.Environment["FRAMEFLOW_LANGUAGE"] = LanguagePolicy.Resolve(settings.Language, System.Globalization.CultureInfo.CurrentUICulture.Name);
+            info.Environment["FRAMEFLOW_SYSTEM_LANGUAGE"] = LanguagePolicy.Resolve("system", System.Globalization.CultureInfo.CurrentUICulture.Name);
             info.Environment["FRAMEFLOW_FFMPEG"] = settings.Ffmpeg;
             info.Environment["FRAMEFLOW_FFPROBE"] = settings.Ffprobe;
             info.Environment["FRAMEFLOW_LICENSE_DIR"] = LegalNotices.Folder;

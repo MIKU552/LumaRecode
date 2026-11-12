@@ -29,12 +29,16 @@ CHOICES = dict(purpose=('share', 'archive'), codec=('hevc', 'av1', 'avc'),
 CHOICES['container'] = ('auto', 'mp4', 'mkv')
 LANG = 'en'
 TRANSLATIONS = {}
+TRANSLATION_PATTERNS = []
 current_job = None
 interrupted = threading.Event()
 
 
 def tr(en, zh):
-    return zh if LANG == 'zh' else en
+    if LANG == 'zh': return zh
+    if LANG == 'en': return en
+    translated = translate(zh)
+    return en if translated == zh else translated
 
 
 def translate(text):
@@ -42,13 +46,10 @@ def translate(text):
         return text
     if text in TRANSLATIONS:
         return TRANSLATIONS[text]
-    for pattern, english in TRANSLATIONS.items():
-        if '{0}' not in pattern:
-            continue
-        parts = re.split(r'(\{\d+\})', pattern)
-        match = re.fullmatch(''.join('(.*?)' if re.fullmatch(r'\{\d+\}', p) else re.escape(p) for p in parts), text, re.S)
+    for pattern, target in TRANSLATION_PATTERNS:
+        match = pattern.fullmatch(text)
         if match:
-            return english.format(*match.groups())
+            return target.format(*match.groups())
     return text
 
 
@@ -58,13 +59,27 @@ class CliError(Exception):
         self.code, self.status = code, status
 
 
+class HelpFormatter(argparse.HelpFormatter):
+    def add_usage(self, usage, actions, groups, prefix=None):
+        super().add_usage(usage, actions, groups, prefix or tr('usage: ', '用法：'))
+
+
 class Parser(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        add_help = kwargs.pop('add_help', True)
+        super().__init__(*args, add_help=False, formatter_class=HelpFormatter, **kwargs)
+        self._positionals.title = tr('positional arguments', '位置参数')
+        self._optionals.title = tr('options', '选项')
+        if add_help:
+            self.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
+                              help=tr('show this help message and exit', '显示帮助并退出'))
+
     def error(self, message):
         raise CliError('invalid_arguments', message)
 
 
 def configure_language(argv):
-    global LANG, TRANSLATIONS
+    global LANG, TRANSLATIONS, TRANSLATION_PATTERNS
     selection = os.environ.get('FRAMEFLOW_LANGUAGE', 'en')
     for index, arg in enumerate(argv):
         if arg == '--':
@@ -73,12 +88,20 @@ def configure_language(argv):
             selection = argv[index + 1]
         elif arg.startswith(('--lang=', '--language=')):
             selection = arg.split('=', 1)[1]
-    LANG = os.environ.get('FRAMEFLOW_LANGUAGE', 'en') if selection == 'system' else selection
-    LANG = 'zh' if LANG.startswith('zh') else 'en'
-    for path in (Path(__file__).parent/'strings.en.json', Path(__file__).parent.parent/'App/Strings.en.json'):
+    LANG = os.environ.get('FRAMEFLOW_SYSTEM_LANGUAGE', os.environ.get('FRAMEFLOW_LANGUAGE', 'en')) if selection == 'system' else selection
+    LANG = LANG.strip().replace('_', '-').split('-')[0].lower()
+    if LANG not in ('zh', 'en', 'ja', 'es'): LANG = 'en'
+    TRANSLATIONS = {}
+    for path in (Path(__file__).parent/f'strings.{LANG}.json', Path(__file__).parent.parent/f'App/Strings.{LANG}.json'):
         if path.is_file():
             TRANSLATIONS = json.loads(path.read_text(encoding='utf-8-sig'))
             break
+    TRANSLATION_PATTERNS = []
+    for source, target in sorted(TRANSLATIONS.items(), key=lambda pair: len(pair[0]), reverse=True):
+        if '{0}' not in source: continue
+        parts = re.split(r'(\{\d+\})', source)
+        pattern = ''.join('(.*?)' if re.fullmatch(r'\{\d+\}', part) else re.escape(part) for part in parts)
+        TRANSLATION_PATTERNS.append((re.compile(pattern, re.S), target))
 
 
 def preset_catalog():
@@ -93,6 +116,7 @@ def preset_catalog():
 def describe(media, tools):
     result = public_media(media, tools)
     result['evidence'] = translate(result['evidence'])
+    result['flac_reason'] = translate(result['flac_reason'])
     result.update(streams=media.streams, source_tags=media.tags, first_frames=media.frames)
     return result
 
@@ -101,7 +125,7 @@ def parser():
     common = Parser(add_help=False)
     for flags, params in [
         (('--json',), dict(action='store_true', help=tr('Machine-readable JSON (convert: JSON Lines)', '机器可读 JSON；转换时为逐行 JSON'))),
-        (('--lang', '--language'), dict(choices=('system', 'zh', 'en'), help=tr('Output language', '输出语言'))),
+        (('--lang', '--language'), dict(choices=('system', 'zh', 'en', 'ja', 'es'), help=tr('Output language', '输出语言'))),
         (('--ffmpeg',), dict(metavar='PATH', help=tr('FFmpeg executable (otherwise PATH, then saved GUI path)', 'FFmpeg 路径，默认先 PATH 再使用 GUI 已保存路径'))),
         (('--ffprobe',), dict(metavar='PATH', help=tr('ffprobe executable', 'ffprobe 路径'))),
         (('--python',), dict(metavar='PATH', help=tr('Override the bundled Python interpreter', '指定 Python，覆盖内置解释器'))),
@@ -114,7 +138,7 @@ def parser():
         '同一个 EXE 提供 GUI 与命令行。无参数时打开 GUI；使用下列命令时无界面运行。'),
         epilog=tr('PowerShell 7: append | Out-Host, or | ConvertFrom-Json for --json, to wait and read $LASTEXITCODE.',
                   'PowerShell 7：接 | Out-Host，或在 --json 后接 | ConvertFrom-Json，以等待完成并读取 $LASTEXITCODE。'))
-    result.add_argument('--version', action='version', version=f'FrameFlow {VERSION}')
+    result.add_argument('--version', action='version', version=f'FrameFlow {VERSION}', help=tr('Show version and exit', '显示版本并退出'))
     commands = result.add_subparsers(dest='command')
     for name, en, zh in [('probe', 'Inspect video and every audio track', '读取视频与全部音轨信息'),
                          ('presets', 'List tested encoding presets', '列出编码预设'),
@@ -174,7 +198,7 @@ def expand_inputs(args):
             found += [(p.resolve(), p.relative_to(path)) for p in paths if p.is_file() and p.suffix.lower() in VIDEO_TYPES]
         elif glob.has_magic(raw):
             if '**' in raw and not args.recursive:
-                raise CliError('invalid_arguments', 'Use --recursive with ** patterns.')
+                raise CliError('invalid_arguments', tr('Use --recursive with ** patterns.', '** 通配符需要 --recursive。'))
             paths = sorted(Path(p).resolve() for p in glob.glob(str(path), recursive=args.recursive) if Path(p).is_file())
             base = Path(os.path.commonpath([str(p.parent) for p in paths])) if paths else Path.cwd()
             found += [(p, p.relative_to(base)) for p in paths]
@@ -191,7 +215,7 @@ def expand_inputs(args):
     if not unique:
         raise CliError('input_unavailable', tr('No video files matched.', '没有找到匹配的视频。'), 4)
     if args.output and (len(unique) != 1 or args.output_dir):
-        raise CliError('invalid_arguments', '--output requires one input and cannot be combined with --output-dir.')
+        raise CliError('invalid_arguments', tr('--output requires one input and cannot be combined with --output-dir.', '--output 需要单个输入，且不能与 --output-dir 同时使用。'))
     return list(unique.values())
 
 
@@ -203,12 +227,12 @@ def option_values(args):
         except (OSError, ValueError) as error:
             raise CliError('invalid_config', str(error)) from error
         if not isinstance(values, dict) or set(values) - (set(CHOICES) | {'preset', 'cpu_decode'}):
-            raise CliError('invalid_config', 'Config must be an object containing only documented encoding options.')
+            raise CliError('invalid_config', tr('Config must be an object containing only documented encoding options.', '配置须为仅包含受支持编码选项的 JSON 对象。'))
     configured_preset = values.pop('preset', None)
     preset = args.preset or configured_preset
     chosen = next((p['options'] for p in preset_catalog() if p['id'] == preset), None)
     if preset and chosen is None:
-        raise CliError('invalid_config', 'Unknown preset: '+str(preset))
+        raise CliError('invalid_config', tr(f'Unknown preset: {preset}', f'未知预设：{preset}'))
     result = dict(chosen or {})
     result.update(values)
     result.update({key: getattr(args, key) for key in (*CHOICES, 'cpu_decode') if getattr(args, key) is not None})
@@ -216,9 +240,9 @@ def option_values(args):
         result['bit_depth'] = str(result['bit_depth'])
     for key, choices in CHOICES.items():
         if key in result and result[key] not in choices:
-            raise CliError('invalid_config', f'Invalid {key}: {result[key]}')
+            raise CliError('invalid_config', tr(f'Invalid {key}: {result[key]}', f'无效的 {key}：{result[key]}'))
     if 'cpu_decode' in result and not isinstance(result['cpu_decode'], bool):
-        raise CliError('invalid_config', 'cpu_decode must be true or false.')
+        raise CliError('invalid_config', tr('cpu_decode must be true or false.', 'cpu_decode 必须为 true 或 false。'))
     return result
 
 
@@ -290,7 +314,8 @@ class Reporter:
             print(translate(data['message'] if isinstance(data, dict) else data), file=sys.stderr, flush=True)
         elif event in ('done', 'skipped', 'cancelled'):
             if sys.stderr.isatty(): print(file=sys.stderr)
-            print(f'{event}: {data}', flush=True)
+            label = {'done':tr('done', '完成'), 'skipped':tr('skipped', '已跳过'), 'cancelled':tr('cancelled', '已取消')}[event]
+            print(f'{label}: {data}', flush=True)
         elif event == 'summary':
             print(json.dumps(data, ensure_ascii=True), flush=True)
         if self.log is not None:
@@ -323,11 +348,12 @@ def main(argv=None):
         if args.command == 'presets':
             output(dict(schema_version=1, presets=preset_catalog())); return 0
         if args.command == 'profiles':
-            output(dict(schema_version=1, profiles=[dict(id=k, name=v[0], lut=v[1], input_matrix=v[2], input_range=v[3], targets=['hdr', 'sdr']) for k, v in PROFILES.items()])); return 0
+            output(dict(schema_version=1, profiles=[dict(id=k, name=translate(v[0]), lut=v[1], input_matrix=v[2], input_range=v[3], targets=['hdr', 'sdr']) for k, v in PROFILES.items()])); return 0
         if args.command == 'license':
             folder = Path(os.environ.get('FRAMEFLOW_LICENSE_DIR', Path(__file__).parent.parent/'licenses'))
             if args.text:
-                terms_file = folder / ('THIRD-PARTY-TERMS.zh-CN.txt' if LANG == 'zh' else 'THIRD-PARTY-TERMS.txt')
+                terms_file = folder / {'zh':'THIRD-PARTY-TERMS.zh-CN.txt', 'ja':'THIRD-PARTY-TERMS.ja.txt',
+                                       'es':'THIRD-PARTY-TERMS.es.txt'}.get(LANG, 'THIRD-PARTY-TERMS.txt')
                 if getattr(args, 'json', False):
                     output(dict(schema_version=1, project_license=(folder/'LICENSE').read_text(encoding='utf-8-sig'), component_terms=terms_file.read_text(encoding='utf-8-sig'), directory=str(folder)))
                 else:
@@ -351,19 +377,19 @@ def main(argv=None):
             for name, executable in tool_paths.items():
                 result = subprocess.run([executable, '-version'], capture_output=True, encoding='utf-8', errors='replace', creationflags=NO_WINDOW, timeout=15)
                 if result.returncode or f'{name} version' not in result.stdout:
-                    raise CliError('tool_unavailable', f'Invalid {name} executable: {executable}', 3)
+                    raise CliError('tool_unavailable', tr(f'Invalid {name} executable: {executable}', f'无效的 {name} 程序：{executable}'), 3)
                 values[name+'_version'] = result.stdout.splitlines()[0]
             for flag, key, wanted in [('-encoders', 'encoders', ('hevc_qsv','av1_qsv','h264_qsv','libx265','libsvtav1','libx264','aac','libopus','flac')), ('-filters','filters',('zscale','lut3d','libplacebo'))]:
                 result = subprocess.run([tools.ffmpeg, '-hide_banner', flag], capture_output=True, encoding='utf-8', errors='replace', creationflags=NO_WINDOW, timeout=15)
                 if result.returncode: raise CliError('tool_unavailable', result.stderr, 3)
                 values[key] = {name: bool(re.search(r'\b'+re.escape(name)+r'\b', result.stdout)) for name in wanted}
-            values['note'] = 'Hardware encoding modes depend on the GPU and driver.'
+            values['note'] = tr('Hardware encoding modes depend on the GPU and driver.', '硬件编码模式取决于显卡与驱动。')
             output(values); return 0
         if args.command == 'probe':
             if not args.input.is_file(): raise CliError('input_unavailable', str(args.input), 4)
             output(dict(schema_version=1, **describe(inspect_media(tools, args.input), tools))); return 0
         if args.duration is not None and (not math.isfinite(args.duration) or args.duration <= 0):
-            raise CliError('invalid_arguments', '--duration must be a finite positive number.')
+            raise CliError('invalid_arguments', tr('--duration must be a finite positive number.', '--duration 必须为有限正数。'))
         inputs = expand_inputs(args)
         values = option_values(args)
         plans, failures, seen = [], 0, set()
@@ -376,11 +402,11 @@ def main(argv=None):
                 destination = (args.output or (args.output_dir/relative.parent/name if args.output_dir else path.parent/name)).resolve()
                 identity = os.path.normcase(str(destination))
                 if identity in seen or identity in sources or (destination.exists() and destination.samefile(path)):
-                    raise CliError('output_conflict', f'Conflicting output: {destination}', 5)
+                    raise CliError('output_conflict', tr(f'Conflicting output: {destination}', f'输出路径冲突：{destination}'), 5)
                 if destination.suffix.lower() != options.suffix or destination.exists() and not destination.is_file():
-                    raise CliError('output_conflict', f'Output must be a {options.suffix} file: {destination}', 5)
+                    raise CliError('output_conflict', tr(f'Output must be a {options.suffix} file: {destination}', f'输出必须为 {options.suffix} 文件：{destination}'), 5)
                 if destination.exists() and not args.overwrite and not args.skip_existing:
-                    raise CliError('output_exists', f'Output exists: {destination}', 5)
+                    raise CliError('output_exists', tr(f'Output exists: {destination}', f'输出已存在：{destination}'), 5)
                 seen.add(identity)
                 plans.append((media, options, destination))
             except (ValueError, OSError, CliError) as error:
@@ -391,7 +417,7 @@ def main(argv=None):
         if args.log:
             log_path = os.path.normcase(str(args.log.resolve()))
             if log_path in sources or log_path in seen or (args.log.is_file() and any(args.log.samefile(p) for p, _ in inputs)):
-                raise CliError('output_conflict', 'The log path conflicts with input/output.', 5)
+                raise CliError('output_conflict', tr('The log path conflicts with input/output.', '日志路径与输入或输出冲突。'), 5)
             try:
                 report.log = args.log.open('a', encoding='utf-8')
             except OSError as error:

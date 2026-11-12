@@ -21,7 +21,7 @@ Output uses UTF-8. The examples below set the current PowerShell session encodin
 
 GUI and CLI share component-term acceptance. For first-time batch use, read the terms with `license --text`, then run `license --accept-terms` or add `--accept-terms` to the task. `--no-settings` selects independent configuration, ignores saved GUI settings, and disables settings writes; add `--accept-terms` in this mode.
 
-Tools resolve from PATH, then saved GUI paths. Override with `--ffmpeg PATH --ffprobe PATH`; `--python PATH` overrides bundled Python. `--lang system|en|zh` selects the output language.
+Tools resolve from PATH, then saved GUI paths. Override with `--ffmpeg PATH --ffprobe PATH`; `--python PATH` overrides bundled Python. `--lang system|en|zh|ja|es` selects the output language.
 
 ## Commands and options
 

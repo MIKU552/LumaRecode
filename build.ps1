@@ -23,7 +23,9 @@ try {
     Reset-GeneratedDirectory "dist/$Deployment"
     Reset-GeneratedDirectory 'Payload/Worker'
     Get-ChildItem -LiteralPath 'Worker' -Filter '*.py' -File | Copy-Item -Destination 'Payload/Worker'
-    Copy-Item -LiteralPath 'App/Strings.en.json' -Destination 'Payload/Worker/strings.en.json'
+    foreach ($taskLanguage in @('en','ja','es')) {
+        Copy-Item -LiteralPath "App/Strings.$taskLanguage.json" -Destination "Payload/Worker/strings.$taskLanguage.json"
+    }
     New-Item -ItemType Directory -Path 'Payload/Worker/assets' -Force | Out-Null
     Get-ChildItem -LiteralPath 'Worker/assets' -Filter '*.cube' -File | Copy-Item -Destination 'Payload/Worker/assets'
     Copy-Item -LiteralPath 'Worker/assets/recommended-presets.json' -Destination 'Payload/Worker/assets'

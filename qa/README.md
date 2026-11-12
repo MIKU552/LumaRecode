@@ -7,11 +7,12 @@
 ```powershell
 dotnet run --project qa/LanguageChecks/LanguageChecks.csproj -c Release
 dotnet run --project qa/SerializationChecks/SerializationChecks.csproj -c Release
+python qa/LanguageChecks/check_cli_languages.py
 python tools/Update-ViewText.py --check
 python Worker/tools/generate_hlg_luts.py --check
 ```
 
-这些检查覆盖语言选择、翻译资源、XAML 映射、设置格式、worker JSON 协议和生成的 LUT。
+这些检查覆盖四种语言的选择、翻译资源与格式占位符、XAML 映射、设置格式、worker JSON 协议和生成的 LUT。可给 `check_cli_languages.py` 传入 `--exe dist/SelfContained/FrameFlow.exe`，检查打包后的 CLI 语言资源。
 
 ## CLI 与 worker
 

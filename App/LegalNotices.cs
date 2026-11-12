@@ -19,9 +19,9 @@ public static class LegalNotices
     {
         if (settings.AcceptedThirdPartyTerms == Revision) return true;
         var terms = new Dictionary<string, string>();
-        foreach (var (code, file) in new[] { ("en", "THIRD-PARTY-TERMS.txt"), ("zh", "THIRD-PARTY-TERMS.zh-CN.txt") })
+        foreach (var (code, _) in LanguagePolicy.Choices)
         {
-            var path = Path.Combine(Folder, file);
+            var path = Path.Combine(Folder, LanguagePolicy.TermsFile(code));
             if (!File.Exists(path)) throw new FileNotFoundException(L.T("许可文件缺失，请重新下载完整程序。"), path);
             terms[code] = File.ReadAllText(path);
         }
@@ -33,8 +33,8 @@ public static class LegalNotices
         var language = new ComboBox { MinWidth = 152, HorizontalAlignment = HorizontalAlignment.Stretch };
         var system = new ComboBoxItem { Tag = "system" };
         language.Items.Add(system);
-        language.Items.Add(new ComboBoxItem { Tag = "zh", Content = "简体中文" });
-        language.Items.Add(new ComboBoxItem { Tag = "en", Content = "English" });
+        foreach (var (code, name) in LanguagePolicy.Choices)
+            language.Items.Add(new ComboBoxItem { Tag = code, Content = name });
         language.SelectedItem = language.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == settings.Language) ?? system;
         Grid.SetColumn(language, 1);
         languageRow.Children.Add(languageLabel); languageRow.Children.Add(language);
@@ -56,12 +56,12 @@ public static class LegalNotices
             refreshing = true;
             try
             {
-                dialog.Language = L.Code == "zh" ? "zh-Hans" : "en-US";
+                dialog.Language = LanguagePolicy.XamlLanguage(L.Code);
                 dialog.Title = L.T("第三方组件许可");
                 dialog.PrimaryButtonText = L.T("同意并继续");
                 dialog.CloseButtonText = L.T("退出");
                 // Keep the first-run language entry discoverable in either locale.
-                languageLabel.Text = "界面语言 / Language";
+                languageLabel.Text = L.Code is "ja" or "es" ? L.T("界面语言") + " / Language" : "界面语言 / Language";
                 Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(language, languageLabel.Text);
                 system.Content = L.T("跟随系统");
                 var selected = language.SelectedIndex;

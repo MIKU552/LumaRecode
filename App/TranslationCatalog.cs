@@ -5,18 +5,22 @@ namespace VideoConverter;
 
 public sealed class TranslationCatalog
 {
-    private readonly Dictionary<string, string> translations;
+    private readonly Dictionary<string, Dictionary<string, string>> languages;
     private readonly Dictionary<string, string> reverse;
-    private sealed record Pattern(Regex Chinese, Regex English, string Zh, string En, int Count);
+    private sealed record Pattern(Regex Expression, string Key, int Count);
     private readonly Pattern[] patterns;
 
-    public TranslationCatalog(Dictionary<string, string> translations)
+    public TranslationCatalog(Dictionary<string, string> translations) : this(new Dictionary<string, Dictionary<string, string>> { ["en"] = translations }) { }
+
+    public TranslationCatalog(Dictionary<string, Dictionary<string, string>> languages)
     {
-        this.translations = translations;
-        reverse = translations.GroupBy(pair => pair.Value).ToDictionary(group => group.Key, group => group.First().Key);
-        patterns = translations.Where(pair => pair.Key.Contains("{0}"))
-            .OrderByDescending(pair => pair.Key.Length).Select(pair => new Pattern(Compile(pair.Key), Compile(pair.Value), pair.Key, pair.Value,
-                Regex.Matches(pair.Key, @"\{\d+\}").Count)).ToArray();
+        this.languages = languages;
+        var source = languages["en"].Keys;
+        var entries = source.Select(key => (Text: key, Key: key)).Concat(languages.Values.SelectMany(values => values.Select(pair => (Text: pair.Value, Key: pair.Key))));
+        reverse = entries.GroupBy(entry => entry.Text).ToDictionary(group => group.Key, group => group.First().Key);
+        patterns = reverse.Where(pair => pair.Value.Contains("{0}"))
+            .OrderByDescending(pair => pair.Key.Length).Select(pair => new Pattern(Compile(pair.Key), pair.Value,
+                Regex.Matches(pair.Value, @"\{(\d+)\}").Max(match => int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture)) + 1)).ToArray();
     }
 
     private static Regex Compile(string template)
@@ -31,18 +35,19 @@ public sealed class TranslationCatalog
     public string Translate(string? text, string code)
     {
         if (string.IsNullOrEmpty(text)) return text ?? "";
-        if (translations.TryGetValue(text, out var english)) return code == "en" ? english : text;
-        if (reverse.TryGetValue(text, out var chinese)) return code == "zh" ? chinese : text;
+        if (reverse.TryGetValue(text, out var key)) return Target(key, code);
         foreach (var entry in patterns)
         {
-            var match = (code == "en" ? entry.Chinese : entry.English).Match(text);
+            var match = entry.Expression.Match(text);
             if (!match.Success) continue;
             var args = Enumerable.Range(0, entry.Count).Select(i => (object)Atom(match.Groups["p" + i].Value, code)).ToArray();
-            return string.Format(CultureInfo.CurrentCulture, code == "en" ? entry.En : entry.Zh, args);
+            return string.Format(CultureInfo.CurrentCulture, Target(entry.Key, code), args);
         }
         return text;
     }
 
-    private string Atom(string text, string code) => translations.TryGetValue(text, out var en) ? code == "en" ? en : text
-        : reverse.TryGetValue(text, out var zh) && code == "zh" ? zh : text;
+    private string Target(string key, string code) => code == "zh" ? key
+        : languages.TryGetValue(code, out var values) && values.TryGetValue(key, out var text) ? text : languages["en"].GetValueOrDefault(key, key);
+
+    private string Atom(string text, string code) => reverse.TryGetValue(text, out var key) ? Target(key, code) : text;
 }

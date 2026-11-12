@@ -25,7 +25,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <Version>3.7.0</Version>
+    <Version>3.7.1</Version>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">
@@ -42,6 +42,8 @@
     <Content Include="FrameFlow.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../Brand/FrameFlow.png" Link="Assets/FrameFlow.png" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="Strings.en.json" LogicalName="FrameFlow.Strings.en.json" WithCulture="false" />
+    <EmbeddedResource Include="Strings.ja.json" LogicalName="FrameFlow.Strings.ja.json" WithCulture="false" />
+    <EmbeddedResource Include="Strings.es.json" LogicalName="FrameFlow.Strings.es.json" WithCulture="false" />
     <EmbeddedResource Include="../Worker/assets/recommended-presets.json" LogicalName="VideoConverter.EncodingPresets.json" />
     <!-- Files read by path are deployment files, not MRT-qualified UI resources. -->
     <None Include="../Payload/Worker/**" Link="Payload/Worker/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

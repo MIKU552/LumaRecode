@@ -17,10 +17,10 @@ public static class L
     public static void Configure(string selection)
     {
         Code = LanguagePolicy.Resolve(selection, systemLanguage);
-        var culture = CultureInfo.GetCultureInfo(Code == "zh" ? "zh-CN" : "en-US");
+        var culture = CultureInfo.GetCultureInfo(LanguagePolicy.Culture(Code));
         CultureInfo.CurrentUICulture = CultureInfo.CurrentCulture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.DefaultThreadCurrentCulture = culture;
-        try { Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = Code == "zh" ? "zh-Hans" : "en-US"; }
+        try { Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = LanguagePolicy.XamlLanguage(Code); }
         catch (System.Runtime.InteropServices.COMException) { }
     }
     private static string ReadSystemLanguage()
@@ -28,11 +28,16 @@ public static class L
         try { return Windows.System.UserProfile.GlobalizationPreferences.Languages.FirstOrDefault() ?? CultureInfo.InstalledUICulture.Name; }
         catch { return CultureInfo.InstalledUICulture.Name; }
     }
-    private static Dictionary<string, string> Load()
+    private static Dictionary<string, Dictionary<string, string>> Load()
     {
-        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("FrameFlow.Strings.en.json")
-            ?? throw new InvalidOperationException("The embedded English language resource is missing.");
-        return JsonSerializer.Deserialize(stream, AppJsonContext.Default.DictionaryStringString)!;
+        var result = new Dictionary<string, Dictionary<string, string>>();
+        foreach (var code in new[] { "en", "ja", "es" })
+        {
+            using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream($"FrameFlow.Strings.{code}.json")
+                ?? throw new InvalidOperationException($"The embedded {code} language resource is missing.");
+            result[code] = JsonSerializer.Deserialize(stream, AppJsonContext.Default.DictionaryStringString)!;
+        }
+        return result;
     }
     public static string T(string? text) => catalog.Translate(text, Code);
 }
@@ -41,7 +46,7 @@ public sealed class ViewLocalization
 {
     public void Apply(FrameworkElement root)
     {
-        root.Language = L.Code == "zh" ? "zh-Hans" : "en-US";
+        root.Language = LanguagePolicy.XamlLanguage(L.Code);
         foreach (var (name, property, original) in ViewText.Entries)
         {
             if (root.FindName(name) is not DependencyObject control) continue;

@@ -1,0 +1,9 @@
+FrameFlow — 第三者バイナリコンポーネントの利用条件
+
+FrameFlow の独自のソースコード、ドキュメント、オリジナルのリソースには MIT License が適用されます。Windows 配布版には Microsoft および Python のランタイム、OpenSSL、OpenOSV LUT などが含まれ、それぞれのライセンスと通知が適用されます。
+
+「同意して続行」を選択すると、同梱する第三者コンポーネントに適用される利用条件に従うことに同意したものとします。対象には Windows App SDK、指定された Windows ランタイムバイナリ（単一ファイルのランタイムを含む）に適用される .NET Library License、WinRT 投影アセンブリに適用される Windows SDK の条件、および公式 Python Windows バイナリビルドに含まれる Microsoft 再頒布可能コードの条件があります。ライセンス全文、通知、配布元パッケージの記録は、この licenses ディレクトリにあります。
+
+特に、Microsoft の著作権、商標、特許の通知を保持してください。Microsoft の推奨や承認を示唆してはなりません。Windows バイナリコンポーネントは、条件に従って Microsoft のオペレーティングシステム、ランタイム技術またはアプリケーションプラットフォームで使用してください。また、悪意のある、欺瞞的な、または違法なプログラムに含めてはなりません。適用される条件で認められる場合を除き、Microsoft コンポーネントを変更または再頒布してはなりません。これらを含むプログラムを再頒布する場合は、必要な通知を保持し、条件で求められる受領者の同意を得てください。Windows バイナリビルドの追加条件は Python-LICENSE.txt にあります。Windows App SDK の再頒布権と要件は、該当パッケージのライセンス本文にあります。
+
+.NET Library License は、本アプリの一部としてオブジェクトコードを配布する条件を定めています。Windows SDK の REDIST リストは、WinRT API の呼び出しに使用する、未変更の Microsoft.Windows.SDK.NET.Ref パッケージファイルを対象としています。DotNet-Library-LICENSE.html、Windows-SDK-Net-Ref-LICENSE.rtf、Windows-SDK-REDIST.html を参照してください。使用、再頒布、通知、および該当するデータ収集に関する規定を含む、利用条件の全文をお読みください。

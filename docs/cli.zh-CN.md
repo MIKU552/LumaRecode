@@ -37,7 +37,7 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | `plan INPUT...` | 预览转换选项、FFmpeg 参数、工作目录和输出色彩 |
 | `convert INPUT...` | 单文件或顺序批量转换，完成后校验输出 |
 
-各命令均可使用 `--help`。`--lang zh|en|system` 控制输出语言。`presets`、`profiles`、`probe`、`doctor`、`license` 返回 JSON；转换的文本进度写入 stderr，结果写入 stdout。
+各命令均可使用 `--help`。`--lang system|zh|en|ja|es` 控制输出语言。`presets`、`profiles`、`probe`、`doctor`、`license` 返回 JSON；转换的文本进度写入 stderr，结果写入 stdout。
 
 ## 编码与色彩选项
 
