@@ -579,8 +579,6 @@ public sealed class MainWindow : Window
             };
         }
         var notice = new InfoBar { IsClosable = false, Severity = InfoBarSeverity.Error, IsOpen = false }; panel.Children.Add(notice);
-        var legal = new HyperlinkButton { Content = L.T("查看完整许可与第三方声明") };
-        legal.Click += (_, _) => LegalNotices.OpenFolder(); panel.Children.Add(legal);
         var dialog = new ContentDialog { Title = L.T("工具路径"), Content = panel, PrimaryButtonText = L.T("检测并保存"), CloseButtonText = L.T("取消"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme };
         dialog.PrimaryButtonClick += async (_, e) =>
         {

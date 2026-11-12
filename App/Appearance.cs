@@ -32,7 +32,7 @@ public sealed class Appearance
         this.root = root; this.window = window; this.settings = settings;
         window.Closed += (_, _) => disposed = true;
         backdrop = new HdrBackdropCompatibility((Grid)root, window, settings);
-        ((Button)root.FindName("PaletteButton")).Flyout = BuildPalette();
+        ((Button)root.FindName("PaletteButton")).Flyout = CreatePaletteFlyout();
         root.ActualThemeChanged += (_, _) => { if (!applying) ApplyAccent(false); UpdateCaption(); };
         system.ColorValuesChanged += (_, _) => root.DispatcherQueue.TryEnqueue(() => { ApplyAccent(false); UpdateCaption(); });
         // Some unpackaged desktop environments do not expose this WinRT event.
@@ -61,7 +61,9 @@ public sealed class Appearance
     public void Relocalize()
     {
         swatches.Clear();
-        ((Button)root.FindName("PaletteButton")).Flyout = BuildPalette();
+        themeChoice = materialChoice = null;
+        accentPreview = null; accentLabel = null; systemSwitch = null; picker = null;
+        ((Button)root.FindName("PaletteButton")).Flyout = CreatePaletteFlyout();
         ApplyAccent(false);
     }
 
@@ -128,7 +130,30 @@ public sealed class Appearance
 
     private void Put(string name, object value) { Application.Current.Resources[name] = value; root.Resources[name] = value; overridden.Add(name); }
 
-    private Flyout BuildPalette()
+    private Flyout CreatePaletteFlyout()
+    {
+        // Keep the proven HDR-safe presenter and windowed popup configuration.
+        // Build its content only when it is about to be shown.
+        var presenterStyle = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
+            <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   TargetType="FlyoutPresenter" BasedOn="{StaticResource DefaultFlyoutPresenterStyle}">
+                <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}" />
+            </Style>
+            """);
+        var flyout = new Flyout { ShouldConstrainToRootBounds = false, FlyoutPresenterStyle = presenterStyle,
+            Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight };
+        flyout.Opening += (_, _) =>
+        {
+            if (flyout.Content is null)
+            {
+                flyout.Content = BuildPaletteContent();
+            }
+            ApplyAccent(false);
+        };
+        return flyout;
+    }
+
+    private ScrollViewer BuildPaletteContent()
     {
         var content = new StackPanel { Width = 300, Spacing = 16 };
         content.Children.Add(new TextBlock { Text = L.T("界面配色"), FontSize = 20, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
@@ -178,11 +203,17 @@ public sealed class Appearance
             swatches.Add((button, hex)); Grid.SetColumn(button, i % 6); Grid.SetRow(button, i / 6); grid.Children.Add(button);
         }
         content.Children.Add(grid);
-        picker = new ColorPicker { Color = Parse(settings.CustomColor), IsAlphaEnabled = false, IsAlphaSliderVisible = false,
-            IsAlphaTextInputVisible = false, IsHexInputVisible = true, IsColorChannelTextInputVisible = true,
-            IsColorSliderVisible = true, IsColorSpectrumVisible = true, HorizontalAlignment = HorizontalAlignment.Stretch };
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(picker, L.T("自定义强调色"));
-        var advanced = new Expander { Header = L.T("自定义颜色"), Content = picker, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        var advanced = new Expander { Header = L.T("自定义颜色"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        advanced.Expanding += (_, _) =>
+        {
+            if (picker is not null) return;
+            picker = new ColorPicker { Color = Parse(settings.CustomColor), IsAlphaEnabled = false, IsAlphaSliderVisible = false,
+                IsAlphaTextInputVisible = false, IsHexInputVisible = true, IsColorChannelTextInputVisible = true,
+                IsColorSliderVisible = true, IsColorSpectrumVisible = true, HorizontalAlignment = HorizontalAlignment.Stretch };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(picker, L.T("自定义强调色"));
+            picker.ColorChanged += (_, e) => { if (!applying) ChooseColor(e.NewColor, false); };
+            advanced.Content = picker;
+        };
         content.Children.Add(advanced);
         var restore = new Button { Content = L.T("恢复默认外观"), HorizontalAlignment = HorizontalAlignment.Stretch };
         restore.Click += (_, _) =>
@@ -190,26 +221,15 @@ public sealed class Appearance
             applying = true;
             settings.Theme = "system"; settings.Backdrop = "mica"; settings.SystemAccent = true; settings.CustomColor = "#0078D4";
             materialChoice.SelectedIndex = 0;
-            systemSwitch.IsOn = true; picker.Color = Parse(settings.CustomColor);
+            systemSwitch.IsOn = true;
+            if (picker is not null) picker.Color = Parse(settings.CustomColor);
             applying = false;
             settings.Save(); ApplyTheme();
         };
         content.Children.Add(restore);
         systemSwitch.Toggled += (_, _) => { if (applying) return; settings.SystemAccent = systemSwitch.IsOn; settings.Save(); ApplyAccent(true); };
-        picker.ColorChanged += (_, e) => { if (!applying) ChooseColor(e.NewColor, false); };
-        // A windowed popup keeps its acrylic/shadow composition out of the main
-        // window's native Mica tree. Use an opaque, theme-aware menu surface so
-        // HDR does not blend a second in-app acrylic layer over the cards.
-        var presenterStyle = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
-            <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                   TargetType="FlyoutPresenter" BasedOn="{StaticResource DefaultFlyoutPresenterStyle}">
-                <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}" />
-            </Style>
-            """);
-        return new Flyout { Content = new ScrollViewer { Content = content, MaxHeight = 640,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
-            ShouldConstrainToRootBounds = false, FlyoutPresenterStyle = presenterStyle,
-            Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight };
+        return new ScrollViewer { Content = content, MaxHeight = 640,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     }
 
     private void ChooseColor(Color color, bool syncPicker = true)
