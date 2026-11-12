@@ -1,8 +1,8 @@
 # 第三方组件与许可 · Third-party components
 
-适用版本：FrameFlow 3.6.0，审阅日期 2026-11-12。当前运行时原始许可集中在 [licenses](../../licenses/)，NuGet 包与运行时记录见 [manifest.json](../../licenses/manifest.json)，LUT 来源与哈希见 [license-manifest.json](license-manifest.json)。此结论不追溯改变旧 EXE 内的组件或条款。
+适用版本：FrameFlow 3.6.4，审阅日期 2026-11-12。当前运行时原始许可集中在 [licenses](../../licenses/)，NuGet 包与运行时记录见 [manifest.json](../../licenses/manifest.json)，LUT 来源与哈希见 [license-manifest.json](license-manifest.json)。此结论不追溯改变旧 EXE 内的组件或条款。
 
-Scope: the current 3.6.0 build, reviewed 2026-11-12, not every historical binary. Full original terms and notices are retained under `licenses/`; the manifests separate runtime provenance from LUT provenance.
+Scope: the current 3.6.4 build, reviewed 2026-11-12, not every historical binary. Full original terms and notices are retained under `licenses/`; the manifests separate runtime provenance from LUT provenance.
 
 ## 自主项目 / Original project
 
@@ -15,6 +15,7 @@ Original project work uses MIT. Third-party components keep their own rights. To
 | 组件 / Component | 分发依据 / Distribution basis |
 | --- | --- |
 | .NET 11.0.0 / apphost / ASP.NET runtime files | 多数文件为 MIT；Windows `coreclr.dll`、单文件内的运行时及指定 WPF 等二进制适用 .NET Library License，另有 Windows SDK 个别组件条款。保留全文与匹配第三方声明 / MIT plus Windows-specific binary licenses |
+| Native AOT runtime 11.0.0 | 从实际 NuGet 包收集 MIT 与第三方声明；Windows 单文件入口仍适用上一行的二进制例外。原生工具链仅用于构建，不随应用分发 / Actual pack terms retained; the single-file host retains Windows binary-license exceptions. |
 | Windows SDK .NET 投影 | `Microsoft.Windows.SDK.NET.Ref 10.0.26100.87` 的许可 URL 指向 Windows SDK 条款，其 REDIST 清单的同名章节明确允许随程序分发未修改文件 / SDK terms and explicit projection-package REDIST grant |
 | Windows App SDK / WinUI 2.6.5 | 正式包 Microsoft Windows App SDK 条款第 3 节，允许随应用分发 NuGet 放入输出目录的代码，须满足分发要求 / Production package terms for NuGet-binplaced files |
 | WebView2 SDK | WinUI 传递依赖，保留 BSD-3-Clause LICENSE / NOTICE；未打包浏览器安装器 / Transitive SDK notices; no browser installer |

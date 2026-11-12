@@ -1,8 +1,6 @@
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
-using System.Text.RegularExpressions;
-using System.Xml.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -34,36 +32,17 @@ public static class L
     {
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("FrameFlow.Strings.en.json")
             ?? throw new InvalidOperationException("The embedded English language resource is missing.");
-        return JsonSerializer.Deserialize<Dictionary<string, string>>(stream)!;
+        return JsonSerializer.Deserialize(stream, AppJsonContext.Default.DictionaryStringString)!;
     }
     public static string T(string? text) => catalog.Translate(text, Code);
 }
 
 public sealed class ViewLocalization
 {
-    private readonly List<(string Name, string Property, string Original)> entries = new();
-    public string Prepare(string xaml)
-    {
-        var xml = XDocument.Parse(xaml);
-        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
-        foreach (var element in xml.Descendants())
-        {
-            foreach (var attribute in element.Attributes().ToArray())
-            {
-                var property = attribute.Name.LocalName;
-                if (property is not ("Text" or "Content" or "Header" or "PlaceholderText" or "AutomationProperties.Name" or "ToolTipService.ToolTip")) continue;
-                if (!Regex.IsMatch(attribute.Value, "[\\p{IsCJKUnifiedIdeographs}]")) continue;
-                var name = element.Attribute(x + "Name")?.Value;
-                if (name is null) { name = "LocalizedElement" + entries.Count; element.SetAttributeValue(x + "Name", name); }
-                entries.Add((name, property, attribute.Value));
-            }
-        }
-        return xml.ToString(SaveOptions.DisableFormatting);
-    }
     public void Apply(FrameworkElement root)
     {
         root.Language = L.Code == "zh" ? "zh-Hans" : "en-US";
-        foreach (var (name, property, original) in entries)
+        foreach (var (name, property, original) in ViewText.Entries)
         {
             if (root.FindName(name) is not DependencyObject control) continue;
             var translated = L.T(original);
@@ -71,7 +50,16 @@ public sealed class ViewLocalization
             else if (property == "ToolTipService.ToolTip") ToolTipService.SetToolTip(control, translated);
             else
             {
-                control.GetType().GetProperty(property)?.SetValue(control, translated);
+                switch (property, control)
+                {
+                    case ("Text", TextBlock text): text.Text = translated; break;
+                    case ("Content", ContentControl content): content.Content = translated; break;
+                    case ("Header", ComboBox combo): combo.Header = translated; break;
+                    case ("Header", RadioButtons choices): choices.Header = translated; break;
+                    case ("Header", Expander expander): expander.Header = translated; break;
+                    case ("PlaceholderText", TextBox input): input.PlaceholderText = translated; break;
+                    default: throw new InvalidOperationException($"Unsupported localization target: {name}.{property}");
+                }
                 if (property == "Header" && control is Expander) AutomationProperties.SetName(control, translated);
             }
         }

@@ -93,7 +93,7 @@ PowerShell 7 is the target shell; use an output pipeline to wait for GUI-subsyst
 
 ## Build from source
 
-Use Windows 11 x64, **.NET SDK 11.0.100** (pinned by `global.json`), and PowerShell 7. The default build does not require an installed Python interpreter.
+Use Windows 11 x64, **.NET SDK 11.0.100** (pinned by `global.json`), PowerShell 7, and Visual Studio C++ build tools supported by .NET Native AOT. The default build does not require an installed Python interpreter.
 
 ```powershell
 git clone https://github.com/MIKU552/FrameFlow.git
@@ -101,7 +101,7 @@ cd FrameFlow
 .\build.ps1
 ```
 
-The script restores locked NuGet dependencies, downloads and verifies the official Python 3.15.2 embeddable distribution, collects full legal notices, and publishes a single EXE containing .NET 11, Windows App SDK 2.6.5, and Python. PyInstaller is no longer used. FFmpeg remains user-supplied. First launch requests acceptance of the bundled third-party binary terms; full notices remain accessible from Tool paths.
+The script restores locked dependencies, verifies the official Python 3.15.2 embeddable distribution, collects legal notices, and compiles the WinUI frontend with Native AOT. The existing .NET single-file mechanism bundles its dependencies; the entry process exits after starting the GUI. Users still download one EXE with no separate runtime installation. FFmpeg remains user-supplied. First launch requests acceptance of the bundled third-party terms; full notices are available in About. See [development and distribution](docs/dependencies.md) and the [memory report](docs/validation-3.6.4.md).
 
 Output:
 
@@ -109,7 +109,7 @@ Output:
 dist/SelfContained/FrameFlow.exe
 ```
 
-`./build.ps1 -Deployment FrameworkDependent` optionally builds a smaller ZIP requiring a separately installed .NET 11 Runtime, Windows App Runtime 2.6, and Python 3.14 or later, with tool paths configured in the app. The default single EXE bundles the required runtimes.
+`./build.ps1 -Compilation Jit` retains the old single-file compilation without a C++ linker. `./build.ps1 -Deployment FrameworkDependent` optionally builds a JIT ZIP requiring a separately installed .NET 11 Runtime, Windows App Runtime 2.6, and Python 3.14 or later. The default single EXE bundles the required runtimes.
 
 Optional artwork tools are pinned in `Brand/requirements.txt`; normal builds do not require Qt / PySide6. See [dependency notes](docs/dependencies.md) for versions, support, and distribution evidence.
 
@@ -119,10 +119,13 @@ Run the language and resource checks:
 dotnet run --project qa/LanguageChecks/LanguageChecks.csproj -c Release
 ```
 
+The main view uses compiled XAML. After changing translated text, run `python tools/Update-ViewText.py` to refresh its static map; builds check that it matches the view. Settings and worker JSON use source-generated serialization, with compatibility checks in `qa/SerializationChecks/`.
+
 ## Project structure
 
 ```text
 App/                  WinUI 3 UI, appearance, localization, and job interaction
+Bundle/               Single-file extraction entry; exits after GUI startup
 Worker/               Command line, source inspection, FFmpeg commands, and output verification
 Worker/assets/        LUTs, encoding presets, and LUT provenance
 licenses/             Original legal texts, notices, and version manifest

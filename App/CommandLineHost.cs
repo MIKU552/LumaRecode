@@ -1,32 +1,14 @@
 using System.Diagnostics;
 using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Text.Json;
 
 namespace VideoConverter;
 
 internal static class CommandLineHost
 {
-    [DllImport("kernel32.dll", SetLastError = true)] private static extern bool AttachConsole(uint process);
-    [DllImport("kernel32.dll")] private static extern IntPtr GetStdHandle(int kind);
-    [DllImport("kernel32.dll")] private static extern bool SetStdHandle(int kind, IntPtr handle);
-    [DllImport("kernel32.dll")] private static extern uint GetFileType(IntPtr handle);
-
-    private static void ConnectConsole()
-    {
-        // AttachConsole may replace standard handles. Preserve inherited pipes/files.
-        var handles = new[] { -10, -11, -12 }.Select(k => (kind: k, handle: GetStdHandle(k)))
-            .Where(h => h.handle != IntPtr.Zero && h.handle != new IntPtr(-1) && GetFileType(h.handle) != 0).ToArray();
-        AttachConsole(uint.MaxValue);
-        foreach (var h in handles) SetStdHandle(h.kind, h.handle);
-        Console.SetOut(new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true });
-        Console.SetError(new StreamWriter(Console.OpenStandardError(), new UTF8Encoding(false)) { AutoFlush = true });
-    }
-
     public static async Task<int> RunAsync(string[] args)
     {
-        ConnectConsole();
+        ConsoleConnection.Connect();
         var noSettings = args.TakeWhile(a => a != "--").Contains("--no-settings");
         var settings = noSettings ? new UserSettings() : UserSettings.Load();
         WorkerClient.ExternalPython = WorkerClient.FindTool("python", settings.Python);
@@ -89,7 +71,8 @@ internal static class CommandLineHost
         }
         catch (Exception error) when (error is IOException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
-            if (args.Contains("--json")) Console.Out.WriteLine(JsonSerializer.Serialize(new { schema_version = 1, @event = "error", data = new { code = "runtime_unavailable", message = error.Message } }));
+            if (args.Contains("--json")) Console.Out.WriteLine(JsonSerializer.Serialize(
+                new HostError(1, "error", new HostErrorData("runtime_unavailable", error.Message)), WorkerJsonContext.Default.HostError));
             else Console.Error.WriteLine(error.Message);
             return cancelled ? 130 : 3;
         }

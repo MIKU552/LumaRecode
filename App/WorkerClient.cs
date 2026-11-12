@@ -5,7 +5,7 @@ using System.Text.Json.Nodes;
 
 namespace VideoConverter;
 
-public sealed class WorkerClient : IDisposable
+public sealed partial class WorkerClient : IDisposable
 {
     public static string ExternalPython { get; set; } = "";
     public static bool HasBundledPython => File.Exists(Path.Combine(AppContext.BaseDirectory, "Payload", "Runtime", "python.exe"));
@@ -29,13 +29,13 @@ public sealed class WorkerClient : IDisposable
             info.ArgumentList.Add(argument);
         return info;
     }
-    public async Task RunAsync(object request, Action<string, JsonElement> receive)
+    public async Task RunAsync(WorkerRequest request, Action<string, JsonElement> receive)
     {
         using var child = new Process { StartInfo = CreateStartInfo("worker.py") };
         process = child;
         child.Start();
         var errors = child.StandardError.ReadToEndAsync();
-        await child.StandardInput.WriteLineAsync(JsonSerializer.Serialize(request));
+        await child.StandardInput.WriteLineAsync(JsonSerializer.Serialize(request, WorkerJsonContext.Default.WorkerRequest));
         await child.StandardInput.FlushAsync();
         var terminal = false;
         while (await child.StandardOutput.ReadLineAsync() is { } line)
@@ -101,7 +101,7 @@ public sealed class WorkerClient : IDisposable
         var text = await output; await error;
         try
         {
-            var version = JsonSerializer.Deserialize<int[]>(text.Trim());
+            var version = JsonSerializer.Deserialize(text.Trim(), AppJsonContext.Default.Int32Array);
             if (child.ExitCode == 0 && version is { Length: 3 } && version[0] == 3 && version[1] >= 14) return;
         }
         catch (JsonException) { }

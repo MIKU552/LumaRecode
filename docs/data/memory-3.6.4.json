@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "measured_on": "2026-11-12",
+  "unit": "MiB (1048576 bytes)",
+  "method": "Windows process performance counters; 3 samples at >=30 seconds; no UI capture or encoding before startup samples",
+  "records": [
+    {
+      "label": "baseline363-current-run1",
+      "target_age_seconds": 30,
+      "samples": [
+        {
+          "process_age_seconds": 31.313,
+          "private_working_set_mib": 121.754,
+          "private_commit_mib": 151.125,
+          "total_working_set_mib": 255.801,
+          "cpu_seconds": 1.578,
+          "handles": 1316,
+          "threads": 39
+        },
+        {
+          "process_age_seconds": 32.5,
+          "private_working_set_mib": 121.754,
+          "private_commit_mib": 151.125,
+          "total_working_set_mib": 255.801,
+          "cpu_seconds": 1.578,
+          "handles": 1316,
+          "threads": 39
+        },
+        {
+          "process_age_seconds": 33.67,
+          "private_working_set_mib": 121.754,
+          "private_commit_mib": 151.125,
+          "total_working_set_mib": 255.801,
+          "cpu_seconds": 1.578,
+          "handles": 1316,
+          "threads": 39
+        }
+      ]
+    },
+    {
+      "label": "baseline363-current-run3-isolated",
+      "target_age_seconds": 30,
+      "samples": [
+        {
+          "process_age_seconds": 31.386,
+          "private_working_set_mib": 122.855,
+          "private_commit_mib": 151.816,
+          "total_working_set_mib": 256.805,
+          "cpu_seconds": 1.016,
+          "handles": 1319,
+          "threads": 39
+        },
+        {
+          "process_age_seconds": 32.575,
+          "private_working_set_mib": 122.855,
+          "private_commit_mib": 151.816,
+          "total_working_set_mib": 256.805,
+          "cpu_seconds": 1.016,
+          "handles": 1319,
+          "threads": 39
+        },
+        {
+          "process_age_seconds": 33.741,
+          "private_working_set_mib": 122.855,
+          "private_commit_mib": 151.816,
+          "total_working_set_mib": 256.805,
+          "cpu_seconds": 1.016,
+          "handles": 1319,
+          "threads": 39
+        }
+      ]
+    },
+    {
+      "label": "aot-single-run1",
+      "target_age_seconds": 30,
+      "samples": [
+        {
+          "process_age_seconds": 36.286,
+          "private_working_set_mib": 117.293,
+          "private_commit_mib": 145.699,
+          "total_working_set_mib": 216.844,
+          "cpu_seconds": 1.438,
+          "handles": 1274,
+          "threads": 41
+        },
+        {
+          "process_age_seconds": 37.474,
+          "private_working_set_mib": 117.293,
+          "private_commit_mib": 145.699,
+          "total_working_set_mib": 216.844,
+          "cpu_seconds": 1.438,
+          "handles": 1274,
+          "threads": 41
+        },
+        {
+          "process_age_seconds": 38.65,
+          "private_working_set_mib": 117.293,
+          "private_commit_mib": 145.699,
+          "total_working_set_mib": 216.844,
+          "cpu_seconds": 1.438,
+          "handles": 1274,
+          "threads": 41
+        }
+      ]
+    },
+    {
+      "label": "aot-single-run2-isolated",
+      "target_age_seconds": 30,
+      "samples": [
+        {
+          "process_age_seconds": 31.3,
+          "private_working_set_mib": 115.992,
+          "private_commit_mib": 143.23,
+          "total_working_set_mib": 213.66,
+          "cpu_seconds": 0.781,
+          "handles": 1244,
+          "threads": 37
+        },
+        {
+          "process_age_seconds": 32.481,
+          "private_working_set_mib": 115.992,
+          "private_commit_mib": 143.23,
+          "total_working_set_mib": 213.66,
+          "cpu_seconds": 0.781,
+          "handles": 1244,
+          "threads": 37
+        },
+        {
+          "process_age_seconds": 33.64,
+          "private_working_set_mib": 115.992,
+          "private_commit_mib": 143.23,
+          "total_working_set_mib": 213.66,
+          "cpu_seconds": 0.781,
+          "handles": 1244,
+          "threads": 37
+        }
+      ]
+    },
+    {
+      "label": "minimal-textboxes",
+      "target_age_seconds": 30,
+      "samples": [
+        {
+          "process_age_seconds": 30.608,
+          "private_working_set_mib": 103.934,
+          "private_commit_mib": 128.941,
+          "total_working_set_mib": 217.371,
+          "cpu_seconds": 1.625,
+          "handles": 1158,
+          "threads": 35
+        },
+        {
+          "process_age_seconds": 31.767,
+          "private_working_set_mib": 103.91,
+          "private_commit_mib": 128.887,
+          "total_working_set_mib": 217.336,
+          "cpu_seconds": 1.625,
+          "handles": 1155,
+          "threads": 34
+        },
+        {
+          "process_age_seconds": 32.923,
+          "private_working_set_mib": 103.91,
+          "private_commit_mib": 128.887,
+          "total_working_set_mib": 217.336,
+          "cpu_seconds": 1.672,
+          "handles": 1155,
+          "threads": 34
+        }
+      ]
+    }
+  ],
+  "excluded": "baseline363-current-run2 overlapped a leftover AOT test process; focus/R2R/backdrop and first-image warmup experiments are not part of the final comparison",
+  "maintainer_observation": {
+    "measurement": "Task Manager approximate displayed MB, manually reported, not a matched automated benchmark",
+    "aot_initial_mb": 110,
+    "aot_after_menus_mb": 130
+  }
+}

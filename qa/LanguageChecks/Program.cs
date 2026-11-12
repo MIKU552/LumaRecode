@@ -23,9 +23,17 @@ foreach (var (zh, en) in resources)
     Equal(en, catalog.Translate(zh, "en"));
     Equal(zh, catalog.Translate(zh, "zh"));
 }
-var xml = XDocument.Load(Path.Combine(app, "View.xaml.txt"));
+var xml = XDocument.Load(Path.Combine(app, "MainView.xaml"));
 foreach (var attribute in xml.Descendants().Attributes().Where(a => Regex.IsMatch(a.Value, "[\\p{IsCJKUnifiedIdeographs}]")))
     if (!resources.ContainsKey(attribute.Value)) throw new Exception("Untranslated XAML: " + attribute.Value);
+XNamespace xamlNamespace = "http://schemas.microsoft.com/winfx/2006/xaml";
+var localizedProperties = new[] { "Text", "Content", "Header", "PlaceholderText", "AutomationProperties.Name", "ToolTipService.ToolTip" };
+var expectedViewText = xml.Descendants().SelectMany(element => element.Attributes()
+    .Where(a => localizedProperties.Contains(a.Name.LocalName) && Regex.IsMatch(a.Value, "[\\p{IsCJKUnifiedIdeographs}]"))
+    .Select(a => (Name: element.Attribute(xamlNamespace + "Name")?.Value ?? throw new Exception("Missing localization name"), Property: a.Name.LocalName, Original: a.Value))).ToArray();
+Equal(expectedViewText.Length.ToString(), ViewText.Entries.Length.ToString());
+for (var i = 0; i < expectedViewText.Length; i++)
+    Equal(expectedViewText[i].ToString(), ViewText.Entries[i].ToString());
 Equal("10-bit", catalog.Translate("10 位", "en"));
 Equal("10 位", catalog.Translate("10-bit", "zh"));
 Equal("BT.2020 HLG · 10-bit · 4:2:0", catalog.Translate("BT.2020 HLG · 10 位 · 4:2:0", "en"));

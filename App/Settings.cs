@@ -21,7 +21,7 @@ public sealed class UserSettings
         {
             var legacy = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VideoConverterWinUI", "settings.json");
             var source = File.Exists(FileName) ? FileName : legacy;
-            var settings = JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(source)) ?? new();
+            var settings = JsonSerializer.Deserialize(File.ReadAllText(source), AppJsonContext.Default.UserSettings) ?? new();
             if (source == legacy) settings.Save();
             return settings;
         }
@@ -33,7 +33,7 @@ public sealed class UserSettings
         var temporary = FileName + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            File.WriteAllText(temporary, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(temporary, JsonSerializer.Serialize(this, AppJsonContext.Default.UserSettings));
             File.Move(temporary, FileName, true);
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }

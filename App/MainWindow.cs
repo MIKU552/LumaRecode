@@ -19,6 +19,7 @@ public sealed class MainWindow : Window
     private static readonly JsonElement encodingConfig = LoadEncodingConfig();
     private readonly Grid root;
     private readonly ViewLocalization viewLocalization = new();
+    private readonly Dictionary<string, object> controls = new();
     private readonly List<(ComboBoxItem Item, string Original)> choiceLabels = new();
     private readonly Dictionary<string, RadioMenuFlyoutItem> languageItems = new();
     private readonly UserSettings settings = UserSettings.Load();
@@ -54,10 +55,9 @@ public sealed class MainWindow : Window
     public MainWindow()
     {
         Title = L.T("映流 · FrameFlow");
-        SystemBackdrop = new MicaBackdrop();
-        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("VideoConverter.View.xaml.txt")!;
-        using var reader = new StreamReader(stream);
-        root = (Grid)XamlReader.Load(viewLocalization.Prepare(reader.ReadToEnd()));
+        // Compiled XBF avoids runtime XML parsing and reflection over controls.
+        // Appearance selects the appropriate native Mica host once the view exists.
+        root = new MainView();
         Content = root;
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(Control<Grid>("TitleDrag"));
@@ -91,7 +91,11 @@ public sealed class MainWindow : Window
     }
 
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
-    private T Control<T>(string name) where T : class => (T)root.FindName(name);
+    private T Control<T>(string name) where T : class
+    {
+        if (!controls.TryGetValue(name, out var control)) controls[name] = control = root.FindName(name);
+        return (T)control;
+    }
     private static string Value(ComboBox combo) => (combo.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
     private static void Select(ComboBox combo, string? key)
     {
@@ -265,7 +269,7 @@ public sealed class MainWindow : Window
     }
     private string MediaText(string key, string fallback = "") => media is { } item && item.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() ?? fallback : fallback;
     private void SetStatus(string text) => Control<TextBlock>("Status").Text = L.T(text);
-    private object ToolsObject() => new { ffmpeg, ffprobe };
+    private WorkerTools ToolsObject() => new(ffmpeg, ffprobe);
     private void ResolveTools()
     {
         ffmpeg = WorkerClient.FindTool("ffmpeg", settings.Ffmpeg);
@@ -390,7 +394,7 @@ public sealed class MainWindow : Window
         using var worker = new WorkerClient(); probes.Add(worker);
         try
         {
-            await worker.RunAsync(new { action = "probe", tools = ToolsObject(), path }, (type, data) =>
+            await worker.RunAsync(new WorkerRequest("probe", ToolsObject(), path), (type, data) =>
             {
                 if (token != generation) return;
                 if (type == "media") ApplyMedia(data);
@@ -485,10 +489,10 @@ public sealed class MainWindow : Window
         if (File.Exists(output)) { await MessageAsync(L.T("请更换输出位置"), L.T("输出文件已存在，程序不会覆盖文件。")); return; }
         if (!Directory.Exists(Path.GetDirectoryName(output)) || Path.GetExtension(output).ToLowerInvariant() != Suffix)
         { await MessageAsync(L.T("请调整输出位置"), L.T($"请选择已有目录，文件后缀应为 {Suffix}。")); return; }
-        var request = new { action = "convert", tools = ToolsObject(), path = MediaText("path"), output,
-            options = new { purpose = Value(Purpose), codec = Value(Codec), output = Hdr ? "hdr" : "sdr", transform = Value(Transform),
-                profile = Value(Profile) == "" ? null : Value(Profile), sampling = Value(Sampling), variant = Value(Variant),
-                audio = Value(Audio), container = Value(Container), source_kind = Value(InputKind), cpu_decode = Control<CheckBox>("CpuDecode").IsChecked == true } };
+        var request = new WorkerRequest("convert", ToolsObject(), MediaText("path"), output,
+            new WorkerOptions(Value(Purpose), Value(Codec), Hdr ? "hdr" : "sdr", Value(Transform),
+                Value(Profile) == "" ? null : Value(Profile), Value(Sampling), Value(Variant),
+                Value(Audio), Value(Container), Value(InputKind), Control<CheckBox>("CpuDecode").IsChecked == true));
         using var worker = new WorkerClient(); activeJob = worker;
         completed = false; encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
         clock.Restart(); clockTimer.Start(); UpdateTransferStats();
@@ -563,7 +567,8 @@ public sealed class MainWindow : Window
         foreach (var (name, value) in toolFields)
         {
             var grid = new Grid { ColumnSpacing = 8 }; grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var box = new TextBox { Header = name + ".exe", Text = value, MinWidth = 340 };
+            var box = new TextBox { Header = name + ".exe", Text = value, MinWidth = 340,
+                IsSpellCheckEnabled = false, IsTextPredictionEnabled = false };
             var button = new Button { Content = L.T("浏览…"), VerticalAlignment = VerticalAlignment.Bottom };
             Grid.SetColumn(button, 1); grid.Children.Add(box); grid.Children.Add(button); panel.Children.Add(grid); fields[name] = box;
             button.Click += async (_, _) =>

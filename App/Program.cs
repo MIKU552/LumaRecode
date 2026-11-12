@@ -9,16 +9,22 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        if (args.Length > 0 && args[0] == "--cli") return CommandLineHost.RunAsync(args[1..]).GetAwaiter().GetResult();
-        if (args.Length > 0 && args[0] != "--gui" &&
-            (args[0].StartsWith('-') || new[] { "probe", "presets", "profiles", "doctor", "license", "convert", "plan" }.Contains(args[0]) || !File.Exists(args[0])))
-            return CommandLineHost.RunAsync(args).GetAwaiter().GetResult();
+        if (StartupMode.IsCommandLine(args))
+            return CommandLineHost.RunAsync(args[0] == "--cli" ? args[1..] : args).GetAwaiter().GetResult();
         RunGui();
         return 0;
     }
     private static void RunGui()
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
+        // Stable WinUI 2.6 optimizations are opt-in for template compatibility.
+        // This view uses public control properties, not template-part traversal.
+        foreach (var change in new[] {
+            Microsoft.UI.Xaml.Settings.XamlChangeId.IconNoGridOptimization,
+            Microsoft.UI.Xaml.Settings.XamlChangeId.OptimizeApplyStyles,
+            Microsoft.UI.Xaml.Settings.XamlChangeId.DefaultStyleOptimizations,
+            Microsoft.UI.Xaml.Settings.XamlChangeId.DeferContextFlyoutInit })
+            Microsoft.UI.Xaml.Settings.XamlOptionalChanges.EnableChange(change);
         Application.Start(parameters =>
         {
             SynchronizationContext.SetSynchronizationContext(new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));

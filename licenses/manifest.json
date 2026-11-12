@@ -1,5 +1,5 @@
 {
-  "app_version": "3.6.3",
+  "app_version": "3.6.4",
   "distribution_basis": [
     "Windows App SDK production package terms, section 3, for files placed with the application by NuGet",
     ".NET Library License for designated Windows binaries and single-file runtime; MIT and notices for remaining files; Windows SDK terms where applicable",
@@ -22,6 +22,21 @@
       ],
       "package": "microsoft.aspnetcore.app.runtime.win-x64",
       "source": "https://www.nuget.org/packages/microsoft.aspnetcore.app.runtime.win-x64/11.0.0",
+      "version": "11.0.0"
+    },
+    {
+      "files": [
+        {
+          "file": "microsoft.netcore.app.runtime.nativeaot.win-x64-11.0.0-LICENSE.TXT",
+          "sha256": "d7a68596ab69b06f51ca278a6545148e4269a9381c26d597c13df5d88e08cf5b"
+        },
+        {
+          "file": "microsoft.netcore.app.runtime.nativeaot.win-x64-11.0.0-THIRD-PARTY-NOTICES.TXT",
+          "sha256": "e3a241a6cf35167d82bf7e081de9641c59d10d2dbd8824409817bed31980d407"
+        }
+      ],
+      "package": "microsoft.netcore.app.runtime.nativeaot.win-x64",
+      "source": "https://www.nuget.org/packages/microsoft.netcore.app.runtime.nativeaot.win-x64/11.0.0",
       "version": "11.0.0"
     },
     {
@@ -71,13 +86,38 @@
       "package": "microsoft.windowsdesktop.app.runtime.win-x64",
       "source": "https://www.nuget.org/packages/microsoft.windowsdesktop.app.runtime.win-x64/11.0.0",
       "version": "11.0.0"
+    },
+    {
+      "files": [
+        {
+          "file": "runtime.win-x64.microsoft.dotnet.ilcompiler-11.0.0-THIRD-PARTY-NOTICES.TXT",
+          "sha256": "e3a241a6cf35167d82bf7e081de9641c59d10d2dbd8824409817bed31980d407"
+        }
+      ],
+      "package": "runtime.win-x64.microsoft.dotnet.ilcompiler",
+      "source": "https://www.nuget.org/packages/runtime.win-x64.microsoft.dotnet.ilcompiler/11.0.0",
+      "version": "11.0.0"
     }
   ],
   "packages": [
     {
       "files": [
         {
-          "file": "Microsoft.NET.ILLink.Tasks-11.0.0-THIRD-PARTY-NOTICES.TXT",
+          "file": "Microsoft.DotNet.ILCompiler-11.0.0-THIRD-PARTY-NOTICES.TXT",
+          "sha256": "e3a241a6cf35167d82bf7e081de9641c59d10d2dbd8824409817bed31980d407",
+          "source_file_in_package": "THIRD-PARTY-NOTICES.TXT"
+        }
+      ],
+      "license": "MIT",
+      "package": "Microsoft.DotNet.ILCompiler",
+      "package_sha512_base64": "3rBJqAlEO+erUgcJ9xNRxB00kBSSsr2qKYuvRKFAIAmnqO3tGb3mv0/c1CWN6gyvzLhF9qf456oTDyE55yJ0vg==",
+      "source": "https://www.nuget.org/packages/Microsoft.DotNet.ILCompiler/11.0.0",
+      "version": "11.0.0"
+    },
+    {
+      "files": [
+        {
+          "file": "Microsoft.DotNet.ILCompiler-11.0.0-THIRD-PARTY-NOTICES.TXT",
           "sha256": "e3a241a6cf35167d82bf7e081de9641c59d10d2dbd8824409817bed31980d407",
           "source_file_in_package": "THIRD-PARTY-NOTICES.TXT"
         }
@@ -223,6 +263,20 @@
       "package_sha512_base64": "eNmFFLMf3NrkvJDhXCHVfIYcS+xjldnWSHzRZt2REmtQsaRcJvdpfiqBVTqWrPntI30M+urxCQuDoag+4NH4rw==",
       "source": "https://www.nuget.org/packages/Microsoft.WindowsAppSDK.WinUI/2.6.5",
       "version": "2.6.5"
+    },
+    {
+      "files": [
+        {
+          "file": "Microsoft.DotNet.ILCompiler-11.0.0-THIRD-PARTY-NOTICES.TXT",
+          "sha256": "e3a241a6cf35167d82bf7e081de9641c59d10d2dbd8824409817bed31980d407",
+          "source_file_in_package": "THIRD-PARTY-NOTICES.TXT"
+        }
+      ],
+      "license": "MIT",
+      "package": "runtime.win-x64.Microsoft.DotNet.ILCompiler",
+      "package_sha512_base64": "q2E3tiO9/AYh1yaZID0XrM+BRHOzH1Pzyhx3wPRm7CuZbjJhIxLncEojAnKVcXqK+ljq8u/2IJMVBfy78of1FA==",
+      "source": "https://www.nuget.org/packages/runtime.win-x64.Microsoft.DotNet.ILCompiler/11.0.0",
+      "version": "11.0.0"
     }
   ],
   "project_license": "MIT",

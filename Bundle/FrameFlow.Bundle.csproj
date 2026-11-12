@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net11.0-windows10.0.26100.0</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <ApplicationManifest>../App/app.manifest</ApplicationManifest>
+    <ApplicationIcon>../App/FrameFlow.ico</ApplicationIcon>
+    <AssemblyName>FrameFlow</AssemblyName>
+    <Product>映流 · FrameFlow</Product>
+    <Title>映流 · FrameFlow</Title>
+    <Version>3.6.4</Version>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../App/StartupMode.cs" Link="StartupMode.cs" />
+    <Compile Include="../App/ConsoleConnection.cs" Link="ConsoleConnection.cs" />
+    <Compile Include="../App/WorkerRequest.cs" Link="WorkerRequest.cs" />
+    <Content Include="../dist/NativeAot/**/*" Exclude="../dist/NativeAot/**/*.pdb"
+             Link="Application/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="RequireNativePayload" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('../dist/NativeAot/FrameFlow.exe')" Text="Build the Native AOT application before bundling. Use build.ps1." />
+  </Target>
+</Project>

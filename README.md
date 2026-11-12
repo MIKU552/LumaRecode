@@ -93,7 +93,7 @@
 
 ## 从源码构建
 
-需要 Windows 11 x64、**.NET SDK 11.0.100**（由 `global.json` 固定）及 PowerShell 7。默认构建不需要预装 Python。
+需要 Windows 11 x64、**.NET SDK 11.0.100**（由 `global.json` 固定）、PowerShell 7，以及支持 .NET Native AOT 的 Visual Studio C++ 构建工具。默认构建不需要预装 Python。
 
 ```powershell
 git clone https://github.com/MIKU552/FrameFlow.git
@@ -101,7 +101,7 @@ cd FrameFlow
 .\build.ps1
 ```
 
-构建脚本从 NuGet 还原锁定依赖，下载并校验官方 Python 3.15.2 嵌入式运行时，收集完整许可，最后生成包含 .NET 11、Windows App SDK 2.6.5 与 Python 的单文件 EXE。没有使用 PyInstaller；FFmpeg 仍由用户提供。首次启动需要接受随附第三方二进制组件的适用条款，可在工具路径窗口查看完整许可。
+构建脚本还原锁定依赖，校验官方 Python 3.15.2 嵌入式运行时，收集完整许可，将 WinUI 前端编译为 Native AOT，再用原 .NET 单文件机制封装依赖。GUI 启动后解包入口退出。下载仍只有一个 EXE，无须另装运行时；FFmpeg 由用户提供。首次启动需接受随附第三方组件的适用条款，日后可从“关于”查看全文。架构和工具链说明见[依赖与分发](docs/dependencies.md)，实测数据见[内存报告](docs/validation-3.6.4.md)。
 
 构建产物：
 
@@ -109,7 +109,7 @@ cd FrameFlow
 dist/SelfContained/FrameFlow.exe
 ```
 
-另有 `./build.ps1 -Deployment FrameworkDependent` 可构建精简 ZIP，需要用户自行安装 .NET 11 Runtime、Windows App Runtime 2.6 与 Python 3.14 或更新版本，并在程序内指定工具路径；默认发布使用包含完整运行时的单 EXE。
+`./build.ps1 -Compilation Jit` 可按旧编译方式构建单文件 EXE，不需要 C++ 链接器。另有 `./build.ps1 -Deployment FrameworkDependent` 可构建 JIT 精简 ZIP，需要用户自行安装 .NET 11 Runtime、Windows App Runtime 2.6 与 Python 3.14 或更新版本；默认发布继续使用包含所需运行时的单 EXE。
 
 可选图标重绘工具的版本在 `Brand/requirements.txt`，常规构建不需要 Qt / PySide6。依赖版本、支持周期和分发依据见[依赖说明](docs/dependencies.md)。
 
@@ -119,10 +119,13 @@ dist/SelfContained/FrameFlow.exe
 dotnet run --project qa/LanguageChecks/LanguageChecks.csproj -c Release
 ```
 
+主视图使用编译后的 XAML；修改翻译文字后运行 `python tools/Update-ViewText.py` 更新静态映射。构建会检查视图与映射是否一致。设置和 worker JSON 使用源生成序列化，兼容性检查位于 `qa/SerializationChecks/`。
+
 ## 项目结构
 
 ```text
 App/                  WinUI 3 界面、主题、本地化与任务交互
+Bundle/               单文件解包入口，GUI 启动后退出
 Worker/               命令行、素材识别、FFmpeg 命令生成与输出校验
 Worker/assets/        LUT、编码预设与 LUT 来源
 licenses/             随程序分发的原始许可、声明和版本清单

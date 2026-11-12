@@ -25,8 +25,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <Version>3.6.3</Version>
+    <Version>3.6.4</Version>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(PublishAot)' == 'true'">
+    <NuGetLockFilePath>packages.aot.lock.json</NuGetLockFilePath>
+    <PublishSingleFile>false</PublishSingleFile>
+    <PublishTrimmed>true</PublishTrimmed>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CsWinRTAotWarningLevel>2</CsWinRTAotWarningLevel>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.6.5" />
@@ -34,7 +41,6 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
     <Content Include="FrameFlow.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../Brand/FrameFlow.png" Link="Assets/FrameFlow.png" CopyToOutputDirectory="PreserveNewest" />
-    <EmbeddedResource Include="View.xaml.txt" />
     <EmbeddedResource Include="Strings.en.json" LogicalName="FrameFlow.Strings.en.json" WithCulture="false" />
     <EmbeddedResource Include="../Worker/assets/recommended-presets.json" LogicalName="VideoConverter.EncodingPresets.json" />
     <!-- Files read by path are deployment files, not MRT-qualified UI resources. -->

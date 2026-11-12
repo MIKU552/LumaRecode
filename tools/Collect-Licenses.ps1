@@ -1,10 +1,12 @@
-param([Parameter(Mandatory=$true)][string]$ProjectRoot, [string]$PythonRuntime)
+param([Parameter(Mandatory=$true)][string]$ProjectRoot, [string]$PythonRuntime, [string]$AdditionalAssetsFile)
 $ErrorActionPreference = 'Stop'
 $taskRoot = [IO.Path]::GetFullPath($ProjectRoot)
 $taskOutput = Join-Path $taskRoot 'licenses'
 New-Item -ItemType Directory -Path $taskOutput -Force | Out-Null
 $taskAssets = Get-Content -LiteralPath (Join-Path $taskRoot 'App/obj/project.assets.json') -Raw | ConvertFrom-Json
-$taskPackages = @($taskAssets.packageFolders.PSObject.Properties.Name)
+$taskAllAssets = @($taskAssets)
+if ($AdditionalAssetsFile) { $taskAllAssets += Get-Content -LiteralPath $AdditionalAssetsFile -Raw | ConvertFrom-Json }
+$taskPackages = @($taskAllAssets | ForEach-Object { $_.packageFolders.PSObject.Properties.Name } | Sort-Object -Unique)
 $taskRecords = [Collections.Generic.List[object]]::new()
 $taskByHash = @{}
 # Stable key ordering keeps tracked provenance identical across clean builds.
@@ -21,7 +23,8 @@ function ConvertTo-CanonicalObject($Value) {
     }
     return $Value
 }
-$taskLibraries = @($taskAssets.libraries.PSObject.Properties | Sort-Object Name)
+$taskLibraries = @($taskAllAssets | ForEach-Object { $_.libraries.PSObject.Properties } | Sort-Object Name -Unique)
+if (-not ($taskLibraries.Name -match '^Microsoft.WindowsAppSDK.WinUI/')) { throw 'WinUI legal provenance is missing from the resolved dependency graphs.' }
 foreach ($taskLibrary in $taskLibraries) {
     if ($taskLibrary.Value.type -ne 'package') { continue }
     $taskIdentity = $taskLibrary.Name.Split('/')
@@ -54,7 +57,7 @@ foreach ($taskLibrary in $taskLibraries) {
 }
 # Runtime and apphost packs are implicit SDK dependencies, outside assets.libraries.
 $taskRuntimeRecords = [Collections.Generic.List[object]]::new()
-$taskImplicit = @($taskAssets.project.frameworks.PSObject.Properties.Value.downloadDependencies | Sort-Object name -Unique)
+$taskImplicit = @($taskAllAssets | ForEach-Object { $_.project.frameworks.PSObject.Properties.Value.downloadDependencies } | Sort-Object name -Unique)
 foreach ($taskDependency in $taskImplicit) {
     $taskRuntime = $taskDependency.name.ToLowerInvariant()
     $taskRuntimeVersion = ($taskDependency.version.Trim('[',']').Split(',')[0]).Trim()
