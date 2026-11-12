@@ -50,10 +50,10 @@ public sealed partial class ConverterApp : Application
             Directory.CreateDirectory(folder);
             File.WriteAllText(Path.Combine(folder, "error.log"), e.Exception.ToString());
         };
-        L.Configure(UserSettings.Load().Language);
     }
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        L.Configure(UserSettings.Load().Language);
         window = new MainWindow();
         window.Activate();
     }

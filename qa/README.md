@@ -25,6 +25,10 @@ python qa/RuntimeChecks/check_worker.py --deployment dist/NativeAot
 
 集成检查需要 FFmpeg、ffprobe、可用的 Intel QSV 编码器和 Vulkan / libplacebo。它们执行实际编码、输出校验、PowerShell 管道、取消和临时文件清理。测试使用临时目录与合成输入。
 
+## GUI 启动
+
+发布前直接打开最终的 `FrameFlow.exe`，确认主窗口完成加载，再检查语言切换、配色面板和“关于”窗口。关闭后重新打开，确认语言设置恢复。检查 `%LOCALAPPDATA%\FrameFlow\error.log` 的更新时间及内容。
+
 ## 采样、范围与音频
 
 ```powershell

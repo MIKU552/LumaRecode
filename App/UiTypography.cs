@@ -63,7 +63,7 @@ internal static class UiTypography
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) Apply(VisualTreeHelper.GetChild(node, i), code);
     }
 
-    private static bool IsMonospace(FontFamily family) => family.Source.StartsWith("Consolas", StringComparison.OrdinalIgnoreCase);
-    private static bool IsSymbolFont(FontFamily family) => family.Source.Contains("Icons", StringComparison.OrdinalIgnoreCase) ||
-        family.Source.Contains("MDL2", StringComparison.OrdinalIgnoreCase) || family.Source == "Segoe UI Symbol";
+    private static bool IsMonospace(FontFamily? family) => family?.Source?.StartsWith("Consolas", StringComparison.OrdinalIgnoreCase) == true;
+    private static bool IsSymbolFont(FontFamily? family) => family?.Source is { } source &&
+        (source.Contains("Icons", StringComparison.OrdinalIgnoreCase) || source.Contains("MDL2", StringComparison.OrdinalIgnoreCase) || source == "Segoe UI Symbol");
 }
