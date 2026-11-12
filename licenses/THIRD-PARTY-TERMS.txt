@@ -1,12 +1,12 @@
 FrameFlow - third-party binary component terms
 
 The original FrameFlow source, documentation and original assets are
-licensed under Apache-2.0. These component terms do not restrict those
+licensed under MIT. These component terms do not restrict those
 rights or impose a non-commercial condition on the original project.
 
 The Windows executable also contains separately licensed Microsoft and
 Python runtime components. Those components retain their original terms;
-the project's Apache-2.0 license does not relicense them.
+the project's MIT license does not relicense them.
 
 By choosing "Agree and continue", you agree to comply with the applicable
 terms for the bundled third-party components, including the Microsoft
@@ -39,10 +39,10 @@ Other bundled components, including OpenSSL and the OpenOSV LUT, retain
 their respective licenses and notices. No manufacturer sponsorship or
 endorsement is asserted. These terms concern the third-party components;
 they do not prevent use, modification or redistribution of the original
-FrameFlow code under Apache-2.0.
+FrameFlow code under MIT.
 
 选择“同意并继续”表示同意遵守随附第三方二进制组件的适用条款。
-FrameFlow 自主源码仍采用 Apache-2.0，允许商用及闭源衍生使用；
+FrameFlow 自主源码仍采用 MIT，允许商用及闭源衍生使用；
 上述第三方组件条款不会把自主源码改为非商业许可。
 微软组件及 Python Windows 二进制内的微软代码保留其原有权利，
 其中 Windows 单文件 .NET 运行时适用 .NET Library License，

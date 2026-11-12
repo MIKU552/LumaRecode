@@ -1,14 +1,14 @@
 # 第三方组件与许可 · Third-party components
 
-适用版本：FrameFlow 3.5.0，审阅日期 2026-11-12。当前运行时原始许可集中在 [licenses](../../licenses/)，NuGet 包与运行时记录见 [manifest.json](../../licenses/manifest.json)，LUT 来源与哈希见 [license-manifest.json](license-manifest.json)。此结论不追溯改变旧 EXE 内的组件或条款。
+适用版本：FrameFlow 3.5.1，审阅日期 2026-11-12。当前运行时原始许可集中在 [licenses](../../licenses/)，NuGet 包与运行时记录见 [manifest.json](../../licenses/manifest.json)，LUT 来源与哈希见 [license-manifest.json](license-manifest.json)。此结论不追溯改变旧 EXE 内的组件或条款。
 
-Scope: the current 3.5.0 build, reviewed 2026-11-12, not every historical binary. Full original terms and notices are retained under `licenses/`; the manifests separate runtime provenance from LUT provenance.
+Scope: the current 3.5.1 build, reviewed 2026-11-12, not every historical binary. Full original terms and notices are retained under `licenses/`; the manifests separate runtime provenance from LUT provenance.
 
 ## 自主项目 / Original project
 
-自主代码、文档、原创图形及项目生成的 Mi-Log / Samsung Log LUT 采用根目录 [Apache-2.0](../../LICENSE)，允许商用和闭源修改，须保留许可、适用声明及标明修改。第三方文件不因此改为 Apache-2.0；[NOTICE](../../NOTICE) 保留归属说明。许可不替使用者取得其他编解码器专利，也不解决名称商标问题。Codex 工具署名不等于将 OpenAI 列为版权人，也不能证明纯 AI 内容在各法域都有版权。
+自主代码、文档、原创图形及项目生成的 Mi-Log / Samsung Log LUT 采用根目录 [MIT](../../LICENSE)，允许商用和闭源修改，须保留版权与许可声明。第三方文件不因此改为 MIT；[NOTICE](../../NOTICE) 保留归属说明。许可不替使用者取得其他编解码器专利，也不解决名称商标问题。Codex 工具署名不等于将 OpenAI 列为版权人，也不能证明纯 AI 内容在各法域都有版权。
 
-Original project work uses Apache-2.0. Third-party components keep their own rights. Tool attribution does not establish copyright subsistence, third-party patent rights, trademark clearance, or OpenAI copyright ownership.
+Original project work uses MIT. Third-party components keep their own rights. Tool attribution does not establish copyright subsistence, third-party patent rights, trademark clearance, or OpenAI copyright ownership.
 
 ## Windows 单文件版 / Windows single-file release
 
@@ -19,13 +19,13 @@ Original project work uses Apache-2.0. Third-party components keep their own rig
 | Windows App SDK / WinUI 2.6.5 | 正式包 Microsoft Windows App SDK 条款第 3 节，允许随应用分发 NuGet 放入输出目录的代码，须满足分发要求 / Production package terms for NuGet-binplaced files |
 | WebView2 SDK | WinUI 传递依赖，保留 BSD-3-Clause LICENSE / NOTICE；未打包浏览器安装器 / Transitive SDK notices; no browser installer |
 | 官方 CPython 3.15.2 Windows 嵌入式包 | 完整保留官方包；PSF/Python 历史许可、嵌入组件条款，以及 LICENSE 中 Windows binary 附加条件 / Unmodified official package and its Windows-binary conditions |
-| Python 内 VC Runtime | 依据官方 Python Windows 二进制的授权链保留声明、平台限制和接收者条款；不是 PSF/Apache 许可 / Microsoft-specific conditions remain applicable |
+| Python 内 VC Runtime | 依据官方 Python Windows 二进制的授权链保留声明、平台限制和接收者条款；不是 PSF 或项目 MIT 许可 / Microsoft-specific conditions remain applicable |
 | Python 内 OpenSSL、Expat、HACL*、libffi、mpdecimal、libtommath、SQLite、XZ/liblzma、zlib-ng、zstd、bzip2 等 | 保留 PSF 汇总文本及[依赖原文和来源](../../licenses/Python-dependencies/sources.json)。zstd 选择 BSD 许可；只有 liblzma，不含 XZ 的 GPL 脚本 / Vendor libraries retain their individual terms |
 | Pocket 3 LUT | OpenOSV v0.6.4，Apache-2.0，LUT 与原始 [LICENSE](OpenOSV/LICENSE) / [NOTICE](OpenOSV/NOTICE) 未修改 |
 
 首次启动要求接受随附第三方二进制的适用条款，并提供完整原文入口；之后可从“工具路径”打开许可目录。微软要求包括保留声明、不暗示背书、遵守分发及平台限制，并向后续接收者传递适用条款。这些条件仅针对对应组件，不把自主源码变成非商业许可。原始全文优先于此摘要。
 
-The first-start agreement and Tool paths link expose the full component terms. Preserve notices, avoid implied endorsement, obey platform and distribution restrictions, and pass required terms to recipients. These obligations apply to the respective third-party binaries, not the original Apache-2.0 source. Original texts govern.
+The first-start agreement and Tool paths link expose the full component terms. Preserve notices, avoid implied endorsement, obey platform and distribution restrictions, and pass required terms to recipients. These obligations apply to the respective third-party binaries, not the original MIT source. Original texts govern.
 
 ### WinUI 与开源、旧结论修正 / WinUI and open source
 

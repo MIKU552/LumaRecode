@@ -2,6 +2,12 @@
 
 以下记录依据保留的源码版本整理；快照来源和补录方式见 [HISTORY.md](HISTORY.md)。
 
+## 3.5.1
+
+- 自主代码、文档、原创图形及项目生成的 Mi-Log / Samsung Log LUT 改用 MIT，允许商用与闭源修改，保留版权和许可声明即可。
+- 同步中英文 README、LUT 生成器 SPDX、许可清单及程序内说明；第三方 OpenOSV LUT 和所有运行时的原始许可与声明保持不变。
+- 重新打包单文件 EXE，既有编码参数、LUT 数值与转换逻辑不变；历史版本保留原许可。
+
 ## 3.5.0
 
 - 开发与发布环境升级到 .NET SDK 11.0.100 / .NET 11.0.0、Windows App SDK 2.6.5、Windows SDK BuildTools 10.0.28000.2957、官方 Python 3.15.2；固定 SDK 和 NuGet 锁文件。

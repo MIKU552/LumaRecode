@@ -125,9 +125,11 @@ Git 提交由 [Codex](https://github.com/codex) 与 MIKU552 共同署名，并�
 
 ## 开源许可
 
-本项目的自主代码、文档、原创图形及项目生成的 Mi-Log / Samsung Log LUT，采用 **[Apache License 2.0](LICENSE)**。允许商用、修改及闭源再分发，须遵守保留许可与相关声明、标明修改等条件；另见 [NOTICE](NOTICE)。
+本项目的自主代码、文档、原创图形及项目生成的 Mi-Log / Samsung Log LUT，采用 **[MIT License](LICENSE)**。允许商用、修改及闭源再分发，须在软件副本或实质性部分中保留版权与许可声明。第三方归属说明见 [NOTICE](NOTICE)。
 
-第三方 LUT 与运行时保留各自许可。3.5.0 使用正式版 Windows App SDK，并随程序保留所需许可、声明和组件条款；详见[第三方组件](Worker/assets/THIRD_PARTY.md)与[依赖及分发说明](docs/dependencies.md)。
+自 **3.5.1** 起自主内容使用 MIT；此前发布版本保留其原有许可。
+
+第三方 LUT 与运行时保留各自许可。当前版本使用正式版 Windows App SDK，并随程序保留所需许可、声明和组件条款；详见[第三方组件](Worker/assets/THIRD_PARTY.md)与[依赖及分发说明](docs/dependencies.md)。
 
 ## 文档与第三方组件
 

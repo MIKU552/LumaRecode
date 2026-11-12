@@ -6,7 +6,7 @@ namespace VideoConverter;
 
 public static class LegalNotices
 {
-    public const string Revision = "windows-runtime-terms-2026-11-12";
+    public const string Revision = "windows-runtime-terms-2026-11-12-mit";
     public static string Folder => Path.Combine(AppContext.BaseDirectory, "licenses");
 
     public static void OpenFolder()
@@ -21,7 +21,7 @@ public static class LegalNotices
         var termsPath = Path.Combine(Folder, "THIRD-PARTY-TERMS.txt");
         if (!File.Exists(termsPath)) throw new FileNotFoundException(L.T("许可文件缺失，请重新下载完整程序。"), termsPath);
         var panel = new StackPanel { Spacing = 12, MaxWidth = 620 };
-        panel.Children.Add(new TextBlock { Text = L.T("主程序源码采用 Apache-2.0。随附的微软等第三方组件适用各自条款，请阅读后继续。"), TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(new TextBlock { Text = L.T("主程序源码采用 MIT。随附的微软等第三方组件适用各自条款，请阅读后继续。"), TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(new ScrollViewer { MaxHeight = 330, Content = new TextBlock {
             Text = File.ReadAllText(termsPath), TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true } });
         var files = new HyperlinkButton { Content = L.T("查看完整许可与第三方声明") };

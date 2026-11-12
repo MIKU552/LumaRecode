@@ -1,6 +1,6 @@
 # 开发环境与分发 / Development and distribution
 
-当前版本：3.5.0。“最新稳定”核对于 **2026-11-12**，是版本快照，不承诺永远最新。正式构建不使用 preview / experimental 包。
+当前版本：3.5.1。“最新稳定”核对于 **2026-11-12**，是版本快照，不承诺永远最新。正式构建不使用 preview / experimental 包。
 
 | 项目 / Item | 版本 / Version | 用途 / Purpose |
 | --- | --- | --- |
@@ -40,6 +40,6 @@ Default deployment bundles runtimes for download-and-run use. Extraction is inte
 2. NuGet 执行签名、完整性及还原检查，锁文件记录内容哈希。`tools/Collect-Licenses.ps1` 从实际包收集许可与声明，遇到 Engineering Preview 许可终止；还读取 SDK 的 `downloadDependencies`，补收 .NET / ASP.NET / Desktop 运行时和 Windows SDK .NET 投影包等隐式依赖。
 3. `licenses/manifest.json` 记录版本、来源、文本哈希；Python 依赖原文、上游 SBOM 及来源在 `licenses/Python-dependencies/`。SBOM 的 `NOASSERTION` 不是许可结论，依据是原始文本；该 SBOM 还含跨平台或未随 Windows 嵌入式包分发的项目，不将其全表算作 payload。
 4. Windows App SDK 正式包第 3 节、Windows 单文件运行时适用的 .NET Library License 第 3 节、Windows SDK REDIST 的 .NET 投影包条目，以及 Python Windows binary 附加条件分别提供当前授权链。不能把 Windows .NET 二进制统一当作 MIT。首次启动提供接收者条款与全文入口；完整说明及旧审计修正见[第三方组件](../Worker/assets/THIRD_PARTY.md)。
-5. 自主源码 Apache-2.0 与第三方组件条款分开；不能仅从“开源”或“免费下载”推导转发权。运行时升级不等于取得编解码器专利或商标权。
+5. 自主源码 MIT 与第三方组件条款分开；不能仅从“开源”或“免费下载”推导转发权。运行时升级不等于取得编解码器专利或商标权。
 
 Official references: [Windows App SDK deployment](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/unpackage-winui-app?tabs=csharp), [Python Windows distribution](https://docs.python.org/3.15/using/windows.html), [Microsoft redistribution documentation](https://learn.microsoft.com/en-us/visualstudio/releases/2026/redistribution). Original component texts are retained verbatim and govern over these explanatory notes.

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 """Reproduce the project's Mi-Log and Samsung Log HLG tables using stdlib only.
 
 This is the project's own transfer-function implementation, not vendor code.

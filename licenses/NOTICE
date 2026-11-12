@@ -1,7 +1,7 @@
 FrameFlow
 Copyright 2026 MIKU552 and contributors.
 
-Original project work is offered under the Apache License, Version 2.0.
+Original project work is offered under the MIT License.
 Third-party material retains its own copyright notices and license terms.
 See Worker/assets/THIRD_PARTY.md, Worker/assets/license-manifest.json,
 and licenses/manifest.json.
@@ -20,7 +20,7 @@ redistributed by this project.
 The Windows distribution includes Microsoft and Python runtime components,
 and dependencies of the official CPython Windows build, including OpenSSL.
 Their licenses and notices are
-separate from this project's Apache-2.0 license. FFmpeg and ffprobe are
+separate from this project's MIT license. FFmpeg and ffprobe are
 separate programs supplied by the user; they are not bundled or linked.
 
 The development roles of MIKU552 and Codex are described in the README.

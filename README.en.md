@@ -125,9 +125,11 @@ Git commits credit both [Codex](https://github.com/codex) and MIKU552 and are si
 
 ## License
 
-Original project code, documentation, graphics, and the project's generated Mi-Log / Samsung Log LUTs use the **[Apache License 2.0](LICENSE)**. Commercial use, modification, and proprietary redistribution are permitted subject to its conditions, including license / notice retention and identification of changes. See [NOTICE](NOTICE).
+Original project code, documentation, graphics, and the project's generated Mi-Log / Samsung Log LUTs use the **[MIT License](LICENSE)**. Commercial use, modification, and proprietary redistribution are permitted, with the copyright and permission notices retained in copies or substantial portions of the software. See [NOTICE](NOTICE) for third-party attribution.
 
-Third-party LUTs and runtimes retain their own terms. Version 3.5.0 uses production Windows App SDK packages and includes applicable licenses, notices, and component terms. See [third-party components](Worker/assets/THIRD_PARTY.md) and [dependency and distribution notes](docs/dependencies.md).
+Original project work uses MIT starting with **3.5.1**. Earlier releases retain their original licenses.
+
+Third-party LUTs and runtimes retain their own terms. The current version uses production Windows App SDK packages and includes applicable licenses, notices, and component terms. See [third-party components](Worker/assets/THIRD_PARTY.md) and [dependency and distribution notes](docs/dependencies.md).
 
 ## Documentation and third-party components
 

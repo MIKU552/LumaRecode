@@ -204,7 +204,7 @@
   "Python 版本检测超时。": "Python version check timed out.",
   "需要 Python 3.14 或更新版本，推荐 Python 3.15.2。": "Python 3.14 or later is required; Python 3.15.2 is recommended.",
   "许可文件缺失，请重新下载完整程序。": "License files are missing. Download the complete application again.",
-  "主程序源码采用 Apache-2.0。随附的微软等第三方组件适用各自条款，请阅读后继续。": "The original application source uses Apache-2.0. Bundled Microsoft and other third-party components have their own terms. Read them before continuing.",
+  "主程序源码采用 MIT。随附的微软等第三方组件适用各自条款，请阅读后继续。": "The original application source uses MIT. Bundled Microsoft and other third-party components have their own terms. Read them before continuing.",
   "查看完整许可与第三方声明": "View full licenses and third-party notices",
   "第三方组件许可": "Third-party component licenses",
   "同意并继续": "Agree and continue",

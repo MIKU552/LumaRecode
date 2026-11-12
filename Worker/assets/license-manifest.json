@@ -2,17 +2,17 @@
   "schema_version": 2,
   "reviewed_on": "2026-11-12",
   "scope": "LUT assets only; runtime package notices and hashes are in ../../licenses/manifest.json.",
-  "project_license": "Apache-2.0",
+  "project_license": "MIT",
   "generated_luts": [
     {
       "path": "Worker/assets/REDMI_K90_MiLog_to_Rec2100_HLG.cube",
-      "license": "Apache-2.0",
+      "license": "MIT",
       "generator": "Worker/tools/generate_hlg_luts.py",
       "sha256": "8019f23548691365d81ac2dddf1a5300ed226269add338e3bbcd0b64c739a2f3"
     },
     {
       "path": "Worker/assets/Samsung_Log_to_Rec2100_HLG.cube",
-      "license": "Apache-2.0",
+      "license": "MIT",
       "generator": "Worker/tools/generate_hlg_luts.py",
       "sha256": "ecf1c7196aae39a734085be4bf50a3c0e87036397a84bb4984dc085407281ae1"
     }
