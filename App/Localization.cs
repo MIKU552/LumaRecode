@@ -22,6 +22,7 @@ public static class L
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.DefaultThreadCurrentCulture = culture;
         try { Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = LanguagePolicy.XamlLanguage(Code); }
         catch (System.Runtime.InteropServices.COMException) { }
+        UiTypography.Configure();
     }
     private static string ReadSystemLanguage()
     {

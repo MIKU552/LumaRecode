@@ -34,9 +34,9 @@ internal static class AboutDialog
         var licenses = new HyperlinkButton { Content = L.T("查看完整许可与第三方声明"), Padding = new Thickness(0, 6, 0, 6), HorizontalAlignment = HorizontalAlignment.Left };
         licenses.Click += (_, _) => LegalNotices.OpenFolder(); links.Children.Add(licenses);
         panel.Children.Add(links);
-        await new ContentDialog { Title = L.T("关于"), CloseButtonText = L.T("关闭"),
+        await UiTypography.Prepare(new ContentDialog { Title = L.T("关于"), CloseButtonText = L.T("关闭"),
             XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme, Language = root.Language,
             Content = new ScrollViewer { Content = panel, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                MaxHeight = Math.Clamp(root.ActualHeight - 220, 180, 560) } }.ShowAsync();
+                MaxHeight = Math.Clamp(root.ActualHeight - 220, 180, 560) } }).ShowAsync();
     }
 }

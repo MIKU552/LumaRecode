@@ -19,6 +19,15 @@ Equal("en", LanguagePolicy.Resolve("en", "zh-CN")); Equal("zh", LanguagePolicy.R
 Equal("ja", LanguagePolicy.Resolve("ja", "es-MX")); Equal("es", LanguagePolicy.Resolve("es", "ja-JP"));
 Equal("en", LanguagePolicy.Resolve("unknown", "fr-FR"));
 Equal("ja-JP", LanguagePolicy.Culture("ja")); Equal("es-ES", LanguagePolicy.XamlLanguage("es"));
+Equal(TypographyPolicy.FontStack("zh"), TypographyPolicy.FontStack("en"));
+Equal(TypographyPolicy.FontStack("zh"), TypographyPolicy.FontStack("es"));
+foreach (var code in new[] { "zh", "en", "es", "ja" })
+{
+    var fonts = TypographyPolicy.FontStack(code).Split(", ");
+    Equal("Segoe UI Variable", fonts[0]);
+    Equal(code == "ja" ? "Yu Gothic UI" : "Microsoft YaHei UI", fonts[2]);
+    Equal("Consolas", TypographyPolicy.MonospaceStack(code).Split(", ")[0]);
+}
 var app = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../App"));
 var resources = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(app, "Strings.en.json")))!;
 var languages = new[] { "en", "ja", "es" }.ToDictionary(code => code, code =>
@@ -42,6 +51,9 @@ foreach (var (code, values) in languages)
     }
 }
 var xml = XDocument.Load(Path.Combine(app, "MainView.xaml"));
+XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+var appResources = XDocument.Load(Path.Combine(app, "App.xaml"));
+Equal(TypographyPolicy.FontStack("en"), appResources.Descendants(presentation + "FontFamily").Single().Value);
 foreach (var attribute in xml.Descendants().Attributes().Where(a => Regex.IsMatch(a.Value, "[\\p{IsCJKUnifiedIdeographs}]")))
     if (!resources.ContainsKey(attribute.Value)) throw new Exception("Untranslated XAML: " + attribute.Value);
 XNamespace xamlNamespace = "http://schemas.microsoft.com/winfx/2006/xaml";

@@ -76,6 +76,7 @@ public sealed class MainWindow : Window
         clockTimer.Tick += (_, _) => UpdateTransferStats();
         FillChoices();
         viewLocalization.Apply(root);
+        UiTypography.Attach(root);
         appearance = new Appearance(root, this, settings);
         BuildLanguageMenu();
         WireEvents();
@@ -123,7 +124,9 @@ public sealed class MainWindow : Window
         };
         foreach (var (key, name) in new[] { ("system", L.T("跟随系统")) }.Concat(LanguagePolicy.Choices))
         {
-            var item = new RadioMenuFlyoutItem { Text = name, GroupName = "AppLanguage", IsChecked = settings.Language == key };
+            var code = key == "system" ? L.Code : key;
+            var item = new RadioMenuFlyoutItem { Text = name, Tag = key, GroupName = "AppLanguage", IsChecked = settings.Language == key,
+                FontFamily = UiTypography.Family(code), Language = LanguagePolicy.XamlLanguage(code) };
             item.Click += (_, _) =>
             {
                 settings.Language = key; settings.Save(); L.Configure(key); Relocalize();
@@ -137,19 +140,22 @@ public sealed class MainWindow : Window
     {
         foreach (var (key, item) in languageItems) item.IsChecked = key == settings.Language;
         languageItems["system"].Text = L.T("跟随系统");
+        languageItems["system"].FontFamily = UiTypography.Family(L.Code);
+        languageItems["system"].Language = LanguagePolicy.XamlLanguage(L.Code);
         var button = Control<DropDownButton>("LanguageButton");
         button.Content = LanguagePolicy.Choices.FirstOrDefault(choice => choice.Code == settings.Language).Name ?? L.T("语言 · 系统");
 
         // Size both surfaces from every label, including the menu's check column.
-        double TextWidth(string text)
+        double TextWidth(string text, FontFamily family, string language)
         {
-            var label = new TextBlock { Text = text, FontFamily = button.FontFamily,
-                FontSize = button.FontSize, FontWeight = button.FontWeight, Language = root.Language };
+            var label = new TextBlock { Text = text, FontFamily = family,
+                FontSize = button.FontSize, FontWeight = button.FontWeight, Language = language };
             label.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
             return label.DesiredSize.Width;
         }
-        var menuWidth = languageItems.Values.Max(item => TextWidth(item.Text)) + 64;
-        var buttonWidth = LanguagePolicy.Choices.Select(choice => choice.Name).Append(L.T("语言 · 系统")).Max(TextWidth) + 48;
+        var menuWidth = languageItems.Values.Max(item => TextWidth(item.Text, item.FontFamily, item.Language)) + 64;
+        var buttonWidth = LanguagePolicy.Choices.Select(choice => choice.Name).Append(L.T("语言 · 系统"))
+            .Max(text => TextWidth(text, UiTypography.Family(L.Code), root.Language)) + 48;
         var width = 4 * Math.Ceiling(Math.Max(128, Math.Max(menuWidth, buttonWidth)) / 4);
         button.Width = width;
         var presenter = (Style)XamlReader.Load("""
@@ -159,6 +165,7 @@ public sealed class MainWindow : Window
         presenter.Setters.Add(new Setter(FrameworkElement.WidthProperty, width));
         presenter.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, width));
         presenter.Setters.Add(new Setter(FrameworkElement.MaxWidthProperty, width));
+        presenter.Setters.Add(new Setter(Microsoft.UI.Xaml.Controls.Control.FontFamilyProperty, UiTypography.Family(L.Code)));
         ((MenuFlyout)button.Flyout).MenuFlyoutPresenterStyle = presenter;
     }
     private void Relocalize()
@@ -185,6 +192,7 @@ public sealed class MainWindow : Window
         if (media is not null) UpdateMediaPresentation();
         else foreach (var (name, text) in source) Control<TextBlock>(name).Text = L.T(text);
         SetStatus(status); Refresh(); UpdateTransferStats();
+        UiTypography.Refresh(root);
         if (activeJob is not null) { SetBusy(true); Control<Button>("Cancel").IsEnabled = cancelEnabled; }
     }
     private void FillChoices()
@@ -571,6 +579,7 @@ public sealed class MainWindow : Window
         SetSourceDetail("SourceAudio", DescribeAudio(data));
         Control<TextBlock>("SourceEvidence").Text = L.T(MediaText("evidence"));
         Control<TextBlock>("SourceBadge").Text = L.T($"{depth} · {duration:F1} 秒");
+        UiTypography.Refresh(root);
     }
     private void SetSourceDetail(string name, string text)
     {
@@ -730,7 +739,7 @@ public sealed class MainWindow : Window
             };
         }
         var notice = new InfoBar { IsClosable = false, Severity = InfoBarSeverity.Error, IsOpen = false }; panel.Children.Add(notice);
-        var dialog = new ContentDialog { Title = L.T("工具路径"), Content = panel, PrimaryButtonText = L.T("检测并保存"), CloseButtonText = L.T("取消"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme };
+        var dialog = UiTypography.Prepare(new ContentDialog { Title = L.T("工具路径"), Content = panel, PrimaryButtonText = L.T("检测并保存"), CloseButtonText = L.T("取消"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme });
         dialog.PrimaryButtonClick += async (_, e) =>
         {
             var deferral = e.GetDeferral(); dialog.IsPrimaryButtonEnabled = false;
@@ -754,7 +763,7 @@ public sealed class MainWindow : Window
     {
         if (closing || dialogOpen) return;
         dialogOpen = true;
-        try { await new ContentDialog { Title = L.T(title), Content = L.T(message), CloseButtonText = L.T("确定"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme }.ShowAsync(); }
+        try { await UiTypography.Prepare(new ContentDialog { Title = L.T(title), Content = L.T(message), CloseButtonText = L.T("确定"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme }).ShowAsync(); }
         finally { dialogOpen = false; }
     }
     private async void OnClosing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
@@ -765,7 +774,7 @@ public sealed class MainWindow : Window
         dialogOpen = true;
         try
         {
-            var result = await new ContentDialog { Title = L.T("取消转换并退出？"), Content = L.T("本次临时输出将清理，原片保留。"), PrimaryButtonText = L.T("取消转换并退出"), CloseButtonText = L.T("继续转换"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme }.ShowAsync();
+            var result = await UiTypography.Prepare(new ContentDialog { Title = L.T("取消转换并退出？"), Content = L.T("本次临时输出将清理，原片保留。"), PrimaryButtonText = L.T("取消转换并退出"), CloseButtonText = L.T("继续转换"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme }).ShowAsync();
             if (result == ContentDialogResult.Primary) { closing = true; if (activeJob is not null) await activeJob.CancelAsync(); else Close(); }
         }
         finally { dialogOpen = false; }

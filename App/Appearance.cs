@@ -147,6 +147,7 @@ public sealed class Appearance
                 <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}" />
             </Style>
             """);
+        presenterStyle.Setters.Add(new Setter(Control.FontFamilyProperty, UiTypography.Family(L.Code)));
         var flyout = new Flyout { ShouldConstrainToRootBounds = false, FlyoutPresenterStyle = presenterStyle,
             Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight };
         flyout.Opening += (_, _) =>
@@ -154,6 +155,8 @@ public sealed class Appearance
             if (flyout.Content is null)
             {
                 paletteContent = BuildPaletteContent();
+                paletteContent.Language = LanguagePolicy.XamlLanguage(L.Code);
+                UiTypography.Attach(paletteContent);
                 flyout.Content = paletteContent;
             }
             ApplyAccent(false);

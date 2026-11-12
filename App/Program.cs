@@ -18,7 +18,6 @@ internal static class Program
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
         // Stable WinUI 2.6 optimizations are opt-in for template compatibility.
-        // This view uses public control properties, not template-part traversal.
         foreach (var change in new[] {
             Microsoft.UI.Xaml.Settings.XamlChangeId.IconNoGridOptimization,
             Microsoft.UI.Xaml.Settings.XamlChangeId.OptimizeApplyStyles,

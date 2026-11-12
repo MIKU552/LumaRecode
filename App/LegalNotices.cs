@@ -34,7 +34,7 @@ public static class LegalNotices
         var system = new ComboBoxItem { Tag = "system" };
         language.Items.Add(system);
         foreach (var (code, name) in LanguagePolicy.Choices)
-            language.Items.Add(new ComboBoxItem { Tag = code, Content = name });
+            language.Items.Add(new ComboBoxItem { Tag = code, Content = name, FontFamily = UiTypography.Family(code), Language = LanguagePolicy.XamlLanguage(code) });
         language.SelectedItem = language.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == settings.Language) ?? system;
         Grid.SetColumn(language, 1);
         languageRow.Children.Add(languageLabel); languageRow.Children.Add(language);
@@ -48,8 +48,8 @@ public static class LegalNotices
         panel.Children.Add(explanation);
         var files = new HyperlinkButton { Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left };
         files.Click += (_, _) => OpenFolder(); panel.Children.Add(files);
-        var dialog = new ContentDialog { Content = panel,
-            DefaultButton = ContentDialogButton.Primary, XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme };
+        var dialog = UiTypography.Prepare(new ContentDialog { Content = panel,
+            DefaultButton = ContentDialogButton.Primary, XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme });
         var refreshing = false;
         void ApplyLanguage()
         {
@@ -57,6 +57,7 @@ public static class LegalNotices
             try
             {
                 dialog.Language = LanguagePolicy.XamlLanguage(L.Code);
+                dialog.FontFamily = UiTypography.Family(L.Code);
                 dialog.Title = L.T("第三方组件许可");
                 dialog.PrimaryButtonText = L.T("同意并继续");
                 dialog.CloseButtonText = L.T("退出");
@@ -70,6 +71,7 @@ public static class LegalNotices
                 body.Text = terms[L.Code];
                 explanation.Text = L.T("此页为组件条款说明。完整许可按原文保留，请一并阅读。");
                 files.Content = L.T("查看完整许可与第三方声明");
+                UiTypography.Refresh(dialog);
             }
             finally { refreshing = false; }
         }
