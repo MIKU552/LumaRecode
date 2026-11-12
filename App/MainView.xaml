@@ -84,7 +84,7 @@
             <InfoBar x:Name="Notice" IsOpen="False" IsClosable="False" Severity="Warning" />
           </StackPanel></Border>
           <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" IsExpanded="False" AutomationProperties.Name="格式与音频" x:Name="LocalizedElement37">
-            <Expander.Header><StackPanel Orientation="Horizontal" Spacing="12"><SymbolIcon Symbol="Setting" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /><TextBlock Text="格式与音频" FontSize="14" VerticalAlignment="Center" x:Name="LocalizedElement38" /></StackPanel></Expander.Header>
+            <Expander.Header><StackPanel Orientation="Horizontal" Spacing="12"><SymbolIcon Symbol="List" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /><TextBlock Text="格式与音频" FontSize="14" VerticalAlignment="Center" x:Name="LocalizedElement38" /></StackPanel></Expander.Header>
             <StackPanel Spacing="16">
               <ComboBox x:Name="Sampling" Header="色度采样" HorizontalAlignment="Stretch" AutomationProperties.Name="色度采样" />
               <ComboBox x:Name="ColorRange" Header="色彩范围" HorizontalAlignment="Stretch" AutomationProperties.Name="色彩范围" />
