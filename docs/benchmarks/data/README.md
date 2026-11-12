@@ -2,7 +2,9 @@
 
 [中文报告](../encoding-benchmark.zh-CN.md) · [English report](../encoding-benchmark.en.md)
 
-此目录是原始本机测试记录的筛选摘录，不是本次重新测量的结果。删除了绝对路径、私人视频和完整遥测；CSV 保留记录的数值精度。The files are curated extracts of retained on-device results, not newly executed benchmarks. Local absolute paths, private media, and full telemetry are omitted. CSVs preserve recorded numeric precision.
+本目录包含编码预设测试的环境、结果和参数记录。CSV 保留原始数值精度。
+
+This directory contains the environment, results, and parameter records for the preset benchmark. CSV files preserve recorded numeric precision.
 
 | 文件 / File | 内容 / Contents |
 | --- | --- |
@@ -30,4 +32,4 @@
 - `metric_reused_from` 标记核对相同码流后复用的评分；筛选用的 `fps` 不能代替完整处理链速度。Reused metrics do not imply reused timing measurements.
 - `portable_ffmpeg_argv` 是 JSON 参数数组，使用 `<source-1080p.mov>`、`<source-4k.mov>`、`<output.mkv>` 占位符。替换路径后逐参数调用，不能直接当作 shell 命令字符串。These are argument arrays, not ready-to-run shell command strings.
 
-完整质量复现还需要原片、参考生成步骤、相同软件和驱动；本目录没有包含这些视频。时间戳反映原运行日期，清单日期反映本次归档日期。Full quality reproduction requires the original footage, reference generation, matching software, and drivers; those videos are not included. Run timestamps and archive dates have different meanings.
+完整质量复现还需要原片、参考生成步骤、相同软件和驱动；本目录没有包含这些视频。Full quality reproduction requires the original footage, reference generation, matching software, and drivers; those videos are not included.

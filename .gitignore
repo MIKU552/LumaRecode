@@ -7,7 +7,6 @@
 !/LICENSE
 !/NOTICE
 !/docs/
-!/HISTORY.md
 !/CHANGELOG.md
 !/build.ps1
 !/global.json
@@ -20,6 +19,7 @@
 !/qa/
 /App/app.ico
 /qa/*
+!/qa/README.md
 !/qa/LanguageChecks/
 !/qa/RuntimeChecks/
 !/qa/CliChecks/

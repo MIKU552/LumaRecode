@@ -2,9 +2,9 @@
 
 [简体中文](cli.zh-CN.md) · [README](../README.en.md)
 
-GUI and CLI use the same `FrameFlow.exe`, without companion launchers. Double-click or run without arguments for the GUI; supply commands such as `probe` or `convert` for headless operation. The supported terminal is **PowerShell 7**.
+Run `FrameFlow.exe` in **PowerShell 7**. No arguments opens the GUI; subcommands such as `probe` and `convert` run the CLI.
 
-The EXE retains its Windows GUI subsystem to avoid a console window on double-click. PowerShell 7 applies different interactive waiting rules to GUI EXEs: **pipe human-readable commands to `Out-Host`, or JSON commands to `ConvertFrom-Json`** to wait and update `$LASTEXITCODE` reliably. Scripts/process APIs can wait for this same EXE directly. Output redirection `>` alone is not a substitute for a waiting pipeline.
+The program uses the Windows GUI subsystem. **Pipe text output to `Out-Host`, or JSON output to `ConvertFrom-Json`** to wait for completion and read `$LASTEXITCODE`. Other programs can wait through a process API.
 
 Output is UTF-8. If the session uses a legacy code page such as GBK, set the encoding below for readable Chinese help/progress; this affects only the current PowerShell session. JSON uses standard escapes for non-ASCII characters, preserving decoded Unicode paths even under legacy code pages.
 
@@ -30,7 +30,7 @@ Tools resolve from PATH, then saved GUI paths. Override with `--ffmpeg PATH --ff
 | `probe INPUT` | Video/audio details, component depth, color/Log evidence, streams, tags and first-frame side data |
 | `presets` | Seven tested encoding presets and their actual encoder settings |
 | `profiles` | Built-in Mi-Log, Pocket 3 D-Log M and Samsung Log profiles/LUTs |
-| `doctor` | Tool versions and encoder/filter availability; this does not test all GPU/driver modes |
+| `doctor` | Tool versions and encoder/filter lists; hardware modes depend on the GPU and driver |
 | `license [--text]` | MIT project license, component terms, full notice directory and manifest |
 | `plan INPUT...` | Resolve source/options and print FFmpeg argv, working directory and expected colors without encoding |
 | `convert INPUT...` | Convert one file, a directory or wildcard matches sequentially, then verify output |

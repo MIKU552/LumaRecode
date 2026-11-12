@@ -5,80 +5,54 @@
 
 简体中文 | [English](README.en.md)
 
-面向 Windows 11 的视频转码工具，提供 FFmpeg 图形界面，可压缩普通视频、将相机 Log 转换为 HDR / SDR，或将 HDR 视频转换为 SDR。支持输出 MP4 / MKV，使用 HEVC、AV1 或 H.264 编码。
+面向 Windows 11 的视频转码与色彩转换工具，提供原生 WinUI 3 界面和命令行，使用 FFmpeg 完成视频压缩、相机 Log 转 HDR / SDR，以及 HDR 转 SDR。
 
-[下载最新版本](https://github.com/MIKU552/FrameFlow/releases/latest) · [更新记录](CHANGELOG.md) · [从源码构建](#从源码构建)
+[下载](https://github.com/MIKU552/FrameFlow/releases/latest) · [命令行文档](docs/cli.zh-CN.md) · [更新记录](CHANGELOG.md)
+
+## 功能
+
+- 按快速分享与软件归档选择预设，支持 HEVC、AV1、H.264 和 MP4 / MKV。
+- 支持 Mi-Log、Pocket 3 D-Log M、Samsung Log 转换为 HLG HDR 或 Rec.709 SDR，以及 HLG / PQ 转 SDR。
+- 读取分辨率、帧率、位深、色彩标签及音轨，按素材设置默认选项。
+- 控制色度采样与音频策略，支持 4:2:2 输入转 4:2:0。
+- 显示进度、编码帧率、当前位置与剩余时间，完成后校验输出格式。
+- 提供 Mica、浅色 / 深色 / 系统主题、强调色和中英文切换。
+- 命令行支持批量、配置文件、参数预演和 JSON 事件输出。
 
 ## 快速开始
 
-1. 从 [Releases](https://github.com/MIKU552/FrameFlow/releases) 下载并运行 **FrameFlow.exe**。同一个 EXE 也提供命令行，完整说明见[命令行文档](docs/cli.zh-CN.md)。这是 Windows x64 单文件程序，已包含界面运行时、转换组件和 LUT，无须安装 .NET 或 Python。
-2. 准备 Windows 版 [FFmpeg](https://ffmpeg.org/download.html)，下载页的 **Windows EXE Files** 区域提供预编译版本链接。需要同时包含 **ffmpeg.exe** 和 **ffprobe.exe**。程序优先从 `PATH` 查找；未找到时，在弹出的窗口中选择这两个文件。右上角齿轮可随时修改路径。
-3. 将视频拖入素材区域，或点击“选择视频”。程序会读取分辨率、帧率、位深、色彩标签和音轨，并识别可用的 Log / HDR 标记。
-4. 确认 SDR / HDR 输出、用途和视频编码。普通 SDR 默认输出 SDR，HDR 默认保留 HDR，已识别曲线的 Log 默认转换为 HLG HDR。
-5. 确认保存位置，点击“开始转换”。底部显示进度、转码帧率、当前编码位置和预估剩余时间；详细 FFmpeg 命令与错误信息位于“转换日志”。
+1. 从 [Releases](https://github.com/MIKU552/FrameFlow/releases) 下载 **FrameFlow.exe**。程序内置所需运行时，可直接运行。
+2. 准备 Windows 版 [FFmpeg](https://ffmpeg.org/download.html)，包含 `ffmpeg.exe` 和 `ffprobe.exe`。首次运行会从 `PATH` 查找，也可在右上角齿轮中指定路径。
+3. 拖入视频或点击“选择视频”，确认输出动态范围、编码预设和色彩转换。
+4. 选择保存位置，点击“开始转换”。
 
-**首次使用：**“快速分享”使用 Intel QSV 硬件编码，需要显卡支持所选编码器。没有相应 Intel 硬件时，选择“软件归档”使用 CPU 编码。
+“快速分享”使用 Intel QSV；显卡不支持所选编码器时，选择“软件归档”使用 CPU。
 
-## 主要功能
+## 编码与色彩
 
-- **视频压缩**：按“快速分享 / 软件归档”分类选择编码档，支持 HEVC、AV1、H.264。
-- **色彩转换**：内置相机 Log → HLG HDR、Log → Rec.709 SDR、HLG / PQ HDR → SDR 三组转换。
-- **格式控制**：独立选择 MP4 / MKV、色度采样和音频策略；4:2:2 原片可直接输入并转换为 4:2:0。
-- **素材识别**：显示视频与逐条音轨信息，根据原片元数据设置默认选项；无法确认的输入类型或相机曲线可手动指定。
-- **输出检查**：完成后核对位深、采样、色彩标签及所需 HDR 静态元数据；保留原片，避免覆盖已有输出，取消时清理本次临时文件。
-- **原生 Windows 界面**：WinUI 3、Mica、浅色 / 深色 / 跟随系统、系统或自定义强调色，中英文即时切换。配色面板和高级颜色选择器按需加载。首次许可窗口也可选语言；右上角“关于”提供版本、项目主页和完整许可入口。
-
-## 编码与输出
-
-| 用途 | 编码器 | 自动封装 | 音频默认策略 |
+| 用途 | 编码器 | 默认封装 | 默认音频 |
 | --- | --- | --- | --- |
 | 快速分享 | Intel QSV：HEVC / AV1 / H.264 | MP4 | HEVC、H.264 使用 AAC；AV1 使用 Opus |
-| 软件归档 | CPU：x265 / SVT-AV1 / x264 | MKV | 复制原音轨 |
+| 软件归档 | x265 / SVT-AV1 / x264 | MKV | 复制原音轨 |
 
-封装和音频均可手动调整。在“格式与音频”中可选择 AAC、Opus 或复制原音轨。MP4 配合音轨复制时，程序会先检查封装兼容性。
+封装、采样和音频均可单独选择。HDR 输出为 10 位 HEVC 或 AV1；SDR 快速分享为 8 位。软件 HEVC / AV1 归档为 10 位，H.264 为 8 位。软件 HEVC / H.264 可选 4:2:2。
 
-- **HDR**：输出 10 位，使用 HEVC 或 AV1。
-- **SDR**：快速分享输出 8 位；软件归档的 HEVC / AV1 输出 10 位，H.264 输出 8 位。
-- **色度采样**：默认输出 4:2:0；软件归档的 HEVC / H.264 可选 4:2:2。
+SDR 默认保持 SDR，HLG / PQ 默认保持 HDR，已识别曲线的 Log 默认转换为 HLG。元数据不足时，在“输入解释”和“相机曲线”中手动选择。Log 转换需要对应曲线的原片；LUT 使用固定曝光和高光映射。当前支持 HLG / PQ 输出，不重建 HDR10+ 或 Dolby Vision 动态元数据。
 
-编码器参数在界面中显示，完整预设见 [recommended-presets.json](Worker/assets/recommended-presets.json)。转换会重新编码视频；选择“复制原音轨”只影响音频处理。
-
-预设的核心参数来自维护者在 **Xiaomi Book Pro 14 / Core Ultra X7 358H / Arc B390 / 32 GB** 上的实际测试。测试方法、画质与体积、真实转码速度、参数取舍及原始结果摘录见[编码测试报告](docs/benchmarks/encoding-benchmark.zh-CN.md)。这些值是本机、特定素材和软件版本下的默认起点；HDR、SDR8、4:2:2 和 LUT 转换的功能验证不等于重新完成了整套画质调参。
-
-## 色彩转换
-
-| 输入素材 | 转换方式 | 输出 |
-| --- | --- | --- |
-| 普通 SDR | 不套用 LUT，保留 / 标准化 | Rec.709 SDR |
-| 相机 Log | 使用对应曲线的内置 LUT | BT.2020 HLG HDR，或 Rec.709 SDR |
-| HLG / PQ HDR | 保留 HDR | 保留原 HLG / PQ 类型 |
-| HLG / PQ HDR | HDR → SDR 色调映射 | Rec.709 SDR |
-
-内置曲线支持 **小米 Mi-Log、DJI Osmo Pocket 3 D-Log M、Samsung Log**。自动识别依赖原片元数据；标记缺失或曲线无法确认时，需要核对“输入解释”和“相机曲线”。
-
-使用范围：
-
-- Log 转换需要对应相机的高位深原片。内置 LUT 使用固定的曝光和高光映射，不能恢复原片已剪切的高光。
-- 当前不提供 SDR → HDR 转换，也不负责 HDR10+ / Dolby Vision 动态元数据的重建。
-- HDR 文件在接收端能否以 HDR 显示，取决于播放设备、软件和分享平台。
+完整预设见 [recommended-presets.json](Worker/assets/recommended-presets.json)，参数来源见[编码实测报告](docs/benchmarks/encoding-benchmark.zh-CN.md)。转换会重新编码视频；“复制原音轨”仅影响音频。
 
 ## 运行要求
 
-| 组件 | 要求 |
-| --- | --- |
-| 系统 | Windows 11 x64 |
-| FFmpeg / ffprobe | 由使用者提供；所选构建需包含任务使用的解码器、编码器和滤镜 |
-| Intel QSV | 仅“快速分享”需要；所选编码格式须受显卡及驱动支持 |
-| Log 转换 | FFmpeg 的 `zscale`、`lut3d` 滤镜 |
-| Log / HDR → SDR | FFmpeg 的 `libplacebo` 滤镜及可用的 Vulkan 驱动；Log 输入还需上述 Log 转换滤镜 |
+- Windows 11 x64。
+- 用户提供的 FFmpeg / ffprobe，包含任务所需的编码器和滤镜。
+- 快速分享需要相应 Intel QSV 支持。
+- Log 转换需要 `zscale`、`lut3d`；HDR / Log 转 SDR 还需要 `libplacebo` 和 Vulkan。
 
-可读取的输入格式取决于所选 FFmpeg 的解码能力。缺少编码器或滤镜时，程序会显示所需组件，工具路径可在右上角齿轮中更换。
-
-界面语言和主题默认跟随系统。中文系统使用简体中文，其他系统语言默认使用英文。设置保存在 `%LOCALAPPDATA%\FrameFlow\settings.json`。
+语言和主题默认跟随系统；中文系统使用简体中文，其他语言系统默认英文。设置保存在 `%LOCALAPPDATA%\FrameFlow\settings.json`。
 
 ## 命令行
 
-命令行与 GUI 共用编码预设、LUT、自动识别和输出校验，支持文件/目录/通配符批量处理、JSON 事件、预演命令、配置文件、Ctrl+C 取消和稳定退出码。
+在 PowerShell 7 中运行；为 GUI 子系统 EXE 接上输出管道，以等待命令结束：
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
@@ -86,75 +60,45 @@
 ./FrameFlow.exe probe clip.mp4 --json | ConvertFrom-Json
 ./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
 ./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
-./FrameFlow.exe convert "D:\Videos" --recursive --output-dir "D:\Exports" --json | ConvertFrom-Json
 ```
 
-终端以 PowerShell 7 为目标；接上输出管道可确保 GUI EXE 的命令行调用完成后才返回。首次无交互使用前，可用 `license --text` 阅读组件条款，再运行 `license --accept-terms`。详见[完整命令与脚本示例](docs/cli.zh-CN.md)。
+首次无人值守使用前，运行 `license --text` 阅读组件条款，再运行 `license --accept-terms`。全部命令、批量用法和退出码见[命令行文档](docs/cli.zh-CN.md)。
 
 ## 从源码构建
 
-需要 Windows 11 x64、**.NET SDK 11.0.100**（由 `global.json` 固定）、PowerShell 7，以及支持 .NET Native AOT 的 Visual Studio C++ 构建工具。默认构建不需要预装 Python。
+需要 .NET SDK 11.0.100、PowerShell 7，以及支持 Native AOT 的 Visual Studio C++ 工具链。
 
 ```powershell
 git clone https://github.com/MIKU552/FrameFlow.git
 cd FrameFlow
-.\build.ps1
+./build.ps1
 ```
 
-构建脚本还原锁定依赖，校验官方 Python 3.15.2 嵌入式运行时，收集完整许可，将 WinUI 前端编译为 Native AOT，再用原 .NET 单文件机制封装依赖。GUI 启动后解包入口退出。下载仍只有一个 EXE，无须另装运行时；FFmpeg 由用户提供。首次启动需接受随附第三方组件的适用条款，日后可从“关于”查看全文。架构和工具链说明见[依赖与分发](docs/dependencies.md)，实测数据见[内存报告](docs/validation-3.6.4.md)。
-
-构建产物：
-
-```text
-dist/SelfContained/FrameFlow.exe
-```
-
-`./build.ps1 -Compilation Jit` 可按旧编译方式构建单文件 EXE，不需要 C++ 链接器。另有 `./build.ps1 -Deployment FrameworkDependent` 可构建 JIT 精简 ZIP，需要用户自行安装 .NET 11 Runtime、Windows App Runtime 2.6 与 Python 3.14 或更新版本；默认发布继续使用包含所需运行时的单 EXE。
-
-可选图标重绘工具的版本在 `Brand/requirements.txt`，常规构建不需要 Qt / PySide6。依赖版本、支持周期和分发依据见[依赖说明](docs/dependencies.md)。
-
-运行语言与资源检查：
-
-```powershell
-dotnet run --project qa/LanguageChecks/LanguageChecks.csproj -c Release
-```
-
-主视图使用编译后的 XAML；修改翻译文字后运行 `python tools/Update-ViewText.py` 更新静态映射。构建会检查视图与映射是否一致。设置和 worker JSON 使用源生成序列化，兼容性检查位于 `qa/SerializationChecks/`。
+产物为 `dist/SelfContained/FrameFlow.exe`。构建方式与依赖版本见[开发文档](docs/dependencies.md)，检查命令见 [QA 指南](qa/README.md)。
 
 ## 项目结构
 
 ```text
-App/                  WinUI 3 界面、主题、本地化与任务交互
-Bundle/               单文件解包入口，GUI 启动后退出
-Worker/               命令行、素材识别、FFmpeg 命令生成与输出校验
-Worker/assets/        LUT、编码预设与 LUT 来源
-licenses/             随程序分发的原始许可、声明和版本清单
-tools/                许可收集与发布检查
-Brand/                品牌图形与图标生成脚本
-qa/LanguageChecks/    语言策略、翻译及资源检查
-build.ps1             Windows 单文件 EXE 构建脚本
-docs/benchmarks/       编码实测报告、预设来源与可核对的数据
+App/       WinUI 3 界面、主题、本地化和任务交互
+Bundle/    单文件打包入口
+Worker/    命令行、素材探测、FFmpeg 调用和 LUT
+Brand/     图标源文件与生成工具
+tools/     许可收集和本地化代码生成
+qa/        自动检查与内存采样工具
+docs/      使用说明、开发文档和测试数据
+licenses/  第三方许可、声明与来源清单
 ```
 
-## 开发方式与贡献
+## 开发与许可
 
-本项目自主代码的编写、界面实现、构建和仓库维护工作，全部通过 **Windows 版 Codex** 完成，使用 **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** 模型和 **极高（xhigh）** 推理设置。维护者 **[MIKU552](https://github.com/MIKU552)** 负责提出需求、提供设备与素材、选择方案，并亲自进行实机使用和结果核验。
+项目自主代码、界面、构建和仓库维护由 **Windows 版 Codex** 使用 **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)**、**极高（xhigh）** 推理设置完成。**[MIKU552](https://github.com/MIKU552)** 提出需求、提供设备与素材，并进行实机核验。Git 提交由双方共同署名，使用维护者的 GPG 密钥签名。
 
-以上说明针对本项目的开发过程；FFmpeg、WinUI 3、第三方 LUT 等组件保留各自作者与许可。
+自主代码、文档、图形及项目生成的 Mi-Log / Samsung Log LUT 采用 **[MIT License](LICENSE)**。第三方 LUT 和运行时保留各自许可，归属及分发依据见 [NOTICE](NOTICE) 和[第三方组件](Worker/assets/THIRD_PARTY.md)。MIT 自 3.5.1 起适用，历史版本保留原许可。
 
-Git 提交由 [Codex](https://github.com/codex) 与 MIKU552 共同署名，并使用维护者现有的 GPG 密钥签名。
+## 文档
 
-## 开源许可
-
-本项目的自主代码、文档、原创图形及项目生成的 Mi-Log / Samsung Log LUT，采用 **[MIT License](LICENSE)**。允许商用、修改及闭源再分发，须在软件副本或实质性部分中保留版权与许可声明。第三方归属说明见 [NOTICE](NOTICE)。
-
-自 **3.5.1** 起自主内容使用 MIT；此前发布版本保留其原有许可。
-
-第三方 LUT 与运行时保留各自许可。当前版本使用正式版 Windows App SDK，并随程序保留所需许可、声明和组件条款；详见[第三方组件](Worker/assets/THIRD_PARTY.md)与[依赖及分发说明](docs/dependencies.md)。
-
-## 文档与第三方组件
-
-- [编码测试报告](docs/benchmarks/encoding-benchmark.zh-CN.md)：内置参数的实测依据、适用范围与数据来源。
-- [CHANGELOG.md](CHANGELOG.md)：版本更新记录。
-- [HISTORY.md](HISTORY.md)：早期源码快照的归档说明。
-- [THIRD_PARTY.md](Worker/assets/THIRD_PARTY.md)：组件许可及 LUT 来源。Pocket 3 的 D-Log M → HLG LUT 来自第三方 OpenOSV 项目。
+- [命令行](docs/cli.zh-CN.md)
+- [开发与分发](docs/dependencies.md)
+- [性能优化](docs/performance.md)
+- [编码实测报告](docs/benchmarks/encoding-benchmark.zh-CN.md)
+- [更新记录](CHANGELOG.md)

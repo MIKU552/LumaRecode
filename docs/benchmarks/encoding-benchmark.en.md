@@ -2,9 +2,9 @@
 
 [简体中文](encoding-benchmark.zh-CN.md) | English · [Project home](../../README.en.md) · [Data guide](data/README.md)
 
-This report documents the measurements and tradeoffs behind FrameFlow's built-in compression settings. The core presets came from the maintainer's on-device encoding tests, originally recorded as “测试视频编码甜点配置”.
+This report covers the methodology, quality, size, and speed of FrameFlow's built-in encoding presets.
 
-The source batch is dated **2026-10-29**, with some finalization records extending into October 30 in Asia/Shanghai. The retained results were archived on **2026-11-11**; performance tests were not rerun for this documentation update. The preset snapshot corresponds to FrameFlow **3.4.7**.
+Measurements were recorded on **October 29–30, 2026**, using the FrameFlow **3.4.7** preset configuration. Software and driver versions are listed below.
 
 ## Findings and scope
 
@@ -160,12 +160,10 @@ Separate **VBR / TU7 / 60 fps** tests used average / maximum budgets of 12 / 20 
 
 Data: [qsv-vbr-60fps.csv](data/qsv-vbr-60fps.csv), 12 TU4 / TU7 runs. AV1 scored higher but also had higher actual bitrate. Equal target budgets do not mean equal achieved bitrate or establish an equal-bitrate efficiency ranking.
 
-Another 21 OBS recordings cover Normal / Low / Ultra-low latency and selected B0 cases using the unique-frame 60 fps synthetic desktop. They recorded no stable-phase rendering lag or encoding skips, with process CPU increments around 0.28–0.82 percentage points. The original recording workflow retained TU7 / VBR / Normal / B3. FrameFlow sharing remains TU4 / ICQ; these are different workflows, and FrameFlow does not provide OBS recording. See [obs-recording-summary.csv](data/obs-recording-summary.csv). Earlier anomalies from other batches are not merged into this summary.
-
-The driver reports relevant media-engine activity under `VideoDecode`; that counter is not pure decoding, whole-GPU utilization, or power draw. Actual game frame rate, power, temperature, and battery life were not measured.
+Additional OBS encoder measurements from the same batch are retained in [obs-recording-summary.csv](data/obs-recording-summary.csv).
 
 ## Data, checks, and future use
 
-The [data guide](data/README.md) links environment records, result extracts, per-run settings, and source-file hashes. This archive checks the four preset sections, size / NEG differences for all 18 pairs, and timing fps against frames / wall time. CSVs retain recorded precision; report tables are rounded. Some requested parameters in sweep records may not have been honored by the driver.
+The [data guide](data/README.md) links environment records, result extracts, per-run settings, and source-file hashes. CSVs retain recorded precision; report tables are rounded. Some requested parameters in sweep records may not have been honored by the driver.
 
-Private source footage, generated videos, and full machine telemetry are not included. Source hashes allow comparison with the maintainer's retained files; they do not replace missing footage or make byte-for-byte reproduction possible. After driver / encoder changes, or for different content, recheck size, shadows, gradients, motion, and small text on representative footage. CRF / ICQ numbers are not equivalent across encoders.
+Source footage is not distributed. Reproduction requires the same sources, software, and drivers. After driver / encoder changes, or for different content, recheck size, shadows, gradients, motion, and small text on representative footage. CRF / ICQ numbers are not equivalent across encoders.

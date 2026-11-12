@@ -2,9 +2,9 @@
 
 [English](cli.en.md) · [返回 README](../README.md)
 
-GUI 与 CLI 使用同一个 `FrameFlow.exe`，不需要任何附加启动文件。双击或无参数运行时打开 GUI；带 `probe`、`convert` 等命令时无界面运行。终端支持目标为 **PowerShell 7**。
+在 **PowerShell 7** 中运行 `FrameFlow.exe`。无参数时打开 GUI，带 `probe`、`convert` 等子命令时运行 CLI。
 
-EXE 保留 Windows GUI 子系统，避免双击时出现控制台窗口。PowerShell 7 对 GUI EXE 的交互式等待与普通控制台程序不同：**人类可读命令推荐接 `| Out-Host`，JSON 命令接 `| ConvertFrom-Json`**，让管道等待任务并可靠设置 `$LASTEXITCODE`。脚本/其他程序也可通过进程 API 等待同一个 EXE，无须第二个程序。仅重定向 `>` 不应替代等待管道。
+程序使用 Windows GUI 子系统。终端调用时，**文本输出接 `| Out-Host`，JSON 输出接 `| ConvertFrom-Json`**，通过管道等待命令结束并读取 `$LASTEXITCODE`。其他程序可使用进程 API 等待退出。
 
 程序输出使用 UTF-8。会话仍使用 GBK 等旧代码页时，先运行下面的编码设置，让中文帮助和进度正常显示；只影响当前 PowerShell 会话。JSON 对非 ASCII 字符使用标准转义，因此解析后的中文路径在旧代码页下也保持完整。
 
@@ -32,7 +32,7 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | `probe INPUT` | 位深、帧率、色彩、Log 证据、全部音轨、流标签与首帧侧数据 |
 | `presets` | 七组实测预设与原始编码参数 |
 | `profiles` | 内置 Mi-Log、Pocket 3 D-Log M、Samsung Log 曲线与 LUT |
-| `doctor` | 工具版本、编码器及滤镜；列出编码器不等于确认显卡支持所有模式 |
+| `doctor` | 工具版本及编码器、滤镜列表；硬件模式由显卡与驱动决定 |
 | `license [--text]` | 项目许可、第三方条款、完整许可目录与清单 |
 | `plan INPUT...` | 探测输入，列出解析后的选项、FFmpeg argv、工作目录和预期色彩，不编码 |
 | `convert INPUT...` | 单文件或顺序批量转换，完成后校验输出 |

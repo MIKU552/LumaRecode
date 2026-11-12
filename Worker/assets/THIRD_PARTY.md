@@ -1,16 +1,8 @@
-# 第三方组件与许可 · Third-party components
+# 第三方组件与许可 / Third-party components
 
-适用版本：FrameFlow 3.6.4，审阅日期 2026-11-12。当前运行时原始许可集中在 [licenses](../../licenses/)，NuGet 包与运行时记录见 [manifest.json](../../licenses/manifest.json)，LUT 来源与哈希见 [license-manifest.json](license-manifest.json)。此结论不追溯改变旧 EXE 内的组件或条款。
+项目自主内容使用 [MIT License](../../LICENSE)。第三方组件使用下列许可，完整原文保存在 [licenses](../../licenses/)，版本、来源及哈希见 [运行时清单](../../licenses/manifest.json)和 [LUT 清单](license-manifest.json)。
 
-Scope: the current 3.6.4 build, reviewed 2026-11-12, not every historical binary. Full original terms and notices are retained under `licenses/`; the manifests separate runtime provenance from LUT provenance.
-
-## 自主项目 / Original project
-
-自主代码、文档、原创图形及项目生成的 Mi-Log / Samsung Log LUT 采用根目录 [MIT](../../LICENSE)，允许商用和闭源修改，须保留版权与许可声明。第三方文件不因此改为 MIT；[NOTICE](../../NOTICE) 保留归属说明。许可不替使用者取得其他编解码器专利，也不解决名称商标问题。Codex 工具署名不等于将 OpenAI 列为版权人，也不能证明纯 AI 内容在各法域都有版权。
-
-Original project work uses MIT. Third-party components keep their own rights. Tool attribution does not establish copyright subsistence, third-party patent rights, trademark clearance, or OpenAI copyright ownership.
-
-## Windows 单文件版 / Windows single-file release
+## 运行时与 LUT
 
 | 组件 / Component | 分发依据 / Distribution basis |
 | --- | --- |
@@ -24,33 +16,29 @@ Original project work uses MIT. Third-party components keep their own rights. To
 | Python 内 OpenSSL、Expat、HACL*、libffi、mpdecimal、libtommath、SQLite、XZ/liblzma、zlib-ng、zstd、bzip2 等 | 保留 PSF 汇总文本及[依赖原文和来源](../../licenses/Python-dependencies/sources.json)。zstd 选择 BSD 许可；只有 liblzma，不含 XZ 的 GPL 脚本 / Vendor libraries retain their individual terms |
 | Pocket 3 LUT | OpenOSV v0.6.4，Apache-2.0，LUT 与原始 [LICENSE](OpenOSV/LICENSE) / [NOTICE](OpenOSV/NOTICE) 未修改 |
 
-首次启动要求接受随附第三方二进制的适用条款，并提供完整原文入口；之后可从“工具路径”打开许可目录。微软要求包括保留声明、不暗示背书、遵守分发及平台限制，并向后续接收者传递适用条款。这些条件仅针对对应组件，不把自主源码变成非商业许可。原始全文优先于此摘要。
+完整条款可从首次许可窗口和“关于”打开。分发时保留组件许可与声明，并向接收者提供适用的微软和 Python Windows 二进制条款。
 
-The first-start agreement and Tool paths link expose the full component terms. Preserve notices, avoid implied endorsement, obey platform and distribution restrictions, and pass required terms to recipients. These obligations apply to the respective third-party binaries, not the original MIT source. Original texts govern.
+.NET Windows 二进制的许可范围见[逐组件说明](https://github.com/dotnet/core/blob/main/license-information-windows.md)。Windows App SDK 适用正式包第 3 节，.NET Library License 适用[第 3 节](../../licenses/DotNet-Library-LICENSE.html)，Windows SDK 投影包依据 [REDIST 清单](https://learn.microsoft.com/en-us/legal/windows-sdk/redist#microsoftwindowssdknetref)分发。Python 中微软代码的分发条件见官方包 LICENSE 的 **Additional Conditions for this Windows binary build**。
 
-### WinUI 与开源、旧结论修正 / WinUI and open source
+## LUT 来源
 
-WinUI 可以用于开源项目。源码许可与微软编译分发包的条款需要分别看待；应用开源不要求所有运行时都使用同一个许可。旧审计检出的 WinUI 2.0.12 确实携带 Engineering Preview 文本；新版已换为 2.6.5，逐包检查实际 LICENSE，并在构建中阻止再次混入该预览许可。不能据一个旧包推导“WinUI 不允许开源”。
+- **Pocket 3 D-Log M → HLG**：来自 [OpenOSV v0.6.4](https://github.com/Kemerd/OpenOSV/releases/tag/v0.6.4) 的 `luts/Rec2100_HLG/DJI_Osmo_DLogM_to_Rec2100_HLG_BT2408_Neutral.cube`，是第三方拟合转换，采用 Apache-2.0。原始 [LICENSE](OpenOSV/LICENSE) 和 [NOTICE](OpenOSV/NOTICE) 随文件保留。
+- **Mi-Log / Samsung Log → HLG**：由 [generate_hlg_luts.py](../tools/generate_hlg_luts.py) 根据公开数值参数与项目高光映射生成，采用 MIT。技术来源：[小米资料](https://web.vip.miui.com/page/info/mio/mio/detail?fromPathname=mioSingleBoard&postId=47863325)、[Samsung Log 文档](https://developer.samsung.com/mobile/samsung-log-video.html)。
 
-此前“必须为 VC DLL 每个精确补丁版本找到独立分发条款”的表述过于保守。官方 Python LICENSE 已有 **Additional Conditions for this Windows binary build**，明确给出该 Windows 二进制再分发微软代码的条件。现在的依据是完整保留官方 Python 包和这些条件；不是声称通用 VC 最终用户协议本身给任意发布者转发权。微软最终用户条款也保留供接收者阅读。
+厂商原始 LUT、DCTL 和白皮书不随项目分发。
 
-The old preview finding concerned one package, not a ban on open-source WinUI apps. Current production terms have been checked. The earlier VC blocker overlooked explicit conditions in the official Python Windows LICENSE; that distribution chain is the basis here, rather than treating a standalone VC end-user EULA as a publisher grant.
+## 外部工具与资源
 
-还须区分 .NET 源码 MIT 与 Windows 二进制例外：微软的[逐组件说明](https://github.com/dotnet/core/blob/main/license-information-windows.md)明确列出单文件运行时等适用 .NET Library License，不能把整个 Windows EXE 都标作 MIT。[该许可](../../licenses/DotNet-Library-LICENSE.html)第 3 节允许随应用分发目标代码；[Windows SDK REDIST](https://learn.microsoft.com/en-us/legal/windows-sdk/redist#microsoftwindowssdknetref)明确包含 .NET 投影包。原文与阅读副本均保留在许可目录。The .NET Windows distribution has binary-license exceptions; source MIT is not a blanket binary license. The component-specific grants and full terms are retained.
+| 项目 | 使用方式 |
+| --- | --- |
+| FFmpeg / ffprobe | 用户提供，以独立子进程调用；不链接或分发 `libav*`。具体构建的许可见 [FFmpeg 法律说明](https://ffmpeg.org/legal.html) |
+| PySide6 / Qt | 可选图标生成工具；版本见 [requirements.txt](../../Brand/requirements.txt)，许可见 [Qt for Python](https://doc.qt.io/qtforpython-6/licenses.html) |
+| SDK / BuildTools | 开发构建工具；随应用输出的运行时文件保留对应许可 |
+| 品牌图形 | 项目绘制的 SVG / PNG / ICO，采用 MIT |
+| 系统字体 | 通过系统 FontIcon 使用，不复制字体文件 |
 
-## LUT 来源 / LUT provenance
+## English
 
-- **Pocket 3**：来自 [OpenOSV v0.6.4](https://github.com/Kemerd/OpenOSV/releases/tag/v0.6.4) 的 `luts/Rec2100_HLG/DJI_Osmo_DLogM_to_Rec2100_HLG_BT2408_Neutral.cube`。LUT、LICENSE、NOTICE 已核对上游字节。这是独立项目的拟合转换，不是 DJI 官方 HDR LUT。上游 NOTICE 涵盖整个 OpenOSV 的依赖，保留它不代表 FrameFlow 集成了这些运行时。
-- **Mi-Log / Samsung Log**：由 [generate_hlg_luts.py](../tools/generate_hlg_luts.py) 根据公开数值参数和本项目固定高光映射独立生成，只用标准库。`python Worker/tools/generate_hlg_luts.py --check` 可核对。没有分发厂商原始 LUT、DCTL 或白皮书。[小米资料](https://web.vip.miui.com/page/info/mio/mio/detail?fromPathname=mioSingleBoard&postId=47863325) · [Samsung Log 文档](https://developer.samsung.com/mobile/samsung-log-video.html)
+Original project work uses MIT. Third-party runtimes and LUTs retain their own licenses, with versions, source links, and hashes in the linked manifests. Full component terms are available in the first-run dialog and About.
 
-The Pocket 3 LUT is an unchanged third-party fit. Xiaomi/Samsung tables are independently generated from published numerical parameters and project mapping. Manufacturer names describe compatibility, not endorsement. Fixed LUTs cannot recover clipped highlights.
-
-## 外部与开发工具 / External and development tools
-
-- **FFmpeg / ffprobe**：用户提供，以独立子进程调用，不链接 `libav*`、不转发。具体构建可能含 LGPL、GPL 或其他条款，不统一称作 LGPL。独立调用不因 FFmpeg 自身使用 GPL 就自动把界面源码改为 GPL；将来若改为链接、转发或修改，应重新审阅。[FFmpeg 法律说明](https://ffmpeg.org/legal.html)
-- **PySide6 / Qt**：仅用于可选图标重绘，版本见 `Brand/requirements.txt`；未随界面或 worker 分发 Qt DLL，所用模块仍受 LGPL/GPL/商业条款约束。[Qt for Python 许可](https://doc.qt.io/qtforpython-6/licenses.html)
-- **SDK / BuildTools / MSIX**：按开发工具条款使用，没有转发整套 SDK 安装包；自包含输出包含的文件保留对应许可与声明。
-- **图形与字体**：品牌 SVG、箭头为项目绘制；FontIcon 使用系统字体，没有复制 Segoe 字体文件。
-- **PyInstaller**：3.5.0 起不再使用或分发。
-
-FFmpeg is external; Qt is an optional artwork tool; SDK installers and system fonts are not copied. PyInstaller has been removed. Future payload changes require review of the actual files.
+The Pocket 3 LUT is an unchanged Apache-2.0 file from OpenOSV. Mi-Log and Samsung Log LUTs are generated by this project. FFmpeg is supplied by the user and called as a separate process. Qt is an optional artwork tool. Preserve the included notices and applicable binary distribution terms when redistributing the application.
