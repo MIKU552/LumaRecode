@@ -2,20 +2,23 @@
 
 [English](cli.en.md) · [返回 README](../README.md)
 
-从 3.6.0 起，便携 ZIP 内包含 `FrameFlow.exe` 和 `FrameFlow.com`，放在同一个目录。双击 EXE 使用 GUI；终端和脚本使用 `.com`。原生终端入口负责等待任务、转交管道与退出码，支持 Ctrl+C / Ctrl+Break，不要求另外安装运行时。
+GUI 与 CLI 使用同一个 `FrameFlow.exe`，不需要任何附加启动文件。双击或无参数运行时打开 GUI；带 `probe`、`convert` 等命令时无界面运行。终端支持目标为 **PowerShell 7**。
 
-EXE 也接受同样的命令参数，适合由程序通过进程 API 调用。由于 Windows 对 GUI 子系统程序的等待规则，交互式 PowerShell / cmd 请使用 `.com`。以下示例均为 PowerShell；在 cmd 中删除开头的 `./` 即可。
+EXE 保留 Windows GUI 子系统，避免双击时出现控制台窗口。PowerShell 7 对 GUI EXE 的交互式等待与普通控制台程序不同：**人类可读命令推荐接 `| Out-Host`，JSON 命令接 `| ConvertFrom-Json`**，让管道等待任务并可靠设置 `$LASTEXITCODE`。脚本/其他程序也可通过进程 API 等待同一个 EXE，无须第二个程序。仅重定向 `>` 不应替代等待管道。
+
+程序输出使用 UTF-8。会话仍使用 GBK 等旧代码页时，先运行下面的编码设置，让中文帮助和进度正常显示；只影响当前 PowerShell 会话。JSON 对非 ASCII 字符使用标准转义，因此解析后的中文路径在旧代码页下也保持完整。
 
 ## 开始使用
 
 ```powershell
-./FrameFlow.com --help
-./FrameFlow.com --version
-./FrameFlow.com license --text
-./FrameFlow.com license --accept-terms
-./FrameFlow.com doctor --json
-./FrameFlow.com probe "D:\Videos\clip.mp4" --json
-./FrameFlow.com convert "D:\Videos\clip.mp4"
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+./FrameFlow.exe --help | Out-Host
+./FrameFlow.exe --version | Out-Host
+./FrameFlow.exe license --text | Out-Host
+./FrameFlow.exe license --accept-terms | Out-Host
+./FrameFlow.exe doctor --json | ConvertFrom-Json
+./FrameFlow.exe probe "D:\Videos\clip.mp4" --json | ConvertFrom-Json
+./FrameFlow.exe convert "D:\Videos\clip.mp4" | Out-Host
 ```
 
 GUI 已接受过当前组件条款时可直接使用。首次无人值守运行可在命令上加 `--accept-terms`；此选项表示接受随附第三方组件的适用条款。MIT 项目许可与第三方条款分别保留。任何命令行操作都不会打开文件选择或许可弹窗。
@@ -61,20 +64,20 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 
 ```powershell
 # 无 Intel 硬件，使用 CPU 归档
-./FrameFlow.com convert clip.mp4 --preset archive-hevc
+./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
 
 # Pocket 3：人工确认 D-Log M，输出 HLG HEVC
-./FrameFlow.com convert dlog.mp4 --input-kind log --profile pocket3 --range hdr
+./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
 
 # HDR 转 SDR，或 Log 转 SDR；需要 FFmpeg libplacebo / Vulkan
-./FrameFlow.com convert hdr.mp4 --range sdr
-./FrameFlow.com convert dlog.mp4 --input-kind log --profile pocket3 --range sdr
+./FrameFlow.exe convert hdr.mp4 --range sdr | Out-Host
+./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range sdr | Out-Host
 
 # 422 归档并保留原音轨
-./FrameFlow.com convert input.mov --preset archive-hevc --sampling 422 --audio copy
+./FrameFlow.exe convert input.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
 
 # 不编码，查看最终参数
-./FrameFlow.com plan clip.mp4 --preset archive-av1-fast --json
+./FrameFlow.exe plan clip.mp4 --preset archive-av1-fast --json | ConvertFrom-Json
 ```
 
 配置文件使用下划线字段名；`range` 对应动态范围，输出文件路径通过 `--output` 指定。
@@ -88,10 +91,10 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 ## 批量、输出与覆盖
 
 ```powershell
-./FrameFlow.com convert a.mp4 b.mov --output-dir "D:\Exports"
-./FrameFlow.com convert "D:\Videos" --recursive --output-dir "D:\Exports"
-./FrameFlow.com convert "D:\Videos\**\*.mp4" --recursive --output-dir "D:\Exports" --continue-on-error --json
-./FrameFlow.com convert clip.mp4 --output "D:\Exports\result.mp4" --overwrite
+./FrameFlow.exe convert a.mp4 b.mov --output-dir "D:\Exports" | Out-Host
+./FrameFlow.exe convert "D:\Videos" --recursive --output-dir "D:\Exports" | Out-Host
+./FrameFlow.exe convert "D:\Videos\**\*.mp4" --recursive --output-dir "D:\Exports" --continue-on-error --json | ConvertFrom-Json
+./FrameFlow.exe convert clip.mp4 --output "D:\Exports\result.mp4" --overwrite | Out-Host
 ```
 
 目录扫描支持常见视频扩展名，默认不扫描子目录；通配符应加引号，`**` 需要 `--recursive`。目录扫描保留相对的子目录；通配符以匹配文件共同父目录为根；显式文件按文件名输出。多个输入映射到同一输出时会拒绝整批，不自动覆盖。
@@ -109,7 +112,7 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 进度包含 `fps`、`percent`、`position_seconds`、`duration_seconds`、`elapsed_seconds`、`eta_seconds`，未知的百分比或剩余时间为 null。错误包含稳定的 `code` 和可读的 `message`。`--log FILE` 向文件追加相同的 JSON Lines 事件，`--verbose` 在人类模式额外显示 FFmpeg 日志。
 
 ```powershell
-./FrameFlow.com convert clip.mp4 --json --log job.jsonl | ForEach-Object { $_ | ConvertFrom-Json }
+./FrameFlow.exe convert clip.mp4 --json --log job.jsonl | ForEach-Object { $_ | ConvertFrom-Json }
 $LASTEXITCODE
 ```
 
@@ -122,6 +125,8 @@ $LASTEXITCODE
 | 4 | 输入不存在、没有匹配文件，或色彩/Log 曲线需人工确认 |
 | 5 | 输出、日志路径或文件冲突 |
 | 6 | 尚未接受第三方组件条款 |
-| 130 | Ctrl+C / Ctrl+Break 取消 |
+| 130 | CLI 协作取消 |
 
 脚本应读取进程退出码或 `$LASTEXITCODE`；机器调用建议使用 `--json`，按 `code` 判断错误，不解析本地化的文本。
+
+在 PowerShell 7 管道中按 Ctrl+C 会同时中断 PowerShell 的管道，任务停止并清理临时输出，但管道可能无法继续传回 `cancelled` 事件或更新 `$LASTEXITCODE` 为 130。通过进程 API 发送控制台取消信号并等待 CLI 正常退出时，可读取 130；自动化任务应区分宿主中断与 CLI 正常返回的错误码。

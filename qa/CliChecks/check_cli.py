@@ -1,4 +1,4 @@
-"""Real public CLI integration tests, including native launcher and CTRL+BREAK."""
+"""Real single-EXE CLI integration tests, including shell pipelines and CTRL+BREAK."""
 import argparse
 import hashlib
 import json
@@ -60,9 +60,9 @@ def main():
         result = call(*words, '--no-settings', '--accept-terms', '--json', status=status, raw=True)
         assert not result.stderr, result.stderr
         return [json.loads(line) for line in result.stdout.splitlines()]
-    assert 'FrameFlow.com' in call('--help', raw=True).stdout
+    assert 'FrameFlow.exe' in call('--help', raw=True).stdout
     assert '3.6.0' in call('--version', raw=True).stdout
-    assert '终端入口' in call('--lang', 'zh', '--help', raw=True).stdout
+    assert '同一个 EXE' in call('--lang', 'zh', '--help', raw=True).stdout
     assert len(call('--json', 'presets')['presets']) == 7
     assert {p['id'] for p in call('profiles', '--json')['profiles']} == {'milog','pocket3','samsung'}
     assert call('license', '--json', '--no-settings')['project_license'] == 'MIT'
@@ -116,19 +116,18 @@ def main():
         events('convert',source,'--log',source,status=5)
         events('convert',source,'--log',folder/'absent/log.jsonl',status=5)
         spaced=folder/'程序 path';spaced.mkdir()
-        shutil.copyfile(exe,spaced/'FrameFlow.com');shutil.copyfile(exe.with_suffix('.exe'),spaced/'FrameFlow.exe')
-        quoted=subprocess.run([str(spaced/'FrameFlow.com'),'probe',str(source),'--no-settings','--accept-terms','--json'],capture_output=True,text=True,encoding='utf-8',timeout=30)
+        shutil.copyfile(exe,spaced/'FrameFlow.exe')
+        quoted=subprocess.run([str(spaced/'FrameFlow.exe'),'probe',str(source),'--no-settings','--accept-terms','--json'],capture_output=True,text=True,encoding='utf-8',timeout=30)
         assert quoted.returncode==0 and json.loads(quoted.stdout)['kind']=='sdr', quoted.stderr
-        cmd=subprocess.run(['cmd.exe','/d','/c',str(exe),'--version'],capture_output=True,text=True,encoding='utf-8',timeout=20)
-        assert cmd.returncode==0 and '3.6.0' in cmd.stdout
         subprocess.run([shutil.which('pwsh'),'-NoProfile','-File',str(Path(__file__).with_name('pipeline.ps1')),'-Launcher',str(exe),'-Video',str(source)],check=True,timeout=30)
         # Run a helper in a hidden real console; target process group receives CTRL+BREAK.
         startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=0
         subprocess.run([sys.executable,__file__,'--exe',str(exe),'--ctrl-break-child',str(source),str(folder/'cancel.mkv')],
             creationflags=subprocess.CREATE_NEW_CONSOLE,startupinfo=startup,check=True,timeout=70)
+        subprocess.run([sys.executable,str(Path(__file__).with_name('pwsh_cancel.py')),'--exe',str(exe)],check=True,timeout=100)
         assert hashlib.sha256(source.read_bytes()).hexdigest()==source_hash
         count+=6
-    print(f'PASS {count} public CLI integration scenarios, real encoding, native cmd launcher, CTRL+BREAK, atomic overwrite, batch, JSON and source preservation.')
+    print(f'PASS {count} single-EXE CLI integration scenarios, real encoding, PowerShell 7 pipelines, Ctrl+C/Break, atomic overwrite, batch, JSON and source preservation.')
 
 
 if __name__=='__main__':main()

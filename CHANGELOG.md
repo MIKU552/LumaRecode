@@ -6,7 +6,7 @@
 
 - 增加完整命令行入口：probe、convert、plan、presets、profiles、doctor、license，支持全部 GUI 编码/色彩选项、自动默认值、配置文件和路径覆盖。
 - 支持多文件、目录、递归通配符、JSON Lines 进度/日志、fps 与剩余时间、批量跳过/继续、稳定退出码，以及 Ctrl+C / Ctrl+Break 取消。
-- 新增原生 FrameFlow.com，保证 PowerShell/cmd 的等待、管道与退出码；GUI EXE 维持无终端窗口启动。便携 ZIP 只放 EXE 与 COM。
+- 单个 FrameFlow.exe 同时提供 GUI 和 CLI；无参数打开 GUI、带命令参数无界面运行。以 PowerShell 7 的管道输出、退出码和取消为支持目标，不需要其他启动器。
 - 覆盖输出时先在临时文件中完成编码和校验，再原子替换；禁止覆盖源文件，失败或取消保留旧输出并清理临时文件。
 - 补充中英文命令行文档、实际终端/编码集成检查；预设和三张 LUT 的数值不变。
 

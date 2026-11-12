@@ -8,7 +8,7 @@
 
 ## 快速开始
 
-1. 从 [Releases](https://github.com/MIKU552/FrameFlow/releases) 下载便携 ZIP，解压后运行 **FrameFlow.exe**。同目录的 **FrameFlow.com** 提供命令行入口，完整说明见[命令行文档](docs/cli.zh-CN.md)。EXE 为 Windows x64 单文件程序，已包含界面运行时、转换组件和 LUT，无须安装 .NET 或 Python。
+1. 从 [Releases](https://github.com/MIKU552/FrameFlow/releases) 下载并运行 **FrameFlow.exe**。同一个 EXE 也提供命令行，完整说明见[命令行文档](docs/cli.zh-CN.md)。这是 Windows x64 单文件程序，已包含界面运行时、转换组件和 LUT，无须安装 .NET 或 Python。
 2. 准备 Windows 版 [FFmpeg](https://ffmpeg.org/download.html)，下载页的 **Windows EXE Files** 区域提供预编译版本链接。需要同时包含 **ffmpeg.exe** 和 **ffprobe.exe**。程序优先从 `PATH` 查找；未找到时，在弹出的窗口中选择这两个文件。右上角齿轮可随时修改路径。
 3. 将视频拖入素材区域，或点击“选择视频”。程序会读取分辨率、帧率、位深、色彩标签和音轨，并识别可用的 Log / HDR 标记。
 4. 确认 SDR / HDR 输出、用途和视频编码。普通 SDR 默认输出 SDR，HDR 默认保留 HDR，已识别曲线的 Log 默认转换为 HLG HDR。
@@ -78,18 +78,19 @@
 命令行与 GUI 共用编码预设、LUT、自动识别和输出校验，支持文件/目录/通配符批量处理、JSON 事件、预演命令、配置文件、Ctrl+C 取消和稳定退出码。
 
 ```powershell
-./FrameFlow.com --help
-./FrameFlow.com probe clip.mp4 --json
-./FrameFlow.com convert clip.mp4 --preset archive-hevc
-./FrameFlow.com convert dlog.mp4 --input-kind log --profile pocket3 --range hdr
-./FrameFlow.com convert "D:\Videos" --recursive --output-dir "D:\Exports" --json
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+./FrameFlow.exe --help | Out-Host
+./FrameFlow.exe probe clip.mp4 --json | ConvertFrom-Json
+./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
+./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
+./FrameFlow.exe convert "D:\Videos" --recursive --output-dir "D:\Exports" --json | ConvertFrom-Json
 ```
 
-首次无交互使用前，可用 `license --text` 阅读组件条款，再运行 `license --accept-terms`。详见[完整命令与脚本示例](docs/cli.zh-CN.md)。
+终端以 PowerShell 7 为目标；接上输出管道可确保 GUI EXE 的命令行调用完成后才返回。首次无交互使用前，可用 `license --text` 阅读组件条款，再运行 `license --accept-terms`。详见[完整命令与脚本示例](docs/cli.zh-CN.md)。
 
 ## 从源码构建
 
-需要 Windows 11 x64、**.NET SDK 11.0.100**（由 `global.json` 固定）、PowerShell 7 和 **MinGW-w64 GCC 16.2**（构建原生终端入口）。默认构建不需要预装 Python。
+需要 Windows 11 x64、**.NET SDK 11.0.100**（由 `global.json` 固定）及 PowerShell 7。默认构建不需要预装 Python。
 
 ```powershell
 git clone https://github.com/MIKU552/FrameFlow.git
@@ -102,11 +103,10 @@ cd FrameFlow
 构建产物：
 
 ```text
-dist/FrameFlow-3.6.0-win-x64.zip
-# 内含 FrameFlow.exe 与 FrameFlow.com
+dist/SelfContained/FrameFlow.exe
 ```
 
-另有 `./build.ps1 -Deployment FrameworkDependent` 可构建精简 ZIP，需要用户自行安装 .NET 11 Runtime、Windows App Runtime 2.6 与 Python 3.14 或更新版本，并在程序内指定工具路径；默认发布使用包含完整运行时的便携包。
+另有 `./build.ps1 -Deployment FrameworkDependent` 可构建精简 ZIP，需要用户自行安装 .NET 11 Runtime、Windows App Runtime 2.6 与 Python 3.14 或更新版本，并在程序内指定工具路径；默认发布使用包含完整运行时的单 EXE。
 
 可选图标重绘工具的版本在 `Brand/requirements.txt`，常规构建不需要 Qt / PySide6。依赖版本、支持周期和分发依据见[依赖说明](docs/dependencies.md)。
 
@@ -120,7 +120,6 @@ dotnet run --project qa/LanguageChecks/LanguageChecks.csproj -c Release
 
 ```text
 App/                  WinUI 3 界面、主题、本地化与任务交互
-Native/               无第三方运行时的原生终端入口
 Worker/               命令行、素材识别、FFmpeg 命令生成与输出校验
 Worker/assets/        LUT、编码预设与 LUT 来源
 licenses/             随程序分发的原始许可、声明和版本清单

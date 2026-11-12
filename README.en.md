@@ -8,7 +8,7 @@ A video transcoding app for Windows 11, with a native graphical interface for FF
 
 ## Quick start
 
-1. Download the portable ZIP from [Releases](https://github.com/MIKU552/FrameFlow/releases), extract it, and run **FrameFlow.exe**. Keep **FrameFlow.com** beside it for the [command line](docs/cli.en.md). The Windows x64 single-file EXE includes the UI runtime, conversion worker, and LUTs. You do not need to install .NET or Python.
+1. Download **FrameFlow.exe** from [Releases](https://github.com/MIKU552/FrameFlow/releases) and run it. This same EXE provides the [command line](docs/cli.en.md). The Windows x64 single-file application includes the UI runtime, conversion worker, and LUTs. You do not need to install .NET or Python.
 2. Obtain a Windows build of [FFmpeg](https://ffmpeg.org/download.html). The **Windows EXE Files** section links to prebuilt packages. You need both **ffmpeg.exe** and **ffprobe.exe**. FrameFlow first checks `PATH`; if they are missing, select them in the tool-path dialog. Use the gear button at the top right to change the paths later.
 3. Drop a video into the source card or choose **Select video**. FrameFlow reads resolution, frame rate, bit depth, color tags, and audio tracks, then checks available Log and HDR metadata.
 4. Confirm SDR or HDR output, purpose, and video codec. SDR footage defaults to SDR, HDR footage defaults to retaining HDR, and recognized Log profiles default to HLG HDR conversion.
@@ -78,18 +78,19 @@ Language and theme follow the system by default. Chinese system locales use Simp
 The CLI shares the GUI's presets, LUTs, detection, and output verification. It supports files, directories, wildcard batches, JSON events, command planning, config files, Ctrl+C cancellation, and documented exit codes.
 
 ```powershell
-./FrameFlow.com --help
-./FrameFlow.com probe clip.mp4 --json
-./FrameFlow.com convert clip.mp4 --preset archive-hevc
-./FrameFlow.com convert dlog.mp4 --input-kind log --profile pocket3 --range hdr
-./FrameFlow.com convert "D:\Videos" --recursive --output-dir "D:\Exports" --json
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+./FrameFlow.exe --help | Out-Host
+./FrameFlow.exe probe clip.mp4 --json | ConvertFrom-Json
+./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
+./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
+./FrameFlow.exe convert "D:\Videos" --recursive --output-dir "D:\Exports" --json | ConvertFrom-Json
 ```
 
-For unattended first use, read `license --text`, then run `license --accept-terms`. See the [complete CLI reference](docs/cli.en.md).
+PowerShell 7 is the target shell; use an output pipeline to wait for GUI-subsystem EXE commands. For unattended first use, read `license --text`, then run `license --accept-terms`. See the [complete CLI reference](docs/cli.en.md).
 
 ## Build from source
 
-Use Windows 11 x64, **.NET SDK 11.0.100** (pinned by `global.json`), PowerShell 7, and **MinGW-w64 GCC 16.2** for the native console entry. The default build does not require an installed Python interpreter.
+Use Windows 11 x64, **.NET SDK 11.0.100** (pinned by `global.json`), and PowerShell 7. The default build does not require an installed Python interpreter.
 
 ```powershell
 git clone https://github.com/MIKU552/FrameFlow.git
@@ -102,11 +103,10 @@ The script restores locked NuGet dependencies, downloads and verifies the offici
 Output:
 
 ```text
-dist/FrameFlow-3.6.0-win-x64.zip
-# Contains FrameFlow.exe and FrameFlow.com
+dist/SelfContained/FrameFlow.exe
 ```
 
-`./build.ps1 -Deployment FrameworkDependent` optionally builds a smaller ZIP requiring a separately installed .NET 11 Runtime, Windows App Runtime 2.6, and Python 3.14 or later, with tool paths configured in the app. The default portable release bundles the required runtimes.
+`./build.ps1 -Deployment FrameworkDependent` optionally builds a smaller ZIP requiring a separately installed .NET 11 Runtime, Windows App Runtime 2.6, and Python 3.14 or later, with tool paths configured in the app. The default single EXE bundles the required runtimes.
 
 Optional artwork tools are pinned in `Brand/requirements.txt`; normal builds do not require Qt / PySide6. See [dependency notes](docs/dependencies.md) for versions, support, and distribution evidence.
 
@@ -120,7 +120,6 @@ dotnet run --project qa/LanguageChecks/LanguageChecks.csproj -c Release
 
 ```text
 App/                  WinUI 3 UI, appearance, localization, and job interaction
-Native/               Native console launcher without third-party runtime DLLs
 Worker/               Command line, source inspection, FFmpeg commands, and output verification
 Worker/assets/        LUTs, encoding presets, and LUT provenance
 licenses/             Original legal texts, notices, and version manifest

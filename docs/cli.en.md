@@ -2,18 +2,21 @@
 
 [简体中文](cli.zh-CN.md) · [README](../README.en.md)
 
-Since 3.6.0, the portable ZIP contains `FrameFlow.exe` (GUI) and `FrameFlow.com` (console). Keep them together. Use `.com` in PowerShell/cmd: the native launcher waits for completion, forwards standard handles and exit codes, and supports Ctrl+C / Ctrl+Break. It requires no additional runtime.
+GUI and CLI use the same `FrameFlow.exe`, without companion launchers. Double-click or run without arguments for the GUI; supply commands such as `probe` or `convert` for headless operation. The supported terminal is **PowerShell 7**.
 
-The EXE also accepts CLI arguments when invoked through a process API. Windows shells apply different waiting rules to GUI-subsystem executables, so interactive commands below use `.com`.
+The EXE retains its Windows GUI subsystem to avoid a console window on double-click. PowerShell 7 applies different interactive waiting rules to GUI EXEs: **pipe human-readable commands to `Out-Host`, or JSON commands to `ConvertFrom-Json`** to wait and update `$LASTEXITCODE` reliably. Scripts/process APIs can wait for this same EXE directly. Output redirection `>` alone is not a substitute for a waiting pipeline.
+
+Output is UTF-8. If the session uses a legacy code page such as GBK, set the encoding below for readable Chinese help/progress; this affects only the current PowerShell session. JSON uses standard escapes for non-ASCII characters, preserving decoded Unicode paths even under legacy code pages.
 
 ```powershell
-./FrameFlow.com --help
-./FrameFlow.com --version
-./FrameFlow.com license --text
-./FrameFlow.com license --accept-terms
-./FrameFlow.com doctor --json
-./FrameFlow.com probe "D:\Videos\clip.mp4" --json
-./FrameFlow.com convert "D:\Videos\clip.mp4"
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+./FrameFlow.exe --help | Out-Host
+./FrameFlow.exe --version | Out-Host
+./FrameFlow.exe license --text | Out-Host
+./FrameFlow.exe license --accept-terms | Out-Host
+./FrameFlow.exe doctor --json | ConvertFrom-Json
+./FrameFlow.exe probe "D:\Videos\clip.mp4" --json | ConvertFrom-Json
+./FrameFlow.exe convert "D:\Videos\clip.mp4" | Out-Host
 ```
 
 The current GUI component-term acceptance is reused. For unattended first use, read the terms and supply `--accept-terms`; CLI operations never show dialogs. `--no-settings` ignores saved GUI paths/consent and prevents setting writes, so scripts using it must explicitly accept the terms.
@@ -56,12 +59,12 @@ Every command supports `--help`. Probe/catalog/doctor/license results are JSON. 
 Auto mode retains SDR or HDR, and converts identified Log to HLG. Unidentified Log requires `--profile`; unknown transfer tags require `--input-kind`. Invalid combinations fail explicitly, including HDR+AVC, QSV+422 and SDR-to-HDR.
 
 ```powershell
-./FrameFlow.com convert clip.mp4 --preset archive-hevc
-./FrameFlow.com convert dlog.mp4 --input-kind log --profile pocket3 --range hdr
-./FrameFlow.com convert hdr.mp4 --range sdr
-./FrameFlow.com convert dlog.mp4 --input-kind log --profile pocket3 --range sdr
-./FrameFlow.com convert input.mov --preset archive-hevc --sampling 422 --audio copy
-./FrameFlow.com plan clip.mp4 --preset archive-av1-fast --json
+./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
+./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
+./FrameFlow.exe convert hdr.mp4 --range sdr | Out-Host
+./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range sdr | Out-Host
+./FrameFlow.exe convert input.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
+./FrameFlow.exe plan clip.mp4 --preset archive-av1-fast --json | ConvertFrom-Json
 ```
 
 HDR/Log-to-SDR needs FFmpeg libplacebo and Vulkan. A JSON config accepts the encoding fields above, using underscore keys, plus `preset`:
@@ -75,10 +78,10 @@ Precedence: GUI-equivalent defaults → chosen preset → config fields → expl
 ## Batch and destination policy
 
 ```powershell
-./FrameFlow.com convert a.mp4 b.mov --output-dir "D:\Exports"
-./FrameFlow.com convert "D:\Videos" --recursive --output-dir "D:\Exports"
-./FrameFlow.com convert "D:\Videos\**\*.mp4" --recursive --output-dir "D:\Exports" --continue-on-error --json
-./FrameFlow.com convert clip.mp4 --output "D:\Exports\result.mp4" --overwrite
+./FrameFlow.exe convert a.mp4 b.mov --output-dir "D:\Exports" | Out-Host
+./FrameFlow.exe convert "D:\Videos" --recursive --output-dir "D:\Exports" | Out-Host
+./FrameFlow.exe convert "D:\Videos\**\*.mp4" --recursive --output-dir "D:\Exports" --continue-on-error --json | ConvertFrom-Json
+./FrameFlow.exe convert clip.mp4 --output "D:\Exports\result.mp4" --overwrite | Out-Host
 ```
 
 Quote patterns; `**` requires `--recursive`. Directory scans filter common video extensions and preserve relative subdirectories. Wildcards use the matched files' common parent; explicit files use their filenames. Colliding destinations are rejected before conversion. Output directories are created as needed.
@@ -96,7 +99,7 @@ Planned `argv` displays the requested final filename. Actual conversion substitu
 Progress includes `fps`, `percent`, `position_seconds`, `duration_seconds`, `elapsed_seconds`, `eta_seconds`; unknown percent/ETA are null. Errors include a stable `code` and readable `message`. `--log FILE` appends the same events to a JSON Lines file; `--verbose` also prints FFmpeg logs in human mode.
 
 ```powershell
-./FrameFlow.com convert clip.mp4 --json --log job.jsonl | ForEach-Object { $_ | ConvertFrom-Json }
+./FrameFlow.exe convert clip.mp4 --json --log job.jsonl | ForEach-Object { $_ | ConvertFrom-Json }
 $LASTEXITCODE
 ```
 
@@ -109,6 +112,8 @@ $LASTEXITCODE
 | 4 | Missing/unmatched input, or ambiguous input/Log curve |
 | 5 | Output/log path conflict or error |
 | 6 | Component terms not accepted |
-| 130 | Ctrl+C / Ctrl+Break cancellation |
+| 130 | Cooperative CLI cancellation |
 
 Use process exit codes or `$LASTEXITCODE`; parse JSON `code` fields instead of localized error text.
+
+Ctrl+C in a PowerShell 7 pipeline also interrupts the shell pipeline. The job stops and temporary output is cleaned, but the pipeline may not deliver the final `cancelled` event or update `$LASTEXITCODE` to 130. A process API that signals the CLI's console and waits for its graceful exit can read 130. Automation should distinguish host interruption from a normally returned CLI error code.

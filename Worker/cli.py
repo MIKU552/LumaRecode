@@ -108,9 +108,11 @@ def parser():
         (('--no-settings',), dict(action='store_true', help=tr('Ignore saved GUI paths/consent and do not save settings', '忽略 GUI 已保存路径与许可状态，不保存设置'))),
     ]:
         common.add_argument(*flags, default=argparse.SUPPRESS, **params)
-    result = Parser(prog='FrameFlow', parents=[common], description=tr(
-        'Video compression and camera Log/HDR conversion. FrameFlow.exe opens the GUI; FrameFlow.com is the console entry.',
-        '视频压缩与相机 Log/HDR 转换。FrameFlow.exe 打开 GUI；FrameFlow.com 为终端入口。'))
+    result = Parser(prog='FrameFlow.exe', parents=[common], description=tr(
+        'One EXE for GUI and CLI. No arguments: open the GUI. Use a command below for headless operation.',
+        '同一个 EXE 提供 GUI 与命令行。无参数时打开 GUI；使用下列命令时无界面运行。'),
+        epilog=tr('PowerShell 7: append | Out-Host, or | ConvertFrom-Json for --json, to wait and read $LASTEXITCODE.',
+                  'PowerShell 7：接 | Out-Host，或在 --json 后接 | ConvertFrom-Json，以等待完成并读取 $LASTEXITCODE。'))
     result.add_argument('--version', action='version', version=f'FrameFlow {VERSION}')
     commands = result.add_subparsers(dest='command')
     for name, en, zh in [('probe', 'Inspect video and every audio track', '读取视频与全部音轨信息'),
@@ -269,7 +271,9 @@ class Reporter:
                         eta_seconds=max(0, (duration-position)/speed) if duration > 0 and speed > 0 else None,
                         fps=number(data.get('fps')) or number(data.get('frame'))/max(elapsed, .001))
         record = dict(schema_version=1, event=event, **self.context, data=data)
-        line = json.dumps(record, ensure_ascii=False, allow_nan=False)
+        # ASCII escapes preserve Unicode paths when PowerShell decodes native
+        # output using a legacy Windows console code page. JSON values are intact.
+        line = json.dumps(record, ensure_ascii=True, allow_nan=False)
         if getattr(self.args, 'json', False):
             print(line, flush=True)
         elif event == 'progress':
@@ -285,7 +289,7 @@ class Reporter:
             if sys.stderr.isatty(): print(file=sys.stderr)
             print(f'{event}: {data}', flush=True)
         elif event == 'summary':
-            print(json.dumps(data, ensure_ascii=False), flush=True)
+            print(json.dumps(data, ensure_ascii=True), flush=True)
         if self.log is not None:
             try:
                 self.log.write(line+'\n'); self.log.flush()
@@ -312,7 +316,7 @@ def main(argv=None):
         if args.command is None:
             command_parser.print_help(); return 0
         def output(value):
-            print(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False), flush=True)
+            print(json.dumps(value, ensure_ascii=True, indent=2, allow_nan=False), flush=True)
         if args.command == 'presets':
             output(dict(schema_version=1, presets=preset_catalog())); return 0
         if args.command == 'profiles':
