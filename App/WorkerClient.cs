@@ -11,22 +11,27 @@ public sealed class WorkerClient : IDisposable
     public static bool HasBundledPython => File.Exists(Path.Combine(AppContext.BaseDirectory, "Payload", "Runtime", "python.exe"));
     private Process? process;
     public bool Running => process is { HasExited: false };
-    public async Task RunAsync(object request, Action<string, JsonElement> receive)
+    internal static ProcessStartInfo CreateStartInfo(string script, string? pythonOverride = null)
     {
         var folder = Path.Combine(AppContext.BaseDirectory, "Payload", "Worker");
-        var path = Path.Combine(folder, "worker.py");
+        var path = Path.Combine(folder, script);
         if (!File.Exists(path)) throw new FileNotFoundException(L.T("程序的转换组件缺失，请重新下载完整 EXE。"), path);
-        var python = HasBundledPython ? Path.Combine(AppContext.BaseDirectory, "Payload", "Runtime", "python.exe") : FindTool("python", ExternalPython);
+        var python = pythonOverride ?? (HasBundledPython ? Path.Combine(AppContext.BaseDirectory, "Payload", "Runtime", "python.exe") : FindTool("python", ExternalPython));
         if (python == "") throw new FileNotFoundException(L.T("未找到 Python，请在工具路径中选择 Python 3.14 或更新版本。"));
-        using var child = new Process { StartInfo = new ProcessStartInfo(python) {
+        var info = new ProcessStartInfo(python) {
             UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true,
             RedirectStandardOutput = true, RedirectStandardError = true,
             StandardInputEncoding = new UTF8Encoding(false), StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8 } };
+            StandardErrorEncoding = Encoding.UTF8 };
         // Isolate the interpreter from user site/PYTHONPATH and add only our worker folder.
         // Explicit insertion also supports the official embeddable Python's ._pth mode.
-        foreach (var argument in new[] { "-I", "-B", "-c", "import runpy,sys;sys.path.insert(0,sys.argv[1]);runpy.run_path(sys.argv[2],run_name='__main__')", folder, path })
-            child.StartInfo.ArgumentList.Add(argument);
+        foreach (var argument in new[] { "-I", "-B", "-c", "import runpy,sys;folder,path=sys.argv[1:3];sys.path.insert(0,folder);sys.argv=sys.argv[2:];runpy.run_path(path,run_name='__main__')", folder, path })
+            info.ArgumentList.Add(argument);
+        return info;
+    }
+    public async Task RunAsync(object request, Action<string, JsonElement> receive)
+    {
+        using var child = new Process { StartInfo = CreateStartInfo("worker.py") };
         process = child;
         child.Start();
         var errors = child.StandardError.ReadToEndAsync();

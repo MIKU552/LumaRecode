@@ -290,9 +290,11 @@ class Job:
         if self.cancelled:
             raise Cancelled()
 
-    def run(self, tools, media, options, output, emit=lambda event, value: None, seconds=None):
+    def run(self, tools, media, options, output, emit=lambda event, value: None, seconds=None, overwrite=False):
         output = Path(output).resolve()
-        if output.exists():
+        if output == media.path.resolve() or (output.exists() and output.samefile(media.path)):
+            raise ValueError('不能将源文件用作输出。')
+        if output.exists() and (not overwrite or not output.is_file()):
             raise ValueError('输出文件已存在，请更换文件名。')
         if not output.parent.is_dir() or output.suffix.lower() != options.suffix:
             raise ValueError(f'请选择已有的输出目录，文件后缀应为 {options.suffix}。')
@@ -359,7 +361,10 @@ class Job:
             result = verify_result(tools, media, options, expected, temporary)
             with self.lock:
                 self.check_cancelled()
-                if output.exists():
+                if output.exists() and not overwrite:
                     raise ValueError('输出文件已存在，请更换文件名。')
-                temporary.rename(output)
+                if overwrite:
+                    temporary.replace(output)
+                else:
+                    temporary.rename(output)
         return result

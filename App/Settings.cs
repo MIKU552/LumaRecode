@@ -30,8 +30,12 @@ public sealed class UserSettings
     public void Save()
     {
         Directory.CreateDirectory(Folder);
-        var temporary = FileName + ".tmp";
-        File.WriteAllText(temporary, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
-        File.Move(temporary, FileName, true);
+        var temporary = FileName + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.WriteAllText(temporary, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(temporary, FileName, true);
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
 }

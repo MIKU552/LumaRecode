@@ -3,6 +3,7 @@ from pathlib import Path
 import json
 import re
 import subprocess
+import time
 
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 UNSPECIFIED = {None, '', 'unknown', 'unspecified', 'reserved'}
@@ -13,6 +14,7 @@ HDR_KINDS = {'hlg', 'pq'}
 class Tools:
     ffmpeg: str
     ffprobe: str
+    cancel_event: object = field(default=None, repr=False, compare=False)
 
 
 @dataclass
@@ -29,11 +31,28 @@ class Media:
 
 
 def run_probe(tools, arguments, timeout=25):
-    result = subprocess.run([tools.ffprobe, '-v', 'error', *arguments], capture_output=True,
-                            encoding='utf-8', errors='replace', creationflags=NO_WINDOW, timeout=timeout)
-    if result.returncode:
-        raise ValueError(result.stderr.strip() or '无法读取视频。')
-    return json.loads(result.stdout)
+    command = [tools.ffprobe, '-v', 'error', *arguments]
+    if tools.cancel_event is None:
+        result = subprocess.run(command, capture_output=True, encoding='utf-8', errors='replace', creationflags=NO_WINDOW, timeout=timeout)
+        output, errors, code = result.stdout, result.stderr, result.returncode
+    else:
+        with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8', errors='replace', creationflags=NO_WINDOW) as child:
+            deadline = time.monotonic() + timeout
+            while True:
+                if tools.cancel_event.is_set():
+                    child.kill(); child.communicate()
+                    raise InterruptedError('Cancelled')
+                try:
+                    output, errors = child.communicate(timeout=min(.1, max(.001, deadline-time.monotonic())))
+                    code = child.returncode
+                    break
+                except subprocess.TimeoutExpired:
+                    if time.monotonic() >= deadline:
+                        child.kill(); child.communicate()
+                        raise subprocess.TimeoutExpired(command, timeout) from None
+    if code:
+        raise ValueError(errors.strip() or '无法读取视频。')
+    return json.loads(output)
 
 
 def pb_fields(data):

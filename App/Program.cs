@@ -7,7 +7,16 @@ namespace VideoConverter;
 internal static class Program
 {
     [STAThread]
-    public static void Main(string[] args)
+    public static int Main(string[] args)
+    {
+        if (args.Length > 0 && args[0] == "--cli") return CommandLineHost.RunAsync(args[1..]).GetAwaiter().GetResult();
+        if (args.Length > 0 && args[0] != "--gui" &&
+            (args[0].StartsWith('-') || new[] { "probe", "presets", "profiles", "doctor", "license", "convert", "plan" }.Contains(args[0]) || !File.Exists(args[0])))
+            return CommandLineHost.RunAsync(args).GetAwaiter().GetResult();
+        RunGui();
+        return 0;
+    }
+    private static void RunGui()
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
         Application.Start(parameters =>

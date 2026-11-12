@@ -12,9 +12,11 @@ try {
         New-Item -ItemType Directory -Path $taskTarget -Force | Out-Null
     }
     $taskOutput = Join-Path $taskRoot "dist/$Deployment"
+    if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) { throw 'MinGW-w64 GCC is required to build the native console entry. See docs/dependencies.md.' }
     Reset-GeneratedDirectory "dist/$Deployment"
     Reset-GeneratedDirectory 'Payload/Worker'
     Get-ChildItem -LiteralPath 'Worker' -Filter '*.py' -File | Copy-Item -Destination 'Payload/Worker'
+    Copy-Item -LiteralPath 'App/Strings.en.json' -Destination 'Payload/Worker/strings.en.json'
     New-Item -ItemType Directory -Path 'Payload/Worker/assets' -Force | Out-Null
     Get-ChildItem -LiteralPath 'Worker/assets' -Filter '*.cube' -File | Copy-Item -Destination 'Payload/Worker/assets'
     Copy-Item -LiteralPath 'Worker/assets/recommended-presets.json' -Destination 'Payload/Worker/assets'
@@ -45,8 +47,16 @@ try {
     }
     dotnet @taskPublish
     if ($LASTEXITCODE -ne 0) { throw 'WinUI publish failed.' }
+    gcc -Os -s -nostdlib -ffreestanding -fno-builtin -fno-stack-protector '-Wl,--subsystem,console' '-Wl,-e,FrameFlowEntry' Native/CliLauncher.c -lkernel32 -o (Join-Path $taskOutput 'FrameFlow.com')
+    if ($LASTEXITCODE -ne 0) { throw 'Native console launcher build failed; install MinGW-w64 GCC.' }
+    $taskImports = @(objdump -p (Join-Path $taskOutput 'FrameFlow.com') | Select-String 'DLL Name:' | ForEach-Object { ($_ -split 'DLL Name:')[1].Trim() })
+    if ($LASTEXITCODE -ne 0 -or $taskImports.Count -ne 1 -or $taskImports[0] -ine 'KERNEL32.dll') { throw 'Unexpected runtime dependency in the native console launcher.' }
     $taskVersion = ([xml](Get-Content -LiteralPath 'App/VideoConverter.WinUI.csproj' -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-    if ($taskBundled) { Write-Output "Built self-contained EXE: $taskOutput/FrameFlow.exe" }
+    if ($taskBundled) {
+        $taskZip = Join-Path $taskRoot "dist/FrameFlow-$taskVersion-win-x64.zip"
+        Compress-Archive -LiteralPath (Join-Path $taskOutput 'FrameFlow.exe'),(Join-Path $taskOutput 'FrameFlow.com') -DestinationPath $taskZip -Force
+        Write-Output "Built GUI + CLI portable ZIP: $taskZip"
+    }
     else {
         $taskZip = Join-Path $taskRoot "dist/FrameFlow-$taskVersion-win-x64-framework-dependent.zip"
         Compress-Archive -Path "$taskOutput/*" -DestinationPath $taskZip -Force
