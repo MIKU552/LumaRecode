@@ -60,8 +60,9 @@ public static class LegalNotices
                 dialog.Title = L.T("第三方组件许可");
                 dialog.PrimaryButtonText = L.T("同意并继续");
                 dialog.CloseButtonText = L.T("退出");
-                languageLabel.Text = L.T("界面语言");
-                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(language, L.T("界面语言"));
+                // Keep the first-run language entry discoverable in either locale.
+                languageLabel.Text = "界面语言 / Language";
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(language, languageLabel.Text);
                 system.Content = L.T("跟随系统");
                 var selected = language.SelectedIndex;
                 language.SelectedIndex = -1; language.SelectedIndex = selected;

@@ -61,7 +61,7 @@ def main():
         assert not result.stderr, result.stderr
         return [json.loads(line) for line in result.stdout.splitlines()]
     assert 'FrameFlow.exe' in call('--help', raw=True).stdout
-    assert '3.6.2' in call('--version', raw=True).stdout
+    assert '3.6.3' in call('--version', raw=True).stdout
     assert '同一个 EXE' in call('--lang', 'zh', '--help', raw=True).stdout
     assert len(call('--json', 'presets')['presets']) == 7
     assert {p['id'] for p in call('profiles', '--json')['profiles']} == {'milog','pocket3','samsung'}

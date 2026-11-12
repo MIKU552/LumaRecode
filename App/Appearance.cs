@@ -16,6 +16,7 @@ public sealed class Appearance
     private readonly AccessibilitySettings accessibility = new();
     private readonly List<string> overridden = new();
     private readonly HdrBackdropCompatibility backdrop;
+    private FrameworkElement? paletteContent;
     private ComboBox? themeChoice;
     private ComboBox? materialChoice;
     private bool applying;
@@ -61,6 +62,7 @@ public sealed class Appearance
     public void Relocalize()
     {
         swatches.Clear();
+        paletteContent = null;
         themeChoice = materialChoice = null;
         accentPreview = null; accentLabel = null; systemSwitch = null; picker = null;
         ((Button)root.FindName("PaletteButton")).Flyout = CreatePaletteFlyout();
@@ -116,7 +118,12 @@ public sealed class Appearance
             var theme = root.RequestedTheme;
             root.RequestedTheme = dark ? ElementTheme.Light : ElementTheme.Dark;
             root.RequestedTheme = theme;
+            // The windowed flyout has its own theme-resource scope. Refresh
+            // cached control brushes there as well when custom overrides change.
+            if (paletteContent is not null)
+                paletteContent.RequestedTheme = dark ? ElementTheme.Light : ElementTheme.Dark;
         }
+        if (paletteContent is not null) paletteContent.RequestedTheme = root.ActualTheme;
         if (accentPreview is not null) accentPreview.Background = new SolidColorBrush(color);
         if (accentLabel is not null) accentLabel.Text = (settings.SystemAccent ? L.T("Windows 强调色 · ") : L.T("自定义 · ")) + Hex(color);
         foreach (var (button, hex) in swatches)
@@ -146,7 +153,8 @@ public sealed class Appearance
         {
             if (flyout.Content is null)
             {
-                flyout.Content = BuildPaletteContent();
+                paletteContent = BuildPaletteContent();
+                flyout.Content = paletteContent;
             }
             ApplyAccent(false);
         };
