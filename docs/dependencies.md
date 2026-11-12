@@ -1,6 +1,6 @@
 # 开发环境与分发 / Development and distribution
 
-当前版本：3.6.0。“最新稳定”核对于 **2026-11-12**，是版本快照，不承诺永远最新。正式构建不使用 preview / experimental 包。
+当前版本：3.6.1。“最新稳定”核对于 **2026-11-12**，是版本快照，不承诺永远最新。正式构建不使用 preview / experimental 包。
 
 | 项目 / Item | 版本 / Version | 用途 / Purpose |
 | --- | --- | --- |

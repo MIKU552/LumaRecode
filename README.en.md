@@ -1,4 +1,7 @@
-# 映流 · FrameFlow
+<p align="center">
+  <img src="Brand/FrameFlow.svg" width="104" height="104" alt="FrameFlow icon" />
+</p>
+<h1 align="center">映流 · FrameFlow</h1>
 
 [简体中文](README.md) | English
 
@@ -23,7 +26,7 @@ A video transcoding app for Windows 11, with a native graphical interface for FF
 - **Format controls:** independent MP4/MKV, chroma sampling, and audio choices. Accept 4:2:2 sources and convert them to 4:2:0.
 - **Source inspection:** detailed video and per-track audio information; defaults based on source metadata, with manual overrides when the input type or camera curve is uncertain.
 - **Output verification:** check bit depth, sampling, color tags, and required static HDR metadata. Keep the source, avoid overwriting existing outputs, and clean up this job's temporary output on cancellation.
-- **Native Windows UI:** WinUI 3, Mica, light/dark/system themes, system or custom accent colors, and instant Chinese/English switching.
+- **Native Windows UI:** WinUI 3, Mica, light/dark/system themes, system or custom accent colors, and instant Chinese/English switching, including the first-run license dialog. About at the top right provides the version, project homepage, and full license notices.
 
 ## Encoding and output
 

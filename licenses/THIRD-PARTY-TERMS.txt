@@ -41,11 +41,3 @@ endorsement is asserted. These terms concern the third-party components;
 they do not prevent use, modification or redistribution of the original
 FrameFlow code under MIT.
 
-选择“同意并继续”表示同意遵守随附第三方二进制组件的适用条款。
-FrameFlow 自主源码仍采用 MIT，允许商用及闭源衍生使用；
-上述第三方组件条款不会把自主源码改为非商业许可。
-微软组件及 Python Windows 二进制内的微软代码保留其原有权利，
-其中 Windows 单文件 .NET 运行时适用 .NET Library License，
-WinRT 投影包适用 Windows SDK 条款及其 REDIST 授权清单；
-再分发时须保留相关声明、遵守平台和使用范围限制，并向接收者传递
-适用条款。完整原文与来源记录保存在本 licenses 目录中。

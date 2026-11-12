@@ -1,5 +1,5 @@
 {
-  "app_version": "3.6.0",
+  "app_version": "3.6.1",
   "distribution_basis": [
     "Windows App SDK production package terms, section 3, for files placed with the application by NuGet",
     ".NET Library License for designated Windows binaries and single-file runtime; MIT and notices for remaining files; Windows SDK terms where applicable",

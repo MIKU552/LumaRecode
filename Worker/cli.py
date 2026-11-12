@@ -324,10 +324,11 @@ def main(argv=None):
         if args.command == 'license':
             folder = Path(os.environ.get('FRAMEFLOW_LICENSE_DIR', Path(__file__).parent.parent/'licenses'))
             if args.text:
+                terms_file = folder / ('THIRD-PARTY-TERMS.zh-CN.txt' if LANG == 'zh' else 'THIRD-PARTY-TERMS.txt')
                 if getattr(args, 'json', False):
-                    output(dict(schema_version=1, project_license=(folder/'LICENSE').read_text(encoding='utf-8-sig'), component_terms=(folder/'THIRD-PARTY-TERMS.txt').read_text(encoding='utf-8-sig'), directory=str(folder)))
+                    output(dict(schema_version=1, project_license=(folder/'LICENSE').read_text(encoding='utf-8-sig'), component_terms=terms_file.read_text(encoding='utf-8-sig'), directory=str(folder)))
                 else:
-                    print((folder/'LICENSE').read_text(encoding='utf-8-sig')); print((folder/'THIRD-PARTY-TERMS.txt').read_text(encoding='utf-8-sig'))
+                    print((folder/'LICENSE').read_text(encoding='utf-8-sig')); print(terms_file.read_text(encoding='utf-8-sig'))
             else:
                 output(dict(schema_version=1, project_license='MIT', directory=str(folder), accepted=getattr(args, 'accept_terms', False) or os.environ.get('FRAMEFLOW_TERMS_ACCEPTED') == '1', manifest=json.loads((folder/'manifest.json').read_text(encoding='utf-8-sig'))))
             return 0

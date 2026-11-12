@@ -80,7 +80,7 @@ public sealed class MainWindow : Window
         root.Loaded += async (_, _) =>
         {
             dialogOpen = true;
-            try { if (!await LegalNotices.RequireAcceptanceAsync(root, settings)) { Close(); return; } }
+            try { if (!await LegalNotices.RequireAcceptanceAsync(root, settings, Relocalize)) { Close(); return; } }
             finally { dialogOpen = false; }
             Reflow(root.ActualWidth);
             if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe) || !WorkerClient.HasBundledPython && WorkerClient.ExternalPython == "") await ConfigureToolsAsync();
@@ -199,6 +199,13 @@ public sealed class MainWindow : Window
         Control<Button>("ChooseInput").Click += async (_, _) => await ChooseInputAsync();
         Control<Button>("ChooseOutput").Click += async (_, _) => await ChooseOutputAsync();
         Control<Button>("ToolsButton").Click += async (_, _) => await ConfigureToolsAsync();
+        Control<Button>("AboutButton").Click += async (_, _) =>
+        {
+            if (dialogOpen || closing) return;
+            dialogOpen = true;
+            try { await AboutDialog.ShowAsync(root); }
+            finally { dialogOpen = false; }
+        };
         Control<Button>("Start").Click += async (_, _) => await StartAsync();
         Control<Button>("Cancel").Click += async (_, _) => { if (activeJob is not null) { Control<Button>("Cancel").IsEnabled = false; SetStatus(L.T("正在取消…")); await activeJob.CancelAsync(); } };
         Control<Button>("OpenFolder").Click += (_, _) => { if (File.Exists(completedOutput)) Process.Start(new ProcessStartInfo("explorer.exe", Path.GetDirectoryName(completedOutput)!) { UseShellExecute = true }); };

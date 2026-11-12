@@ -34,6 +34,7 @@
           <DropDownButton x:Name="LanguageButton" MinHeight="36" VerticalAlignment="Center" AutomationProperties.Name="界面语言"/>
           <Button x:Name="PaletteButton" Width="40" Height="36" Padding="0" ToolTipService.ToolTip="界面配色" AutomationProperties.Name="界面配色"><FontIcon Glyph="&#xE790;" FontSize="18"/></Button>
           <Button x:Name="ToolsButton" Width="40" Height="36" Padding="0" ToolTipService.ToolTip="工具路径" AutomationProperties.Name="工具路径"><FontIcon Glyph="&#xE713;" FontSize="18"/></Button>
+          <Button x:Name="AboutButton" Width="40" Height="36" Padding="0" ToolTipService.ToolTip="关于" AutomationProperties.Name="关于"><FontIcon Glyph="&#xE946;" FontSize="18"/></Button>
         </StackPanel>
       </Grid>
       <Grid x:Name="SettingsGrid" ColumnSpacing="24" RowSpacing="24">
