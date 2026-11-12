@@ -1,11 +1,20 @@
-# 映流 · FrameFlow
+# 图标资源 / Icon assets
 
-“映”连接视频与色彩，“流”表达素材从拍摄格式流转到分享和归档格式。
+FrameFlow 图标以青绿至蓝紫的两条流带组成字母 F。
 
-标志使用两段有层次的流带形成抽象的 F，对应 FrameFlow 的首字母与画面流转。青绿、蓝色与蓝紫渐变呼应色彩转换。外部完全透明，保留自由轮廓，适配 Windows 浅色和深色背景。
+| 文件 | 规格 | 用途 |
+| --- | --- | --- |
+| [FrameFlow.svg](FrameFlow.svg) | 256×256 设计坐标 | 矢量源文件 |
+| [FrameFlow.png](FrameFlow.png) | 512×512，透明背景 | 标题栏和关于窗口 |
+| [FrameFlow.ico](../App/FrameFlow.ico) | 16、20、24、32、40、48、64、96、128、256 px | EXE 和任务栏 |
 
-- FrameFlow.svg：可编辑的矢量源文件，256 × 256 设计坐标。
-- FrameFlow.png：512 × 512 透明 PNG，供预览和窗口标题使用。
-- ../App/FrameFlow.ico：16、20、24、32、40、48、64、96、128、256 像素共十档图标，供 EXE 和任务栏使用。
+在仓库根目录重新生成 PNG 和 ICO：
 
-素材为项目内直接绘制的 SVG，使用 render_icon.py 转为 PNG 和 ICO。脚本需要 PySide6（只在重绘图标时需要，运行或构建应用不需要它）。
+```powershell
+python -m pip install -r Brand/requirements.txt
+python Brand/render_icon.py
+```
+
+## English
+
+The vector mark forms an F from two ribbons with a teal-to-violet gradient. Run the commands above from the repository root to render the PNG and multi-resolution Windows icon.

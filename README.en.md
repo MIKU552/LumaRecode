@@ -26,7 +26,7 @@ Video transcoding and color conversion for Windows 11. FrameFlow provides a nati
 3. Drop a video or choose **Select video**, then confirm the output range, preset, and color conversion.
 4. Choose the output path and select **Start conversion**.
 
-Quick share uses Intel QSV. Choose Software archive for CPU encoding when your GPU does not support the selected encoder.
+Quick share uses Intel QSV. Software archive uses CPU encoding.
 
 ## Encoding and color
 
@@ -37,9 +37,9 @@ Quick share uses Intel QSV. Choose Software archive for CPU encoding when your G
 
 Container, chroma sampling, and audio can be selected separately. HDR uses 10-bit HEVC or AV1; SDR Quick share uses 8-bit. Software HEVC / AV1 archive uses 10-bit, and H.264 uses 8-bit. Software HEVC / H.264 supports 4:2:2 output.
 
-SDR defaults to SDR, HLG / PQ retains HDR, and recognized Log profiles default to HLG. Use Input interpretation and Camera profile when metadata is incomplete. Log conversion requires source footage matching the selected curve; LUTs use fixed exposure and highlight mappings. HLG / PQ output is supported; HDR10+ and Dolby Vision dynamic metadata are not rebuilt.
+SDR sources default to SDR output, HLG / PQ sources retain HDR, and recognized Log profiles convert to HLG. Input interpretation and Camera profile let you select the source type manually.
 
-See [recommended-presets.json](Worker/assets/recommended-presets.json) for the presets and the [encoding benchmark](docs/benchmarks/encoding-benchmark.en.md) for their measurements. Conversion re-encodes video; Copy audio affects audio only.
+Video is re-encoded with the selected preset; audio can be copied or transcoded. See [recommended-presets.json](Worker/assets/recommended-presets.json) for the settings and the [encoding benchmark](docs/benchmarks/encoding-benchmark.en.md) for measurements.
 
 ## Requirements
 
@@ -52,7 +52,7 @@ Language and theme follow the system by default. Chinese systems use Simplified 
 
 ## Command line
 
-Use PowerShell 7 and an output pipeline to wait for commands from the GUI-subsystem EXE:
+Run commands through an output pipeline in PowerShell 7:
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
@@ -91,9 +91,9 @@ licenses/  Third-party licenses, notices, and provenance
 
 ## Development and license
 
-Original project code, UI, build work, and repository maintenance were completed through **Codex for Windows**, using **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** with **Extra high (`xhigh`)** reasoning. **[MIKU552](https://github.com/MIKU552)** defines requirements, supplies hardware and footage, and verifies behavior on the device. Commits credit both contributors and are signed with the maintainer's GPG key.
+Original project code was developed with **Codex for Windows**, using **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** with **Extra high (`xhigh`)** reasoning. **[MIKU552](https://github.com/MIKU552)** defines requirements, supplies hardware and footage, and verifies the application.
 
-Original code, documentation, graphics, and generated Mi-Log / Samsung Log LUTs use the **[MIT License](LICENSE)**. Third-party LUTs and runtimes retain their own terms; see [NOTICE](NOTICE) and [third-party components](Worker/assets/THIRD_PARTY.md). MIT applies from 3.5.1 onward; earlier releases retain their original licenses.
+Original code, documentation, graphics, and generated Mi-Log / Samsung Log LUTs use the **[MIT License](LICENSE)**. Licenses and sources for third-party LUTs and runtimes are listed in [NOTICE](NOTICE) and [third-party components](Worker/assets/THIRD_PARTY.md).
 
 ## Documentation
 

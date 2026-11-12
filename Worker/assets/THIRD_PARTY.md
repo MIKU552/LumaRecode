@@ -1,41 +1,39 @@
 # 第三方组件与许可 / Third-party components
 
-项目自主内容使用 [MIT License](../../LICENSE)。第三方组件使用下列许可，完整原文保存在 [licenses](../../licenses/)，版本、来源及哈希见 [运行时清单](../../licenses/manifest.json)和 [LUT 清单](license-manifest.json)。
+项目自主内容采用 [MIT License](../../LICENSE)。本页列出第三方组件的许可与来源，完整条款保存在 [licenses](../../licenses/)。版本、来源和文件哈希见[运行时清单](../../licenses/manifest.json)与 [LUT 清单](license-manifest.json)。
 
 ## 运行时与 LUT
 
-| 组件 / Component | 分发依据 / Distribution basis |
-| --- | --- |
-| .NET 11.0.0 / apphost / ASP.NET runtime files | 多数文件为 MIT；Windows `coreclr.dll`、单文件内的运行时及指定 WPF 等二进制适用 .NET Library License，另有 Windows SDK 个别组件条款。保留全文与匹配第三方声明 / MIT plus Windows-specific binary licenses |
-| Native AOT runtime 11.0.0 | 从实际 NuGet 包收集 MIT 与第三方声明；Windows 单文件入口仍适用上一行的二进制例外。原生工具链仅用于构建，不随应用分发 / Actual pack terms retained; the single-file host retains Windows binary-license exceptions. |
-| Windows SDK .NET 投影 | `Microsoft.Windows.SDK.NET.Ref 10.0.26100.87` 的许可 URL 指向 Windows SDK 条款，其 REDIST 清单的同名章节明确允许随程序分发未修改文件 / SDK terms and explicit projection-package REDIST grant |
-| Windows App SDK / WinUI 2.6.5 | 正式包 Microsoft Windows App SDK 条款第 3 节，允许随应用分发 NuGet 放入输出目录的代码，须满足分发要求 / Production package terms for NuGet-binplaced files |
-| WebView2 SDK | WinUI 传递依赖，保留 BSD-3-Clause LICENSE / NOTICE；未打包浏览器安装器 / Transitive SDK notices; no browser installer |
-| 官方 CPython 3.15.2 Windows 嵌入式包 | 完整保留官方包；PSF/Python 历史许可、嵌入组件条款，以及 LICENSE 中 Windows binary 附加条件 / Unmodified official package and its Windows-binary conditions |
-| Python 内 VC Runtime | 依据官方 Python Windows 二进制的授权链保留声明、平台限制和接收者条款；不是 PSF 或项目 MIT 许可 / Microsoft-specific conditions remain applicable |
-| Python 内 OpenSSL、Expat、HACL*、libffi、mpdecimal、libtommath、SQLite、XZ/liblzma、zlib-ng、zstd、bzip2 等 | 保留 PSF 汇总文本及[依赖原文和来源](../../licenses/Python-dependencies/sources.json)。zstd 选择 BSD 许可；只有 liblzma，不含 XZ 的 GPL 脚本 / Vendor libraries retain their individual terms |
-| Pocket 3 LUT | OpenOSV v0.6.4，Apache-2.0，LUT 与原始 [LICENSE](OpenOSV/LICENSE) / [NOTICE](OpenOSV/NOTICE) 未修改 |
+| 组件 | 许可与分发条款 | 原文 |
+| --- | --- | --- |
+| .NET 11.0.0、apphost、ASP.NET 运行时 | MIT；Windows `coreclr.dll`、单文件内运行时及指定 WPF 等二进制适用 .NET Library License，个别文件适用 Windows SDK 条款 | [Windows 逐组件说明](https://github.com/dotnet/core/blob/main/license-information-windows.md)、[.NET Library License](../../licenses/DotNet-Library-LICENSE.html) |
+| Native AOT runtime 11.0.0 | MIT 及组件声明；单文件入口中的 Windows 运行时按上一行条款分发 | [LICENSE](../../licenses/microsoft.netcore.app.runtime.nativeaot.win-x64-11.0.0-LICENSE.TXT)、[声明](../../licenses/microsoft.netcore.app.runtime.nativeaot.win-x64-11.0.0-THIRD-PARTY-NOTICES.TXT) |
+| Windows SDK .NET 投影 10.0.26100.87 | Windows SDK 条款；REDIST 的 `Microsoft.Windows.SDK.NET.Ref` 章节允许随应用分发未修改文件 | [许可](../../licenses/Windows-SDK-Net-Ref-LICENSE.rtf)、[REDIST](https://learn.microsoft.com/en-us/legal/windows-sdk/redist#microsoftwindowssdknetref) |
+| Windows App SDK / WinUI 2.6.5 | 正式包条款第 3 节，适用于 NuGet 放入应用输出目录的代码 | [许可](../../licenses/Microsoft.WindowsAppSDK.Base-2.6.5-license.txt) |
+| WebView2 SDK | WinUI 的传递依赖，BSD-3-Clause | [LICENSE](../../licenses/Microsoft.Web.WebView2-1.0.3719.77-LICENSE.txt)、[NOTICE](../../licenses/Microsoft.Web.WebView2-1.0.3719.77-NOTICE.txt) |
+| CPython 3.15.2 Windows 嵌入式包 | PSF、Python 历史许可、嵌入组件条款及 Windows 二进制附加条件 | [Python LICENSE](../../licenses/Python-LICENSE.txt) |
+| Python 内 VC Runtime | Python Windows 二进制附加条件中的微软代码分发条款，包括平台限制与接收者条款 | [Python LICENSE](../../licenses/Python-LICENSE.txt)、[VC Runtime 许可](../../licenses/Microsoft-VC-V14-Runtime-2026-LICENSE.txt) |
+| Python 内 OpenSSL、Expat、HACL*、libffi、mpdecimal、libtommath、SQLite、liblzma、zlib-ng、zstd、bzip2 等 | 各组件许可见原文；zstd 采用 BSD 选项 | [依赖原文和来源](../../licenses/Python-dependencies/sources.json) |
+| Pocket 3 LUT | OpenOSV v0.6.4，Apache-2.0 | [LICENSE](OpenOSV/LICENSE)、[NOTICE](OpenOSV/NOTICE) |
 
-完整条款可从首次许可窗口和“关于”打开。分发时保留组件许可与声明，并向接收者提供适用的微软和 Python Windows 二进制条款。
+完整条款可从首次许可窗口和“关于”打开。重新分发应用时，需保留组件许可与声明，并向接收者提供适用的微软和 Python Windows 二进制条款。
 
-.NET Windows 二进制的许可范围见[逐组件说明](https://github.com/dotnet/core/blob/main/license-information-windows.md)。Windows App SDK 适用正式包第 3 节，.NET Library License 适用[第 3 节](../../licenses/DotNet-Library-LICENSE.html)，Windows SDK 投影包依据 [REDIST 清单](https://learn.microsoft.com/en-us/legal/windows-sdk/redist#microsoftwindowssdknetref)分发。Python 中微软代码的分发条件见官方包 LICENSE 的 **Additional Conditions for this Windows binary build**。
+.NET 二进制分发要求见 .NET Library License 第 3 节。Python 内微软代码的分发条件见 Python LICENSE 的 **Additional Conditions for this Windows binary build**。
 
 ## LUT 来源
 
 - **Pocket 3 D-Log M → HLG**：来自 [OpenOSV v0.6.4](https://github.com/Kemerd/OpenOSV/releases/tag/v0.6.4) 的 `luts/Rec2100_HLG/DJI_Osmo_DLogM_to_Rec2100_HLG_BT2408_Neutral.cube`，是第三方拟合转换，采用 Apache-2.0。原始 [LICENSE](OpenOSV/LICENSE) 和 [NOTICE](OpenOSV/NOTICE) 随文件保留。
 - **Mi-Log / Samsung Log → HLG**：由 [generate_hlg_luts.py](../tools/generate_hlg_luts.py) 根据公开数值参数与项目高光映射生成，采用 MIT。技术来源：[小米资料](https://web.vip.miui.com/page/info/mio/mio/detail?fromPathname=mioSingleBoard&postId=47863325)、[Samsung Log 文档](https://developer.samsung.com/mobile/samsung-log-video.html)。
 
-厂商原始 LUT、DCTL 和白皮书不随项目分发。
-
 ## 外部工具与资源
 
 | 项目 | 使用方式 |
 | --- | --- |
-| FFmpeg / ffprobe | 用户提供，以独立子进程调用；不链接或分发 `libav*`。具体构建的许可见 [FFmpeg 法律说明](https://ffmpeg.org/legal.html) |
+| FFmpeg / ffprobe | 用户提供，以独立子进程调用；各构建的许可见 [FFmpeg 法律说明](https://ffmpeg.org/legal.html) |
 | PySide6 / Qt | 可选图标生成工具；版本见 [requirements.txt](../../Brand/requirements.txt)，许可见 [Qt for Python](https://doc.qt.io/qtforpython-6/licenses.html) |
 | SDK / BuildTools | 开发构建工具；随应用输出的运行时文件保留对应许可 |
 | 品牌图形 | 项目绘制的 SVG / PNG / ICO，采用 MIT |
-| 系统字体 | 通过系统 FontIcon 使用，不复制字体文件 |
+| 系统字体 | 通过系统 FontIcon 显示图标 |
 
 ## English
 

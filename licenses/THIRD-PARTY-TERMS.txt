@@ -1,12 +1,8 @@
 FrameFlow - third-party binary component terms
 
-The original FrameFlow source, documentation and original assets are
-licensed under MIT. These component terms do not restrict those
-rights or impose a non-commercial condition on the original project.
-
-The Windows executable also contains separately licensed Microsoft and
-Python runtime components. Those components retain their original terms;
-the project's MIT license does not relicense them.
+The original FrameFlow source, documentation and assets use the MIT
+License. The Windows distribution includes Microsoft and Python runtimes,
+OpenSSL, and the OpenOSV LUT, each with its own license and notices.
 
 By choosing "Agree and continue", you agree to comply with the applicable
 terms for the bundled third-party components, including the Microsoft
@@ -27,17 +23,9 @@ recipient agreement for those components. The additional Windows-binary
 conditions are stated in Python-LICENSE.txt; Windows App SDK redistribution
 rights and requirements are in the corresponding package license texts.
 
-The .NET Library License permits object-code distribution as part of this
-application, subject to its requirements; it is separate from MIT licensing
-of most .NET files. Windows SDK REDIST.TXT explicitly covers the unmodified
+The .NET Library License sets the conditions for distributing object code
+as part of this application. Windows SDK REDIST.TXT covers the unmodified
 Microsoft.Windows.SDK.NET.Ref package files used to call WinRT APIs.
 See DotNet-Library-LICENSE.html, Windows-SDK-Net-Ref-LICENSE.rtf and
 Windows-SDK-REDIST.html. Read the full terms, including their limits on
 use, redistribution, notices and applicable data collection provisions.
-
-Other bundled components, including OpenSSL and the OpenOSV LUT, retain
-their respective licenses and notices. No manufacturer sponsorship or
-endorsement is asserted. These terms concern the third-party components;
-they do not prevent use, modification or redistribution of the original
-FrameFlow code under MIT.
-

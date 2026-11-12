@@ -26,7 +26,7 @@
 3. 拖入视频或点击“选择视频”，确认输出动态范围、编码预设和色彩转换。
 4. 选择保存位置，点击“开始转换”。
 
-“快速分享”使用 Intel QSV；显卡不支持所选编码器时，选择“软件归档”使用 CPU。
+“快速分享”使用 Intel QSV；“软件归档”使用 CPU 编码。
 
 ## 编码与色彩
 
@@ -37,9 +37,9 @@
 
 封装、采样和音频均可单独选择。HDR 输出为 10 位 HEVC 或 AV1；SDR 快速分享为 8 位。软件 HEVC / AV1 归档为 10 位，H.264 为 8 位。软件 HEVC / H.264 可选 4:2:2。
 
-SDR 默认保持 SDR，HLG / PQ 默认保持 HDR，已识别曲线的 Log 默认转换为 HLG。元数据不足时，在“输入解释”和“相机曲线”中手动选择。Log 转换需要对应曲线的原片；LUT 使用固定曝光和高光映射。当前支持 HLG / PQ 输出，不重建 HDR10+ 或 Dolby Vision 动态元数据。
+SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线的 Log 素材默认转换为 HLG。可在“输入解释”和“相机曲线”中手动选择素材类型。
 
-完整预设见 [recommended-presets.json](Worker/assets/recommended-presets.json)，参数来源见[编码实测报告](docs/benchmarks/encoding-benchmark.zh-CN.md)。转换会重新编码视频；“复制原音轨”仅影响音频。
+视频按所选预设重新编码，音频可复制或转码。完整参数见 [recommended-presets.json](Worker/assets/recommended-presets.json)，测试结果见[编码预设测试](docs/benchmarks/encoding-benchmark.zh-CN.md)。
 
 ## 运行要求
 
@@ -52,7 +52,7 @@ SDR 默认保持 SDR，HLG / PQ 默认保持 HDR，已识别曲线的 Log 默认
 
 ## 命令行
 
-在 PowerShell 7 中运行；为 GUI 子系统 EXE 接上输出管道，以等待命令结束：
+在 PowerShell 7 中使用输出管道运行命令：
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
@@ -91,14 +91,14 @@ licenses/  第三方许可、声明与来源清单
 
 ## 开发与许可
 
-项目自主代码、界面、构建和仓库维护由 **Windows 版 Codex** 使用 **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)**、**极高（xhigh）** 推理设置完成。**[MIKU552](https://github.com/MIKU552)** 提出需求、提供设备与素材，并进行实机核验。Git 提交由双方共同署名，使用维护者的 GPG 密钥签名。
+项目自主代码由 **Windows 版 Codex** 使用 **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)**、**极高（xhigh）** 推理设置完成。**[MIKU552](https://github.com/MIKU552)** 负责需求、设备与素材，并进行实机核验。
 
-自主代码、文档、图形及项目生成的 Mi-Log / Samsung Log LUT 采用 **[MIT License](LICENSE)**。第三方 LUT 和运行时保留各自许可，归属及分发依据见 [NOTICE](NOTICE) 和[第三方组件](Worker/assets/THIRD_PARTY.md)。MIT 自 3.5.1 起适用，历史版本保留原许可。
+自主代码、文档、图形及项目生成的 Mi-Log / Samsung Log LUT 采用 **[MIT License](LICENSE)**。第三方 LUT 和运行时的许可与来源见 [NOTICE](NOTICE) 和[第三方组件](Worker/assets/THIRD_PARTY.md)。
 
 ## 文档
 
 - [命令行](docs/cli.zh-CN.md)
 - [开发与分发](docs/dependencies.md)
 - [性能优化](docs/performance.md)
-- [编码实测报告](docs/benchmarks/encoding-benchmark.zh-CN.md)
+- [编码预设测试](docs/benchmarks/encoding-benchmark.zh-CN.md)
 - [更新记录](CHANGELOG.md)

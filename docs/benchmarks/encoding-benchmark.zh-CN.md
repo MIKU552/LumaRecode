@@ -1,18 +1,26 @@
-# FrameFlow 编码预设实测报告
+# 编码预设测试
 
-简体中文 | [English](encoding-benchmark.en.md) · [项目首页](../../README.md) · [数据说明](data/README.md)
+简体中文 | [English](encoding-benchmark.en.md) · [项目首页](../../README.md) · [测试数据](data/README.md)
 
-本报告记录 FrameFlow 内置编码预设的测试方法、画质、体积与速度。
+FrameFlow 的编码预设来自 2026 年 10 月 29–30 日的本机测试。测试配置对应 3.4.7 版本，覆盖软件编码、Intel QSV、体积、画质和转码速度。
 
-测试批次为 **2026-10-29 至 30 日**，数据对应 FrameFlow **3.4.7** 的预设。软件与驱动版本见测试环境。
+## 预设
 
-## 结果与适用范围
+| 用途 | 编码器 | 核心设置 | 额外设置 |
+| --- | --- | --- | --- |
+| 软件归档 AVC | libx264 | medium、CRF21 | `aq-mode=2:aq-strength=0.8` |
+| 软件归档 HEVC | libx265 | medium、CRF23 | `rdoq-level=2:psy-rdoq=1` |
+| 软件归档 AV1 | libsvtav1 | preset4、CRF32、tune0、lp0 | `enable-qm=1:qm-min=8:qm-max=15` |
+| AV1 速度备用档 | libsvtav1 | preset6、CRF32、tune0、lp4 | 上述 QM，加 `hierarchical-levels=4` |
+| 快速分享 AVC | h264_qsv | TU4、ICQ22 | `async_depth=4` |
+| 快速分享 HEVC | hevc_qsv | TU4、ICQ24 | `async_depth=4` |
+| 快速分享 AV1 | av1_qsv | TU4、ICQ26 | `async_depth=4` |
 
-- **快速分享**采用 Intel QSV TU4，AVC / HEVC / AV1 分别为 ICQ 22 / 24 / 26。高级开关未表现出足够一致的收益，保留驱动自动参考结构。
-- **软件归档**采用 x264 medium / CRF21、x265 medium / CRF23、SVT-AV1 preset4 / CRF32，并使用下表中的参数覆盖。AV1 另有速度备用档。
-- 在本次动画片段上，新软件配置相对旧基线减少约 5–21% 体积；合成桌面没有相同趋势，4K AVC 甚至增加约 6%。
-- 原始画质筛选基于 **SDR**。HEVC / AV1 分享画质测试主要使用 **10 位 P010**；当前 FrameFlow 的 SDR 快速分享默认 8 位。相同 ICQ 不能证明两种位深结果相同。
-- 测试范围为 SDR 编码；HDR、SDR8、4:2:2 和 LUT 工作流需按实际素材单独评估。
+配置文件：[recommended-presets.json](../../Worker/assets/recommended-presets.json)。其中 `archive`、`archive_fast_av1`、`share` 和 `audio` 四节来自测试配置，文件哈希见 [preset-provenance.json](data/preset-provenance.json)。
+
+[engine.py](../../Worker/engine.py) 设置软件编码最大 GOP 约 8 秒、快速分享约 2 秒，并为 x265 设置 `pools=16`、QSV 设置 `low_power=1`。位深和色度采样取自输出设置。SVT-AV1 的 `lp` 表示并行等级；本机 `lp=0` 选择等级 5。
+
+归档默认复制音轨；分享 AVC / HEVC 使用 AAC 256 kbps 双声道，AV1 使用 Opus 192 kbps、48 kHz 双声道 VBR。
 
 ## 测试环境
 
@@ -29,7 +37,7 @@
 | SVT-AV1 | 4.2.0-123-g0c1c4deca；AVX2 |
 | OBS / HandBrake | 33.0.0 / 1.11.2；用于原始相关测试 |
 
-环境与素材元数据见 [environment.json](data/environment.json)。结果不应直接外推到其他电脑、驱动或编码库版本。
+环境记录：[environment.json](data/environment.json)。画质测试使用 SDR；HEVC / AV1 的 QSV 筛选输入为 10 位 P010。
 
 ## 素材与方法
 
@@ -39,39 +47,21 @@
 | `Timeline 1.XQ.mov` | 1920×1080、30 fps、ProRes XQ、12 位 4:4:4、BT.709 原色 / 矩阵，约 487.34 Mbps | 1080p 动画 / 舞蹈内容；未指定的传递函数按 BT.709 解释 |
 | 合成桌面 | 1080p / 4K、每秒 60 个独立帧 | 小字、渐变、明暗背景与移动窗口压力测试 |
 
-两份原片画面不同，不能把两种分辨率的结果当作同场景缩放对比。合成桌面也不是实际游戏或浏览器录屏。
+1080p 和 4K 使用各自的原片。测试分为三组：
 
-1. 主样本取原片第 20、75、125 秒起各 4 秒，合计 12 秒、360 帧；原始记录将它命名为 `screen`，实际仍是动画片段。独立验证集 `holdout` 为未参与筛选的 45–63 秒。`desktop` 是上述合成桌面。
-2. 画质筛选参考先规范为原生分辨率的 10 位 4:2:0 FFV1、BT.709 limited。源片从 4:4:4 / 12 位规范化造成的损失没有计入编码器评分。
-3. 初轮使用普通 VMAF v0.6.1，主要每 3 帧采样，并观察 PSNR / SSIM。高级筛选与下方软件对比使用 **VMAF NEG**；逐项采样步长见数据，部分桌面为每帧。P5 指采样帧分数的第 5 百分位。
-4. 分数仅用于相同参考、模式和分辨率内的相对比较。普通 VMAF 与 NEG 不是同一指标；这些 SDR 分数也不是 HDR 观感、4K 观看距离或视觉无损的认证。
-5. 扫描参数时使用预解码参考，不能把扫描表里的 fps 当作完整转码速度。完整处理链另测并单独列出。
+- `screen`：原片第 20、75、125 秒起各 4 秒，合计 12 秒、360 帧。
+- `holdout`：原片第 45–63 秒，用于验证所选配置。
+- `desktop`：包含小字、渐变和移动窗口的合成桌面。
 
-保留初轮 92 条结果和高级筛选 411 条结果。后者包括 277 条软件、134 条硬件测试；硬件中 120 条成功并评分，14 条 lookahead 组合失败或停滞。失败行保留，不按成功样本计入结论。
+画质参考统一为原生分辨率的 10 位 4:2:0 FFV1、BT.709 limited。评分以该参考为基准。初轮使用 VMAF v0.6.1、PSNR 和 SSIM；高级筛选使用 VMAF NEG。采样步长记录在数据中，P5 为采样帧得分的第 5 百分位。
 
-## 当前预设与来源
+参数筛选从预解码参考开始；原片测速另行记录 FFmpeg 的启动、解码、格式处理、编码和封装。初轮包含 92 条记录，高级筛选包含 411 条记录：软件 277 条、硬件 134 条，其中硬件成功 120 条、失败或停滞 14 条。
 
-| 用途 | 编码器 | 核心设置 | 额外设置 |
-| --- | --- | --- | --- |
-| 软件归档 AVC | libx264 | medium、CRF21 | `aq-mode=2:aq-strength=0.8` |
-| 软件归档 HEVC | libx265 | medium、CRF23 | `rdoq-level=2:psy-rdoq=1` |
-| 软件归档 AV1 | libsvtav1 | preset4、CRF32、tune0、lp0 | `enable-qm=1:qm-min=8:qm-max=15` |
-| AV1 速度备用档 | libsvtav1 | preset6、CRF32、tune0、lp4 | 上述 QM，加 `hierarchical-levels=4` |
-| 快速分享 AVC | h264_qsv | TU4、ICQ22 | `async_depth=4` |
-| 快速分享 HEVC | hevc_qsv | TU4、ICQ24 | `async_depth=4` |
-| 快速分享 AV1 | av1_qsv | TU4、ICQ26 | `async_depth=4` |
+## 软件编码：体积与画质
 
-与原始配置逐项对比，当前 [recommended-presets.json](../../Worker/assets/recommended-presets.json) 的 `archive`、`archive_fast_av1`、`share`、`audio` 四节完全一致。[preset-provenance.json](data/preset-provenance.json) 记录两份完整文件的 SHA-256；文件整体不同是因为原始版本还包含其他工具和说明。
+基线配置为 x264 medium / CRF20、x265 medium / CRF22，以及 SVT-AV1 preset6 / CRF32 / tune0 / lp0；所选配置为上方预设表中的软件归档参数。
 
-[Worker/engine.py](../../Worker/engine.py) 还在运行时设置：软件最大 GOP 约 8 秒、分享约 2 秒，x265 `pools=16`，QSV `low_power=1`。位深与采样由当前界面选项确定，不应只看 JSON 中的默认像素格式。SVT 的 `lp` 是并行等级而非线程数，`lp=0` 在本机选中等级 5。
-
-音频策略为归档复制原音轨，分享 AVC / HEVC 使用 AAC 256 kbps 双声道、AV1 使用 Opus 192 kbps / 48 kHz 双声道 VBR，并提供 AAC 兼容选项。这些参数用于对应的分享与归档工作流。
-
-## 软件归档：体积与画质
-
-旧基线分别为 x264 medium / CRF20、x265 medium / CRF22、SVT-AV1 preset6 / CRF32 / tune0 / lp0，均未加所选额外覆盖。新配置为上一节的软件归档默认值。这里同时改变了部分质量值及 preset，不能把总收益归因于单个开关。
-
-Mbps 为无音轨文件的平均码率，包含少量封装开销。体积变化 = `(新文件字节数 / 旧文件字节数 − 1) × 100%`，负数表示更小。
+表中 Mbps 为无音轨输出文件的平均码率。体积变化按 `(所选配置字节数 / 基线字节数 − 1) × 100%` 计算。
 
 | 样本 | 分辨率 | 编码 | 旧 Mbps | 新 Mbps | 体积变化 | 旧 NEG | 新 NEG |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
@@ -94,17 +84,17 @@ Mbps 为无音轨文件的平均码率，包含少量封装开销。体积变化
 | desktop | 4k | HEVC | 6.514 | 6.584 | +1.1% | 95.936 | 95.785 |
 | desktop | 4k | AV1 | 7.616 | 6.913 | -9.2% | 97.334 | 97.369 |
 
-数据：[software-pairs.csv](data/software-pairs.csv)，共 18 对；对应试验 ID 可在 [advanced-trials.csv](data/advanced-trials.csv) 中查找。
+数据：[software-pairs.csv](data/software-pairs.csv)，共 18 对。试验参数见 [advanced-trials.csv](data/advanced-trials.csv)。
 
-x264 的组合在动画中省体积、评分接近基线，但 4K 桌面更大。x265 的组合在动画中约省 5–6%、NEG 略高；桌面没有同样收益。原记录中 CRF23.5 暗部局部块状变化更明显，因此保留较保守的 23。
+动画样本中，x264 体积减少约 11–21%，x265 减少约 5–6%，AV1 减少约 12–14%。4K 桌面样本的 AVC、HEVC 和 AV1 体积变化分别为 +6.1%、+1.1% 和 −9.2%。
 
-AV1 在主样本约省 12–13%，独立片段约省 11–14%；主要收益来自 preset4，QM8 只贡献其中的小幅改进。更长 lookahead、更多搜索、参考帧或视觉增强没有形成覆盖所有样本的一致优势，未全部堆入默认值。
+x265 采用 CRF23；CRF23.5 的测试记录显示暗部块状变化更明显。AV1 采用 preset4 与 QM8。QSV 保留驱动自动参考结构。
 
-## 原片完整处理链速度
+## 原片转码速度
 
 ### 软件归档
 
-读取原片 20–32 秒，预热后按“基线 / 新配置 / 新配置 / 基线”顺序运行。下表仅列新配置：fps 和 CPU 为两次运行的中位数，峰值内存取两次最大值。计入 FFmpeg 启动、解码、格式处理、编码与封装；不计入口探针与完成后的输出验证。
+取原片 20–32 秒，预热后按“基线、所选配置、所选配置、基线”的顺序运行。下表为所选配置两次运行的 fps、CPU 中位数及峰值工作集最大值。CPU 按整机 16 个逻辑处理器归一化，内存记录 FFmpeg 进程工作集。
 
 | 分辨率 | 编码 | fps | CPU % | 峰值工作集 GiB |
 | --- | --- | ---: | ---: | ---: |
@@ -115,20 +105,20 @@ AV1 在主样本约省 12–13%，独立片段约省 11–14%；主要收益来�
 | 4k | HEVC | 9.0 | 88.0 | 3.65 |
 | 4k | AV1 | 10.5 | 81.1 | 8.61 |
 
-CPU 按整机 16 个逻辑处理器归一化；内存为进程工作集，不是整机内存，采样可能漏过瞬时尖峰。完整 24 条基线 / 新配置记录见 [archive-native-timings.csv](data/archive-native-timings.csv)。
+完整记录：[archive-native-timings.csv](data/archive-native-timings.csv)，共 24 次。
 
-另对同一 4K 原片 20–80 秒、1800 帧做了 AV1 一分钟实测，两个配置各一次：
+AV1 长片段测试取 4K 原片 20–80 秒，共 1,800 帧，每个配置运行一次：
 
 | 配置 | fps | 处理耗时 | 峰值工作集 GiB |
 | --- | ---: | ---: | ---: |
 | preset4 / lp0，默认 | 11.45 | 157.17 秒 | 9.72 |
 | preset6 / lp4 / H4，速度备用 | 17.02 | 105.77 秒 | 5.11 |
 
-数据：[av1-long-timings.csv](data/av1-long-timings.csv)。这是不同于 12 秒测速的内容区间；不能只用启动开销解释两表差异。备用档以压缩表现换取速度和内存，其参数不是默认档仅改变线程数。
+数据：[av1-long-timings.csv](data/av1-long-timings.csv)。
 
 ### QSV 快速分享
 
-每种编码 / 分辨率各一次，处理原片 20–50 秒、900 帧。1080p ProRes 使用 CPU 解码；4K HEVC 使用 QSV 解码，因此 CPU 占用不可跨行直接解释为分辨率效应。这批测速采用音频更新前的 **AAC 160 kbps**，不是当前全部音频组合的精确性能。
+取原片 20–50 秒，共 900 帧，每个编码器与分辨率组合运行一次。1080p ProRes 使用 CPU 解码，4K HEVC 使用 QSV 解码；音频设置为 AAC 160 kbps。
 
 | 分辨率 | 编码 | fps | CPU % |
 | --- | --- | ---: | ---: |
@@ -139,15 +129,11 @@ CPU 按整机 16 个逻辑处理器归一化；内存为进程工作集，不是
 | 4k | HEVC | 55.6 | 1.3 |
 | 4k | AV1 | 56.4 | 1.5 |
 
-数据：[share-native-timings.csv](data/share-native-timings.csv)。后续 LUT、色调映射或位深变化会改变处理链；单次小幅差距也不足以严格排列编码器性能。
+数据：[share-native-timings.csv](data/share-native-timings.csv)。
 
-## QSV、VBR 与 OBS 的额外验证
+## QSV VBR 对照
 
-QSV 高级筛选显示，部分请求被驱动调整、忽略或本来已默认启用。命令成功并不证明每个开关生效。相同视频包、extradata、色彩和帧率等经过哈希核实后，部分质量分数复用，标记见数据中的 `metric_reused_from`。
-
-未强制 MBBRC 或 B3 作为分享默认值：HEVC MBBRC 在 ICQ24 下减小体积但明显损失评分；默认参考结构的 ICQ26 已可得到更小、分数接近的结果。强制 B3 的收益也受模式和内容影响。
-
-原测试另设 **VBR / TU7 / 60 fps** 预算：1080p 平均 12、最高 20 Mbps；4K 平均 30、最高 50 Mbps。下表列同一动画参考上的 TU7 子集，30 fps 原片重复成 60 fps。指标为普通 VMAF，不是上文 NEG。
+附加测试使用 TU4 / TU7、VBR 和 60 fps。1080p 的平均 / 最高码率为 12 / 20 Mbps，4K 为 30 / 50 Mbps。输入为同一动画参考，每个 30 fps 源帧重复两次。下表列出 TU7 结果，评分使用 VMAF：
 
 | 分辨率 | 编码 | TU | 实际 Mbps | VMAF | 采样 P5 |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -158,12 +144,8 @@ QSV 高级筛选显示，部分请求被驱动调整、忽略或本来已默认�
 | 4k | H264 | 7 | 31.418 | 94.819 | 92.371 |
 | 4k | HEVC | 7 | 30.422 | 94.450 | 92.231 |
 
-数据：[qsv-vbr-60fps.csv](data/qsv-vbr-60fps.csv)，含 TU4 / TU7 共 12 次。AV1 的分数较高，但实际码率也更高；相同目标预算不等于严格相同实际码率，不能据此给出等码率效率排名。
+数据：[qsv-vbr-60fps.csv](data/qsv-vbr-60fps.csv)，共 12 次。附加 OBS 编码记录见 [obs-recording-summary.csv](data/obs-recording-summary.csv)。
 
-同批次的附加 OBS 编码记录保存在 [obs-recording-summary.csv](data/obs-recording-summary.csv)。
+## 数据文件
 
-## 数据、复核与后续使用
-
-[数据目录](data/README.md) 提供环境、结果摘录、每次运行参数及原记录文件哈希。CSV 保留记录精度，本文四舍五入；部分扫描数据中参数是“请求值”，不代表全部被驱动采纳。
-
-原片不随仓库分发；复测需要相同素材、软件和驱动。更新驱动或编码库，或处理不同内容时，应在自己的素材上重新比较体积、暗部、渐变、运动和小字；不同编码器的 CRF / ICQ 数值没有横向等价关系。
+[数据说明](data/README.md)列出字段、计算方式和文件索引。CSV 保存原始精度，表格数值经过四舍五入。`parameters` 保存请求参数，`metric_reused_from` 标记核对相同码流后复用的画质分数。

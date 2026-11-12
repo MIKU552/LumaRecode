@@ -34,7 +34,7 @@ python qa/RuntimeChecks/check_worker.py --deployment dist/NativeAot
 
 脚本等待进程年龄至少 30 秒后采样三次，记录私有工作集、私有提交、总工作集和累计 CPU 时间。菜单操作后可用 `-AgeSeconds 0 -Label panels` 单独记录。
 
-AOT 单文件版的实际 GUI 位于 `.net/FrameFlow/<bundle-id>/Application/FrameFlow.exe`。测量时确认解包入口已退出；CLI 应统计入口、主程序和任务子进程。脚本只读计数器，结果不包含文件路径或进程 ID。
+AOT 单文件版的实际 GUI 位于 `.net/FrameFlow/<bundle-id>/Application/FrameFlow.exe`。GUI 按主程序采样；CLI 按入口、主程序和任务子进程的合计占用采样。
 
 优化设计与结果见[性能优化](../docs/performance.md)。
 

@@ -6,7 +6,7 @@ Run `FrameFlow.exe` in **PowerShell 7**. No arguments opens the GUI; subcommands
 
 The program uses the Windows GUI subsystem. **Pipe text output to `Out-Host`, or JSON output to `ConvertFrom-Json`** to wait for completion and read `$LASTEXITCODE`. Other programs can wait through a process API.
 
-Output is UTF-8. If the session uses a legacy code page such as GBK, set the encoding below for readable Chinese help/progress; this affects only the current PowerShell session. JSON uses standard escapes for non-ASCII characters, preserving decoded Unicode paths even under legacy code pages.
+Output uses UTF-8. The examples below set the current PowerShell session encoding, display help and tool information, and convert a video.
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
@@ -19,7 +19,7 @@ Output is UTF-8. If the session uses a legacy code page such as GBK, set the enc
 ./FrameFlow.exe convert "D:\Videos\clip.mp4" | Out-Host
 ```
 
-The current GUI component-term acceptance is reused. For unattended first use, read the terms and supply `--accept-terms`; CLI operations never show dialogs. `--no-settings` ignores saved GUI paths/consent and prevents setting writes, so scripts using it must explicitly accept the terms.
+GUI and CLI share component-term acceptance. For first-time batch use, read the terms with `license --text`, then run `license --accept-terms` or add `--accept-terms` to the task. `--no-settings` selects independent configuration, ignores saved GUI settings, and disables settings writes; add `--accept-terms` in this mode.
 
 Tools resolve from PATH, then saved GUI paths. Override with `--ffmpeg PATH --ffprobe PATH`; `--python PATH` overrides bundled Python. `--lang system|en|zh` selects the output language.
 
@@ -27,15 +27,15 @@ Tools resolve from PATH, then saved GUI paths. Override with `--ffmpeg PATH --ff
 
 | Command | Purpose |
 | --- | --- |
-| `probe INPUT` | Video/audio details, component depth, color/Log evidence, streams, tags and first-frame side data |
-| `presets` | Seven tested encoding presets and their actual encoder settings |
+| `probe INPUT` | Video/audio format, bit depth, color/Log identification, streams, tags, and first-frame side data |
+| `presets` | Encoding presets and encoder settings |
 | `profiles` | Built-in Mi-Log, Pocket 3 D-Log M and Samsung Log profiles/LUTs |
 | `doctor` | Tool versions and encoder/filter lists; hardware modes depend on the GPU and driver |
 | `license [--text]` | MIT project license, component terms, full notice directory and manifest |
-| `plan INPUT...` | Resolve source/options and print FFmpeg argv, working directory and expected colors without encoding |
+| `plan INPUT...` | Preview conversion options, FFmpeg arguments, working directory, and output colors |
 | `convert INPUT...` | Convert one file, a directory or wildcard matches sequentially, then verify output |
 
-Every command supports `--help`. Probe/catalog/doctor/license results are JSON. Human conversion progress goes to stderr; results go to stdout.
+Every command supports `--help`. Probe/catalog/doctor/license results are JSON. Text progress goes to stderr; results go to stdout.
 
 `convert` and `plan` expose the GUI's encoding and color controls:
 
@@ -56,7 +56,7 @@ Every command supports `--help`. Probe/catalog/doctor/license results are JSON. 
 | `--duration SECONDS` | Encode a positive finite duration for a sample |
 | `--config FILE.json` | Load encoding options, overridden by explicit CLI fields |
 
-Auto mode retains SDR or HDR, and converts identified Log to HLG. Unidentified Log requires `--profile`; unknown transfer tags require `--input-kind`. Invalid combinations fail explicitly, including HDR+AVC, QSV+422 and SDR-to-HDR.
+Auto mode selects SDR → SDR, HLG / PQ → HDR, and Log → HLG. Use `--profile` to select a Log curve and `--input-kind` to set the source type. HDR output uses HEVC / AV1; 4:2:2 output uses software HEVC / AVC.
 
 ```powershell
 ./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
@@ -73,7 +73,7 @@ HDR/Log-to-SDR needs FFmpeg libplacebo and Vulkan. A JSON config accepts the enc
 {"preset":"archive-hevc","range":"auto","sampling":"422","audio":"copy","cpu_decode":true}
 ```
 
-Precedence: GUI-equivalent defaults → chosen preset → config fields → explicit CLI fields. CLI `--preset` selects the preset in preference to the config's preset; other config fields still apply. Arbitrary FFmpeg arguments are not accepted in this config. `range` describes dynamic range; file destinations use `--output`.
+Precedence: GUI-equivalent defaults → chosen preset → config fields → explicit CLI fields. CLI `--preset` selects the preset in preference to the config's preset; other config fields still apply. `range` describes dynamic range; file destinations use `--output`.
 
 ## Batch and destination policy
 
@@ -86,17 +86,17 @@ Precedence: GUI-equivalent defaults → chosen preset → config fields → expl
 
 Quote patterns; `**` requires `--recursive`. Directory scans filter common video extensions and preserve relative subdirectories. Wildcards use the matched files' common parent; explicit files use their filenames. Colliding destinations are rejected before conversion. Output directories are created as needed.
 
-Default names are `stem_SDR-or-HDR_codec_purpose.mp4-or-mkv`, beside the source. `--output` requires one input and cannot combine with `--output-dir`. Existing outputs fail by default: use `--skip-existing` or `--overwrite`. Replacement occurs only after a temporary output successfully encodes and verifies; source files cannot be destinations. Failures and normal cancellation clean temporary files.
+Default names are `stem_SDR-or-HDR_codec_purpose.mp4-or-mkv`, beside the source. Use `--output` for one file or `--output-dir` for a batch; these options are mutually exclusive. Existing outputs fail by default: use `--skip-existing` or `--overwrite`. A temporary output is encoded and verified before replacement. Source and destination paths must differ. Failures and cancellation clean up temporary files.
 
-The default stops on error. `--continue-on-error` processes other valid inputs but still returns a failure exit code if any fail. Jobs are sequential to avoid competing for the same hardware encoder.
+Jobs run sequentially and stop on error by default. `--continue-on-error` processes the remaining inputs, with a batch exit code reflecting any failures.
 
-Planned `argv` displays the requested final filename. Actual conversion substitutes a file in a random temporary directory, then moves/replaces it after verification. FFmpeg itself retains `-n`; `--overwrite` is implemented by the application's atomic replacement.
+Planned `argv` shows the final output path. Conversion writes to a temporary directory, verifies the result, and moves it to the destination. `--overwrite` uses atomic replacement.
 
-## Automation contract
+## Scripting and progress
 
 `convert --json` / `plan --json` produce JSON Lines on stdout, with `schema_version: 1`. Events: `start`, `log`, `status`, `progress`, `done`, `skipped`, `error`, `cancelled`, `summary`; planning emits `plan`. Job records include `job`, `total_jobs`, `input`, `output` and event `data`.
 
-Progress includes `fps`, `percent`, `position_seconds`, `duration_seconds`, `elapsed_seconds`, `eta_seconds`; unknown percent/ETA are null. Errors include a stable `code` and readable `message`. `--log FILE` appends the same events to a JSON Lines file; `--verbose` also prints FFmpeg logs in human mode.
+Progress includes `fps`, `percent`, `position_seconds`, `duration_seconds`, `elapsed_seconds`, `eta_seconds`; unknown percent/ETA are null. Errors include a stable `code` and readable `message`. `--log FILE` appends the same events to a JSON Lines file; `--verbose` prints FFmpeg logs in text mode.
 
 ```powershell
 ./FrameFlow.exe convert clip.mp4 --json --log job.jsonl | ForEach-Object { $_ | ConvertFrom-Json }
@@ -114,6 +114,6 @@ $LASTEXITCODE
 | 6 | Component terms not accepted |
 | 130 | Cooperative CLI cancellation |
 
-Use process exit codes or `$LASTEXITCODE`; parse JSON `code` fields instead of localized error text.
+Read the process exit code or `$LASTEXITCODE` for the result, and JSON `code` fields for error handling.
 
-Ctrl+C in a PowerShell 7 pipeline also interrupts the shell pipeline. The job stops and temporary output is cleaned, but the pipeline may not deliver the final `cancelled` event or update `$LASTEXITCODE` to 130. A process API that signals the CLI's console and waits for its graceful exit can read 130. Automation should distinguish host interruption from a normally returned CLI error code.
+Interactive Ctrl+C interrupts both the PowerShell pipeline and the conversion job and cleans up temporary output. To read cancellation events and the exit code, send a console cancellation signal through a process API and wait for the program to exit. Cooperative cancellation returns 130.
