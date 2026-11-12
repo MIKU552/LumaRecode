@@ -30,6 +30,17 @@ def is_rgb(media):
                 media.video.get('pix_fmt') == 'pal8')
 
 
+def default_sampling(media, purpose, codec):
+    if purpose == 'share' or codec == 'av1':
+        return '420'
+    sampling = source_sampling(media)
+    if is_rgb(media) or sampling in {'440', '411', '410'}:
+        return '444'
+    if media.pixel.get('flags', {}).get('alpha'):
+        return sampling if sampling in {'420', '422', '444'} else '444'
+    return 'source'
+
+
 def source_range(media, profile_range=None):
     value = media.video.get('color_range')
     if value not in UNSPECIFIED:

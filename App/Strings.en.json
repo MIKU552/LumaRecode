@@ -230,8 +230,6 @@
   "保留每条音轨的采样率、声道与整数精度。": "Preserve each track's sample rate, channels, and integer precision.",
   "FLAC 支持整数 PCM 和可确认的无损音轨。": "FLAC supports integer PCM and confirmed lossless tracks.",
   "此素材可转为 FLAC。": "These audio tracks can be converted to FLAC.",
-  "归档默认保持原采样与范围；分享默认 4:2:0、Limited。": "Archive keeps source sampling and range by default; Quick share uses 4:2:0 and Limited.",
-  "RGB 输入转换为 YCbCr，保持采样时使用 4:4:4。": "RGB input converts to YCbCr; keeping source sampling uses 4:4:4.",
   "原片未标明范围，按 {0} 处理。": "Source range is unspecified; interpreted as {0}.",
   "自动 → MKV。FLAC 音轨默认使用 MKV 封装。": "Auto → MKV. FLAC audio defaults to MKV.",
   "请选择自动、保持原采样、4:2:0、4:2:2 或 4:4:4。": "Choose Auto, Keep source sampling, 4:2:0, 4:2:2, or 4:4:4.",
@@ -247,5 +245,8 @@
   "当前 FFmpeg 的 {0} 不支持 {1}，请更换编码器或采样格式。": "This FFmpeg build's {0} encoder does not support {1}. Choose another encoder or sampling format.",
   "FLAC 输出的音轨、采样率、声道或位深与原片不符。": "FLAC output does not match the source track count, sample rate, channels, or precision.",
   "音轨 {0} 的声道布局无法原样写入 FLAC，请选择复制原音轨。": "Track {0}'s channel layout cannot be preserved in FLAC. Select Copy audio.",
-  "FLAC 音轨请选择 MKV 封装，以保留声道布局。": "Select MKV for FLAC audio to preserve channel layouts."
+  "FLAC 音轨请选择 MKV 封装，以保留声道布局。": "Select MKV for FLAC audio to preserve channel layouts.",
+  "Log 转换需要将输入解释指定为 Log。": "Log conversion requires Log input interpretation.",
+  "RGB 输入转换为 YCbCr。": "RGB input converts to YCbCr.",
+  "输出为不带透明通道的视频。": "Output video has no alpha channel."
 }

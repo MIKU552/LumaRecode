@@ -52,7 +52,7 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | `--transform` | `auto` / `none` / `log-hdr` / `log-sdr` / `hdr-sdr` |
 | `--profile` | `auto` / `milog` / `pocket3` / `samsung` |
 | `--input-kind` | `auto` / `sdr` / `hlg` / `pq` / `log`；用于人工纠正原片标签 |
-| `--sampling` | `auto` / `source` / `420` / `422` / `444`；默认 `auto`：归档保持原采样，分享使用 4:2:0；422 / 444 需要软件 HEVC / AVC |
+| `--sampling` | `auto` / `source` / `420` / `422` / `444`；默认 `auto`：软件 HEVC / AVC 归档保持原采样，RGB 使用 4:4:4；AV1 和分享使用 4:2:0；422 / 444 需要软件 HEVC / AVC |
 | `--color-range` | `auto` / `source` / `limited` / `full`；默认 `auto`：归档保持原范围，分享转换为 Limited |
 | `--container` | `auto` / `mp4` / `mkv`；分享默认 MP4、归档默认 MKV |
 | `--audio` | `auto` / `aac` / `opus` / `copy` / `flac`；自动策略与 GUI 一致 |

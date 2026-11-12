@@ -8,7 +8,7 @@ import threading
 
 from engine import Cancelled, Job, Options
 from media import Tools, inspect_media
-from output_policy import flac_eligibility, is_rgb, source_range, source_sampling
+from output_policy import default_sampling, flac_eligibility, is_rgb, source_range, source_sampling
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 sys.stdin.reconfigure(encoding='utf-8', errors='replace')
@@ -34,6 +34,7 @@ def public_media(media, tools):
             'component_depths': [entry['bit_depth'] for entry in pixel.get('components', [])],
             'pixel_float': bool(pixel.get('flags', {}).get('float')),
             'source_sampling': source_sampling(media), 'pixel_rgb': is_rgb(media),
+            'archive_sampling': default_sampling(media, 'archive', 'hevc'),
             'pixel_alpha': bool(pixel.get('flags', {}).get('alpha')),
             'source_color_range': source_range(media),
             'range_inferred': media.video.get('color_range') not in {'pc', 'tv'},

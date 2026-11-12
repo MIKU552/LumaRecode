@@ -48,7 +48,7 @@ Every command supports `--help`. Probe/catalog/doctor/license results are JSON. 
 | `--transform` | `auto` (default), `none`, `log-hdr`, `log-sdr`, `hdr-sdr` |
 | `--profile` | `auto`, `milog`, `pocket3`, `samsung` |
 | `--input-kind` | `auto`, `sdr`, `hlg`, `pq`, `log` |
-| `--sampling` | `auto` (default), `source`, `420`, `422`, `444`; Auto keeps source sampling for archive and selects 4:2:0 for share; 422 / 444 use software HEVC/AVC |
+| `--sampling` | `auto` (default), `source`, `420`, `422`, `444`; Auto keeps source sampling for software HEVC/AVC archive, selects 4:4:4 for RGB, and uses 4:2:0 for AV1/share; 422 / 444 use software HEVC/AVC |
 | `--color-range` | `auto` (default), `source`, `limited`, `full`; Auto keeps source range for archive and converts to Limited for share |
 | `--container` | `auto` (share MP4, archive MKV), `mp4`, `mkv` |
 | `--audio` | `auto`, `aac`, `opus`, `copy`, `flac`; defaults match the GUI |

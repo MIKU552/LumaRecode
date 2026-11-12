@@ -87,6 +87,7 @@ def main():
         assert plan[0]['data']['pixel_format']=='yuv444p10le'
         assert plan[0]['data']['expected_colors']['color_range']=='pc'
         events('plan', source, '--audio', 'flac', status=2)
+        events('plan', source, '--input-kind', 'sdr', '--transform', 'log-sdr', '--profile', 'milog', status=2)
         pcm=folder/'pcm.mkv'
         subprocess.run([shutil.which('ffmpeg'), '-v','error','-i',str(source),'-f','lavfi','-i',
             'anoisesrc=r=48000:d=0.5:seed=7','-map','0:v','-map','1:a','-c:v','copy','-c:a','pcm_s24le',

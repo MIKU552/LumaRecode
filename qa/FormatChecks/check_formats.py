@@ -67,6 +67,8 @@ with tempfile.TemporaryDirectory(prefix='frameflow-formats-') as temporary:
         return path, result
 
     source = inspect_media(tools, base)
+    reject(source, Options(output='sdr', source_kind='sdr', transform='log-sdr', profile='milog'))
+    reject(source, Options(output='sdr', source_kind='hlg', transform='log-sdr', profile='milog'))
     for transfer, kind in [('bt709', 'sdr'), ('arib-std-b67', 'hlg'), ('smpte2084', 'pq')]:
         fixture = folder / (kind + '.mkv')
         run(['-i', base, '-c:v', 'copy', '-color_trc', transfer,
@@ -107,21 +109,24 @@ with tempfile.TemporaryDirectory(prefix='frameflow-formats-') as temporary:
              '-colorspace', matrix, '-color_trc', 'bt709', '-color_primaries', 'bt709', fixture])
         media = inspect_media(tools, fixture)
         _, result = encode(media, Options(purpose='archive'), 'keep-'+pixel)
+        assert public_media(media, tools)['archive_sampling'] == ('444' if pixel.startswith('gbr') else 'source')
         desired = 'yuv444p10le' if pixel.startswith('gbr') else pixel
         assert result.video['pix_fmt'] == desired
         _, result = encode(media, Options(purpose='archive', codec='avc'), 'avc-'+pixel)
         assert result.video['pix_fmt'].replace('yuvj', 'yuv') == desired.replace('10le', '') or (
             pixel == 'gray10le' and result.video['_monochrome'])
         if pixel != 'yuv420p10le':
-            reject(media, Options(purpose='archive', codec='av1'))
-        _, result = encode(media, Options(purpose='archive', codec='av1', sampling='420', variant='fast'), 'av1-'+pixel)
+            reject(media, Options(purpose='archive', codec='av1', sampling='source'))
+        _, result = encode(media, Options(purpose='archive', codec='av1', variant='fast'), 'av1-'+pixel)
         assert result.video['pix_fmt'] == 'yuv420p10le'
 
     for pixel in ('yuv440p', 'yuva444p10le'):
         fixture = folder / (pixel + '.mkv')
         run(['-i', base, '-vf', 'format='+pixel, '-c:v', 'ffv1', '-color_trc', 'bt709', '-color_primaries', 'bt709', fixture])
         media = inspect_media(tools, fixture)
-        reject(media, Options(purpose='archive'))
+        reject(media, Options(purpose='archive', sampling='source'))
+        _, converted = encode(media, Options(purpose='archive'), 'default-'+pixel)
+        assert converted.video['pix_fmt'] == 'yuv444p10le'
         encode(media, Options(purpose='archive', sampling='420'), 'explicit-'+pixel)
 
     for profile in ('milog', 'pocket3', 'samsung'):

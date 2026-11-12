@@ -9,7 +9,7 @@ import threading
 
 from media import HDR_KINDS, NO_WINDOW, UNSPECIFIED, inspect_media
 from metadata_helpers import compare_static_metadata, hdr_metadata, nominal_fps, side_data
-from output_policy import audio_streams, flac_tracks, is_rgb, source_range, source_sampling
+from output_policy import audio_streams, default_sampling, flac_tracks, is_rgb, source_range, source_sampling
 
 ASSETS = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'assets'
 CONFIG = json.loads((ASSETS / 'recommended-presets.json').read_text(encoding='utf-8'))
@@ -60,7 +60,7 @@ def resolve_format(options, media):
         raise ValueError('请选择自动、保持原采样、4:2:0、4:2:2 或 4:4:4。')
     sampling = options.sampling
     if sampling == 'auto':
-        sampling = 'source' if options.purpose == 'archive' else '420'
+        sampling = default_sampling(media, options.purpose, options.codec)
     if sampling == 'source':
         if media.pixel.get('flags', {}).get('alpha'):
             raise ValueError('素材含透明通道。请选择具体采样格式，输出为不带透明通道的视频。')
@@ -108,8 +108,8 @@ def validate(options, media):
             raise ValueError('请选择具体的 Log 曲线。')
         if transform != ('log-hdr' if options.output == 'hdr' else 'log-sdr'):
             raise ValueError('Log 转换目标需要与 SDR/HDR 输出一致。')
-        if kind in HDR_KINDS:
-            raise ValueError('输入已标为 HDR。请先核对输入类型，再选择 Log LUT。')
+        if kind != 'log':
+            raise ValueError('Log 转换需要将输入解释指定为 Log。')
         if not re.search(r'(10|12|16)', media.video.get('pix_fmt', '')):
             raise ValueError('这些 Log 转换需要对应相机的高位深原片。')
         return 'log'

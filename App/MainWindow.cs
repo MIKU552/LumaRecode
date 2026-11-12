@@ -209,10 +209,11 @@ public sealed class MainWindow : Window
     private void ApplyPurposeDefaults()
     {
         var archive = Value(Purpose) == "archive";
-        Select(Sampling, archive ? "source" : "420");
+        Select(Sampling, DefaultSampling());
         Select(ColorRange, archive ? "source" : "limited");
         audioUsesDefault = true; ApplyDefaultAudio();
     }
+    private string DefaultSampling() => Value(Purpose) == "archive" && Value(Codec) != "av1" ? MediaText("archive_sampling", "source") : "420";
     private void WireEvents()
     {
         Control<Button>("ChooseInput").Click += async (_, _) => await ChooseInputAsync();
@@ -230,6 +231,11 @@ public sealed class MainWindow : Window
         Control<Button>("OpenFolder").Click += (_, _) => { if (File.Exists(completedOutput)) Process.Start(new ProcessStartInfo("explorer.exe", Path.GetDirectoryName(completedOutput)!) { UseShellExecute = true }); };
         Input.KeyDown += async (_, e) => { if (e.Key == Windows.System.VirtualKey.Enter) await InspectAsync(); };
         Input.LostFocus += async (_, _) => { if (File.Exists(Input.Text.Trim('"', ' '))) await InspectAsync(); };
+        Input.TextChanged += (_, _) =>
+        {
+            if (activeJob is null && !probing && media is not null && !Input.Text.Trim('"', ' ').Equals(MediaText("path"), StringComparison.OrdinalIgnoreCase))
+                ClearMedia();
+        };
         foreach (var name in new[] { "Variant", "Container", "Sampling", "ColorRange", "Profile" })
             Control<ComboBox>(name).SelectionChanged += (_, _) => Refresh();
         Purpose.SelectionChanged += (_, _) =>
@@ -240,22 +246,30 @@ public sealed class MainWindow : Window
             finally { updating = false; }
             Refresh();
         };
-        Codec.SelectionChanged += (_, _) =>
+        Codec.SelectionChanged += (_, e) =>
         {
             if (updating) return;
             updating = true;
-            try { if (audioUsesDefault) ApplyDefaultAudio(); }
+            try
+            {
+                if (audioUsesDefault) ApplyDefaultAudio();
+                if (Value(Codec) == "av1" || Value(Purpose) == "share" || e.RemovedItems.OfType<ComboBoxItem>().Any(item => (string)item.Tag == "av1"))
+                    Select(Sampling, DefaultSampling());
+            }
             finally { updating = false; }
             Refresh();
         };
         Audio.SelectionChanged += (_, _) => { if (!updating) { audioUsesDefault = false; Refresh(); } };
         Range.SelectionChanged += (_, _) => Refresh();
-        InputKind.SelectionChanged += (_, _) => { if (!updating && Kind == "sdr") Range.SelectedIndex = 0; Refresh(); };
-        Transform.SelectionChanged += (_, _) =>
+        InputKind.SelectionChanged += (_, _) =>
         {
-            if (!updating && Value(Transform).StartsWith("log-") && Kind == "sdr") Select(InputKind, "log");
+            if (updating) return;
+            updating = true;
+            try { Range.SelectedIndex = Kind is "hlg" or "pq" or "log" ? 1 : 0; }
+            finally { updating = false; }
             Refresh();
         };
+        Transform.SelectionChanged += (_, _) => Refresh();
         var card = Control<Border>("SourceCard");
         card.DragOver += (_, e) => { if (activeJob is null && e.DataView.Contains(StandardDataFormats.StorageItems)) e.AcceptedOperation = DataPackageOperation.Copy; };
         card.Drop += async (_, e) =>
@@ -279,7 +293,7 @@ public sealed class MainWindow : Window
         grid.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         grid.ColumnSpacing = narrow ? 0 : 24;
         Grid.SetColumnSpan(Control<Border>("SourceCard"), narrow ? 1 : 2);
-        var color = Control<StackPanel>("ColorSettings");
+        var color = Control<Border>("ColorSettings");
         Grid.SetColumn(color, narrow ? 0 : 1);
         Grid.SetRow(color, narrow ? 2 : 1);
         var format = Control<Border>("FormatCard");
@@ -364,13 +378,13 @@ public sealed class MainWindow : Window
         try
         {
             if (Kind == "sdr" && Hdr) Range.SelectedIndex = 0;
-            Control<RadioButton>("HdrChoice").IsEnabled = Kind != "sdr";
+            Control<RadioButton>("HdrChoice").IsEnabled = Kind is "hlg" or "pq" or "log";
             if (Hdr && Value(Codec) == "avc") Select(Codec, "hevc");
             foreach (var item in Codec.Items.OfType<ComboBoxItem>()) item.IsEnabled = !Hdr || (string)item.Tag != "avc";
             var fullSampling = Value(Purpose) == "archive" && Value(Codec) != "av1";
             foreach (var item in Sampling.Items.OfType<ComboBoxItem>())
-                item.IsEnabled = (string)item.Tag is not ("422" or "444") || fullSampling;
-            if (!fullSampling && Value(Sampling) is "422" or "444") Select(Sampling, Value(Purpose) == "archive" ? "source" : "420");
+                item.IsEnabled = (string)item.Tag == "420" || fullSampling && ((string)item.Tag != "source" || DefaultSampling() == "source");
+            if (Sampling.SelectedItem is ComboBoxItem selectedSampling && !selectedSampling.IsEnabled) Select(Sampling, DefaultSampling());
             var flacAllowed = MediaFlag("flac_eligible");
             Audio.Items.OfType<ComboBoxItem>().Single(item => (string)item.Tag == "flac").IsEnabled = flacAllowed;
             ((ComboBoxItem)Container.Items[1]).IsEnabled = Value(Audio) != "flac";
@@ -384,7 +398,7 @@ public sealed class MainWindow : Window
             string[] allowed = Kind switch {
                 "hlg" or "pq" => Hdr ? ["none"] : ["hdr-sdr"],
                 "log" => Hdr ? ["log-hdr"] : ["log-sdr"],
-                _ => Hdr ? ["log-hdr"] : ["none", "log-sdr"] };
+                _ => ["none"] };
             foreach (var item in Transform.Items.OfType<ComboBoxItem>()) item.IsEnabled = allowed.Contains((string)item.Tag);
             if (!allowed.Contains(Value(Transform))) Select(Transform, allowed[0]);
             Profile.IsEnabled = Value(Transform).StartsWith("log-");
@@ -394,9 +408,12 @@ public sealed class MainWindow : Window
             var dataRange = SelectedColorRange() == "full" ? "Full" : "Limited";
             var curve = Kind == "pq" && !Profile.IsEnabled ? "PQ" : "HLG";
             Control<TextBlock>("TargetNote").Text = (Hdr ? L.T($"BT.2020 {curve} · {Depth} 位 · {sampling}") : L.T($"Rec.709 · {Depth} 位 · {sampling}")) + " · " + dataRange;
-            Control<TextBlock>("FormatNote").Text = L.T("归档默认保持原采样与范围；分享默认 4:2:0、Limited。")
-                + (MediaFlag("pixel_rgb") ? "\n" + L.T("RGB 输入转换为 YCbCr，保持采样时使用 4:4:4。") : "")
-                + (MediaFlag("range_inferred") ? "\n" + L.T($"原片未标明范围，按 {(SourceColorRange() == "full" ? "Full" : "Limited")} 处理。") : "");
+            var formatNotes = new List<string>();
+            if (MediaFlag("pixel_rgb")) formatNotes.Add(L.T("RGB 输入转换为 YCbCr。"));
+            if (MediaFlag("pixel_alpha")) formatNotes.Add(L.T("输出为不带透明通道的视频。"));
+            if (MediaFlag("range_inferred")) formatNotes.Add(L.T($"原片未标明范围，按 {(SourceColorRange() == "full" ? "Full" : "Limited")} 处理。"));
+            Control<TextBlock>("FormatNote").Text = string.Join("\n", formatNotes);
+            Control<TextBlock>("FormatNote").Visibility = formatNotes.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             var codecName = Value(Codec) switch { "av1" => "AV1", "avc" => "H.264", _ => "HEVC" };
             Control<TextBlock>("PresetName").Text = $"{(Hdr ? "HDR" : "SDR")} · {codecName} · {(Value(Purpose) == "share" ? L.T("快速分享") : L.T("软件归档"))}";
             var quality = DescribePreset();
@@ -433,6 +450,9 @@ public sealed class MainWindow : Window
             else if (media is not null && previousSuffix != Suffix && new[] { ".mp4", ".mkv" }.Contains(Path.GetExtension(Output.Text).ToLowerInvariant()))
                 Output.Text = Path.ChangeExtension(Output.Text, Suffix);
             previousSuffix = Suffix;
+            UpdateEditingEnabled(media is not null && !probing && activeJob is null);
+            Input.IsEnabled = activeJob is null && !probing;
+            Control<Button>("ChooseInput").IsEnabled = Input.IsEnabled;
         }
         finally { updating = false; }
     }
@@ -443,6 +463,20 @@ public sealed class MainWindow : Window
         foreach (var type in new[] { ".mp4", ".mov", ".mkv", ".m4v", ".webm", ".avi", ".mts" }) picker.FileTypeFilter.Add(type);
         var file = await picker.PickSingleFileAsync();
         if (file is not null) { Input.Text = file.Path; await InspectAsync(); }
+    }
+    private void ClearMedia()
+    {
+        media = null;
+        Control<TextBlock>("SourceSummary").Text = L.T("尚未选择素材");
+        Control<TextBlock>("SourceEvidence").Text = L.T("识别相机 Log、HDR 与常规 SDR。");
+        Control<TextBlock>("SourceBadge").Text = L.T("等待添加");
+        foreach (var name in new[] { "SourceVideo", "SourceColor", "SourceAudio" }) Control<TextBlock>(name).Visibility = Visibility.Collapsed;
+        if (Output.Text == automaticOutput) Output.Text = "";
+        automaticOutput = completedOutput = "";
+        completed = false; clock.Reset(); encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
+        Control<ProgressBar>("Progress").Value = 0;
+        Control<Button>("OpenFolder").IsEnabled = false;
+        UpdateTransferStats(); SetStatus(L.T("添加素材后开始")); Refresh();
     }
     private async Task ChooseOutputAsync()
     {
@@ -623,13 +657,21 @@ public sealed class MainWindow : Window
     }
     private void SetBusy(bool busy)
     {
-        foreach (var name in new[] { "InputPath", "ChooseInput", "InputKind", "OutputRange", "Purpose", "Codec", "Variant", "Container", "Transform", "Profile", "Sampling", "ColorRange", "Audio", "CpuDecode" })
+        foreach (var name in new[] { "InputPath", "ChooseInput" })
             Control<Microsoft.UI.Xaml.Controls.Control>(name).IsEnabled = !busy;
         Control<Button>("ToolsButton").IsEnabled = !busy;
-        Output.IsEnabled = !busy; Control<Button>("ChooseOutput").IsEnabled = !busy;
-        Control<Button>("Start").IsEnabled = !busy;
+        UpdateEditingEnabled(!busy && media is not null && !probing);
+        Control<Button>("Start").IsEnabled = !busy && media is not null && !probing;
         Control<Button>("Cancel").IsEnabled = busy;
         Control<Button>("OpenFolder").IsEnabled = !busy && File.Exists(completedOutput);
+    }
+    private void UpdateEditingEnabled(bool enabled)
+    {
+        foreach (var name in new[] { "InputKind", "OutputRange", "Purpose", "Codec", "Variant", "Container", "Transform", "Sampling", "ColorRange", "Audio", "CpuDecode" })
+            Control<Microsoft.UI.Xaml.Controls.Control>(name).IsEnabled = enabled;
+        Profile.IsEnabled = enabled && Value(Transform).StartsWith("log-");
+        Output.IsEnabled = enabled;
+        Control<Button>("ChooseOutput").IsEnabled = enabled;
     }
     private async Task ConfigureToolsAsync()
     {
