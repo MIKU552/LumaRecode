@@ -12,7 +12,7 @@
     <AssemblyName>LumaRecode</AssemblyName>
     <Product>映码 · LumaRecode</Product>
     <Title>映码 · LumaRecode</Title>
-    <Version>4.0.0</Version>
+    <Version>4.0.1</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
@@ -20,7 +20,7 @@
   <ItemGroup>
     <Compile Include="../App/StartupMode.cs" Link="StartupMode.cs" />
     <Compile Include="../App/ConsoleConnection.cs" Link="ConsoleConnection.cs" />
-    <Compile Include="../App/ConversionRequest.cs" Link="ConversionRequest.cs" />
+    <Compile Include="../App/CliError.cs" Link="CliError.cs" />
     <Content Include="../dist/NativeAot/**/*" Exclude="../dist/NativeAot/**/*.pdb"
              Link="Application/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

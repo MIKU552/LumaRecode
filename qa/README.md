@@ -7,11 +7,13 @@
 ```powershell
 dotnet run --project qa/LanguageChecks/LanguageChecks.csproj -c Release
 dotnet run --project qa/SerializationChecks/SerializationChecks.csproj -c Release
-dotnet build qa/BackendChecks/BackendChecks.csproj -c Release
+dotnet run --project qa/BackendChecks/BackendChecks.csproj -c Release -- --check
 python qa/LanguageChecks/check_cli_languages.py
 python tools/Update-ViewText.py --check
 python tools/generate_hlg_luts.py --check
 ```
+
+核心边界检查还覆盖数值解析、选项值缺失、工具查找、日志错误与通配符匹配。
 
 这些检查覆盖四种语言的选择、翻译资源与格式占位符、XAML 映射、设置格式、命令行 JSON 格式和生成的 LUT。可给 `check_cli_languages.py` 传入 `--exe dist/SelfContained/LumaRecode.exe`，检查打包后的 CLI 语言资源。
 

@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import xml.etree.ElementTree as ET
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -61,7 +62,8 @@ def main():
         assert not result.stderr, result.stderr
         return [json.loads(line) for line in result.stdout.splitlines()]
     assert 'LumaRecode.exe' in call('--help', raw=True).stdout
-    assert '4.0.0' in call('--version', raw=True).stdout
+    version = ET.parse(Path(__file__).resolve().parents[2] / 'App/VideoConverter.WinUI.csproj').findtext('./PropertyGroup/Version')
+    assert version in call('--version', raw=True).stdout
     assert '同一个 EXE' in call('--lang', 'zh', '--help', raw=True).stdout
     assert len(call('--json', 'presets')['presets']) == 7
     assert {p['id'] for p in call('profiles', '--json')['profiles']} == {'milog','pocket3','samsung'}
@@ -70,6 +72,8 @@ def main():
     assert call('unknown', '--json', status=2)['data']['code'] == 'invalid_arguments'
     assert call('doctor', '--ffmpeg', 'missing-ffmpeg.exe', '--no-settings', '--accept-terms', '--json', status=3)['data']['code'] == 'tool_unavailable'
     assert call('doctor', '--no-settings', '--accept-terms', '--json')['encoders']['hevc_qsv']
+    assert call('doctor', '--ffmpeg', 'ffmpeg.exe', '--no-settings', '--accept-terms', '--json')['encoders']['hevc_qsv']
+    assert call('doctor', '--ffmpeg', '--json', status=2)['data']['code'] == 'invalid_arguments'
     with tempfile.TemporaryDirectory(prefix='LumaRecode-CLI-') as temporary:
         folder = Path(temporary)
         source = folder/'中文 & source.mp4'
@@ -78,6 +82,13 @@ def main():
             'sine=frequency=440:sample_rate=48000:duration=3','-c:v','libx265','-preset','ultrafast',
             '-pix_fmt','yuv420p10le','-x265-params','colorprim=bt709:transfer=bt709:colormatrix=bt709:log-level=error',
             '-c:a','aac','-shortest',str(source)],check=True)
+        bracketed = folder/'clip[1].mp4'
+        shutil.copyfile(source, bracketed)
+        assert call('probe', bracketed, '--no-settings', '--accept-terms', '--json')['kind'] == 'sdr'
+        planned = events('plan', bracketed)
+        assert planned[0]['data']['input']['path'] == str(bracketed)
+        assert events('plan', source, '--config', folder, status=2)[0]['data']['code'] == 'invalid_config'
+        assert events('convert', source, '--log', folder, status=5)[0]['data']['code'] == 'log_unavailable'
         source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
         media = call('probe', source, '--no-settings', '--accept-terms','--json')
         assert media['kind']=='sdr' and media['component_depths']==[10]*3 and media['audio']
@@ -122,7 +133,8 @@ def main():
         plan=events('plan',source,'--config',config)
         assert plan[0]['data']['pixel_format']=='yuv420p'
         output=folder/'share output.mp4';log=folder/'events.jsonl'
-        result=events('convert',source,'-o',output,'--log',log)
+        result=events('convert',source,'-o',output,'--log',log,'--duration','30')
+        assert all(e['data']['duration_seconds'] <= 3.1 for e in result if e['event'] == 'progress')
         assert output.is_file() and any(e['event']=='progress' and 'fps' in e['data'] for e in result)
         assert result[-1]['data']==dict(completed=1,skipped=0,failed=0)
         assert all(json.loads(line)['schema_version']==1 for line in log.read_text(encoding='utf-8').splitlines())

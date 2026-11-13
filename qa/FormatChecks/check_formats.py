@@ -30,6 +30,7 @@ def reject(media, options):
 
 
 def bounds(path):
+    """Read decoded edge luma samples, verifying range conversion beyond tags."""
     media = inspect_media(tools, path)
     depth = media.pixel['components'][0]['bit_depth']
     raw = run(['-i', path, '-vf', 'extractplanes=y', '-frames:v', '1', '-f', 'rawvideo', '-'])
@@ -171,6 +172,8 @@ with tempfile.TemporaryDirectory(prefix='lumarecode-formats-') as temporary:
     assert flac_eligibility(media)[0], flac_eligibility(media)[1]
     assert public_media(media, tools)['flac_eligible']
     path, result = encode(media, Options(purpose='archive', audio='flac'), 'flac-multi')
+    # Decode both sides to the same signed 32-bit PCM layout before hashing;
+    # matching container/codec labels alone would not establish losslessness.
     def pcm_hash(file, index=0):
         return hashlib.sha256(run(['-i', file, '-map', f'0:a:{index}', '-c:a', 'pcm_s32le', '-f', 's32le', '-'])).digest()
     for index in range(3):

@@ -2,6 +2,7 @@ using System.Text.Json;
 
 namespace VideoConverter;
 
+/// <summary>Persistent appearance, tool paths and accepted component-terms revision.</summary>
 public sealed class UserSettings
 {
     public string Theme { get; set; } = "system";
@@ -16,6 +17,8 @@ public sealed class UserSettings
     public static UserSettings Load()
         => LoadFrom(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
 
+    /// <summary>Loads current preferences, or migrates the first legacy location without editing its original file.</summary>
+    /// <remarks>A malformed current file uses defaults; it does not silently revive stale legacy settings.</remarks>
     internal static UserSettings LoadFrom(string localData)
     {
         try
@@ -23,11 +26,15 @@ public sealed class UserSettings
             var preferred = Path.Combine(localData, "LumaRecode", "settings.json");
             var source = new[] { preferred, Path.Combine(localData, "FrameFlow", "settings.json"),
                 Path.Combine(localData, "VideoConverterWinUI", "settings.json") }.FirstOrDefault(File.Exists);
-            if (source is null) return new();
+            if (source is null)
+                return new();
             var settings = JsonSerializer.Deserialize(File.ReadAllText(source), AppJsonContext.Default.UserSettings) ?? new();
             if (source != preferred)
             {
-                try { settings.SaveTo(localData); }
+                try
+                {
+                    settings.SaveTo(localData);
+                }
                 catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
             }
             return settings;
@@ -42,6 +49,8 @@ public sealed class UserSettings
         var folder = Path.Combine(localData, "LumaRecode");
         var fileName = Path.Combine(folder, "settings.json");
         Directory.CreateDirectory(folder);
+        // Write then replace within one directory so interruption cannot leave
+        // a partially serialized settings.json. The GUID avoids concurrent temp collisions.
         var temporary = fileName + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {

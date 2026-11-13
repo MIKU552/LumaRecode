@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace VideoConverter;
 
+/// <summary>Translates source keys and already-localized status text through a shared template catalog.</summary>
 public sealed class TranslationCatalog
 {
     private readonly Dictionary<string, Dictionary<string, string>> languages;
@@ -27,19 +28,35 @@ public sealed class TranslationCatalog
     {
         // Escape literal segments individually; braces have different escaping rules in Regex.Escape.
         var pieces = Regex.Split(template, @"(\{\d+\})");
-        var pattern = string.Concat(pieces.Select(piece => Regex.IsMatch(piece, @"\A\{\d+\}\z")
-            ? "(?<p" + piece[1..^1] + ">.+?)" : Regex.Escape(piece)));
+        var seen = new HashSet<string>();
+        var pattern = string.Concat(pieces.Select(piece =>
+        {
+            if (!Regex.IsMatch(piece, @"\A\{\d+\}\z"))
+                return Regex.Escape(piece);
+            var name = "p" + piece[1..^1];
+            // Empty error arguments are valid. Repeated placeholders must
+            // capture the same value rather than silently taking the last one.
+            return seen.Add(name) ? "(?<" + name + ">.*?)" : @"\k<" + name + ">";
+        }));
         return new Regex("\\A" + pattern + "\\z", RegexOptions.Singleline | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(50));
     }
 
     public string Translate(string? text, string code)
     {
-        if (string.IsNullOrEmpty(text)) return text ?? "";
-        if (reverse.TryGetValue(text, out var key)) return Target(key, code);
+        if (string.IsNullOrEmpty(text))
+            return text ?? "";
+        if (reverse.TryGetValue(text, out var key))
+            return Target(key, code);
         foreach (var entry in patterns)
         {
-            var match = entry.Expression.Match(text);
-            if (!match.Success) continue;
+            System.Text.RegularExpressions.Match match;
+            try
+            {
+                match = entry.Expression.Match(text);
+            }
+            catch (RegexMatchTimeoutException) { continue; }
+            if (!match.Success)
+                continue;
             var args = Enumerable.Range(0, entry.Count).Select(i => (object)Atom(match.Groups["p" + i].Value, code)).ToArray();
             return string.Format(CultureInfo.CurrentCulture, Target(entry.Key, code), args);
         }

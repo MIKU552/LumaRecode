@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace VideoConverter;
 
+/// <summary>Shared source-key translation and current GUI culture configuration.</summary>
 public static class L
 {
     private static readonly TranslationCatalog catalog = new(Load());
@@ -20,13 +21,19 @@ public static class L
         var culture = CultureInfo.GetCultureInfo(LanguagePolicy.Culture(Code));
         CultureInfo.CurrentUICulture = CultureInfo.CurrentCulture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.DefaultThreadCurrentCulture = culture;
-        try { Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = LanguagePolicy.XamlLanguage(Code); }
+        try
+        {
+            Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = LanguagePolicy.XamlLanguage(Code);
+        }
         catch (System.Runtime.InteropServices.COMException) { }
         UiTypography.Configure();
     }
     private static string ReadSystemLanguage()
     {
-        try { return Windows.System.UserProfile.GlobalizationPreferences.Languages.FirstOrDefault() ?? CultureInfo.InstalledUICulture.Name; }
+        try
+        {
+            return Windows.System.UserProfile.GlobalizationPreferences.Languages.FirstOrDefault() ?? CultureInfo.InstalledUICulture.Name;
+        }
         catch { return CultureInfo.InstalledUICulture.Name; }
     }
     private static Dictionary<string, Dictionary<string, string>> Load()
@@ -44,6 +51,7 @@ public static class L
     public static string Translate(string? text, string code) => catalog.Translate(text, code);
 }
 
+/// <summary>Applies the build-generated list of localizable XAML properties without runtime reflection.</summary>
 public sealed class ViewLocalization
 {
     public void Apply(FrameworkElement root)
@@ -51,23 +59,40 @@ public sealed class ViewLocalization
         root.Language = LanguagePolicy.XamlLanguage(L.Code);
         foreach (var (name, property, original) in ViewText.Entries)
         {
-            if (root.FindName(name) is not DependencyObject control) continue;
+            if (root.FindName(name) is not DependencyObject control)
+                continue;
             var translated = L.T(original);
-            if (property == "AutomationProperties.Name") AutomationProperties.SetName(control, translated);
-            else if (property == "ToolTipService.ToolTip") ToolTipService.SetToolTip(control, translated);
+            if (property == "AutomationProperties.Name")
+                AutomationProperties.SetName(control, translated);
+            else if (property == "ToolTipService.ToolTip")
+                ToolTipService.SetToolTip(control, translated);
             else
             {
                 switch (property, control)
                 {
-                    case ("Text", TextBlock text): text.Text = translated; break;
-                    case ("Content", ContentControl content): content.Content = translated; break;
-                    case ("Header", ComboBox combo): combo.Header = translated; break;
-                    case ("Header", RadioButtons choices): choices.Header = translated; break;
-                    case ("Header", Expander expander): expander.Header = translated; break;
-                    case ("PlaceholderText", TextBox input): input.PlaceholderText = translated; break;
-                    default: throw new InvalidOperationException($"Unsupported localization target: {name}.{property}");
+                    case ("Text", TextBlock text):
+                        text.Text = translated;
+                        break;
+                    case ("Content", ContentControl content):
+                        content.Content = translated;
+                        break;
+                    case ("Header", ComboBox combo):
+                        combo.Header = translated;
+                        break;
+                    case ("Header", RadioButtons choices):
+                        choices.Header = translated;
+                        break;
+                    case ("Header", Expander expander):
+                        expander.Header = translated;
+                        break;
+                    case ("PlaceholderText", TextBox input):
+                        input.PlaceholderText = translated;
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unsupported localization target: {name}.{property}");
                 }
-                if (property == "Header" && control is Expander) AutomationProperties.SetName(control, translated);
+                if (property == "Header" && control is Expander)
+                    AutomationProperties.SetName(control, translated);
             }
         }
     }

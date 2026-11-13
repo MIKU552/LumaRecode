@@ -2,6 +2,7 @@
 /*
 !/.gitignore
 !/.gitattributes
+!/.editorconfig
 !/README.md
 !/README.en.md
 !/README.ja.md

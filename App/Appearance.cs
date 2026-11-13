@@ -7,6 +7,7 @@ using Windows.UI.ViewManagement;
 
 namespace VideoConverter;
 
+/// <summary>Applies theme, accessible accent colors and native backdrop styling to the window and flyout.</summary>
 public sealed class Appearance
 {
     private readonly FrameworkElement root;
@@ -30,7 +31,9 @@ public sealed class Appearance
 
     public Appearance(FrameworkElement root, Window window, UserSettings settings)
     {
-        this.root = root; this.window = window; this.settings = settings;
+        this.root = root;
+        this.window = window;
+        this.settings = settings;
         window.Closed += (_, _) => disposed = true;
         backdrop = new HdrBackdropCompatibility((Grid)root, window, settings);
         ((Button)root.FindName("PaletteButton")).Flyout = CreatePaletteFlyout();
@@ -38,11 +41,15 @@ public sealed class Appearance
         system.ColorValuesChanged += (_, _) => root.DispatcherQueue.TryEnqueue(() => { ApplyAccent(false); UpdateCaption(); });
         // Some unpackaged desktop environments do not expose this WinRT event.
         // WinUI still follows high contrast; re-read it when the window is activated.
-        try { accessibility.HighContrastChanged += (_, _) => root.DispatcherQueue.TryEnqueue(() => ApplyAccent(true)); }
+        try
+        {
+            accessibility.HighContrastChanged += (_, _) => root.DispatcherQueue.TryEnqueue(() => ApplyAccent(true));
+        }
         catch (System.Runtime.InteropServices.COMException) { }
         window.Activated += (_, _) =>
         {
-            if (!disposed && highContrast != accessibility.HighContrast) ApplyAccent(true);
+            if (!disposed && highContrast != accessibility.HighContrast)
+                ApplyAccent(true);
             UpdateCaption();
         };
         ApplyTheme();
@@ -52,11 +59,17 @@ public sealed class Appearance
     {
         applying = true;
         highContrast = accessibility.HighContrast;
-        root.RequestedTheme = settings.Theme switch { "dark" => ElementTheme.Dark, "light" => ElementTheme.Light, _ => ElementTheme.Default };
+        root.RequestedTheme = settings.Theme switch
+        {
+            "dark" => ElementTheme.Dark,
+            "light" => ElementTheme.Light,
+            _ => ElementTheme.Default
+        };
         if (themeChoice is not null)
             themeChoice.SelectedItem = themeChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => (string)item.Tag == settings.Theme) ?? themeChoice.Items[0];
         applying = false;
-        ApplyAccent(true); UpdateCaption();
+        ApplyAccent(true);
+        UpdateCaption();
     }
 
     public void Relocalize()
@@ -64,18 +77,28 @@ public sealed class Appearance
         swatches.Clear();
         paletteContent = null;
         themeChoice = materialChoice = null;
-        accentPreview = null; accentLabel = null; systemSwitch = null; picker = null;
+        accentPreview = null;
+        accentLabel = null;
+        systemSwitch = null;
+        picker = null;
         ((Button)root.FindName("PaletteButton")).Flyout = CreatePaletteFlyout();
         ApplyAccent(false);
     }
 
+    // Remove previous lightweight overrides before applying the new palette,
+    // including when returning to system accent or high contrast.
     private void ApplyAccent(bool refresh)
     {
-        if (applying || disposed) return;
+        if (applying || disposed)
+            return;
         applying = true;
         highContrast = accessibility.HighContrast;
         var hadOverrides = overridden.Count > 0;
-        foreach (var key in overridden) { Application.Current.Resources.Remove(key); root.Resources.Remove(key); }
+        foreach (var key in overridden)
+        {
+            Application.Current.Resources.Remove(key);
+            root.Resources.Remove(key);
+        }
         overridden.Clear();
         var color = settings.SystemAccent ? system.GetColorValue(UIColorType.Accent) : Parse(settings.CustomColor);
         var dark = root.ActualTheme == ElementTheme.Dark;
@@ -123,9 +146,12 @@ public sealed class Appearance
             if (paletteContent is not null)
                 paletteContent.RequestedTheme = dark ? ElementTheme.Light : ElementTheme.Dark;
         }
-        if (paletteContent is not null) paletteContent.RequestedTheme = root.ActualTheme;
-        if (accentPreview is not null) accentPreview.Background = new SolidColorBrush(color);
-        if (accentLabel is not null) accentLabel.Text = (settings.SystemAccent ? L.T("Windows 强调色 · ") : L.T("自定义 · ")) + Hex(color);
+        if (paletteContent is not null)
+            paletteContent.RequestedTheme = root.ActualTheme;
+        if (accentPreview is not null)
+            accentPreview.Background = new SolidColorBrush(color);
+        if (accentLabel is not null)
+            accentLabel.Text = (settings.SystemAccent ? L.T("Windows 强调色 · ") : L.T("自定义 · ")) + Hex(color);
         foreach (var (button, hex) in swatches)
         {
             button.BorderThickness = new Thickness(!settings.SystemAccent && hex.Equals(settings.CustomColor, StringComparison.OrdinalIgnoreCase) ? 3 : 1);
@@ -135,11 +161,18 @@ public sealed class Appearance
         applying = false;
     }
 
-    private void Put(string name, object value) { Application.Current.Resources[name] = value; root.Resources[name] = value; overridden.Add(name); }
+    private void Put(string name, object value)
+    {
+        Application.Current.Resources[name] = value;
+        root.Resources[name] = value;
+        overridden.Add(name);
+    }
 
     private Flyout CreatePaletteFlyout()
     {
-        // Keep the proven HDR-safe presenter and windowed popup configuration.
+        // A windowed popup keeps its shadow/composition surface separate from
+        // the Mica host. An in-root popup produced HDR-only white bands and
+        // delayed white rectangles on the tested display/driver combination.
         // Build its content only when it is about to be shown.
         var presenterStyle = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
             <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -148,8 +181,12 @@ public sealed class Appearance
             </Style>
             """);
         presenterStyle.Setters.Add(new Setter(Control.FontFamilyProperty, UiTypography.Family(L.Code)));
-        var flyout = new Flyout { ShouldConstrainToRootBounds = false, FlyoutPresenterStyle = presenterStyle,
-            Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight };
+        var flyout = new Flyout
+        {
+            ShouldConstrainToRootBounds = false,
+            FlyoutPresenterStyle = presenterStyle,
+            Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight
+        };
         flyout.Opening += (_, _) =>
         {
             if (flyout.Content is null)
@@ -164,6 +201,8 @@ public sealed class Appearance
         return flyout;
     }
 
+    // The flyout and expanded ColorPicker are allocated on first use rather
+    // than increasing startup cost for users who never change the palette.
     private ScrollViewer BuildPaletteContent()
     {
         var content = new StackPanel { Width = 300, Spacing = 16 };
@@ -175,8 +214,11 @@ public sealed class Appearance
         themeChoice.SelectedItem = themeChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => (string)item.Tag == settings.Theme) ?? themeChoice.Items[0];
         themeChoice.SelectionChanged += (_, _) =>
         {
-            if (applying || themeChoice.SelectedItem is not ComboBoxItem { Tag: string key } || settings.Theme == key) return;
-            settings.Theme = key; settings.Save(); ApplyTheme();
+            if (applying || themeChoice.SelectedItem is not ComboBoxItem { Tag: string key } || settings.Theme == key)
+                return;
+            settings.Theme = key;
+            settings.Save();
+            ApplyTheme();
         };
         content.Children.Add(themeChoice);
         materialChoice = new ComboBox { Header = L.T("窗口材质"), HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -186,8 +228,11 @@ public sealed class Appearance
         materialChoice.SelectedIndex = settings.Backdrop == "solid" ? 1 : 0;
         materialChoice.SelectionChanged += (_, _) =>
         {
-            if (applying || materialChoice.SelectedItem is not ComboBoxItem { Tag: string key } || settings.Backdrop == key) return;
-            settings.Backdrop = key; settings.Save(); backdrop.Refresh();
+            if (applying || materialChoice.SelectedItem is not ComboBoxItem { Tag: string key } || settings.Backdrop == key)
+                return;
+            settings.Backdrop = key;
+            settings.Save();
+            backdrop.Refresh();
         };
         content.Children.Add(materialChoice);
         content.Children.Add(new TextBlock { Text = L.T("保留系统云母观感；遇到显示异常时可切换纯色背景。"), TextWrapping = TextWrapping.Wrap, Opacity = .65, FontSize = 12 });
@@ -198,10 +243,14 @@ public sealed class Appearance
         var preview = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
         accentPreview = new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(6) };
         accentLabel = new TextBlock { VerticalAlignment = VerticalAlignment.Center, FontSize = 12 };
-        preview.Children.Add(accentPreview); preview.Children.Add(accentLabel); content.Children.Add(preview);
+        preview.Children.Add(accentPreview);
+        preview.Children.Add(accentLabel);
+        content.Children.Add(preview);
         var grid = new Grid { ColumnSpacing = 9, RowSpacing = 9 };
-        for (int i = 0; i < 6; i++) grid.ColumnDefinitions.Add(new ColumnDefinition());
-        for (int i = 0; i < 2; i++) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        for (int i = 0; i < 6; i++)
+            grid.ColumnDefinitions.Add(new ColumnDefinition());
+        for (int i = 0; i < 2; i++)
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var colors = new[] { "#0078D4", "#0067C0", "#5B5FC7", "#8764B8", "#C239B3", "#E3008C",
                             "#D13438", "#DA3B01", "#CA5010", "#038387", "#008272", "#107C10" };
         for (int i = 0; i < colors.Length; i++)
@@ -211,16 +260,29 @@ public sealed class Appearance
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, L.T("配色 ") + hex);
             ToolTipService.SetToolTip(button, hex);
             button.Click += (_, _) => ChooseColor(Parse(hex));
-            swatches.Add((button, hex)); Grid.SetColumn(button, i % 6); Grid.SetRow(button, i / 6); grid.Children.Add(button);
+            swatches.Add((button, hex));
+            Grid.SetColumn(button, i % 6);
+            Grid.SetRow(button, i / 6);
+            grid.Children.Add(button);
         }
         content.Children.Add(grid);
         var advanced = new Expander { Header = L.T("自定义颜色"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         advanced.Expanding += (_, _) =>
         {
-            if (picker is not null) return;
-            picker = new ColorPicker { Color = Parse(settings.CustomColor), IsAlphaEnabled = false, IsAlphaSliderVisible = false,
-                IsAlphaTextInputVisible = false, IsHexInputVisible = true, IsColorChannelTextInputVisible = true,
-                IsColorSliderVisible = true, IsColorSpectrumVisible = true, HorizontalAlignment = HorizontalAlignment.Stretch };
+            if (picker is not null)
+                return;
+            picker = new ColorPicker
+            {
+                Color = Parse(settings.CustomColor),
+                IsAlphaEnabled = false,
+                IsAlphaSliderVisible = false,
+                IsAlphaTextInputVisible = false,
+                IsHexInputVisible = true,
+                IsColorChannelTextInputVisible = true,
+                IsColorSliderVisible = true,
+                IsColorSpectrumVisible = true,
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(picker, L.T("自定义强调色"));
             picker.ColorChanged += (_, e) => { if (!applying) ChooseColor(e.NewColor, false); };
             advanced.Content = picker;
@@ -230,36 +292,53 @@ public sealed class Appearance
         restore.Click += (_, _) =>
         {
             applying = true;
-            settings.Theme = "system"; settings.Backdrop = "mica"; settings.SystemAccent = true; settings.CustomColor = "#0078D4";
+            settings.Theme = "system";
+            settings.Backdrop = "mica";
+            settings.SystemAccent = true;
+            settings.CustomColor = "#0078D4";
             materialChoice.SelectedIndex = 0;
             systemSwitch.IsOn = true;
-            if (picker is not null) picker.Color = Parse(settings.CustomColor);
+            if (picker is not null)
+                picker.Color = Parse(settings.CustomColor);
             applying = false;
-            settings.Save(); ApplyTheme();
+            settings.Save();
+            ApplyTheme();
         };
         content.Children.Add(restore);
         systemSwitch.Toggled += (_, _) => { if (applying) return; settings.SystemAccent = systemSwitch.IsOn; settings.Save(); ApplyAccent(true); };
-        return new ScrollViewer { Content = content, MaxHeight = 640,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        return new ScrollViewer
+        {
+            Content = content,
+            MaxHeight = 640,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
     }
 
     private void ChooseColor(Color color, bool syncPicker = true)
     {
-        settings.CustomColor = Hex(color); settings.SystemAccent = false;
+        settings.CustomColor = Hex(color);
+        settings.SystemAccent = false;
         applying = true;
-        if (systemSwitch is not null) systemSwitch.IsOn = false;
-        if (syncPicker && picker is not null) picker.Color = color;
+        if (systemSwitch is not null)
+            systemSwitch.IsOn = false;
+        if (syncPicker && picker is not null)
+            picker.Color = color;
         applying = false;
-        settings.Save(); ApplyAccent(true);
+        settings.Save();
+        ApplyAccent(true);
     }
 
     private void UpdateCaption()
     {
-        if (disposed) return;
+        if (disposed)
+            return;
         var dark = root.ActualTheme == ElementTheme.Dark;
         var bar = window.AppWindow?.TitleBar;
-        if (bar is null) return;
-        bar.ButtonBackgroundColor = Colors.Transparent; bar.ButtonInactiveBackgroundColor = Colors.Transparent;
+        if (bar is null)
+            return;
+        bar.ButtonBackgroundColor = Colors.Transparent;
+        bar.ButtonInactiveBackgroundColor = Colors.Transparent;
         bar.ButtonForegroundColor = dark ? Colors.White : Colors.Black;
         bar.ButtonInactiveForegroundColor = dark ? Color.FromArgb(255, 145, 145, 145) : Color.FromArgb(255, 110, 110, 110);
         bar.ButtonHoverBackgroundColor = dark ? Color.FromArgb(40, 255, 255, 255) : Color.FromArgb(25, 0, 0, 0);
@@ -267,14 +346,22 @@ public sealed class Appearance
     }
     public static Color Parse(string text)
     {
-        try { return Color.FromArgb(255, Convert.ToByte(text.Substring(1, 2), 16), Convert.ToByte(text.Substring(3, 2), 16), Convert.ToByte(text.Substring(5, 2), 16)); }
+        try
+        {
+            return Color.FromArgb(255, Convert.ToByte(text.Substring(1, 2), 16), Convert.ToByte(text.Substring(3, 2), 16), Convert.ToByte(text.Substring(5, 2), 16));
+        }
         catch { return Color.FromArgb(255, 0, 120, 212); }
     }
     public static string Hex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
     private static Color Mix(Color a, Color b, double t) => Color.FromArgb(255, (byte)(a.R + (b.R - a.R) * t), (byte)(a.G + (b.G - a.G) * t), (byte)(a.B + (b.B - a.B) * t));
+    // Relative sRGB luminance is computed in linear light for foreground contrast.
     private static double Luminance(Color color)
     {
-        static double Linear(byte value) { double v = value / 255d; return v <= .04045 ? v / 12.92 : Math.Pow((v + .055) / 1.055, 2.4); }
+        static double Linear(byte value)
+        {
+            double v = value / 255d;
+            return v <= .04045 ? v / 12.92 : Math.Pow((v + .055) / 1.055, 2.4);
+        }
         return .2126 * Linear(color.R) + .7152 * Linear(color.G) + .0722 * Linear(color.B);
     }
 }

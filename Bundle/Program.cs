@@ -17,22 +17,28 @@ internal static class Program
     public static int Main(string[] args)
     {
         bool cli = StartupMode.IsCommandLine(args);
-        if (cli) ConsoleConnection.Connect();
+        if (cli)
+            ConsoleConnection.Connect();
         try
         {
             var executable = Path.Combine(AppContext.BaseDirectory, "Application", "LumaRecode.exe");
-            if (!File.Exists(executable)) throw new FileNotFoundException("LumaRecode application is missing. Please download the complete EXE again.");
+            if (!File.Exists(executable))
+                throw new FileNotFoundException("LumaRecode application is missing. Please download the complete EXE again.");
             var info = new ProcessStartInfo(executable) { UseShellExecute = false };
-            foreach (var argument in args) info.ArgumentList.Add(argument);
+            foreach (var argument in args)
+                info.ArgumentList.Add(argument);
             // Keep the original working directory for relative input/output paths.
             // Do not use KillOnParentExit: the GUI must survive the extraction entry.
             ConsoleCancelEventHandler keepWaiting = (_, e) => e.Cancel = true;
-            if (cli) Console.CancelKeyPress += keepWaiting;
+            if (cli)
+                Console.CancelKeyPress += keepWaiting;
             try
             {
                 using var child = Process.Start(info) ?? throw new InvalidOperationException("Unable to start LumaRecode.");
-                if (!cli) return 0;
-                child.WaitForExit(); return child.ExitCode;
+                if (!cli)
+                    return 0;
+                child.WaitForExit();
+                return child.ExitCode;
             }
             finally { if (cli) Console.CancelKeyPress -= keepWaiting; }
         }
@@ -40,11 +46,14 @@ internal static class Program
         {
             if (cli)
             {
-                if (args.Contains("--json")) Console.Out.WriteLine(JsonSerializer.Serialize(
-                    new HostError(1, "error", new HostErrorData("runtime_unavailable", error.Message)), ConversionJsonContext.Default.HostError));
-                else Console.Error.WriteLine(error.Message);
+                if (args.Contains("--json"))
+                    Console.Out.WriteLine(JsonSerializer.Serialize(
+                    new HostError(1, "error", new HostErrorData("runtime_unavailable", error.Message)), CliErrorJsonContext.Default.HostError));
+                else
+                    Console.Error.WriteLine(error.Message);
             }
-            else MessageBoxW(IntPtr.Zero, error.Message, "LumaRecode", 0x10);
+            else
+                MessageBoxW(IntPtr.Zero, error.Message, "LumaRecode", 0x10);
             return 3;
         }
     }

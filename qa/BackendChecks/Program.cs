@@ -1,18 +1,32 @@
+// Developer-only adapter for Python fixture/parity tests. Production GUI and
+// CLI call Core directly; the line protocol here is never shipped or used by them.
 using System.Text;
 using System.Text.Json.Nodes;
 using VideoConverter;
 using VideoConverter.Core;
 
 Console.InputEncoding = Console.OutputEncoding = new UTF8Encoding(false);
+if (args.FirstOrDefault() == "--check")
+    return CodeChecks.Run();
 var root = Directory.GetCurrentDirectory();
 var assets = Path.Combine(root, "Assets");
 var engine = new Transcoder(assets);
 var tools = new MediaTools(ProcessRunner.FindTool("ffmpeg"), ProcessRunner.FindTool("ffprobe"));
 MediaInfo FromJson(JsonNode m) => new(m.S("path"), m["video"]!.AsObject(), m["frames"] as JsonArray ?? [], m["tags"] as JsonObject ?? new(),
     m.S("kind"), m["profile"]?.ToString(), m.S("evidence"), JsonFields.Number(m.S("duration")), m["streams"] as JsonArray ?? [], m["pixel"] as JsonObject ?? new());
-JsonObject ToJson(MediaInfo m) => new() { ["path"] = m.Path, ["video"] = m.Video.DeepClone(), ["frames"] = m.Frames.DeepClone(),
-    ["tags"] = m.Tags.DeepClone(), ["kind"] = m.Kind, ["profile"] = m.Profile, ["evidence"] = m.Evidence,
-    ["duration"] = m.Duration, ["streams"] = m.Streams.DeepClone(), ["pixel"] = m.Pixel.DeepClone() };
+JsonObject ToJson(MediaInfo m) => new()
+{
+    ["path"] = m.Path,
+    ["video"] = m.Video.DeepClone(),
+    ["frames"] = m.Frames.DeepClone(),
+    ["tags"] = m.Tags.DeepClone(),
+    ["kind"] = m.Kind,
+    ["profile"] = m.Profile,
+    ["evidence"] = m.Evidence,
+    ["duration"] = m.Duration,
+    ["streams"] = m.Streams.DeepClone(),
+    ["pixel"] = m.Pixel.DeepClone()
+};
 if (args.FirstOrDefault() == "--server")
 {
     while (await Console.In.ReadLineAsync() is { } line)
@@ -22,7 +36,8 @@ if (args.FirstOrDefault() == "--server")
             var request = JsonNode.Parse(line)!;
             var action = request.S("action");
             JsonNode? answer;
-            if (action == "inspect") answer = ToJson(await MediaProbe.InspectAsync(tools, request.S("path")));
+            if (action == "inspect")
+                answer = ToJson(await MediaProbe.InspectAsync(tools, request.S("path")));
             else if (action == "classify")
             {
                 (string, ulong)? dji = request["dji"] is JsonArray d ? (d[0]!.ToString(), ulong.Parse(d[1]!.ToString())) : null;
@@ -33,18 +48,29 @@ if (args.FirstOrDefault() == "--server")
             {
                 var media = FromJson(request["media"]!);
                 var options = EncodeOptions.FromJson(request["options"]);
-                if (action == "public") answer = MediaProbe.Describe(media);
-                else if (action == "flac") { var (valid, reason) = OutputPolicy.FlacEligibility(media); answer = new JsonArray(JsonValue.Create(valid), JsonValue.Create(reason)); }
-                else if (action == "validate") { answer = JsonValue.Create(engine.Validate(options, media)); }
-                else if (action == "resolve") answer = engine.ResolveFormat(options, media).ToJson();
-                else if (action == "run") answer = ToJson(await engine.RunAsync(tools, media, options, request.S("output"), (_, _) => { },
+                if (action == "public")
+                    answer = MediaProbe.Describe(media);
+                else if (action == "flac")
+                {
+                    var (valid, reason) = OutputPolicy.FlacEligibility(media);
+                    answer = new JsonArray(JsonValue.Create(valid), JsonValue.Create(reason));
+                }
+                else if (action == "validate")
+                {
+                    answer = JsonValue.Create(engine.Validate(options, media));
+                }
+                else if (action == "resolve")
+                    answer = engine.ResolveFormat(options, media).ToJson();
+                else if (action == "run")
+                    answer = ToJson(await engine.RunAsync(tools, media, options, request.S("output"), (_, _) => { },
                     seconds: request["seconds"] is null ? null : JsonFields.Number(request.S("seconds")), overwrite: request.B("overwrite")));
                 else if (action == "plan")
                 {
                     var plan = engine.Plan(tools, media, options, request.S("output"));
                     answer = new JsonObject { ["argv"] = JsonFields.Strings(plan.Arguments), ["colors"] = plan.Colors, ["options"] = plan.Options.ToJson() };
                 }
-                else throw new InvalidDataException("Unknown test operation");
+                else
+                    throw new InvalidDataException("Unknown test operation");
             }
             Console.WriteLine(BackendJson.Write(new JsonObject { ["ok"] = true, ["data"] = answer }));
         }
@@ -58,7 +84,7 @@ foreach (var code in new[] { "en", "ja", "es" })
 var catalog = new TranslationCatalog(languages);
 var language = "en";
 for (int i = 0; i + 1 < args.Length; i++) if (args[i] is "--lang" or "--language") language = args[i + 1];
-var context = new CliContext("4.0.0", Path.Combine(root, "licenses"), false, tools, text => catalog.Translate(text, language), language);
+var context = new CliContext(System.Xml.Linq.XDocument.Load(Path.Combine(root, "Core/LumaRecode.Core.csproj")).Descendants("Version").Single().Value, Path.Combine(root, "licenses"), false, tools, text => catalog.Translate(text, language), language);
 using var cancellation = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancellation.Cancel(); };
 return await new NativeCli(engine, context).RunAsync(args, cancellation.Token);

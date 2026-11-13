@@ -1,3 +1,5 @@
+# Exercise a real PowerShell pipeline: the WinExe launcher must preserve both
+# UTF-8 standard handles and the child exit status through ConvertFrom-Json.
 param([string]$Launcher,[string]$Video)
 $ErrorActionPreference='Stop'
 $taskResult = & $Launcher probe $Video --no-settings --accept-terms --json | ConvertFrom-Json

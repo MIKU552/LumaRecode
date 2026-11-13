@@ -16,12 +16,15 @@ SIZE = 65
 HLG_A = 0.17883277
 HLG_B = 1 - 4 * HLG_A
 HLG_C = 0.5 - HLG_A * log(4 * HLG_A)
+# Place 18% scene gray at HLG signal 0.38 in the square-root branch.
+# SHOULDER is a scene-linear onset after that exposure scaling.
 GRAY_SCALE = 0.38 ** 2 / (3 * 0.18)
 SHOULDER = 0.45
 ASSETS = Path(__file__).resolve().parents[1] / 'Assets'
 
 
 def linear_milog(code):
+    """Decode normalized full-range Mi-Log signal into scene-linear light."""
     black = -0.09023729
     toe_scale = 18.10531998
     if code < toe_scale * (0.01974185 - black) ** 2:
@@ -30,12 +33,14 @@ def linear_milog(code):
 
 
 def linear_samsung_log(code):
+    """Decode normalized Samsung Log signal into scene-linear light."""
     if code < 0.206561909:
         return 0.016904 - 10 ** ((code + 0.24597) / -0.20942)
     return 10 ** ((code - 0.720504856) / 0.258984868) - 0.0003645
 
 
 def hlg_oetf(value):
+    """Apply the Rec.2100 HLG OETF to nonnegative scene-linear light."""
     if value <= 1 / 12:
         return sqrt(3 * value)
     return HLG_A * log(12 * value - HLG_B) + HLG_C
@@ -46,6 +51,8 @@ def make_hlg_cube(path, title, decode_log):
     with path.open('w', encoding='ascii', newline='\n') as cube:
         cube.write(f'TITLE "{title}"\n')
         cube.write(f'LUT_3D_SIZE {SIZE}\nDOMAIN_MIN 0.0 0.0 0.0\nDOMAIN_MAX 1.0 1.0 1.0\n')
+        # .cube ordering has red varying fastest. Scale all RGB components
+        # together in the highlight shoulder to retain their linear ratios.
         for blue in levels:
             for green in levels:
                 for red in levels:

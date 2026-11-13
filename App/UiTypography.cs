@@ -6,11 +6,15 @@ using Microsoft.UI.Xaml.Media;
 
 namespace VideoConverter;
 
+/// <summary>Applies bundled Latin/CJK families and script-aware metrics without rebuilding controls.</summary>
 internal static class UiTypography
 {
     private sealed record Metrics(double Size, ushort Weight, double LineHeight,
         LineStackingStrategy Stacking, int Spacing, bool OwnSize, bool Monospace);
     private sealed record ControlMetrics(bool Monospace);
+    // Record designed metrics once. Repeated language changes must derive
+    // from these originals rather than progressively scaling the last result.
+    // Weak keys allow closed dialogs and flyout visuals to be collected.
     private static readonly ConditionalWeakTable<TextBlock, Metrics> original = new();
     private static readonly ConditionalWeakTable<Control, ControlMetrics> controlOriginal = new();
     private static readonly Dictionary<string, FontFamily> fonts = new();
@@ -21,7 +25,8 @@ internal static class UiTypography
     private static FontFamily Mono(string code) => GetFamily(monospace, TypographyPolicy.MonospaceStack(code));
     private static FontFamily GetFamily(Dictionary<string, FontFamily> cache, string source)
     {
-        if (!cache.TryGetValue(source, out var value)) cache[source] = value = new FontFamily(source);
+        if (!cache.TryGetValue(source, out var value))
+            cache[source] = value = new FontFamily(source);
         return value;
     }
 
@@ -62,21 +67,27 @@ internal static class UiTypography
         else if (node is Control control && !IsSymbolFont(control.FontFamily))
             controlOriginal.GetValue(control, value => new ControlMetrics(IsMonospace(value.FontFamily)));
         if (node is ComboBox combo)
-            foreach (var item in combo.Items.OfType<DependencyObject>()) Remember(item);
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) Remember(VisualTreeHelper.GetChild(node, i));
+            foreach (var item in combo.Items.OfType<DependencyObject>())
+                Remember(item);
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+            Remember(VisualTreeHelper.GetChild(node, i));
     }
 
     private static bool InheritsTextSize(DependencyObject node)
     {
         for (var parent = VisualTreeHelper.GetParent(node); parent is not null; parent = VisualTreeHelper.GetParent(parent))
-            if (parent is ButtonBase or ComboBox or ComboBoxItem or MenuFlyoutItemBase or TextBox or ToggleSwitch) return true;
+            if (parent is ButtonBase or ComboBox or ComboBoxItem or MenuFlyoutItemBase or TextBox or ToggleSwitch)
+                return true;
         return false;
     }
 
+    // ComboBox items may live outside the realized visual tree, so visit both
+    // item collections and visual children. Icon fonts are excluded by Remember.
     private static void Apply(DependencyObject node, string code)
     {
         if (node is FrameworkElement { Tag: string tag } && node is ComboBoxItem or RadioMenuFlyoutItem &&
-            LanguagePolicy.Choices.Any(choice => choice.Code == tag)) code = tag;
+            LanguagePolicy.Choices.Any(choice => choice.Code == tag))
+            code = tag;
         if (node is Control control && controlOriginal.TryGetValue(control, out var controlMetrics))
         {
             control.FontFamily = controlMetrics.Monospace ? Mono(code) : Family(code);
@@ -93,14 +104,19 @@ internal static class UiTypography
             var rhythmSize = code == "ja" && metrics.Size is > 12 and <= 14 ? 14 : metrics.Size;
             text.LineHeight = paragraph ? Math.Ceiling(rhythmSize * 1.55) : metrics.LineHeight;
             text.LineStackingStrategy = paragraph ? LineStackingStrategy.BlockLineHeight : metrics.Stacking;
-            text.FontWeight = new Windows.UI.Text.FontWeight { Weight = cjk && metrics.Weight >= 600 && metrics.Size <= 24
-                ? (ushort)500 : metrics.Weight };
+            text.FontWeight = new Windows.UI.Text.FontWeight
+            {
+                Weight = cjk && metrics.Weight >= 600 && metrics.Size <= 24
+                ? (ushort)500 : metrics.Weight
+            };
             // Preserve designed kerning and the control's original tracking.
             text.CharacterSpacing = metrics.Spacing;
         }
         if (node is ComboBox combo)
-            foreach (var item in combo.Items.OfType<DependencyObject>()) Apply(item, code);
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) Apply(VisualTreeHelper.GetChild(node, i), code);
+            foreach (var item in combo.Items.OfType<DependencyObject>())
+                Apply(item, code);
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+            Apply(VisualTreeHelper.GetChild(node, i), code);
     }
 
     private static bool IsMonospace(FontFamily? family) => family?.Source is { } source &&

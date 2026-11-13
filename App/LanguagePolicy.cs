@@ -1,5 +1,6 @@
 namespace VideoConverter;
 
+/// <summary>Maps supported selections and system language tags to resources and XAML language identifiers.</summary>
 public static class LanguagePolicy
 {
     public static readonly (string Code, string Name)[] Choices =
@@ -7,7 +8,8 @@ public static class LanguagePolicy
 
     public static string Resolve(string? selection, string? systemLanguage)
     {
-        if (Choices.Any(choice => choice.Code == selection)) return selection!;
+        if (Choices.Any(choice => choice.Code == selection))
+            return selection!;
         var tag = (systemLanguage ?? "").Trim().Replace('_', '-').Split('-')[0].ToLowerInvariant();
         return Choices.Any(choice => choice.Code == tag) ? tag : "en";
     }
@@ -16,7 +18,9 @@ public static class LanguagePolicy
     public static string XamlLanguage(string code) => code == "zh" ? "zh-Hans" : Culture(code);
     public static string TermsFile(string code) => code switch
     {
-        "zh" => "THIRD-PARTY-TERMS.zh-CN.txt", "ja" => "THIRD-PARTY-TERMS.ja.txt",
-        "es" => "THIRD-PARTY-TERMS.es.txt", _ => "THIRD-PARTY-TERMS.txt"
+        "zh" => "THIRD-PARTY-TERMS.zh-CN.txt",
+        "ja" => "THIRD-PARTY-TERMS.ja.txt",
+        "es" => "THIRD-PARTY-TERMS.es.txt",
+        _ => "THIRD-PARTY-TERMS.txt"
     };
 }

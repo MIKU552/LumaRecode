@@ -7,6 +7,8 @@ parser=argparse.ArgumentParser()
 parser.add_argument('--sample',type=Path,action='append',default=[])
 args=parser.parse_args()
 root=Path(__file__).resolve().parents[2]
+# Extract the signed release's reference into a disposable directory. Keeping
+# it outside the source tree prevents retired Python code from being packaged.
 reference=tempfile.TemporaryDirectory(prefix='LumaRecode-reference-')
 atexit=__import__('atexit');atexit.register(reference.cleanup)
 ref=Path(reference.name);(ref/'assets').mkdir()

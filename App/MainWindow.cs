@@ -1,3 +1,4 @@
+using VideoConverter.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -14,6 +15,8 @@ using Windows.Storage.Pickers;
 
 namespace VideoConverter;
 
+/// <summary>Owns GUI job state, source-dependent choices and the responsive WinUI layout.</summary>
+/// <remarks>Core performs final validation and encoding; this class previews those constraints before starting a job.</remarks>
 public sealed class MainWindow : Window
 {
     private static readonly JsonElement encodingConfig = LoadEncodingConfig();
@@ -25,7 +28,11 @@ public sealed class MainWindow : Window
     private readonly UserSettings settings = UserSettings.Load();
     private readonly Appearance appearance;
     private ConversionClient? activeJob;
+    // Selection changes also fire during programmatic updates. The updating
+    // guard prevents recursive Refresh calls; default flags preserve explicit
+    // user audio/depth choices until the purpose or source changes.
     private bool updating, probing, closing, dialogOpen, audioUsesDefault = true, depthUsesDefault = true;
+    // Ignore delayed probe events after the selected source/window lifecycle changes.
     private int generation;
     private string ffmpeg = "", ffprobe = "", automaticOutput = "", completedOutput = "";
     private JsonElement? media;
@@ -80,16 +87,29 @@ public sealed class MainWindow : Window
         appearance = new Appearance(root, this, settings);
         BuildLanguageMenu();
         WireEvents();
-        ResolveTools(); Refresh();
+        ResolveTools();
+        Refresh();
         root.Loaded += async (_, _) =>
         {
             dialogOpen = true;
-            try { if (!await LegalNotices.RequireAcceptanceAsync(root, settings, Relocalize)) { Close(); return; } }
+            try
+            {
+                if (!await LegalNotices.RequireAcceptanceAsync(root, settings, Relocalize))
+                {
+                    Close();
+                    return;
+                }
+            }
             finally { dialogOpen = false; }
             Reflow(root.ActualWidth);
-            if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe)) await ConfigureToolsAsync();
+            if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe))
+                await ConfigureToolsAsync();
             var args = Environment.GetCommandLineArgs();
-            if (args.Length > 1 && File.Exists(args[1])) { Input.Text = args[1]; await InspectAsync(); }
+            if (args.Length > 1 && File.Exists(args[1]))
+            {
+                Input.Text = args[1];
+                await InspectAsync();
+            }
         };
         AppWindow.Closing += OnClosing;
     }
@@ -97,7 +117,8 @@ public sealed class MainWindow : Window
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
     private T Control<T>(string name) where T : class
     {
-        if (!controls.TryGetValue(name, out var control)) controls[name] = control = root.FindName(name);
+        if (!controls.TryGetValue(name, out var control))
+            controls[name] = control = root.FindName(name);
         return (T)control;
     }
     private static string Value(ComboBox combo) => (combo.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
@@ -111,7 +132,8 @@ public sealed class MainWindow : Window
         foreach (var (key, name) in choices)
         {
             var item = new ComboBoxItem { Tag = key, Content = name };
-            combo.Items.Add(item); choiceLabels.Add((item, name));
+            combo.Items.Add(item);
+            choiceLabels.Add((item, name));
         }
         combo.SelectedIndex = 0;
     }
@@ -125,20 +147,32 @@ public sealed class MainWindow : Window
         foreach (var (key, name) in new[] { ("system", L.T("跟随系统")) }.Concat(LanguagePolicy.Choices))
         {
             var code = key == "system" ? L.Code : key;
-            var item = new RadioMenuFlyoutItem { Text = name, Tag = key, GroupName = "AppLanguage", IsChecked = settings.Language == key,
-                FontFamily = UiTypography.Family(code), Language = LanguagePolicy.XamlLanguage(code) };
+            var item = new RadioMenuFlyoutItem
+            {
+                Text = name,
+                Tag = key,
+                GroupName = "AppLanguage",
+                IsChecked = settings.Language == key,
+                FontFamily = UiTypography.Family(code),
+                Language = LanguagePolicy.XamlLanguage(code)
+            };
             item.Click += (_, _) =>
             {
-                settings.Language = key; settings.Save(); L.Configure(key); Relocalize();
+                settings.Language = key;
+                settings.Save();
+                L.Configure(key);
+                Relocalize();
             };
-            menu.Items.Add(item); languageItems[key] = item;
+            menu.Items.Add(item);
+            languageItems[key] = item;
         }
         Control<DropDownButton>("LanguageButton").Flyout = menu;
         UpdateLanguageMenu();
     }
     private void UpdateLanguageMenu()
     {
-        foreach (var (key, item) in languageItems) item.IsChecked = key == settings.Language;
+        foreach (var (key, item) in languageItems)
+            item.IsChecked = key == settings.Language;
         languageItems["system"].Text = L.T("跟随系统");
         languageItems["system"].FontFamily = UiTypography.Family(L.Code);
         languageItems["system"].Language = LanguagePolicy.XamlLanguage(L.Code);
@@ -148,8 +182,14 @@ public sealed class MainWindow : Window
         // Size both surfaces from every label, including the menu's check column.
         double TextWidth(string text, FontFamily family, string language)
         {
-            var label = new TextBlock { Text = text, FontFamily = family,
-                FontSize = button.FontSize, FontWeight = button.FontWeight, Language = language };
+            var label = new TextBlock
+            {
+                Text = text,
+                FontFamily = family,
+                FontSize = button.FontSize,
+                FontWeight = button.FontWeight,
+                Language = language
+            };
             label.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
             return label.DesiredSize.Width;
         }
@@ -179,21 +219,34 @@ public sealed class MainWindow : Window
         updating = true;
         try
         {
-            foreach (var (item, original) in choiceLabels) item.Content = L.T(original);
+            foreach (var (item, original) in choiceLabels)
+                item.Content = L.T(original);
             foreach (var name in new[] { "InputKind", "Purpose", "Codec", "Variant", "Container", "Transform", "Profile", "Sampling", "BitDepth", "ColorRange", "Audio" })
             {
-                var combo = Control<ComboBox>(name); var selected = combo.SelectedIndex;
+                var combo = Control<ComboBox>(name);
+                var selected = combo.SelectedIndex;
                 // WinUI caches the selected label separately from the item's Content.
-                combo.SelectedIndex = -1; combo.SelectedIndex = selected;
+                combo.SelectedIndex = -1;
+                combo.SelectedIndex = selected;
             }
         }
         finally { updating = false; }
-        appearance.Relocalize(); UpdateLanguageMenu();
-        if (media is not null) UpdateMediaPresentation();
-        else foreach (var (name, text) in source) Control<TextBlock>(name).Text = L.T(text);
-        SetStatus(status); Refresh(); UpdateTransferStats();
+        appearance.Relocalize();
+        UpdateLanguageMenu();
+        if (media is not null)
+            UpdateMediaPresentation();
+        else
+            foreach (var (name, text) in source)
+                Control<TextBlock>(name).Text = L.T(text);
+        SetStatus(status);
+        Refresh();
+        UpdateTransferStats();
         UiTypography.Refresh(root);
-        if (activeJob is not null) { SetBusy(true); Control<Button>("Cancel").IsEnabled = cancelEnabled; }
+        if (activeJob is not null)
+        {
+            SetBusy(true);
+            Control<Button>("Cancel").IsEnabled = cancelEnabled;
+        }
     }
     private void FillChoices()
     {
@@ -220,7 +273,8 @@ public sealed class MainWindow : Window
         var archive = Value(Purpose) == "archive";
         Select(Sampling, DefaultSampling());
         Select(ColorRange, archive ? "source" : "limited");
-        audioUsesDefault = true; ApplyDefaultAudio();
+        audioUsesDefault = true;
+        ApplyDefaultAudio();
         depthUsesDefault = true;
     }
     private string DefaultSampling() => Value(Purpose) == "archive" && Value(Codec) != "av1" ? MediaText("archive_sampling", "source") : "420";
@@ -231,9 +285,13 @@ public sealed class MainWindow : Window
         Control<Button>("ToolsButton").Click += async (_, _) => await ConfigureToolsAsync();
         Control<Button>("AboutButton").Click += async (_, _) =>
         {
-            if (dialogOpen || closing) return;
+            if (dialogOpen || closing)
+                return;
             dialogOpen = true;
-            try { await AboutDialog.ShowAsync(root); }
+            try
+            {
+                await AboutDialog.ShowAsync(root);
+            }
             finally { dialogOpen = false; }
         };
         Control<Button>("Start").Click += async (_, _) => await StartAsync();
@@ -250,19 +308,25 @@ public sealed class MainWindow : Window
             Control<ComboBox>(name).SelectionChanged += (_, _) => Refresh();
         Purpose.SelectionChanged += (_, _) =>
         {
-            if (updating) return;
+            if (updating)
+                return;
             updating = true;
-            try { ApplyPurposeDefaults(); }
+            try
+            {
+                ApplyPurposeDefaults();
+            }
             finally { updating = false; }
             Refresh();
         };
         Codec.SelectionChanged += (_, e) =>
         {
-            if (updating) return;
+            if (updating)
+                return;
             updating = true;
             try
             {
-                if (audioUsesDefault) ApplyDefaultAudio();
+                if (audioUsesDefault)
+                    ApplyDefaultAudio();
                 if (Value(Codec) == "av1" || Value(Purpose) == "share" || e.RemovedItems.OfType<ComboBoxItem>().Any(item => (string)item.Tag == "av1"))
                     Select(Sampling, DefaultSampling());
             }
@@ -274,9 +338,14 @@ public sealed class MainWindow : Window
         Range.SelectionChanged += (_, _) => Refresh();
         InputKind.SelectionChanged += (_, _) =>
         {
-            if (updating) return;
+            if (updating)
+                return;
             updating = true;
-            try { Range.SelectedIndex = Kind is "hlg" or "pq" or "log" ? 1 : 0; depthUsesDefault = true; }
+            try
+            {
+                Range.SelectedIndex = Kind is "hlg" or "pq" or "log" ? 1 : 0;
+                depthUsesDefault = true;
+            }
             finally { updating = false; }
             Refresh();
         };
@@ -285,19 +354,28 @@ public sealed class MainWindow : Window
         card.DragOver += (_, e) => { if (activeJob is null && e.DataView.Contains(StandardDataFormats.StorageItems)) e.AcceptedOperation = DataPackageOperation.Copy; };
         card.Drop += async (_, e) =>
         {
-            if (activeJob is not null || !e.DataView.Contains(StandardDataFormats.StorageItems)) return;
+            if (activeJob is not null || !e.DataView.Contains(StandardDataFormats.StorageItems))
+                return;
             var files = await e.DataView.GetStorageItemsAsync();
-            if (files.Count == 1) { Input.Text = files[0].Path; await InspectAsync(); }
+            if (files.Count == 1)
+            {
+                Input.Text = files[0].Path;
+                await InspectAsync();
+            }
         };
         root.SizeChanged += (_, e) => Reflow(e.NewSize.Width);
     }
+    /// <summary>Repositions the same controls at two width breakpoints, without rebuilding job state.</summary>
+    /// <remarks>Auto rows stretch the paired cards together in two columns; a single column uses each card's natural height.</remarks>
     private void Reflow(double width)
     {
         var narrow = width < 960;
         var grid = Control<Grid>("SettingsGrid");
         var rows = narrow ? 4 : 3;
-        while (grid.RowDefinitions.Count < rows) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        while (grid.RowDefinitions.Count > rows) grid.RowDefinitions.RemoveAt(grid.RowDefinitions.Count - 1);
+        while (grid.RowDefinitions.Count < rows)
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        while (grid.RowDefinitions.Count > rows)
+            grid.RowDefinitions.RemoveAt(grid.RowDefinitions.Count - 1);
         grid.ColumnDefinitions[0].MinWidth = narrow ? 0 : 380;
         grid.ColumnDefinitions[1].MinWidth = narrow ? 0 : 300;
         grid.ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star);
@@ -314,8 +392,10 @@ public sealed class MainWindow : Window
         var compact = width < 760;
         var fields = Control<Grid>("FormatFields");
         var fieldRows = compact ? 4 : 2;
-        while (fields.RowDefinitions.Count < fieldRows) fields.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        while (fields.RowDefinitions.Count > fieldRows) fields.RowDefinitions.RemoveAt(fields.RowDefinitions.Count - 1);
+        while (fields.RowDefinitions.Count < fieldRows)
+            fields.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        while (fields.RowDefinitions.Count > fieldRows)
+            fields.RowDefinitions.RemoveAt(fields.RowDefinitions.Count - 1);
         fields.ColumnDefinitions[1].Width = compact ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         fields.ColumnSpacing = compact ? 0 : 24;
         Grid.SetColumn(Audio, compact ? 0 : 1);
@@ -340,7 +420,7 @@ public sealed class MainWindow : Window
     }
     private string MediaText(string key, string fallback = "") => media is { } item && item.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() ?? fallback : fallback;
     private void SetStatus(string text) => Control<TextBlock>("Status").Text = L.T(text);
-    private ConversionTools ToolsObject() => new(ffmpeg, ffprobe);
+    private MediaTools ToolsObject() => new(ffmpeg, ffprobe);
     private void ResolveTools()
     {
         ffmpeg = ConversionClient.FindTool("ffmpeg", settings.Ffmpeg);
@@ -355,16 +435,30 @@ public sealed class MainWindow : Window
     private string DescribePreset()
     {
         var preset = Value(Variant) == "fast" ? encodingConfig.GetProperty("archive_fast_av1") : encodingConfig.GetProperty(Value(Purpose)).GetProperty(Value(Codec));
-        var encoder = preset.GetProperty("encoder").GetString() switch { "libx265" => "x265", "libx264" => "x264", "libsvtav1" => "SVT-AV1", var name => name };
+        var encoder = preset.GetProperty("encoder").GetString() switch
+        {
+            "libx265" => "x265",
+            "libx264" => "x264",
+            "libsvtav1" => "SVT-AV1",
+            var name => name
+        };
         var share = Value(Purpose) == "share";
         var result = new List<string> { encoder ?? "", share ? $"TU{preset.GetProperty("preset")} / ICQ{preset.GetProperty("quality")}" : $"{preset.GetProperty("preset")} / CRF{preset.GetProperty("quality")}" };
-        if (share) { result.Add("low_power=1"); result.Add($"async_depth={preset.GetProperty("async_depth")}"); }
+        if (share)
+        {
+            result.Add("low_power=1");
+            result.Add($"async_depth={preset.GetProperty("async_depth")}");
+        }
         else
         {
-            if (Value(Codec) == "hevc") result.Add("pools=16");
-            foreach (var key in new[] { "tune", "lp" }) if (preset.TryGetProperty(key, out var item)) result.Add(key + "=" + item);
+            if (Value(Codec) == "hevc")
+                result.Add("pools=16");
+            foreach (var key in new[] { "tune", "lp" })
+                if (preset.TryGetProperty(key, out var item))
+                    result.Add(key + "=" + item);
             if (preset.TryGetProperty("encoder_parameters", out var extra))
-                foreach (var item in extra.EnumerateObject()) result.Add(item.Name + "=" + item.Value);
+                foreach (var item in extra.EnumerateObject())
+                    result.Add(item.Name + "=" + item.Value);
         }
         return string.Join(" · ", result);
     }
@@ -377,37 +471,43 @@ public sealed class MainWindow : Window
     private string SelectedColorRange()
     {
         var selected = Value(ColorRange);
-        if (selected != "source") return selected;
+        if (selected != "source")
+            return selected;
         return SourceColorRange();
     }
     private string SourceColorRange() => MediaFlag("range_inferred") && Value(Profile) == "milog" && Value(Transform).StartsWith("log-") ? "full" : MediaText("source_color_range", "limited");
     private string[] SourceSamplingChoices() => media is { } item && item.TryGetProperty("allowed_sampling", out var values)
         ? values.EnumerateArray().Select(value => value.GetString() ?? "").ToArray() : ["420"];
-    private int[] AllowedDepths()
-    {
-        int[] supported = Value(Purpose) == "share" && Value(Codec) == "avc" ? [8]
-            : Value(Purpose) == "archive" && Value(Codec) == "hevc" ? [8, 10, 12] : [8, 10];
-        return supported.Where(depth => depth <= Math.Max(8, SourceDepth) && (!Hdr || depth >= 10)).ToArray();
-    }
+    private int[] AllowedDepths() => OutputPolicy.DepthChoices(SourceDepth, Value(Purpose), Value(Codec), Hdr ? "hdr" : "sdr");
     private void UpdateDepthChoices()
     {
         var allowed = AllowedDepths();
-        foreach (var item in BitDepth.Items.OfType<ComboBoxItem>()) item.IsEnabled = allowed.Contains(int.Parse((string)item.Tag));
-        if (allowed.Length == 0) { BitDepth.SelectedIndex = -1; return; }
+        foreach (var item in BitDepth.Items.OfType<ComboBoxItem>())
+            item.IsEnabled = allowed.Contains(int.Parse((string)item.Tag));
+        if (allowed.Length == 0)
+        {
+            BitDepth.SelectedIndex = -1;
+            return;
+        }
         if (depthUsesDefault || !allowed.Contains(Depth))
             Select(BitDepth, (Value(Purpose) == "archive" ? allowed.Max() : Hdr ? 10 : 8).ToString(CultureInfo.InvariantCulture));
     }
+    /// <summary>Applies compatible choices, output naming and start-button availability as one guarded update.</summary>
     private void Refresh()
     {
-        if (updating) return;
+        if (updating)
+            return;
         updating = true;
         try
         {
-            if (Kind == "sdr" && Hdr) Range.SelectedIndex = 0;
+            if (Kind == "sdr" && Hdr)
+                Range.SelectedIndex = 0;
             Control<RadioButton>("HdrChoice").IsEnabled = Kind is "hlg" or "pq" or "log";
-            if (Hdr && Value(Codec) == "avc") Select(Codec, "hevc");
+            if (Hdr && Value(Codec) == "avc")
+                Select(Codec, "hevc");
             UpdateDepthChoices();
-            foreach (var item in Codec.Items.OfType<ComboBoxItem>()) item.IsEnabled = !Hdr || (string)item.Tag != "avc";
+            foreach (var item in Codec.Items.OfType<ComboBoxItem>())
+                item.IsEnabled = !Hdr || (string)item.Tag != "avc";
             var fullSampling = Value(Purpose) == "archive" && Value(Codec) != "av1";
             var sourceChoices = SourceSamplingChoices();
             foreach (var item in Sampling.Items.OfType<ComboBoxItem>())
@@ -416,64 +516,102 @@ public sealed class MainWindow : Window
                 item.IsEnabled = key == "source" ? fullSampling && DefaultSampling() == "source" && sourceChoices.Contains(MediaText("source_sampling", "420"))
                     : sourceChoices.Contains(key) && (fullSampling || key == "420");
             }
-            if (Sampling.SelectedItem is ComboBoxItem selectedSampling && !selectedSampling.IsEnabled) Select(Sampling, DefaultSampling());
+            if (Sampling.SelectedItem is ComboBoxItem selectedSampling && !selectedSampling.IsEnabled)
+                Select(Sampling, DefaultSampling());
             var flacAllowed = MediaFlag("flac_eligible");
             Audio.Items.OfType<ComboBoxItem>().Single(item => (string)item.Tag == "flac").IsEnabled = flacAllowed;
             ((ComboBoxItem)Container.Items[1]).IsEnabled = Value(Audio) != "flac";
-            if (Value(Audio) == "flac" && Value(Container) == "mp4") Select(Container, "mkv");
+            if (Value(Audio) == "flac" && Value(Container) == "mp4")
+                Select(Container, "mkv");
             Control<TextBlock>("AudioNote").Text = Value(Audio) == "flac" ? L.T("保留每条音轨的采样率、声道与整数精度。")
                 : media is null ? L.T("FLAC 支持整数 PCM 和可确认的无损音轨。")
                 : flacAllowed ? L.T("此素材可转为 FLAC。") : L.T(MediaText("flac_reason"));
             var fast = Value(Purpose) == "archive" && Value(Codec) == "av1";
             Variant.Visibility = fast ? Visibility.Visible : Visibility.Collapsed;
-            if (!fast) Select(Variant, "standard");
-            string[] allowed = Kind switch {
+            if (!fast)
+                Select(Variant, "standard");
+            string[] allowed = Kind switch
+            {
                 "hlg" or "pq" => Hdr ? ["none"] : ["hdr-sdr"],
                 "log" => Hdr ? ["log-hdr"] : ["log-sdr"],
-                _ => ["none"] };
-            foreach (var item in Transform.Items.OfType<ComboBoxItem>()) item.IsEnabled = allowed.Contains((string)item.Tag);
-            if (!allowed.Contains(Value(Transform))) Select(Transform, allowed[0]);
+                _ => ["none"]
+            };
+            foreach (var item in Transform.Items.OfType<ComboBoxItem>())
+                item.IsEnabled = allowed.Contains((string)item.Tag);
+            if (!allowed.Contains(Value(Transform)))
+                Select(Transform, allowed[0]);
             Profile.IsEnabled = Value(Transform).StartsWith("log-");
             Profile.Visibility = Profile.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
             var chosenSampling = SelectedSampling();
-            var sampling = chosenSampling switch { "420" => "4:2:0", "422" => "4:2:2", "444" => "4:4:4", "gray" => L.T("灰度"), _ => L.T("采样待选择") };
+            var sampling = chosenSampling switch
+            {
+                "420" => "4:2:0",
+                "422" => "4:2:2",
+                "444" => "4:4:4",
+                "gray" => L.T("灰度"),
+                _ => L.T("采样待选择")
+            };
             var dataRange = SelectedColorRange() == "full" ? "Full" : "Limited";
             var curve = Kind == "pq" && !Profile.IsEnabled ? "PQ" : "HLG";
             Control<TextBlock>("TargetNote").Text = (Hdr ? L.T($"BT.2020 {curve} · {Depth} 位 · {sampling}") : L.T($"Rec.709 · {Depth} 位 · {sampling}")) + " · " + dataRange;
             var formatNotes = new List<string>();
-            if (MediaFlag("pixel_rgb")) formatNotes.Add(L.T("RGB 输入转换为 YCbCr。"));
-            if (MediaFlag("pixel_alpha")) formatNotes.Add(L.T("输出为不带透明通道的视频。"));
-            if (MediaFlag("range_inferred")) formatNotes.Add(L.T($"原片未标明范围，按 {(SourceColorRange() == "full" ? "Full" : "Limited")} 处理。"));
+            if (MediaFlag("pixel_rgb"))
+                formatNotes.Add(L.T("RGB 输入转换为 YCbCr。"));
+            if (MediaFlag("pixel_alpha"))
+                formatNotes.Add(L.T("输出为不带透明通道的视频。"));
+            if (MediaFlag("range_inferred"))
+                formatNotes.Add(L.T($"原片未标明范围，按 {(SourceColorRange() == "full" ? "Full" : "Limited")} 处理。"));
             Control<TextBlock>("FormatNote").Text = string.Join("\n", formatNotes);
             Control<TextBlock>("FormatNote").Visibility = formatNotes.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            var codecName = Value(Codec) switch { "av1" => "AV1", "avc" => "H.264", _ => "HEVC" };
+            var codecName = Value(Codec) switch
+            {
+                "av1" => "AV1",
+                "avc" => "H.264",
+                _ => "HEVC"
+            };
             Control<TextBlock>("PresetName").Text = $"{(Hdr ? "HDR" : "SDR")} · {codecName} · {(Value(Purpose) == "share" ? L.T("快速分享") : L.T("软件归档"))}";
             var quality = DescribePreset();
             Control<TextBlock>("PresetDetail").Text = L.T($"{quality}\n{Depth} 位 {sampling} · {Suffix[1..].ToUpperInvariant()}") + " · " + dataRange;
             Control<TextBlock>("ContainerNote").Text = Value(Container) == "auto"
                 ? Value(Audio) == "flac" ? L.T("自动 → MKV。FLAC 音轨默认使用 MKV 封装。") : L.T($"自动 → {Suffix[1..].ToUpperInvariant()}。快速分享默认 MP4，软件归档默认 MKV。")
                 : Suffix == ".mp4" ? L.T("MP4。复制原音轨时，会在编码前检测封装兼容性。") : L.T("MKV。封装独立于编码质量档和动态范围。");
-            Control<TextBlock>("TransformNote").Text = Value(Transform) switch {
+            Control<TextBlock>("TransformNote").Text = Value(Transform) switch
+            {
                 "log-hdr" => L.T($"使用对应相机的曲线，转换为 {Depth} 位 HLG。"),
                 "log-sdr" => L.T("解码对应 Log，并将高光映射到 Rec.709。"),
                 "hdr-sdr" => L.T("按 HLG / PQ 原片做色调映射，输出 Rec.709。"),
-                _ => L.T("保留原片动态范围，按目标格式标准化色彩。") };
+                _ => L.T("保留原片动态范围，按目标格式标准化色彩。")
+            };
             var warning = "";
-            if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe)) warning = L.T("未找到 FFmpeg / ffprobe，请设置工具路径。");
-            else if (media is not null && Profile.IsEnabled && Value(Profile) == "") warning = L.T("请确认相机的 Log 曲线。");
-            else if (media is not null && Kind == "unknown" && !Profile.IsEnabled) warning = L.T("没有可靠的曲线标记，请确认输入解释。");
-            else if (media is not null && Profile.IsEnabled && SourceDepth < 10) warning = L.T("Log 转换需要对应相机的高位深原片。");
-            else if (media is not null && AllowedDepths().Length == 0) warning = L.T("HDR 输出需要至少 10 位的源素材，请选择 SDR 或高位深原片。");
-            else if (media is not null && !sourceChoices.Contains(chosenSampling)) warning = L.T("输出采样须在原片采样上限内选择。");
-            else if (media is not null && !new[] { "420", "422", "444", "gray" }.Contains(chosenSampling)) warning = L.T("当前编码器无法保持原采样，请手动选择 4:2:0、4:2:2 或 4:4:4。");
-            else if (media is not null && chosenSampling != "420" && !fullSampling) warning = L.T("保持此采样需要软件 HEVC 或 H.264；也可手动选择 4:2:0。");
-            else if (MediaFlag("pixel_alpha") && Value(Sampling) == "source") warning = L.T("素材含透明通道。请选择具体采样格式，输出为不带透明通道的视频。");
-            else if (Value(Audio) == "flac" && !flacAllowed) warning = L.T(MediaText("flac_reason"));
-            var notice = Control<InfoBar>("Notice"); notice.Message = warning; notice.IsOpen = warning != "";
+            if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe))
+                warning = L.T("未找到 FFmpeg / ffprobe，请设置工具路径。");
+            else if (media is not null && Profile.IsEnabled && Value(Profile) == "")
+                warning = L.T("请确认相机的 Log 曲线。");
+            else if (media is not null && Kind == "unknown" && !Profile.IsEnabled)
+                warning = L.T("没有可靠的曲线标记，请确认输入解释。");
+            else if (media is not null && Profile.IsEnabled && SourceDepth < 10)
+                warning = L.T("Log 转换需要对应相机的高位深原片。");
+            else if (media is not null && AllowedDepths().Length == 0)
+                warning = L.T("HDR 输出需要至少 10 位的源素材，请选择 SDR 或高位深原片。");
+            else if (media is not null && !sourceChoices.Contains(chosenSampling))
+                warning = L.T("输出采样须在原片采样上限内选择。");
+            else if (media is not null && !new[] { "420", "422", "444", "gray" }.Contains(chosenSampling))
+                warning = L.T("当前编码器无法保持原采样，请手动选择 4:2:0、4:2:2 或 4:4:4。");
+            else if (media is not null && chosenSampling != "420" && !fullSampling)
+                warning = L.T("保持此采样需要软件 HEVC 或 H.264；也可手动选择 4:2:0。");
+            else if (MediaFlag("pixel_alpha") && Value(Sampling) == "source")
+                warning = L.T("素材含透明通道。请选择具体采样格式，输出为不带透明通道的视频。");
+            else if (Value(Audio) == "flac" && !flacAllowed)
+                warning = L.T(MediaText("flac_reason"));
+            var notice = Control<InfoBar>("Notice");
+            notice.Message = warning;
+            notice.IsOpen = warning != "";
             var chooseInput = Control<Button>("ChooseInput");
             chooseInput.Content = L.T(media is null ? "选择视频" : "更换视频");
             chooseInput.Style = media is null ? (Style)root.Resources["SourceChooserAccent"] : null;
             Control<Button>("Start").IsEnabled = media is not null && !probing && activeJob is null && warning == "";
+            // Regenerate only a name still owned by the application. A user
+            // path survives option changes, except for a changed container suffix.
             if (media is not null && (Output.Text == "" || Output.Text == automaticOutput))
             {
                 var source = MediaText("path");
@@ -493,9 +631,14 @@ public sealed class MainWindow : Window
     {
         var picker = new FileOpenPicker();
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
-        foreach (var type in new[] { ".mp4", ".mov", ".mkv", ".m4v", ".webm", ".avi", ".mts" }) picker.FileTypeFilter.Add(type);
+        foreach (var type in new[] { ".mp4", ".mov", ".mkv", ".m4v", ".webm", ".avi", ".mts" })
+            picker.FileTypeFilter.Add(type);
         var file = await picker.PickSingleFileAsync();
-        if (file is not null) { Input.Text = file.Path; await InspectAsync(); }
+        if (file is not null)
+        {
+            Input.Text = file.Path;
+            await InspectAsync();
+        }
     }
     private void ClearMedia()
     {
@@ -503,73 +646,132 @@ public sealed class MainWindow : Window
         Control<TextBlock>("SourceSummary").Text = L.T("尚未选择素材");
         Control<TextBlock>("SourceEvidence").Text = L.T("识别相机 Log、HDR 与常规 SDR。");
         Control<TextBlock>("SourceBadge").Text = L.T("等待添加");
-        foreach (var name in new[] { "SourceVideo", "SourceColor", "SourceAudio" }) Control<TextBlock>(name).Visibility = Visibility.Collapsed;
-        if (Output.Text == automaticOutput) Output.Text = "";
+        foreach (var name in new[] { "SourceVideo", "SourceColor", "SourceAudio" })
+            Control<TextBlock>(name).Visibility = Visibility.Collapsed;
+        if (Output.Text == automaticOutput)
+            Output.Text = "";
         automaticOutput = completedOutput = "";
-        completed = false; clock.Reset(); encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
+        completed = false;
+        clock.Reset();
+        encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
         Control<ProgressBar>("Progress").Value = 0;
         Control<Button>("OpenFolder").IsEnabled = false;
-        UpdateTransferStats(); SetStatus(L.T("添加素材后开始")); Refresh();
+        UpdateTransferStats();
+        SetStatus(L.T("添加素材后开始"));
+        Refresh();
     }
     private async Task ChooseOutputAsync()
     {
-        var picker = new Microsoft.Windows.Storage.Pickers.FileSavePicker(AppWindow.Id) {
-            SuggestedFileName = Path.GetFileNameWithoutExtension(Output.Text), DefaultFileExtension = Suffix };
+        var picker = new Microsoft.Windows.Storage.Pickers.FileSavePicker(AppWindow.Id)
+        {
+            SuggestedFileName = Path.GetFileNameWithoutExtension(Output.Text),
+            DefaultFileExtension = Suffix
+        };
         picker.FileTypeChoices.Add(Suffix[1..].ToUpperInvariant(), new[] { Suffix });
         var file = await picker.PickSaveFileAsync();
-        if (file is not null) Output.Text = file.Path;
+        if (file is not null)
+            Output.Text = file.Path;
     }
+    /// <summary>Probes one source asynchronously and applies only the current generation's results.</summary>
     private async Task InspectAsync()
     {
-        if (activeJob is not null || probing) return;
+        if (activeJob is not null || probing)
+            return;
         var path = Input.Text.Trim('"', ' ');
-        if (path == "" || path.Equals(MediaText("path"), StringComparison.OrdinalIgnoreCase)) return;
-        if (!File.Exists(path)) { await MessageAsync(L.T("无法读取"), L.T("请选择有效的视频文件。")); return; }
+        if (path == "" || path.Equals(MediaText("path"), StringComparison.OrdinalIgnoreCase))
+            return;
+        if (!File.Exists(path))
+        {
+            await MessageAsync(L.T("无法读取"), L.T("请选择有效的视频文件。"));
+            return;
+        }
         if (ffmpeg == "" || ffprobe == "")
         {
             await ConfigureToolsAsync();
-            if (ffmpeg == "" || ffprobe == "") return;
+            if (ffmpeg == "" || ffprobe == "")
+                return;
         }
         var token = ++generation;
-        media = null; probing = true; SetStatus(L.T("正在读取相机元数据…"));
-        foreach (var name in new[] { "SourceVideo", "SourceColor", "SourceAudio" }) Control<TextBlock>(name).Visibility = Visibility.Collapsed;
-        Control<TextBlock>("SourceSummary").Text = L.T("正在识别素材…"); Refresh();
-        using var client = new ConversionClient(); probes.Add(client);
+        media = null;
+        probing = true;
+        SetStatus(L.T("正在读取相机元数据…"));
+        foreach (var name in new[] { "SourceVideo", "SourceColor", "SourceAudio" })
+            Control<TextBlock>(name).Visibility = Visibility.Collapsed;
+        Control<TextBlock>("SourceSummary").Text = L.T("正在识别素材…");
+        Refresh();
+        using var client = new ConversionClient();
+        probes.Add(client);
         try
         {
             await client.RunAsync(new ConversionRequest("probe", ToolsObject(), path), (type, data) =>
             {
-                if (token != generation) return;
-                if (type == "media") ApplyMedia(data);
-                else if (type == "error") { Control<TextBlock>("SourceSummary").Text = L.T("读取失败"); Control<TextBlock>("SourceEvidence").Text = L.T(data.GetString()); SetStatus(L.T("读取失败")); }
+                if (token != generation)
+                    return;
+                if (type == "media")
+                    ApplyMedia(data);
+                else if (type == "error")
+                {
+                    Control<TextBlock>("SourceSummary").Text = L.T("读取失败");
+                    Control<TextBlock>("SourceEvidence").Text = L.T(data.GetString());
+                    SetStatus(L.T("读取失败"));
+                }
             });
         }
         catch (Exception error) { if (!closing) await MessageAsync(L.T("读取失败"), error.Message); }
         finally { probes.Remove(client); probing = false; Refresh(); }
     }
+    // A new source starts from share defaults; subsequent user selections are
+    // retained by Refresh as long as the source and encoder can support them.
     private void ApplyMedia(JsonElement data)
     {
-        updating = true; media = data; Select(InputKind, "auto"); Select(Purpose, "share"); Select(Codec, "hevc");
-        Select(Variant, "standard"); ApplyPurposeDefaults();
+        updating = true;
+        media = data;
+        Select(InputKind, "auto");
+        Select(Purpose, "share");
+        Select(Codec, "hevc");
+        Select(Variant, "standard");
+        ApplyPurposeDefaults();
         Range.SelectedIndex = MediaText("kind") is "log" or "hlg" or "pq" ? 1 : 0;
-        Select(Profile, MediaText("profile")); Output.Text = ""; automaticOutput = "";
-        completed = false; clock.Reset(); encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
-        completedOutput = ""; Control<Button>("OpenFolder").IsEnabled = false;
-        Control<ProgressBar>("Progress").Value = 0; UpdateTransferStats();
+        Select(Profile, MediaText("profile"));
+        Output.Text = "";
+        automaticOutput = "";
+        completed = false;
+        clock.Reset();
+        encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
+        completedOutput = "";
+        Control<Button>("OpenFolder").IsEnabled = false;
+        Control<ProgressBar>("Progress").Value = 0;
+        UpdateTransferStats();
         UpdateMediaPresentation();
         SetStatus(L.T("已识别素材，默认选项已就绪"));
-        updating = false; Refresh();
+        updating = false;
+        Refresh();
     }
     private void UpdateMediaPresentation()
     {
-        if (media is not { } data) return;
+        if (media is not { } data)
+            return;
         var video = data.GetProperty("video");
-        var name = MediaText("profile") switch { "milog" => L.T("小米 Mi-Log"), "pocket3" => "Pocket 3 D-Log M", "samsung" => "Samsung Log", _ => MediaText("kind") switch { "hlg" => "HLG HDR", "pq" => "PQ HDR", "sdr" => "SDR", "log" => L.T("Log · 曲线待确认"), _ => L.T("色彩类型待确认") } };
+        var name = MediaText("profile") switch
+        {
+            "milog" => L.T("小米 Mi-Log"),
+            "pocket3" => "Pocket 3 D-Log M",
+            "samsung" => "Samsung Log",
+            _ => MediaText("kind") switch { "hlg" => "HLG HDR", "pq" => "PQ HDR", "sdr" => "SDR", "log" => L.T("Log · 曲线待确认"), _ => L.T("色彩类型待确认") }
+        };
         var pixel = video.GetProperty("pix_fmt").GetString() ?? "";
-        var sampling = MediaText("source_sampling") switch { "420" => "4:2:0", "422" => "4:2:2", "444" => MediaFlag("pixel_rgb") ? "RGB" : "4:4:4", "gray" => L.T("灰度"), _ => pixel };
+        var sampling = MediaText("source_sampling") switch
+        {
+            "420" => "4:2:0",
+            "422" => "4:2:2",
+            "444" => MediaFlag("pixel_rgb") ? "RGB" : "4:4:4",
+            "gray" => L.T("灰度"),
+            _ => pixel
+        };
         var depths = data.TryGetProperty("component_depths", out var components) ? components.EnumerateArray().Select(item => item.GetInt32()).Distinct().ToArray() : [];
         var depth = depths.Length > 0 ? string.Join("/", depths) + L.T(" 位") : video.TryGetProperty("bits_per_raw_sample", out var raw) && int.TryParse(raw.ToString(), out var bits) && bits > 0 ? bits + L.T(" 位") : L.T("位深未标明");
-        if (data.TryGetProperty("pixel_float", out var floating) && floating.GetBoolean()) depth += L.T("浮点");
+        if (data.TryGetProperty("pixel_float", out var floating) && floating.GetBoolean())
+            depth += L.T("浮点");
         var duration = data.GetProperty("duration").GetDouble();
         Control<TextBlock>("SourceSummary").Text = $"{name} · {video.GetProperty("width")} × {video.GetProperty("height")} · {sampling}";
         SetSourceDetail("SourceVideo", DescribeVideo(video, depth));
@@ -581,7 +783,9 @@ public sealed class MainWindow : Window
     }
     private void SetSourceDetail(string name, string text)
     {
-        var control = Control<TextBlock>(name); control.Text = text; control.Visibility = Visibility.Visible;
+        var control = Control<TextBlock>(name);
+        control.Text = text;
+        control.Visibility = Visibility.Visible;
     }
     private static string Field(JsonElement item, string key, string fallback = "") => item.TryGetProperty(key, out var value) ? value.ToString() : fallback;
     private static string Bitrate(JsonElement item)
@@ -591,57 +795,121 @@ public sealed class MainWindow : Window
     private static string DescribeVideo(JsonElement video, string depth)
     {
         var parts = new List<string> { L.T("视频：") + Field(video, "codec_name").ToUpperInvariant() };
-        var profile = Field(video, "profile"); if (profile != "" && profile != "unknown") parts.Add(profile);
+        var profile = Field(video, "profile");
+        if (profile != "" && profile != "unknown")
+            parts.Add(profile);
         foreach (var key in new[] { "avg_frame_rate", "r_frame_rate" })
         {
             var ratio = Field(video, key).Split('/');
-            if (ratio.Length == 2 && TryNumber(ratio[0], out var a) && TryNumber(ratio[1], out var b) && a > 0 && b > 0) { parts.Add($"{a / b:0.###} fps"); break; }
+            if (ratio.Length == 2 && TryNumber(ratio[0], out var a) && TryNumber(ratio[1], out var b) && a > 0 && b > 0)
+            {
+                parts.Add($"{a / b:0.###} fps");
+                break;
+            }
         }
         parts.Add(depth);
-        var bitrate = Bitrate(video); if (bitrate != "") parts.Add(bitrate);
+        var bitrate = Bitrate(video);
+        if (bitrate != "")
+            parts.Add(bitrate);
         return string.Join(" · ", parts);
     }
     private static string DescribeColors(JsonElement video)
     {
-        var primaries = Field(video, "color_primaries") switch { "bt709" => "BT.709", "bt2020" => "BT.2020", "" or "unknown" => L.T("色域未标明"), var value => value };
-        var transfer = Field(video, "color_transfer") switch { "bt709" => L.T("Rec.709 曲线"), "arib-std-b67" => "HLG", "smpte2084" => "PQ", "" or "unknown" => L.T("曲线未标明"), var value => value };
-        var range = Field(video, "color_range") switch { "pc" => L.T("全范围"), "tv" => L.T("有限范围"), _ => L.T("范围未标明") };
+        var primaries = Field(video, "color_primaries") switch
+        {
+            "bt709" => "BT.709",
+            "bt2020" => "BT.2020",
+            "" or "unknown" => L.T("色域未标明"),
+            var value => value
+        };
+        var transfer = Field(video, "color_transfer") switch
+        {
+            "bt709" => L.T("Rec.709 曲线"),
+            "arib-std-b67" => "HLG",
+            "smpte2084" => "PQ",
+            "" or "unknown" => L.T("曲线未标明"),
+            var value => value
+        };
+        var range = Field(video, "color_range") switch
+        {
+            "pc" => L.T("全范围"),
+            "tv" => L.T("有限范围"),
+            _ => L.T("范围未标明")
+        };
         return L.T($"色彩标签：{primaries} · {transfer} · {range}");
     }
     private static string DescribeAudio(JsonElement data)
     {
-        if (!data.TryGetProperty("audio", out var audio) || audio.GetArrayLength() == 0) return L.T("音轨：无");
-        var lines = new List<string>(); var index = 0;
+        if (!data.TryGetProperty("audio", out var audio) || audio.GetArrayLength() == 0)
+            return L.T("音轨：无");
+        var lines = new List<string>();
+        var index = 0;
         foreach (var stream in audio.EnumerateArray())
         {
-            var layout = Field(stream, "channel_layout") switch { "stereo" => L.T("立体声"), "mono" => L.T("单声道"), "" or "unknown" => Field(stream, "channels", "?") + L.T(" 声道"), var value => value };
+            var layout = Field(stream, "channel_layout") switch
+            {
+                "stereo" => L.T("立体声"),
+                "mono" => L.T("单声道"),
+                "" or "unknown" => Field(stream, "channels", "?") + L.T(" 声道"),
+                var value => value
+            };
             var parts = new List<string> { L.T($"音轨 {++index}：{Field(stream, "codec_name").ToUpperInvariant()}"), layout };
-            var profile = Field(stream, "profile"); if (profile != "" && profile != "unknown") parts.Insert(1, profile);
-            if (TryNumber(Field(stream, "sample_rate"), out var hz) && hz > 0) parts.Add($"{hz / 1000:0.###} kHz");
+            var profile = Field(stream, "profile");
+            if (profile != "" && profile != "unknown")
+                parts.Insert(1, profile);
+            if (TryNumber(Field(stream, "sample_rate"), out var hz) && hz > 0)
+                parts.Add($"{hz / 1000:0.###} kHz");
             var audioBits = Field(stream, "bits_per_raw_sample");
-            if (!int.TryParse(audioBits, out var depth) || depth <= 0) int.TryParse(Field(stream, "bits_per_sample"), out depth);
-            if (depth > 0) parts.Add(L.T($"{depth} 位"));
-            var bitrate = Bitrate(stream); if (bitrate != "") parts.Add(bitrate);
+            if (!int.TryParse(audioBits, out var depth) || depth <= 0)
+                int.TryParse(Field(stream, "bits_per_sample"), out depth);
+            if (depth > 0)
+                parts.Add(L.T($"{depth} 位"));
+            var bitrate = Bitrate(stream);
+            if (bitrate != "")
+                parts.Add(bitrate);
             lines.Add(string.Join(" · ", parts));
         }
         return string.Join("\n", lines);
     }
+    /// <summary>Snapshots current choices so edits cannot change the parameters of an active conversion.</summary>
     private async Task StartAsync()
     {
-        if (activeJob is not null || media is null) return;
+        if (activeJob is not null || media is null)
+            return;
         var output = Output.Text.Trim('"', ' ');
-        if (File.Exists(output)) { await MessageAsync(L.T("请更换输出位置"), L.T("输出文件已存在，程序不会覆盖文件。")); return; }
+        if (File.Exists(output))
+        {
+            await MessageAsync(L.T("请更换输出位置"), L.T("输出文件已存在，程序不会覆盖文件。"));
+            return;
+        }
         if (!Directory.Exists(Path.GetDirectoryName(output)) || Path.GetExtension(output).ToLowerInvariant() != Suffix)
-        { await MessageAsync(L.T("请调整输出位置"), L.T($"请选择已有目录，文件后缀应为 {Suffix}。")); return; }
+        {
+            await MessageAsync(L.T("请调整输出位置"), L.T($"请选择已有目录，文件后缀应为 {Suffix}。"));
+            return;
+        }
         var request = new ConversionRequest("convert", ToolsObject(), MediaText("path"), output,
-            new ConversionOptions(Value(Purpose), Value(Codec), Hdr ? "hdr" : "sdr", Value(Transform),
-                Value(Profile) == "" ? null : Value(Profile), Value(Sampling), Value(Variant),
-                Value(Audio), Value(Container), Value(InputKind), Control<CheckBox>("CpuDecode").IsChecked == true, Value(ColorRange), Value(BitDepth)));
-        using var client = new ConversionClient(); activeJob = client;
-        completed = false; encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
-        clock.Restart(); clockTimer.Start(); UpdateTransferStats();
-        Control<TextBox>("Log").Text = ""; Control<ProgressBar>("Progress").Value = 0; SetBusy(true); SetStatus(L.T("正在启动转换…"));
-        try { await client.RunAsync(request, Receive); }
+            new EncodeOptions(Purpose: Value(Purpose), Codec: Value(Codec), Output: Hdr ? "hdr" : "sdr",
+                Transform: Value(Transform), Profile: Value(Profile) == "" ? null : Value(Profile),
+                Sampling: Value(Sampling), Variant: Value(Variant), Audio: Value(Audio),
+                Container: Value(Container), SourceKind: Value(InputKind),
+                CpuDecode: Control<CheckBox>("CpuDecode").IsChecked == true,
+                ColorRange: Value(ColorRange), BitDepth: Value(BitDepth)));
+
+        using var client = new ConversionClient();
+        activeJob = client;
+        completed = false;
+        encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
+        clock.Restart();
+        clockTimer.Start();
+        UpdateTransferStats();
+        Control<TextBox>("Log").Text = "";
+        Control<ProgressBar>("Progress").Value = 0;
+        SetBusy(true);
+        SetStatus(L.T("正在启动转换…"));
+        try
+        {
+            await client.RunAsync(request, Receive);
+        }
         catch (Exception error) { await MessageAsync(L.T("转换失败"), error.Message); SetStatus(L.T("转换失败")); }
         finally { clock.Stop(); clockTimer.Stop(); activeJob = null; UpdateTransferStats(); SetBusy(false); Refresh(); if (closing) Close(); }
     }
@@ -649,23 +917,46 @@ public sealed class MainWindow : Window
     {
         if (type == "log")
         {
-            var log = Control<TextBox>("Log"); log.Text += data.GetString() + "\r\n";
-            if (log.Text.Length > 40000) log.Text = log.Text[^30000..];
+            var log = Control<TextBox>("Log");
+            log.Text += data.GetString() + "\r\n";
+            if (log.Text.Length > 40000)
+                log.Text = log.Text[^30000..];
         }
         else if (type == "progress")
         {
-            if (data.TryGetProperty("out_time_us", out var time) && TryNumber(time.ToString(), out var us)) encodedSeconds = Math.Max(encodedSeconds, us / 1_000_000);
-            if (data.TryGetProperty("frame", out var count) && TryNumber(count.ToString(), out var frames)) encodedFrames = Math.Max(encodedFrames, frames);
+            if (data.TryGetProperty("out_time_us", out var time) && TryNumber(time.ToString(), out var us))
+                encodedSeconds = Math.Max(encodedSeconds, us / 1_000_000);
+            if (data.TryGetProperty("frame", out var count) && TryNumber(count.ToString(), out var frames))
+                encodedFrames = Math.Max(encodedFrames, frames);
             if (data.TryGetProperty("speed", out var speed) && TryNumber(speed.ToString().TrimEnd('x'), out var rate) && rate > 0)
                 conversionSpeed = conversionSpeed > 0 ? .7 * conversionSpeed + .3 * rate : rate;
-            if (data.TryGetProperty("fps", out var fps) && TryNumber(fps.ToString(), out var framesPerSecond)) currentFps = framesPerSecond;
+            if (data.TryGetProperty("fps", out var fps) && TryNumber(fps.ToString(), out var framesPerSecond))
+                currentFps = framesPerSecond;
             UpdateTransferStats();
             SetStatus(L.T($"正在转换 · {(data.TryGetProperty("frame", out var frame) ? frame.ToString() : "0")} 帧"));
         }
-        else if (type == "status") SetStatus(data.GetString() ?? "");
-        else if (type == "done") { completed = true; completedOutput = data.GetString() ?? ""; Control<ProgressBar>("Progress").Value = 1000; SetStatus(L.T("转换完成 · 已核对色彩与采样格式")); }
-        else if (type == "cancelled") { encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0; Control<ProgressBar>("Progress").Value = 0; SetStatus(L.T("已取消")); }
-        else if (type == "error") { SetStatus(L.T("转换失败")); Control<Expander>("LogPanel").IsExpanded = true; Control<TextBox>("Log").Text += L.T(data.GetString()); await MessageAsync(L.T("转换失败"), data.GetString() ?? ""); }
+        else if (type == "status")
+            SetStatus(data.GetString() ?? "");
+        else if (type == "done")
+        {
+            completed = true;
+            completedOutput = data.GetString() ?? "";
+            Control<ProgressBar>("Progress").Value = 1000;
+            SetStatus(L.T("转换完成 · 已核对色彩与采样格式"));
+        }
+        else if (type == "cancelled")
+        {
+            encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
+            Control<ProgressBar>("Progress").Value = 0;
+            SetStatus(L.T("已取消"));
+        }
+        else if (type == "error")
+        {
+            SetStatus(L.T("转换失败"));
+            Control<Expander>("LogPanel").IsExpanded = true;
+            Control<TextBox>("Log").Text += L.T(data.GetString());
+            await MessageAsync(L.T("转换失败"), data.GetString() ?? "");
+        }
     }
     private static bool TryNumber(string text, out double value) => double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value) && double.IsFinite(value);
     private static string DisplayTime(double seconds)
@@ -673,6 +964,8 @@ public sealed class MainWindow : Window
         var value = TimeSpan.FromSeconds(Math.Clamp(seconds, 0, 359999999));
         return value.TotalHours >= 1 ? $"{(int)value.TotalHours}:{value.Minutes:00}:{value.Seconds:00}" : $"{value.Minutes:00}:{value.Seconds:00}";
     }
+    /// <summary>Displays encoded position, encoder fps and wall-clock ETA using separate units.</summary>
+    /// <remarks>FFmpeg speed is media-seconds per wall-second. Keep progress below 100% until output verification succeeds.</remarks>
     private void UpdateTransferStats()
     {
         var duration = media is { } item ? item.GetProperty("duration").GetDouble() : 0;
@@ -680,7 +973,8 @@ public sealed class MainWindow : Window
         var position = completed ? duration : duration > 0 ? Math.Min(encodedSeconds, duration) : encodedSeconds;
         Control<TextBlock>("ProgressPercent").Text = percent.ToString("0.0", CultureInfo.InvariantCulture) + "% · " + DisplayTime(position) + " / " + (duration > 0 ? DisplayTime(duration) : "—");
         Control<ProgressBar>("Progress").IsIndeterminate = activeJob is not null && encodedSeconds <= 0;
-        if (activeJob is not null || completed) Control<ProgressBar>("Progress").Value = 10 * percent;
+        if (activeJob is not null || completed)
+            Control<ProgressBar>("Progress").Value = 10 * percent;
         Control<TextBlock>("ElapsedTime").Text = L.T("已用 ") + DisplayTime(clock.Elapsed.TotalSeconds);
         var speed = conversionSpeed > 0 ? conversionSpeed : encodedSeconds > 0 && clock.Elapsed.TotalSeconds > 0 ? encodedSeconds / clock.Elapsed.TotalSeconds : 0;
         var fps = currentFps > 0 ? currentFps : encodedFrames > 0 && encodedSeconds > 0 && conversionSpeed > 0
@@ -710,7 +1004,8 @@ public sealed class MainWindow : Window
     }
     private async Task ConfigureToolsAsync()
     {
-        if (activeJob is not null || dialogOpen) return;
+        if (activeJob is not null || dialogOpen)
+            return;
         dialogOpen = true;
         var panel = new StackPanel { Spacing = 16, MinWidth = 460 };
         panel.Children.Add(new TextBlock { Text = L.T("自动查找 PATH，也可以选择自己的 FFmpeg 和 ffprobe。"), TextWrapping = TextWrapping.Wrap });
@@ -718,54 +1013,101 @@ public sealed class MainWindow : Window
         var toolFields = new List<(string name, string value)> { ("ffmpeg", ffmpeg), ("ffprobe", ffprobe) };
         foreach (var (name, value) in toolFields)
         {
-            var grid = new Grid { ColumnSpacing = 8 }; grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var box = new TextBox { Header = name + ".exe", Text = value, MinWidth = 340,
-                IsSpellCheckEnabled = false, IsTextPredictionEnabled = false };
+            var grid = new Grid { ColumnSpacing = 8 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition());
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var box = new TextBox
+            {
+                Header = name + ".exe",
+                Text = value,
+                MinWidth = 340,
+                IsSpellCheckEnabled = false,
+                IsTextPredictionEnabled = false
+            };
             var button = new Button { Content = L.T("浏览…"), VerticalAlignment = VerticalAlignment.Bottom };
-            Grid.SetColumn(button, 1); grid.Children.Add(box); grid.Children.Add(button); panel.Children.Add(grid); fields[name] = box;
+            Grid.SetColumn(button, 1);
+            grid.Children.Add(box);
+            grid.Children.Add(button);
+            panel.Children.Add(grid);
+            fields[name] = box;
             button.Click += async (_, _) =>
             {
-                var picker = new FileOpenPicker(); picker.FileTypeFilter.Add(".exe"); WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
+                var picker = new FileOpenPicker();
+                picker.FileTypeFilter.Add(".exe");
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
                 var file = await picker.PickSingleFileAsync();
-                if (file is null) return; box.Text = file.Path;
-                var peer = name == "ffmpeg" ? "ffprobe" : "ffmpeg"; var candidate = Path.Combine(Path.GetDirectoryName(file.Path)!, peer + ".exe");
-                if (fields[peer].Text == "" && File.Exists(candidate)) fields[peer].Text = candidate;
+                if (file is null)
+                    return;
+                box.Text = file.Path;
+                var peer = name == "ffmpeg" ? "ffprobe" : "ffmpeg";
+                var candidate = Path.Combine(Path.GetDirectoryName(file.Path)!, peer + ".exe");
+                if (fields[peer].Text == "" && File.Exists(candidate))
+                    fields[peer].Text = candidate;
             };
         }
-        var notice = new InfoBar { IsClosable = false, Severity = InfoBarSeverity.Error, IsOpen = false }; panel.Children.Add(notice);
+        var notice = new InfoBar { IsClosable = false, Severity = InfoBarSeverity.Error, IsOpen = false };
+        panel.Children.Add(notice);
         var dialog = UiTypography.Prepare(new ContentDialog { Title = L.T("工具路径"), Content = panel, PrimaryButtonText = L.T("检测并保存"), CloseButtonText = L.T("取消"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme });
         dialog.PrimaryButtonClick += async (_, e) =>
         {
-            var deferral = e.GetDeferral(); dialog.IsPrimaryButtonEnabled = false;
+            var deferral = e.GetDeferral();
+            dialog.IsPrimaryButtonEnabled = false;
             try
             {
-                foreach (var (name, box) in fields) await ConversionClient.CheckToolAsync(box.Text.Trim('"', ' '), name);
-                ffmpeg = fields["ffmpeg"].Text.Trim('"', ' '); ffprobe = fields["ffprobe"].Text.Trim('"', ' ');
-                settings.Ffmpeg = ffmpeg; settings.Ffprobe = ffprobe; settings.Save();
+                foreach (var (name, box) in fields)
+                    await ConversionClient.CheckToolAsync(box.Text.Trim('"', ' '), name);
+                ffmpeg = fields["ffmpeg"].Text.Trim('"', ' ');
+                ffprobe = fields["ffprobe"].Text.Trim('"', ' ');
+                settings.Ffmpeg = ffmpeg;
+                settings.Ffprobe = ffprobe;
+                settings.Save();
 
             }
             catch (Exception error) { e.Cancel = true; notice.Message = L.T(error.Message); notice.IsOpen = true; }
             finally { dialog.IsPrimaryButtonEnabled = true; deferral.Complete(); }
         };
-        try { await dialog.ShowAsync(); } finally { dialogOpen = false; Refresh(); }
+        try
+        {
+            await dialog.ShowAsync();
+        }
+        finally { dialogOpen = false; Refresh(); }
     }
     private async Task MessageAsync(string title, string message)
     {
-        if (closing || dialogOpen) return;
+        if (closing || dialogOpen)
+            return;
         dialogOpen = true;
-        try { await UiTypography.Prepare(new ContentDialog { Title = L.T(title), Content = L.T(message), CloseButtonText = L.T("确定"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme }).ShowAsync(); }
+        try
+        {
+            await UiTypography.Prepare(new ContentDialog { Title = L.T(title), Content = L.T(message), CloseButtonText = L.T("确定"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme }).ShowAsync();
+        }
         finally { dialogOpen = false; }
     }
+    // Hold the window open until cancellation has joined FFmpeg and cleaned
+    // the temporary output. Close() is called by the completed job's finally block.
     private async void OnClosing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
     {
-        if (closing || activeJob is null) { foreach (var probe in probes) probe.Dispose(); return; }
+        if (closing || activeJob is null)
+        {
+            foreach (var probe in probes)
+                probe.Dispose();
+            return;
+        }
         args.Cancel = true;
-        if (dialogOpen) return;
+        if (dialogOpen)
+            return;
         dialogOpen = true;
         try
         {
             var result = await UiTypography.Prepare(new ContentDialog { Title = L.T("取消转换并退出？"), Content = L.T("本次临时输出将清理，原片保留。"), PrimaryButtonText = L.T("取消转换并退出"), CloseButtonText = L.T("继续转换"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme }).ShowAsync();
-            if (result == ContentDialogResult.Primary) { closing = true; if (activeJob is not null) await activeJob.CancelAsync(); else Close(); }
+            if (result == ContentDialogResult.Primary)
+            {
+                closing = true;
+                if (activeJob is not null)
+                    await activeJob.CancelAsync();
+                else
+                    Close();
+            }
         }
         finally { dialogOpen = false; }
     }

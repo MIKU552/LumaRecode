@@ -5,27 +5,46 @@ using Microsoft.Win32.SafeHandles;
 
 namespace VideoConverter.Core;
 
+/// <summary>Complete output of a short-lived tool invocation; stderr remains separate from machine-readable stdout.</summary>
 public sealed record ProcessResult(int ExitCode, string Output, string Error);
 
+/// <summary>Starts external tools, drains their pipes and owns cancellation and file-identity checks.</summary>
 public static class ProcessRunner
 {
+    /// <summary>Creates a hidden, shell-free invocation with UTF-8 output and one ArgumentList entry per argument.</summary>
     public static ProcessStartInfo StartInfo(string executable, IEnumerable<string> arguments, string? directory = null)
     {
-        var info = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true,
-            RedirectStandardOutput = true, RedirectStandardError = true, StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8 };
-        if (directory is not null) info.WorkingDirectory = directory;
-        foreach (var argument in arguments) info.ArgumentList.Add(argument);
+        var info = new ProcessStartInfo(executable)
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8
+        };
+        if (directory is not null)
+            info.WorkingDirectory = directory;
+        foreach (var argument in arguments)
+            info.ArgumentList.Add(argument);
         return info;
     }
 
     public static void Stop(Process process)
     {
-        try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
+        // The process may exit between HasExited and Kill. That race is normal;
+        // an unrelated access error must still reach the caller.
+        try
+        {
+            if (!process.HasExited)
+                process.Kill(entireProcessTree: true);
+        }
         catch (InvalidOperationException) { }
         catch (System.ComponentModel.Win32Exception) when (process.HasExited) { }
     }
 
+    /// <summary>Captures a bounded-duration probe while draining both pipes concurrently.</summary>
+    /// <remarks>Cancellation kills the child tree and waits for EOF, so a cancelled probe cannot outlive its task.</remarks>
     public static async Task<ProcessResult> CaptureAsync(string executable, IEnumerable<string> arguments,
         CancellationToken cancellation = default, int timeoutSeconds = 25)
     {
@@ -38,27 +57,38 @@ public static class ProcessRunner
         var stdout = process.StandardOutput.ReadToEndAsync();
         var stderr = process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync();
-        var output = await stdout; var error = await stderr;
+        var output = await stdout;
+        var error = await stderr;
         cancellation.ThrowIfCancellationRequested();
-        if (timeout.IsCancellationRequested) throw new TimeoutException("External tool timed out.");
+        if (timeout.IsCancellationRequested)
+            throw new TimeoutException("External tool timed out.");
         return new(process.ExitCode, output, error);
     }
 
+    /// <summary>Uses an existing saved path first, then searches PATH for a bare executable name.</summary>
+    /// <returns>The full path, or an empty string when no candidate exists.</returns>
     public static string FindTool(string name, string saved = "")
     {
-        if (File.Exists(saved)) return Path.GetFullPath(saved);
+        if (File.Exists(saved))
+            return Path.GetFullPath(saved);
+        var executable = OperatingSystem.IsWindows() && !name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? name + ".exe" : name;
         foreach (var folder in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
         {
-            var path = Path.Combine(folder.Trim('"'), name + (OperatingSystem.IsWindows() ? ".exe" : ""));
-            if (File.Exists(path)) return Path.GetFullPath(path);
+            var path = Path.Combine(folder.Trim('"'), executable);
+            if (File.Exists(path))
+                return Path.GetFullPath(path);
         }
         return "";
     }
 
+    /// <summary>Compares both path spelling and Windows volume/file IDs to detect aliases and hard links.</summary>
+    /// <remarks>Used before opening output/log files; string equality alone cannot protect a hard-linked source.</remarks>
     public static bool SameFile(string left, string right)
     {
-        if (string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)) return true;
-        if (!File.Exists(left) || !File.Exists(right)) return false;
+        if (string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            return true;
+        if (!File.Exists(left) || !File.Exists(right))
+            return false;
         if (OperatingSystem.IsWindows())
         {
             using var a = File.OpenHandle(left, access: FileAccess.Read, share: FileShare.ReadWrite | FileShare.Delete);
@@ -72,6 +102,8 @@ public static class ProcessRunner
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    // Native BY_HANDLE_FILE_INFORMATION layout; the volume serial and 64-bit
+    // file index identify a file even when two directory entries have different names.
     private struct FileInformation
     {
         public uint Attributes;

@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace VideoConverter;
 
+/// <summary>Selects the headless entry before initializing WinUI, COM wrappers or GUI resources.</summary>
 internal static class Program
 {
     [STAThread]
@@ -27,7 +28,10 @@ internal static class Program
         Application.Start(parameters =>
         {
             SynchronizationContext.SetSynchronizationContext(new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));
-            try { _ = new ConverterApp(); }
+            try
+            {
+                _ = new ConverterApp();
+            }
             catch (Exception error)
             {
                 Directory.CreateDirectory(UserSettings.Folder);

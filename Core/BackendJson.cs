@@ -4,9 +4,11 @@ using System.Text.Json.Serialization;
 
 namespace VideoConverter.Core;
 
+// Source generation keeps CLI/event serialization available after Native AOT trimming.
 [JsonSerializable(typeof(JsonNode))]
 internal partial class BackendJsonContext : JsonSerializerContext;
 
+/// <summary>Serializes JSON documents and event lines with a reflection-free shared context.</summary>
 public static class BackendJson
 {
     private static readonly BackendJsonContext pretty = new(new JsonSerializerOptions { WriteIndented = true });

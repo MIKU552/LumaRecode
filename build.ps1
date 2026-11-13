@@ -1,3 +1,12 @@
+<#
+.SYNOPSIS
+Builds the WinUI application and its single-file GUI/CLI launcher.
+.DESCRIPTION
+Restores locked dependencies, checks localization, collects original license
+texts and publishes the selected compilation/deployment combination. Native
+AOT uses a separate payload directory before the .NET extraction launcher is
+published; JIT and framework-dependent builds retain their own lock graph.
+#>
 param(
     [ValidateSet('SelfContained','FrameworkDependent')][string]$Deployment = 'SelfContained',
     [ValidateSet('Aot','Jit')][string]$Compilation = 'Aot',
@@ -16,6 +25,10 @@ try {
         $taskTarget = [IO.Path]::GetFullPath((Join-Path $taskRoot $RelativePath))
         if (-not $taskTarget.StartsWith($taskRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Invalid generated directory.' }
         if ($RelativePath -notin @('dist/SelfContained','dist/FrameworkDependent','dist/NativeAot')) { throw 'Unexpected generated directory.' }
+        # Do not clear output paths redirected through a junction or symlink.
+        for ($taskAncestor = $taskTarget; $taskAncestor -ne $taskRoot; $taskAncestor = [IO.Path]::GetDirectoryName($taskAncestor)) {
+            if ((Test-Path -LiteralPath $taskAncestor) -and ((Get-Item -LiteralPath $taskAncestor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Generated directory uses a reparse point.' }
+        }
         if (Test-Path -LiteralPath $taskTarget) { Remove-Item -LiteralPath $taskTarget -Recurse -Force }
         New-Item -ItemType Directory -Path $taskTarget -Force | Out-Null
     }

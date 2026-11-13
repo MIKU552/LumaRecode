@@ -1,3 +1,11 @@
+<#
+.SYNOPSIS
+Samples one already-running application process without altering its working set.
+.DESCRIPTION
+Selects by full executable path, waits for a comparable process age and records
+three samples. Private working set, committed bytes and total resident memory
+are separate metrics; this script does not launch or interact with the GUI.
+#>
 param(
     [Parameter(Mandatory=$true)][string]$Executable,
     [Parameter(Mandatory=$true)][string]$Label,

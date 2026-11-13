@@ -1,4 +1,7 @@
 namespace VideoConverter;
+/// <summary>Bundled font fallback order, independent of the installed Windows display language.</summary>
+/// <remarks>Japanese/Chinese ordering selects regional CJK glyphs. Logs keep a monospace Latin
+/// face and fall back to the same CJK families for characters absent from Source Code Pro.</remarks>
 public static class TypographyPolicy
 {
     private const string Latin = "ms-appx:///Assets/Fonts/SourceSans3VF-Upright.ttf#SourceSans3VF";

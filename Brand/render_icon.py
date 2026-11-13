@@ -28,6 +28,8 @@ def render(size):
 sizes = [16, 20, 24, 32, 40, 48, 64, 96, 128, 256]
 entries = []
 payloads = []
+# ICONDIR is six bytes, followed by 16-byte entries pointing to PNG payloads.
+# ICO stores a 256-pixel dimension as zero in its one-byte size fields.
 offset = 6 + 16 * len(sizes)
 for size in sizes:
     data = render(size)

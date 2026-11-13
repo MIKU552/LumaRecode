@@ -1,3 +1,11 @@
+<#
+.SYNOPSIS
+Collects original legal texts and a reproducible manifest from resolved packages.
+.DESCRIPTION
+Uses both payload and launcher restore graphs, including implicit runtime packs.
+Deduplicates identical texts by hash while retaining each package's provenance;
+font files and their original licenses are checked against the committed hashes.
+#>
 param([Parameter(Mandatory=$true)][string]$ProjectRoot, [string]$AdditionalAssetsFile)
 $ErrorActionPreference = 'Stop'
 $taskRoot = [IO.Path]::GetFullPath($ProjectRoot)
