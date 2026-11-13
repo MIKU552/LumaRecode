@@ -19,7 +19,7 @@ internal static class ViewText
         ("SourceBadge", "Text", "等待添加"),
         ("InputPath", "PlaceholderText", "拖入视频，或粘贴文件路径"),
         ("InputPath", "AutomationProperties.Name", "视频路径"),
-        ("ChooseInput", "Content", "选择视频"),
+        ("ChooseInputLabel", "Text", "选择视频"),
         ("SourceSummary", "Text", "尚未选择素材"),
         ("SourceEvidence", "Text", "识别相机 Log、HDR 与常规 SDR。"),
         ("InputKind", "Header", "输入解释"),

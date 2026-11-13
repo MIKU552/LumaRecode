@@ -14,6 +14,9 @@
       <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
       <Setter Property="TextWrapping" Value="Wrap" /><Setter Property="FontSize" Value="13" />
     </Style>
+    <!-- Keep both states on the current WinUI templates; a local null Style
+         suppresses the implicit style and falls back to the legacy template. -->
+    <Style x:Key="SourceChooserDefault" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}" />
     <Style x:Key="SourceChooserAccent" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}" />
   </Grid.Resources>
   <Grid.RowDefinitions><RowDefinition Height="48" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
@@ -44,7 +47,11 @@
             <Grid><TextBlock Text="视频素材" Style="{StaticResource Section}" VerticalAlignment="Center" x:Name="LocalizedElement10" /><Border HorizontalAlignment="Right" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="4" Padding="10,4"><TextBlock x:Name="SourceBadge" Text="等待添加" Style="{StaticResource Secondary}" FontSize="12" VerticalAlignment="Center" /></Border></Grid>
             <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
               <TextBox IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" x:Name="InputPath" PlaceholderText="拖入视频，或粘贴文件路径" AutomationProperties.Name="视频路径" />
-              <Button x:Name="ChooseInput" Grid.Column="1" Content="选择视频" Style="{StaticResource SourceChooserAccent}" MinWidth="116" Height="36" Padding="20,6" />
+              <Button x:Name="ChooseInput" Grid.Column="1" Style="{StaticResource SourceChooserAccent}" MinWidth="116" Height="36" Padding="20,6">
+                <!-- An explicit TextBlock follows the same font/fallback policy as
+                     the view instead of a template-generated string presenter. -->
+                <TextBlock x:Name="ChooseInputLabel" Text="选择视频" FontWeight="Normal" />
+              </Button>
             </Grid>
             <Grid x:Name="SourceDetails" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="240" /></Grid.ColumnDefinitions>
               <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
