@@ -108,7 +108,7 @@ if (args.FirstOrDefault() == "--server")
                 else if (action == "plan")
                 {
                     var plan = engine.Plan(tools, media, options, request.Text("output"));
-                    answer = new JsonObject { ["argv"] = JsonFields.Strings(plan.Arguments), ["colors"] = plan.Colors, ["options"] = plan.Options.ToJson() };
+                    answer = new JsonObject { ["argv"] = JsonFields.Strings(plan.Arguments), ["colors"] = plan.Colors, ["options"] = plan.Options.ToJson(), ["software_decode"] = plan.UsesSoftwareDecoding };
                 }
                 else
                 {

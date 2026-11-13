@@ -121,7 +121,9 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 
 ## 脚本与进度输出
 
-`convert --json` 和 `plan --json` 在 stdout 输出逐行 JSON，schema_version 为 1。转换事件包括 `start`、`log`、`status`、`progress`、`done`、`skipped`、`error`、`cancelled`、`summary`；plan 使用 `plan`。任务事件带 `job`、`total_jobs`、`input`、`output`；`data` 为事件内容。
+`convert --json` 和 `plan --json` 在 stdout 输出逐行 JSON，schema_version 为 1。转换事件包括 `start`、`log`、`status`、`decoder`、`progress`、`done`、`skipped`、`error`、`cancelled`、`summary`；plan 使用 `plan`。任务事件带 `job`、`total_jobs`、`input`、`output`；`data` 为事件内容。
+
+`decoder.data` 为 `software` 或 `qsv`，表示当前编码尝试的解码方式。
 
 进度包含 `fps`、`percent`、`position_seconds`、`duration_seconds`、`elapsed_seconds`、`eta_seconds`，未知的百分比或剩余时间为 null。错误包含稳定的 `code` 和可读的 `message`。`--log FILE` 向文件追加相同的 JSON Lines 事件，`--verbose` 在文本模式下显示 FFmpeg 日志。
 

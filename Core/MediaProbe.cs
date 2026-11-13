@@ -76,7 +76,8 @@ public static class MediaProbe
         if (raw)
         {
             video["_raw"] = await RawDevelopment.InspectAsync(tools, path, video.Integer("index"), cancellation);
-            video["pix_fmt"] = video["_raw"].Integer("bayer_pattern") == 0 ? "bayer_rggb16le" : "bayer16le";
+            // The selected decoder owns CFA layout and its pixel-format label.
+            // Keep that result so future FFmpeg Bayer layouts use this same path.
             video["color_range"] = "pc";
         }
         var first = raw ? new JsonObject() : await ReadAsync(tools, ["-select_streams", video.Text("index"), "-read_intervals", "%+#1", "-show_frames", "-of", "json", path], cancellation);

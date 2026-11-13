@@ -27,6 +27,8 @@ public sealed partial class MainWindow
     private void ClearMedia()
     {
         media = null;
+        sourceMedia = null;
+        softwareDecodeFallback = false;
         updating = true;
         ResetSourceOptions();
         updating = false;
@@ -96,6 +98,8 @@ public sealed partial class MainWindow
         }
         var token = ++generation;
         media = null;
+        sourceMedia = null;
+        softwareDecodeFallback = false;
         probing = true;
         SetStatus("正在读取相机元数据…");
         foreach (var name in new[] { "SourceVideo", "SourceColor", "SourceAudio" })
@@ -118,6 +122,7 @@ public sealed partial class MainWindow
 
                 if (type == "media")
                 {
+                    sourceMedia = client.SourceMedia;
                     ApplyMedia(data!.AsObject());
                 }
                 else if (type == "error")

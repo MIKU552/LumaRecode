@@ -77,4 +77,7 @@ public sealed record EncodeOptions(string Purpose = "share", string Codec = "hev
 }
 
 /// <summary>A shell-free FFmpeg argument vector and the color tags required during output verification.</summary>
-public sealed record EncodingPlan(string[] Arguments, JsonObject Colors, EncodeOptions Options, bool QsvTimingCompatibility = false, string? WorkingDirectory = null);
+public sealed record EncodingPlan(string[] Arguments, JsonObject Colors, EncodeOptions Options, bool QsvTimingCompatibility = false, string? WorkingDirectory = null)
+{
+    public bool UsesSoftwareDecoding => !Arguments.Contains("-hwaccel");
+}

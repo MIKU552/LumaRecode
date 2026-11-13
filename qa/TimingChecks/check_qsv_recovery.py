@@ -124,6 +124,15 @@ def main():
                         e["data"] for e in result["events"] if e["event"] == "status"
                     ]
                     assert len(statuses) >= attempts, statuses
+                    decoders = [
+                        e["data"] for e in result["events"] if e["event"] == "decoder"
+                    ]
+                    assert decoders[0] == "qsv"
+                    assert decoders[-1] == (
+                        "software"
+                        if "decoder" in scenario or scenario == "format"
+                        else "qsv"
+                    ), (scenario, decoders)
                 except ValueError:
                     assert failed, scenario
                     assert output.read_bytes() == b"existing result"

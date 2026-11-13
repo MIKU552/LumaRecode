@@ -8,6 +8,13 @@ namespace VideoConverter;
 
 public sealed partial class MainWindow
 {
+    private EncodeOptions SelectedOptions() => new(Purpose: Value(Purpose), Codec: Value(Codec), Output: Hdr ? "hdr" : "sdr",
+        Transform: Value(Transform), Profile: Value(Profile) == "" ? null : Value(Profile),
+        Sampling: Value(Sampling), Variant: Value(Variant), Audio: Value(Audio),
+        Container: Value(Container), SourceKind: Value(InputKind), CpuDecode: preferSoftwareDecode || softwareDecodeFallback,
+        ColorRange: Value(ColorRange), BitDepth: Value(BitDepth), DynamicHdr: Value(DynamicMetadata));
+    private EncodeOptions DecodeSelectionKey() => SelectedOptions() with { CpuDecode = false, Audio = "auto", Container = "auto", Variant = "standard" };
+
     private async Task StartAsync()
     {
         if (activeJob is not null || media is null || dialogOpen || closing)
@@ -43,15 +50,11 @@ public sealed partial class MainWindow
             }
         }
         var request = new ConversionRequest("convert", ToolsObject(), MediaText("path"), output,
-            new EncodeOptions(Purpose: Value(Purpose), Codec: Value(Codec), Output: Hdr ? "hdr" : "sdr",
-                Transform: Value(Transform), Profile: Value(Profile) == "" ? null : Value(Profile),
-                Sampling: Value(Sampling), Variant: Value(Variant), Audio: Value(Audio),
-                Container: Value(Container), SourceKind: Value(InputKind),
-                CpuDecode: Control<CheckBox>("CpuDecode").IsChecked == true,
-                ColorRange: Value(ColorRange), BitDepth: Value(BitDepth), DynamicHdr: Value(DynamicMetadata)), Overwrite: overwrite);
+            SelectedOptions(), Overwrite: overwrite);
 
         using var client = new ConversionClient();
         activeJob = client;
+        activeSoftwareDecode = null;
         jobInputPath = request.Path;
         jobTerminalHandled = false;
         completed = false;
@@ -79,6 +82,7 @@ public sealed partial class MainWindow
             clock.Stop();
             clockTimer.Stop();
             activeJob = null;
+            activeSoftwareDecode = null;
             UpdateTransferStats();
             SetBusy(false);
             Refresh();
@@ -90,7 +94,18 @@ public sealed partial class MainWindow
     }
     private async Task ReceiveAsync(string type, JsonNode? data)
     {
-        if (type == "log")
+        if (type == "decoder")
+        {
+            bool software = data?.ToString() == "software";
+            if (activeSoftwareDecode == false && software)
+            {
+                softwareDecodeFallback = true;
+                fallbackDecodeOptions = DecodeSelectionKey();
+            }
+            activeSoftwareDecode = software;
+            UpdateSoftwareDecodeSelection(enabled: false);
+        }
+        else if (type == "log")
         {
             conversionLog.Append((data?.ToString() ?? "") + "\r\n");
             // Batch native TextBox updates while retaining every recent line.
@@ -280,7 +295,39 @@ public sealed partial class MainWindow
         InputKind.IsEnabled = enabled && Kind != "raw" && !MediaFlag("dynamic_hdr");
         Profile.IsEnabled = enabled && Value(Transform).StartsWith("log-");
         BitDepth.IsEnabled = enabled && AllowedDepths().Length > 0;
+        UpdateSoftwareDecodeSelection(enabled);
         Output.IsEnabled = enabled;
         Control<Button>("ChooseOutput").IsEnabled = enabled;
+    }
+
+    private void UpdateSoftwareDecodeSelection(bool enabled)
+    {
+        var options = DecodeSelectionKey();
+        if (softwareDecodeFallback && options != fallbackDecodeOptions)
+        {
+            softwareDecodeFallback = false;
+            fallbackDecodeOptions = null;
+        }
+        bool required = false;
+        if (sourceMedia is not null)
+        {
+            try
+            {
+                // Planning is process-free. Use the encoder's actual decision,
+                // including pixel formats, range changes, orientation and VFR.
+                var preview = Path.Combine(Path.GetTempPath(), "LumaRecode-preview" + Suffix);
+                required = ConversionClient.Engine.Plan(ToolsObject(), sourceMedia, options, preview).UsesSoftwareDecoding;
+            }
+            catch (InvalidDataException)
+            {
+                // Some choices are incomplete while the user is editing. The
+                // notice already explains the validation error; these workflows
+                // require software frames regardless of the missing selection.
+                required = options.Purpose == "archive" || options.Transform != "none" || sourceMedia.DynamicHdr || sourceMedia.Raw is not null;
+            }
+        }
+        var checkbox = Control<CheckBox>("CpuDecode");
+        checkbox.IsChecked = activeSoftwareDecode ?? (required || preferSoftwareDecode || softwareDecodeFallback);
+        checkbox.IsEnabled = enabled && !required && !softwareDecodeFallback;
     }
 }

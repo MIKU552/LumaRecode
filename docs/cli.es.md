@@ -106,7 +106,9 @@ El campo `argv` de la planificación muestra la ruta final. La conversión escri
 
 ## Automatización y progreso
 
-`convert --json` / `plan --json` producen JSON Lines en stdout con `schema_version: 1`. Eventos: `start`, `log`, `status`, `progress`, `done`, `skipped`, `error`, `cancelled`, `summary`; la planificación emite `plan`. Los registros de tarea incluyen `job`, `total_jobs`, `input`, `output` y el campo `data` del evento.
+`convert --json` / `plan --json` producen JSON Lines en stdout con `schema_version: 1`. Eventos: `start`, `log`, `status`, `decoder`, `progress`, `done`, `skipped`, `error`, `cancelled`, `summary`; la planificación emite `plan`. Los registros de tarea incluyen `job`, `total_jobs`, `input`, `output` y el campo `data` del evento.
+
+`decoder.data`: `software` / `qsv`.
 
 El progreso incluye `fps`, `percent`, `position_seconds`, `duration_seconds`, `elapsed_seconds` y `eta_seconds`; los porcentajes y tiempos restantes desconocidos son null. Los errores incluyen un `code` estable y un `message` legible. `--log FILE` añade los mismos eventos a un archivo JSON Lines; `--verbose` muestra los registros de FFmpeg en modo texto.
 

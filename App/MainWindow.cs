@@ -34,6 +34,12 @@ public sealed partial class MainWindow : Window
     private int generation;
     private string ffmpeg = "", ffprobe = "", automaticOutput = "", completedOutput = "";
     private JsonObject? media;
+    private MediaInfo? sourceMedia;
+    // Keep explicit preference separate from mandatory/automatic selection so
+    // a temporary software-only workflow never becomes a sticky user choice.
+    private bool preferSoftwareDecode, softwareDecodeFallback;
+    private EncodeOptions? fallbackDecodeOptions;
+    private bool? activeSoftwareDecode;
     private readonly ConversionLog conversionLog = new();
     private long lastLogUpdate;
     private int copyLogGeneration;
@@ -271,6 +277,14 @@ public sealed partial class MainWindow : Window
             Refresh();
         };
         Transform.SelectionChanged += (_, _) => Refresh();
+        Control<CheckBox>("CpuDecode").Click += (_, _) =>
+        {
+            if (!updating && activeJob is null)
+            {
+                preferSoftwareDecode = Control<CheckBox>("CpuDecode").IsChecked == true;
+                Refresh();
+            }
+        };
         var card = Control<Border>("SourceCard");
         card.DragOver += (_, e) => { if (activeJob is null && e.DataView.Contains(StandardDataFormats.StorageItems)) { e.AcceptedOperation = DataPackageOperation.Copy; } };
         card.Drop += async (_, e) =>

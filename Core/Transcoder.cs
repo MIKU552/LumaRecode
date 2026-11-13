@@ -724,6 +724,7 @@ public sealed class Transcoder
     private async Task<(int ExitCode, QsvError Errors)> EncodeAsync(EncodingPlan plan, Action<string, JsonNode?> emit,
         double duration, CancellationToken cancellation)
     {
+        emit("decoder", JsonValue.Create(plan.UsesSoftwareDecoding ? "software" : "qsv"));
         emit("log", JsonValue.Create(string.Join(' ', plan.Arguments.Select(a => '"' + a.Replace("\"", "\\\"") + '"'))));
         cancellation.ThrowIfCancellationRequested();
         using var process = new Process { StartInfo = ProcessRunner.StartInfo(plan.Arguments[0], plan.Arguments.Skip(1), plan.WorkingDirectory ?? Assets) };

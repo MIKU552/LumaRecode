@@ -306,10 +306,6 @@ public sealed partial class MainWindow
             {
                 warning = L.T("此 Dolby Vision 兼容层暂不受支持。");
             }
-            else if (preserve && MediaFlag("hdr10plus") && media?["video"].Text("codec_name") != "hevc")
-            {
-                warning = L.T("HDR10+ 元数据提取目前支持 HEVC 输入。");
-            }
             else if (media?["raw"] is JsonObject rawVersion && !rawVersion.Flag("decoder_version_supported"))
             {
                 warning = L.T("ProRes RAW 显影需要 FFmpeg 9 或更新版本。");

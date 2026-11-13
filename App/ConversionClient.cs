@@ -15,6 +15,7 @@ public sealed partial class ConversionClient : IDisposable
     {
         get; private set;
     }
+    public MediaInfo? SourceMedia { get; private set; }
     public bool Running
     {
         get
@@ -42,6 +43,7 @@ public sealed partial class ConversionClient : IDisposable
             }
 
             CompletedResult = null;
+            SourceMedia = null;
             cancellation = lifetime;
         }
         try
@@ -54,6 +56,7 @@ public sealed partial class ConversionClient : IDisposable
                 }
 
                 var media = await MediaProbe.InspectAsync(request.Tools, request.Path, token);
+                SourceMedia = media;
                 if (request.Action == "probe")
                 {
                     return new ConversionEvent("media", MediaProbe.Describe(media));

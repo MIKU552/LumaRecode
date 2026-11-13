@@ -106,7 +106,9 @@ HDR / Log から SDR への変換には FFmpeg の libplacebo と Vulkan が必�
 
 ## スクリプトと進捗
 
-`convert --json` / `plan --json` は `schema_version: 1` の JSON Lines を stdout に出力します。イベントは `start`, `log`, `status`, `progress`, `done`, `skipped`, `error`, `cancelled`, `summary` で、プレビューは `plan` を出力します。ジョブのレコードには `job`, `total_jobs`, `input`, `output` とイベントの `data` が含まれます。
+`convert --json` / `plan --json` は `schema_version: 1` の JSON Lines を stdout に出力します。イベントは `start`, `log`, `status`, `decoder`, `progress`, `done`, `skipped`, `error`, `cancelled`, `summary` で、プレビューは `plan` を出力します。ジョブのレコードには `job`, `total_jobs`, `input`, `output` とイベントの `data` が含まれます。
+
+`decoder.data`: `software` / `qsv`.
 
 進捗には `fps`, `percent`, `position_seconds`, `duration_seconds`, `elapsed_seconds`, `eta_seconds` が含まれます。不明な進捗率・残り時間は null です。エラーには固定の `code` と説明の `message` があります。`--log FILE` は同じイベントを JSON Lines ファイルに追記し、`--verbose` はテキストモードで FFmpeg のログを表示します。
 
