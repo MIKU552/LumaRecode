@@ -42,6 +42,16 @@ python qa/FormatChecks/check_formats.py
 
 检查 SDR / HLG / PQ 编码后的黑白像素值、8 / 10 / 12 位与 4:2:0 / 4:2:2 / 4:4:4 / RGB / 灰度输入、源格式上限，以及 FLAC 多音轨的解码样本哈希。需要 Intel QSV 和 Vulkan / libplacebo。
 
+## 性能与并发
+
+```powershell
+dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release -- --check
+dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release
+dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release -- --tools
+```
+
+检查有界事件队列、接收线程上下文、取消与异常退出、日志容量和 Unicode 边界，以及能力查询的成功复用、失败重试和超时。微基准输出五轮测量的中位数；`--tools` 需要 PATH 中的 FFmpeg。
+
 ## 内存采样
 
 保持窗口大小、主题、HDR 和输入法一致，每次仅运行一个待测实例，在菜单操作和编码之前采样：

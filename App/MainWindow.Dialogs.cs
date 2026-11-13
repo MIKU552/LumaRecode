@@ -1,0 +1,104 @@
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Windows.Storage.Pickers;
+
+namespace VideoConverter;
+
+public sealed partial class MainWindow
+{
+    private async Task ConfigureToolsAsync()
+    {
+        if (activeJob is not null || dialogOpen)
+        {
+            return;
+        }
+
+        dialogOpen = true;
+        var panel = new StackPanel { Spacing = 16, MinWidth = 460 };
+        panel.Children.Add(new TextBlock { Text = L.T("自动查找 PATH，也可以选择自己的 FFmpeg 和 ffprobe。"), TextWrapping = TextWrapping.Wrap });
+        var fields = new Dictionary<string, TextBox>();
+        var toolFields = new List<(string name, string value)> { ("ffmpeg", ffmpeg), ("ffprobe", ffprobe) };
+        foreach (var (name, value) in toolFields)
+        {
+            var grid = new Grid { ColumnSpacing = 8 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition());
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var box = new TextBox
+            {
+                Header = name + ".exe",
+                Text = value,
+                MinWidth = 340,
+                IsSpellCheckEnabled = false,
+                IsTextPredictionEnabled = false
+            };
+            var button = new Button { Content = L.T("浏览…"), VerticalAlignment = VerticalAlignment.Bottom };
+            Grid.SetColumn(button, 1);
+            grid.Children.Add(box);
+            grid.Children.Add(button);
+            panel.Children.Add(grid);
+            fields[name] = box;
+            button.Click += async (_, _) =>
+            {
+                var picker = new FileOpenPicker();
+                picker.FileTypeFilter.Add(".exe");
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
+                var file = await picker.PickSingleFileAsync();
+                if (file is null)
+                {
+                    return;
+                }
+
+                box.Text = file.Path;
+                var peer = name == "ffmpeg" ? "ffprobe" : "ffmpeg";
+                var candidate = Path.Combine(Path.GetDirectoryName(file.Path)!, peer + ".exe");
+                if (fields[peer].Text == "" && File.Exists(candidate))
+                {
+                    fields[peer].Text = candidate;
+                }
+            };
+        }
+        var notice = new InfoBar { IsClosable = false, Severity = InfoBarSeverity.Error, IsOpen = false };
+        panel.Children.Add(notice);
+        var dialog = UiTypography.Prepare(new ContentDialog { Title = L.T("工具路径"), Content = panel, PrimaryButtonText = L.T("检测并保存"), CloseButtonText = L.T("取消"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme });
+        dialog.PrimaryButtonClick += async (_, e) =>
+        {
+            var deferral = e.GetDeferral();
+            dialog.IsPrimaryButtonEnabled = false;
+            try
+            {
+                foreach (var (name, box) in fields)
+                {
+                    await ConversionClient.CheckToolAsync(box.Text.Trim('"', ' '), name);
+                }
+
+                ffmpeg = fields["ffmpeg"].Text.Trim('"', ' ');
+                ffprobe = fields["ffprobe"].Text.Trim('"', ' ');
+                settings.Ffmpeg = ffmpeg;
+                settings.Ffprobe = ffprobe;
+                settings.Save();
+
+            }
+            catch (Exception error) { e.Cancel = true; notice.Message = L.T(error.Message); notice.IsOpen = true; }
+            finally { dialog.IsPrimaryButtonEnabled = true; deferral.Complete(); }
+        };
+        try
+        {
+            await dialog.ShowAsync();
+        }
+        finally { dialogOpen = false; Refresh(); }
+    }
+    private async Task MessageAsync(string title, string message)
+    {
+        if (closing || dialogOpen)
+        {
+            return;
+        }
+
+        dialogOpen = true;
+        try
+        {
+            await UiTypography.Prepare(new ContentDialog { Title = L.T(title), Content = L.T(message), CloseButtonText = L.T("确定"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme }).ShowAsync();
+        }
+        finally { dialogOpen = false; }
+    }
+}

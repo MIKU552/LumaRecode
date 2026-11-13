@@ -1,6 +1,5 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 
 namespace VideoConverter;
 
@@ -11,7 +10,10 @@ internal static class Program
     public static int Main(string[] args)
     {
         if (StartupMode.IsCommandLine(args))
+        {
             return CommandLineHost.RunAsync(args[0] == "--cli" ? args[1..] : args).GetAwaiter().GetResult();
+        }
+
         RunGui();
         return 0;
     }
@@ -24,7 +26,10 @@ internal static class Program
             Microsoft.UI.Xaml.Settings.XamlChangeId.OptimizeApplyStyles,
             Microsoft.UI.Xaml.Settings.XamlChangeId.DefaultStyleOptimizations,
             Microsoft.UI.Xaml.Settings.XamlChangeId.DeferContextFlyoutInit })
+        {
             Microsoft.UI.Xaml.Settings.XamlOptionalChanges.EnableChange(change);
+        }
+
         Application.Start(parameters =>
         {
             SynchronizationContext.SetSynchronizationContext(new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));

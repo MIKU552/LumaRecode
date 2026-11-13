@@ -24,9 +24,15 @@ public static class ProcessRunner
             StandardErrorEncoding = Encoding.UTF8
         };
         if (directory is not null)
+        {
             info.WorkingDirectory = directory;
+        }
+
         foreach (var argument in arguments)
+        {
             info.ArgumentList.Add(argument);
+        }
+
         return info;
     }
 
@@ -37,7 +43,9 @@ public static class ProcessRunner
         try
         {
             if (!process.HasExited)
+            {
                 process.Kill(entireProcessTree: true);
+            }
         }
         catch (InvalidOperationException) { }
         catch (System.ComponentModel.Win32Exception) when (process.HasExited) { }
@@ -61,7 +69,10 @@ public static class ProcessRunner
         var error = await stderr;
         cancellation.ThrowIfCancellationRequested();
         if (timeout.IsCancellationRequested)
+        {
             throw new TimeoutException("External tool timed out.");
+        }
+
         return new(process.ExitCode, output, error);
     }
 
@@ -70,13 +81,18 @@ public static class ProcessRunner
     public static string FindTool(string name, string saved = "")
     {
         if (File.Exists(saved))
+        {
             return Path.GetFullPath(saved);
+        }
+
         var executable = OperatingSystem.IsWindows() && !name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? name + ".exe" : name;
         foreach (var folder in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
         {
             var path = Path.Combine(folder.Trim('"'), executable);
             if (File.Exists(path))
+            {
                 return Path.GetFullPath(path);
+            }
         }
         return "";
     }
@@ -86,15 +102,24 @@ public static class ProcessRunner
     public static bool SameFile(string left, string right)
     {
         if (string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+        {
             return true;
+        }
+
         if (!File.Exists(left) || !File.Exists(right))
+        {
             return false;
+        }
+
         if (OperatingSystem.IsWindows())
         {
             using var a = File.OpenHandle(left, access: FileAccess.Read, share: FileShare.ReadWrite | FileShare.Delete);
             using var b = File.OpenHandle(right, access: FileAccess.Read, share: FileShare.ReadWrite | FileShare.Delete);
             if (!GetFileInformationByHandle(a, out var x) || !GetFileInformationByHandle(b, out var y))
+            {
                 throw new IOException("Unable to compare file identities.");
+            }
+
             return x.Volume == y.Volume && x.IndexHigh == y.IndexHigh && x.IndexLow == y.IndexLow;
         }
         return new FileInfo(left).ResolveLinkTarget(true)?.FullName == Path.GetFullPath(right)

@@ -15,20 +15,29 @@ public static class LegalNotices
     public static void OpenFolder()
     {
         if (!Directory.Exists(Folder))
+        {
             throw new DirectoryNotFoundException(L.T("许可文件缺失，请重新下载完整程序。"));
+        }
+
         Process.Start(new ProcessStartInfo(Folder) { UseShellExecute = true });
     }
 
     public static async Task<bool> RequireAcceptanceAsync(FrameworkElement root, UserSettings settings, Action? languageChanged = null)
     {
         if (settings.AcceptedThirdPartyTerms == Revision)
+        {
             return true;
+        }
+
         var terms = new Dictionary<string, string>();
         foreach (var (code, _) in LanguagePolicy.Choices)
         {
             var path = Path.Combine(Folder, LanguagePolicy.TermsFile(code));
             if (!File.Exists(path))
+            {
                 throw new FileNotFoundException(L.T("许可文件缺失，请重新下载完整程序。"), path);
+            }
+
             terms[code] = File.ReadAllText(path);
         }
         var panel = new StackPanel { Spacing = 16, MaxWidth = 620 };
@@ -40,7 +49,10 @@ public static class LegalNotices
         var system = new ComboBoxItem { Tag = "system" };
         language.Items.Add(system);
         foreach (var (code, name) in LanguagePolicy.Choices)
+        {
             language.Items.Add(new ComboBoxItem { Tag = code, Content = name, FontFamily = UiTypography.Family(code), Language = LanguagePolicy.XamlLanguage(code) });
+        }
+
         language.SelectedItem = language.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == settings.Language) ?? system;
         Grid.SetColumn(language, 1);
         languageRow.Children.Add(languageLabel);
@@ -97,7 +109,10 @@ public static class LegalNotices
         language.SelectionChanged += (_, _) =>
         {
             if (refreshing || language.SelectedItem is not ComboBoxItem { Tag: string selection } || selection == settings.Language)
+            {
                 return;
+            }
+
             settings.Language = selection;
             settings.Save();
             L.Configure(selection);
@@ -105,7 +120,10 @@ public static class LegalNotices
             ApplyLanguage();
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
             return false;
+        }
+
         settings.AcceptedThirdPartyTerms = Revision;
         settings.Save();
         return true;

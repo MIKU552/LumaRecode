@@ -18,7 +18,10 @@ internal static class ConsoleConnection
             .Where(h => h.handle != IntPtr.Zero && h.handle != new IntPtr(-1) && GetFileType(h.handle) != 0).ToArray();
         AttachConsole(uint.MaxValue);
         foreach (var h in handles)
+        {
             SetStdHandle(h.kind, h.handle);
+        }
+
         Console.SetOut(new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true });
         Console.SetError(new StreamWriter(Console.OpenStandardError(), new UTF8Encoding(false)) { AutoFlush = true });
     }

@@ -7,13 +7,16 @@ using VideoConverter.Core;
 
 Console.InputEncoding = Console.OutputEncoding = new UTF8Encoding(false);
 if (args.FirstOrDefault() == "--check")
+{
     return CodeChecks.Run();
+}
+
 var root = Directory.GetCurrentDirectory();
 var assets = Path.Combine(root, "Assets");
 var engine = new Transcoder(assets);
 var tools = new MediaTools(ProcessRunner.FindTool("ffmpeg"), ProcessRunner.FindTool("ffprobe"));
-MediaInfo FromJson(JsonNode m) => new(m.S("path"), m["video"]!.AsObject(), m["frames"] as JsonArray ?? [], m["tags"] as JsonObject ?? new(),
-    m.S("kind"), m["profile"]?.ToString(), m.S("evidence"), JsonFields.Number(m.S("duration")), m["streams"] as JsonArray ?? [], m["pixel"] as JsonObject ?? new());
+MediaInfo FromJson(JsonNode m) => new(m.Text("path"), m["video"]!.AsObject(), m["frames"] as JsonArray ?? [], m["tags"] as JsonObject ?? new(),
+    m.Text("kind"), m["profile"]?.ToString(), m.Text("evidence"), JsonFields.Number(m.Text("duration")), m["streams"] as JsonArray ?? [], m["pixel"] as JsonObject ?? new());
 JsonObject ToJson(MediaInfo m) => new()
 {
     ["path"] = m.Path,
@@ -34,10 +37,12 @@ if (args.FirstOrDefault() == "--server")
         try
         {
             var request = JsonNode.Parse(line)!;
-            var action = request.S("action");
+            var action = request.Text("action");
             JsonNode? answer;
             if (action == "inspect")
-                answer = ToJson(await MediaProbe.InspectAsync(tools, request.S("path")));
+            {
+                answer = ToJson(await MediaProbe.InspectAsync(tools, request.Text("path")));
+            }
             else if (action == "classify")
             {
                 (string, ulong)? dji = request["dji"] is JsonArray d ? (d[0]!.ToString(), ulong.Parse(d[1]!.ToString())) : null;
@@ -49,7 +54,9 @@ if (args.FirstOrDefault() == "--server")
                 var media = FromJson(request["media"]!);
                 var options = EncodeOptions.FromJson(request["options"]);
                 if (action == "public")
+                {
                     answer = MediaProbe.Describe(media);
+                }
                 else if (action == "flac")
                 {
                     var (valid, reason) = OutputPolicy.FlacEligibility(media);
@@ -60,17 +67,23 @@ if (args.FirstOrDefault() == "--server")
                     answer = JsonValue.Create(engine.Validate(options, media));
                 }
                 else if (action == "resolve")
+                {
                     answer = engine.ResolveFormat(options, media).ToJson();
+                }
                 else if (action == "run")
-                    answer = ToJson(await engine.RunAsync(tools, media, options, request.S("output"), (_, _) => { },
-                    seconds: request["seconds"] is null ? null : JsonFields.Number(request.S("seconds")), overwrite: request.B("overwrite")));
+                {
+                    answer = ToJson(await engine.RunAsync(tools, media, options, request.Text("output"), (_, _) => { },
+                    seconds: request["seconds"] is null ? null : JsonFields.Number(request.Text("seconds")), overwrite: request.Flag("overwrite")));
+                }
                 else if (action == "plan")
                 {
-                    var plan = engine.Plan(tools, media, options, request.S("output"));
+                    var plan = engine.Plan(tools, media, options, request.Text("output"));
                     answer = new JsonObject { ["argv"] = JsonFields.Strings(plan.Arguments), ["colors"] = plan.Colors, ["options"] = plan.Options.ToJson() };
                 }
                 else
+                {
                     throw new InvalidDataException("Unknown test operation");
+                }
             }
             Console.WriteLine(BackendJson.Write(new JsonObject { ["ok"] = true, ["data"] = answer }));
         }
@@ -80,10 +93,20 @@ if (args.FirstOrDefault() == "--server")
 }
 var languages = new Dictionary<string, Dictionary<string, string>>();
 foreach (var code in new[] { "en", "ja", "es" })
+{
     languages[code] = JsonNode.Parse(File.ReadAllText(Path.Combine(root, "App", $"Strings.{code}.json")))!.AsObject().ToDictionary(p => p.Key, p => p.Value!.ToString());
+}
+
 var catalog = new TranslationCatalog(languages);
 var language = "en";
-for (int i = 0; i + 1 < args.Length; i++) if (args[i] is "--lang" or "--language") language = args[i + 1];
+for (int i = 0; i + 1 < args.Length; i++)
+{
+    if (args[i] is "--lang" or "--language")
+    {
+        language = args[i + 1];
+    }
+}
+
 var context = new CliContext(System.Xml.Linq.XDocument.Load(Path.Combine(root, "Core/LumaRecode.Core.csproj")).Descendants("Version").Single().Value, Path.Combine(root, "licenses"), false, tools, text => catalog.Translate(text, language), language);
 using var cancellation = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancellation.Cancel(); };

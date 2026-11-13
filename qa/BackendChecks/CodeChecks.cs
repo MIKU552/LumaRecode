@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using VideoConverter;
 using VideoConverter.Core;
 
@@ -13,12 +12,16 @@ internal static class CodeChecks
         {
             count++;
             if (!condition)
+            {
                 failures.Add(name);
+            }
         }
 
         Check(JsonFields.Number("30000/1001") == 30000d / 1001, "rational frame rate");
         foreach (var text in new[] { "NaN", "Infinity", "1/0", "bad/2", "1e308/1e-308", "1/2/3" })
+        {
             Check(JsonFields.Number(text, 7) == 7, "invalid or overflowing number: " + text);
+        }
 
         try
         {
@@ -74,7 +77,10 @@ internal static class CodeChecks
             var root = Path.Combine(directory.FullName, "input");
             Directory.CreateDirectory(Path.Combine(root, "nested", "deeper"));
             foreach (var relative in new[] { "a.mp4", "b.mp4", "].mp4", "nested/c.mp4", "nested/deeper/d.mp4" })
+            {
                 File.WriteAllText(Path.Combine(root, relative), "");
+            }
+
             foreach (var (pattern, expected, recursive) in new[]
             {
                 ("*.mp4", new[] { "].mp4", "a.mp4", "b.mp4" }, false),
@@ -88,7 +94,10 @@ internal static class CodeChecks
             {
                 var words = new List<string> { "convert", Path.Combine(root, pattern) };
                 if (recursive)
+                {
                     words.Add("--recursive");
+                }
+
                 try
                 {
                     var actual = InputFiles.Expand(CliArguments.Parse(words.ToArray())).Select(p => Path.GetFileName(p.Path)).Order().ToArray();
@@ -140,12 +149,18 @@ internal static class CodeChecks
             // Only this test's newly created directory may be removed.
             var relative = Path.GetRelativePath(Path.GetFullPath(Path.GetTempPath()), directory.FullName);
             if (Path.IsPathRooted(relative) || relative.StartsWith("..", StringComparison.Ordinal) || !directory.Name.StartsWith("LumaRecode-code-check-", StringComparison.Ordinal))
+            {
                 throw new InvalidOperationException("Unexpected test directory.");
+            }
+
             Directory.Delete(directory.FullName, recursive: true);
         }
 
         foreach (var failure in failures)
+        {
             Console.Error.WriteLine("FAIL " + failure);
+        }
+
         Console.WriteLine($"Checked {count} numeric, argument, translation and filesystem regressions; {failures.Count} failures.");
         return failures.Count == 0 ? 0 : 1;
     }

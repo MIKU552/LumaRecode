@@ -53,7 +53,7 @@ public sealed class CliArguments
     /// <summary>Accepts common options on either side of a command and honors "--" for literal filenames.</summary>
     public static CliArguments Parse(string[] words)
     {
-        var a = new CliArguments();
+        var parsed = new CliArguments();
         bool literal = false;
         for (int i = 0; i < words.Length; i++)
         {
@@ -64,15 +64,18 @@ public sealed class CliArguments
                 continue;
             }
             if (!literal && word == "--cli")
+            {
                 continue;
+            }
+
             if (!literal && word is "-h" or "--help")
             {
-                a.Help = true;
+                parsed.Help = true;
                 break;
             }
             if (!literal && word == "--version")
             {
-                a.Version = true;
+                parsed.Version = true;
                 break;
             }
             if (!literal && word.StartsWith('-'))
@@ -89,59 +92,95 @@ public sealed class CliArguments
                 if (name is "cpu_decode" or "no_cpu_decode")
                 {
                     if (split.Length > 1)
+                    {
                         throw new CliException("invalid_arguments", "Unexpected value for " + split[0]);
-                    a.Values["cpu_decode"] = name == "cpu_decode" ? "true" : "false";
+                    }
+
+                    parsed.Values["cpu_decode"] = name == "cpu_decode" ? "true" : "false";
                     continue;
                 }
                 if (booleans.Contains(name))
                 {
                     if (split.Length > 1)
+                    {
                         throw new CliException("invalid_arguments", "Unexpected value for " + split[0]);
-                    a.Flags.Add(name);
+                    }
+
+                    parsed.Flags.Add(name);
                     continue;
                 }
                 if (!commonValues.Contains(name) && !taskValues.Contains(name) && !Choices.ContainsKey(name))
+                {
                     throw new CliException("invalid_arguments", "Unknown option: " + word);
+                }
+
                 string value;
                 if (split.Length > 1)
+                {
                     value = split[1];
+                }
                 else
                 {
                     // A following option is not a value. Negative numbers are
                     // retained for --duration so its normal validation can reject them.
                     if (++i >= words.Length || words[i].StartsWith('-') && !(name == "duration" && double.TryParse(words[i], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _)))
+                    {
                         throw new CliException("invalid_arguments", "Missing value: " + word);
+                    }
+
                     value = words[i];
                 }
                 if (Choices.TryGetValue(name, out var choices) && !choices.Contains(value))
+                {
                     throw new CliException("invalid_arguments", $"Invalid {name}: {value}");
+                }
+
                 if (name == "lang" && value is not ("system" or "zh" or "en" or "ja" or "es"))
+                {
                     throw new CliException("invalid_arguments", "Invalid language: " + value);
-                a.Values[name] = value;
+                }
+
+                parsed.Values[name] = value;
             }
-            else if (a.Command is null)
+            else if (parsed.Command is null)
             {
                 if (!Commands.Contains(word))
+                {
                     throw new CliException("invalid_arguments", "Unknown command: " + word);
-                a.Command = word;
+                }
+
+                parsed.Command = word;
             }
             else
-                a.Inputs.Add(word);
+            {
+                parsed.Inputs.Add(word);
+            }
         }
-        if (!a.Help && !a.Version)
+        if (!parsed.Help && !parsed.Version)
         {
-            if (a.Command == "probe" && a.Inputs.Count != 1 || a.Command is "convert" or "plan" && a.Inputs.Count == 0
-                || a.Command is not ("probe" or "convert" or "plan") && a.Inputs.Count > 0)
+            if (parsed.Command == "probe" && parsed.Inputs.Count != 1 || parsed.Command is "convert" or "plan" && parsed.Inputs.Count == 0
+                || parsed.Command is not ("probe" or "convert" or "plan") && parsed.Inputs.Count > 0)
+            {
                 throw new CliException("invalid_arguments", "Invalid number of input paths.");
-            if (a.Command is not ("convert" or "plan") && (a.Values.Keys.Any(n => taskValues.Contains(n) || Choices.ContainsKey(n) || n == "cpu_decode")
-                || a.Flags.Any(n => n is "recursive" or "overwrite" or "skip_existing" or "continue_on_error" or "dry_run" or "verbose")))
+            }
+
+            if (parsed.Command is not ("convert" or "plan") && (parsed.Values.Keys.Any(n => taskValues.Contains(n) || Choices.ContainsKey(n) || n == "cpu_decode")
+                || parsed.Flags.Any(n => n is "recursive" or "overwrite" or "skip_existing" or "continue_on_error" or "dry_run" or "verbose")))
+            {
                 throw new CliException("invalid_arguments", "Encoding options require convert or plan.");
-            if (a.Has("text") && a.Command != "license")
+            }
+
+            if (parsed.Has("text") && parsed.Command != "license")
+            {
                 throw new CliException("invalid_arguments", "--text requires license.");
-            if (a.Has("overwrite") && a.Has("skip_existing"))
+            }
+
+            if (parsed.Has("overwrite") && parsed.Has("skip_existing"))
+            {
                 throw new CliException("invalid_arguments", "--overwrite and --skip-existing are mutually exclusive.");
+            }
         }
-        return a;
+        return parsed;
     }
 
     /// <summary>Merges preset defaults, config-file values and explicit CLI values, in that order.</summary>
@@ -157,23 +196,42 @@ public sealed class CliArguments
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException) { throw new CliException("invalid_config", "配置须为仅包含受支持编码选项的 JSON 对象。"); }
             if (values.Any(p => !Choices.ContainsKey(p.Key) && p.Key is not ("preset" or "cpu_decode")))
+            {
                 throw new CliException("invalid_config", "配置须为仅包含受支持编码选项的 JSON 对象。");
+            }
         }
         string? preset = Get("preset") ?? values["preset"]?.ToString();
         values.Remove("preset");
-        var selected = presets.Objects().FirstOrDefault(p => p.S("id") == preset);
+        var selected = presets.Objects().FirstOrDefault(p => p.Text("id") == preset);
         if (preset is not null && selected is null)
+        {
             throw new CliException("invalid_config", $"未知预设：{preset}");
+        }
+
         var result = selected?["options"]?.DeepClone().AsObject() ?? new();
         foreach (var p in values)
+        {
             result[p.Key] = p.Value?.DeepClone();
+        }
+
         foreach (var p in Values.Where(p => Choices.ContainsKey(p.Key) || p.Key == "cpu_decode"))
+        {
             result[p.Key] = p.Key == "cpu_decode" ? JsonValue.Create(p.Value == "true") : JsonValue.Create(p.Value);
+        }
+
         foreach (var p in Choices)
-            if (result.ContainsKey(p.Key) && (!p.Value.Contains(result.S(p.Key)) || result[p.Key]?.GetValueKind() != System.Text.Json.JsonValueKind.String && !(p.Key == "bit_depth" && result[p.Key]?.GetValueKind() == System.Text.Json.JsonValueKind.Number)))
+        {
+            if (result.ContainsKey(p.Key) && (!p.Value.Contains(result.Text(p.Key)) || result[p.Key]?.GetValueKind() != System.Text.Json.JsonValueKind.String && !(p.Key == "bit_depth" && result[p.Key]?.GetValueKind() == System.Text.Json.JsonValueKind.Number)))
+            {
                 throw new CliException("invalid_config", $"无效的 {p.Key}：{result[p.Key]}");
+            }
+        }
+
         if (result.ContainsKey("cpu_decode") && result["cpu_decode"]?.GetValueKind() is not (System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False))
+        {
             throw new CliException("invalid_config", "cpu_decode 必须为 true 或 false。");
+        }
+
         return result;
     }
 }

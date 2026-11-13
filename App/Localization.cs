@@ -60,12 +60,19 @@ public sealed class ViewLocalization
         foreach (var (name, property, original) in ViewText.Entries)
         {
             if (root.FindName(name) is not DependencyObject control)
+            {
                 continue;
+            }
+
             var translated = L.T(original);
             if (property == "AutomationProperties.Name")
+            {
                 AutomationProperties.SetName(control, translated);
+            }
             else if (property == "ToolTipService.ToolTip")
+            {
                 ToolTipService.SetToolTip(control, translated);
+            }
             else
             {
                 switch (property, control)
@@ -92,7 +99,9 @@ public sealed class ViewLocalization
                         throw new InvalidOperationException($"Unsupported localization target: {name}.{property}");
                 }
                 if (property == "Header" && control is Expander)
+                {
                     AutomationProperties.SetName(control, translated);
+                }
             }
         }
     }

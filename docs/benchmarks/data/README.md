@@ -8,6 +8,7 @@
 
 | 文件 / File | 内容 / Contents |
 | --- | --- |
+| [runtime-performance.json](runtime-performance.json) | 本地化、进度快照及能力查询开销 / Localization, progress snapshots and capability-query overhead |
 | [environment.json](environment.json) | 设备、版本、素材及方法 / Hardware, versions, sources, methodology |
 | [preset-provenance.json](preset-provenance.json) | 四节预设匹配结果与完整文件哈希 / Four matched preset sections and full-file hashes |
 | [quality-baseline.csv](quality-baseline.csv) | 初轮 92 条 / 92 initial trials; ordinary VMAF |

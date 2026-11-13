@@ -9,7 +9,10 @@ public static class LanguagePolicy
     public static string Resolve(string? selection, string? systemLanguage)
     {
         if (Choices.Any(choice => choice.Code == selection))
+        {
             return selection!;
+        }
+
         var tag = (systemLanguage ?? "").Trim().Replace('_', '-').Split('-')[0].ToLowerInvariant();
         return Choices.Any(choice => choice.Code == tag) ? tag : "en";
     }

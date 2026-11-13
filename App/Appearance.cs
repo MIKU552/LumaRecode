@@ -23,6 +23,7 @@ public sealed class Appearance
     private bool applying;
     private bool disposed;
     private bool highContrast;
+    private bool highContrastSubscribed;
     private Border? accentPreview;
     private TextBlock? accentLabel;
     private ToggleSwitch? systemSwitch;
@@ -34,25 +35,64 @@ public sealed class Appearance
         this.root = root;
         this.window = window;
         this.settings = settings;
-        window.Closed += (_, _) => disposed = true;
+        window.Closed += OnClosed;
         backdrop = new HdrBackdropCompatibility((Grid)root, window, settings);
         ((Button)root.FindName("PaletteButton")).Flyout = CreatePaletteFlyout();
-        root.ActualThemeChanged += (_, _) => { if (!applying) ApplyAccent(false); UpdateCaption(); };
-        system.ColorValuesChanged += (_, _) => root.DispatcherQueue.TryEnqueue(() => { ApplyAccent(false); UpdateCaption(); });
+        root.ActualThemeChanged += OnThemeChanged;
+        system.ColorValuesChanged += OnSystemColorChanged;
         // Some unpackaged desktop environments do not expose this WinRT event.
         // WinUI still follows high contrast; re-read it when the window is activated.
         try
         {
-            accessibility.HighContrastChanged += (_, _) => root.DispatcherQueue.TryEnqueue(() => ApplyAccent(true));
+            accessibility.HighContrastChanged += OnHighContrastChanged;
+            highContrastSubscribed = true;
         }
         catch (System.Runtime.InteropServices.COMException) { }
-        window.Activated += (_, _) =>
-        {
-            if (!disposed && highContrast != accessibility.HighContrast)
-                ApplyAccent(true);
-            UpdateCaption();
-        };
+        window.Activated += OnActivated;
         ApplyTheme();
+    }
+
+    private void OnThemeChanged(FrameworkElement sender, object args)
+    {
+        if (!applying)
+        {
+            ApplyAccent(false);
+        }
+
+        UpdateCaption();
+    }
+
+    private void OnSystemColorChanged(UISettings sender, object args) => root.DispatcherQueue.TryEnqueue(() =>
+    {
+        ApplyAccent(false);
+        UpdateCaption();
+    });
+
+    private void OnHighContrastChanged(AccessibilitySettings sender, object args) =>
+        root.DispatcherQueue.TryEnqueue(() => ApplyAccent(true));
+
+    private void OnActivated(object sender, WindowActivatedEventArgs args)
+    {
+        if (!disposed && highContrast != accessibility.HighContrast)
+        {
+            ApplyAccent(true);
+        }
+
+        UpdateCaption();
+    }
+
+    private void OnClosed(object sender, WindowEventArgs args)
+    {
+        disposed = true;
+        root.ActualThemeChanged -= OnThemeChanged;
+        window.Activated -= OnActivated;
+        window.Closed -= OnClosed;
+        // WinRT event sources can outlive the window and retain its visual tree.
+        system.ColorValuesChanged -= OnSystemColorChanged;
+        if (highContrastSubscribed)
+        {
+            accessibility.HighContrastChanged -= OnHighContrastChanged;
+        }
     }
 
     public void ApplyTheme()
@@ -66,7 +106,10 @@ public sealed class Appearance
             _ => ElementTheme.Default
         };
         if (themeChoice is not null)
+        {
             themeChoice.SelectedItem = themeChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => (string)item.Tag == settings.Theme) ?? themeChoice.Items[0];
+        }
+
         applying = false;
         ApplyAccent(true);
         UpdateCaption();
@@ -90,7 +133,10 @@ public sealed class Appearance
     private void ApplyAccent(bool refresh)
     {
         if (applying || disposed)
+        {
             return;
+        }
+
         applying = true;
         highContrast = accessibility.HighContrast;
         var hadOverrides = overridden.Count > 0;
@@ -144,14 +190,25 @@ public sealed class Appearance
             // The windowed flyout has its own theme-resource scope. Refresh
             // cached control brushes there as well when custom overrides change.
             if (paletteContent is not null)
+            {
                 paletteContent.RequestedTheme = dark ? ElementTheme.Light : ElementTheme.Dark;
+            }
         }
         if (paletteContent is not null)
+        {
             paletteContent.RequestedTheme = root.ActualTheme;
+        }
+
         if (accentPreview is not null)
+        {
             accentPreview.Background = new SolidColorBrush(color);
+        }
+
         if (accentLabel is not null)
+        {
             accentLabel.Text = (settings.SystemAccent ? L.T("Windows 强调色 · ") : L.T("自定义 · ")) + Hex(color);
+        }
+
         foreach (var (button, hex) in swatches)
         {
             button.BorderThickness = new Thickness(!settings.SystemAccent && hex.Equals(settings.CustomColor, StringComparison.OrdinalIgnoreCase) ? 3 : 1);
@@ -210,12 +267,18 @@ public sealed class Appearance
         themeChoice = new ComboBox { Header = L.T("主题模式"), HorizontalAlignment = HorizontalAlignment.Stretch };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(themeChoice, L.T("主题模式"));
         foreach (var (key, name) in new[] { ("system", L.T("跟随系统")), ("light", L.T("浅色")), ("dark", L.T("深色")) })
+        {
             themeChoice.Items.Add(new ComboBoxItem { Tag = key, Content = name });
+        }
+
         themeChoice.SelectedItem = themeChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => (string)item.Tag == settings.Theme) ?? themeChoice.Items[0];
         themeChoice.SelectionChanged += (_, _) =>
         {
             if (applying || themeChoice.SelectedItem is not ComboBoxItem { Tag: string key } || settings.Theme == key)
+            {
                 return;
+            }
+
             settings.Theme = key;
             settings.Save();
             ApplyTheme();
@@ -229,7 +292,10 @@ public sealed class Appearance
         materialChoice.SelectionChanged += (_, _) =>
         {
             if (applying || materialChoice.SelectedItem is not ComboBoxItem { Tag: string key } || settings.Backdrop == key)
+            {
                 return;
+            }
+
             settings.Backdrop = key;
             settings.Save();
             backdrop.Refresh();
@@ -248,9 +314,15 @@ public sealed class Appearance
         content.Children.Add(preview);
         var grid = new Grid { ColumnSpacing = 9, RowSpacing = 9 };
         for (int i = 0; i < 6; i++)
+        {
             grid.ColumnDefinitions.Add(new ColumnDefinition());
+        }
+
         for (int i = 0; i < 2; i++)
+        {
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        }
+
         var colors = new[] { "#0078D4", "#0067C0", "#5B5FC7", "#8764B8", "#C239B3", "#E3008C",
                             "#D13438", "#DA3B01", "#CA5010", "#038387", "#008272", "#107C10" };
         for (int i = 0; i < colors.Length; i++)
@@ -270,7 +342,10 @@ public sealed class Appearance
         advanced.Expanding += (_, _) =>
         {
             if (picker is not null)
+            {
                 return;
+            }
+
             picker = new ColorPicker
             {
                 Color = Parse(settings.CustomColor),
@@ -284,7 +359,7 @@ public sealed class Appearance
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(picker, L.T("自定义强调色"));
-            picker.ColorChanged += (_, e) => { if (!applying) ChooseColor(e.NewColor, false); };
+            picker.ColorChanged += (_, e) => { if (!applying) { ChooseColor(e.NewColor, false); } };
             advanced.Content = picker;
         };
         content.Children.Add(advanced);
@@ -299,13 +374,16 @@ public sealed class Appearance
             materialChoice.SelectedIndex = 0;
             systemSwitch.IsOn = true;
             if (picker is not null)
+            {
                 picker.Color = Parse(settings.CustomColor);
+            }
+
             applying = false;
             settings.Save();
             ApplyTheme();
         };
         content.Children.Add(restore);
-        systemSwitch.Toggled += (_, _) => { if (applying) return; settings.SystemAccent = systemSwitch.IsOn; settings.Save(); ApplyAccent(true); };
+        systemSwitch.Toggled += (_, _) => { if (applying) { return; } settings.SystemAccent = systemSwitch.IsOn; settings.Save(); ApplyAccent(true); };
         return new ScrollViewer
         {
             Content = content,
@@ -321,9 +399,15 @@ public sealed class Appearance
         settings.SystemAccent = false;
         applying = true;
         if (systemSwitch is not null)
+        {
             systemSwitch.IsOn = false;
+        }
+
         if (syncPicker && picker is not null)
+        {
             picker.Color = color;
+        }
+
         applying = false;
         settings.Save();
         ApplyAccent(true);
@@ -332,11 +416,17 @@ public sealed class Appearance
     private void UpdateCaption()
     {
         if (disposed)
+        {
             return;
+        }
+
         var dark = root.ActualTheme == ElementTheme.Dark;
         var bar = window.AppWindow?.TitleBar;
         if (bar is null)
+        {
             return;
+        }
+
         bar.ButtonBackgroundColor = Colors.Transparent;
         bar.ButtonInactiveBackgroundColor = Colors.Transparent;
         bar.ButtonForegroundColor = dark ? Colors.White : Colors.Black;

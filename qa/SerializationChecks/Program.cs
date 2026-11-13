@@ -4,7 +4,7 @@ using System.Text.Json;
 using VideoConverter;
 
 int count = 0;
-void Check(bool condition, string message) { if (!condition) throw new Exception(message); count++; }
+void Check(bool condition, string message) { if (!condition) { throw new Exception(message); } count++; }
 const string oldSettings = """
 {"Theme":"dark","Language":"zh","Backdrop":"mica","SystemAccent":false,"CustomColor":"#107C10","Ffmpeg":"C:\\视频 & tools\\ffmpeg.exe","Ffprobe":"D:\\ffprobe.exe","Python":"","AcceptedThirdPartyTerms":"windows-runtime-terms-2026-11-12-mit"}
 """;
@@ -13,8 +13,13 @@ Check(settings.Language == "zh" && settings.Ffmpeg == @"C:\视频 & tools\ffmpeg
 using var oldDocument = JsonDocument.Parse(oldSettings);
 using var newDocument = JsonDocument.Parse(JsonSerializer.Serialize(settings, AppJsonContext.Default.UserSettings));
 foreach (var property in oldDocument.RootElement.EnumerateObject())
+{
     if (property.Name != "Python")
+    {
         Check(newDocument.RootElement.GetProperty(property.Name).ToString() == property.Value.ToString(), "Settings round trip: " + property.Name);
+    }
+}
+
 Check(newDocument.RootElement.EnumerateObject().Count() == 8, "Unexpected settings properties");
 Check(JsonSerializer.Deserialize("{}", AppJsonContext.Default.UserSettings)!.Theme == "system", "Missing setting defaults changed");
 Check(JsonSerializer.Deserialize("{\"a\":\"中文\"}", AppJsonContext.Default.DictionaryStringString)!["a"] == "中文", "Translation resource decoding changed");
@@ -59,7 +64,10 @@ finally
 {
     var relative = Path.GetRelativePath(Path.GetFullPath(Path.GetTempPath()), Path.GetFullPath(sandbox.FullName));
     if (Path.IsPathRooted(relative) || relative.StartsWith("..", StringComparison.Ordinal) || !sandbox.Name.StartsWith("LumaRecode-settings-", StringComparison.Ordinal))
+    {
         throw new InvalidOperationException("Unexpected test cleanup directory");
+    }
+
     Directory.Delete(sandbox.FullName, true);
 }
 Console.WriteLine($"Passed {count} settings compatibility, migration and command-line JSON contract checks without touching user files.");

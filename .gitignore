@@ -31,6 +31,7 @@
 !/qa/SerializationChecks/
 !/qa/FormatChecks/
 !/qa/BackendChecks/
+!/qa/PerformanceChecks/
 **/bin/
 **/obj/
 **/__pycache__/

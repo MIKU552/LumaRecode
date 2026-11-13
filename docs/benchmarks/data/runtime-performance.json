@@ -1,0 +1,71 @@
+{
+  "date": "2026-11-13",
+  "runtime": "11.0.0",
+  "os": "Windows 11 x64",
+  "cpu": "Intel Core Ultra X7 358H",
+  "trials": 5,
+  "statistic": "median",
+  "build": "Release",
+  "allocation_scope": "current-thread managed bytes",
+  "baseline_version": "4.0.4",
+  "version": "4.0.5",
+  "baseline": [
+    {
+      "name": "translation_catalog",
+      "iterations": 10,
+      "median_ms": 13.9944,
+      "median_allocated_bytes": 11682640
+    },
+    {
+      "name": "translation_lookup",
+      "iterations": 1000,
+      "median_ms": 161.0314,
+      "median_allocated_bytes": 31952000
+    },
+    {
+      "name": "gui_json_bridge",
+      "iterations": 10000,
+      "median_ms": 19.7574,
+      "median_allocated_bytes": 13348160
+    },
+    {
+      "name": "gui_direct_snapshot",
+      "iterations": 10000,
+      "median_ms": 0.3033,
+      "median_allocated_bytes": 0
+    }
+  ],
+  "current": [
+    {
+      "name": "translation_catalog",
+      "iterations": 10,
+      "median_ms": 4.847,
+      "median_allocated_bytes": 4691920
+    },
+    {
+      "name": "translation_lookup",
+      "iterations": 1000,
+      "median_ms": 28.0906,
+      "median_allocated_bytes": 31952000
+    },
+    {
+      "name": "gui_json_bridge",
+      "iterations": 10000,
+      "median_ms": 18.8522,
+      "median_allocated_bytes": 13348160
+    },
+    {
+      "name": "gui_direct_snapshot",
+      "iterations": 10000,
+      "median_ms": 0.4555,
+      "median_allocated_bytes": 0
+    }
+  ],
+  "tool_reports": {
+    "ffmpeg": "ffmpeg version 9.0.2-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+    "reports_per_sample": 3,
+    "trials": 5,
+    "cold_median_ms": 141.387,
+    "cached_median_ms": 0.0567
+  }
+}

@@ -1,30 +1,58 @@
-using System.Text.Json;
-using System.Text.RegularExpressions;
-using System.Xml.Linq;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using VideoConverter;
 
 int count = 0;
 void Equal(string expected, string actual)
 {
-    if (expected != actual) throw new Exception($"Expected [{expected}], got [{actual}]");
+    if (expected != actual)
+    {
+        throw new Exception($"Expected [{expected}], got [{actual}]");
+    }
+
     count++;
 }
-foreach (var tag in new[] { "zh", "zh-CN", "zh-TW", "zh-HK", "zh-SG", "ZH_cn" }) Equal("zh", LanguagePolicy.Resolve("system", tag));
-foreach (var tag in new[] { "ja", "ja-JP", "JA_jp" }) Equal("ja", LanguagePolicy.Resolve("system", tag));
-foreach (var tag in new[] { "es", "es-ES", "es-MX", "es-419", "ES_ar" }) Equal("es", LanguagePolicy.Resolve("system", tag));
-foreach (var tag in new[] { "en", "en-US", "en-GB", "fr-FR", "de-DE", "", null }) Equal("en", LanguagePolicy.Resolve("system", tag));
-Equal("en", LanguagePolicy.Resolve("en", "zh-CN")); Equal("zh", LanguagePolicy.Resolve("zh", "fr-FR"));
-Equal("ja", LanguagePolicy.Resolve("ja", "es-MX")); Equal("es", LanguagePolicy.Resolve("es", "ja-JP"));
+foreach (var tag in new[] { "zh", "zh-CN", "zh-TW", "zh-HK", "zh-SG", "ZH_cn" })
+{
+    Equal("zh", LanguagePolicy.Resolve("system", tag));
+}
+
+foreach (var tag in new[] { "ja", "ja-JP", "JA_jp" })
+{
+    Equal("ja", LanguagePolicy.Resolve("system", tag));
+}
+
+foreach (var tag in new[] { "es", "es-ES", "es-MX", "es-419", "ES_ar" })
+{
+    Equal("es", LanguagePolicy.Resolve("system", tag));
+}
+
+foreach (var tag in new[] { "en", "en-US", "en-GB", "fr-FR", "de-DE", "", null })
+{
+    Equal("en", LanguagePolicy.Resolve("system", tag));
+}
+
+Equal("en", LanguagePolicy.Resolve("en", "zh-CN"));
+Equal("zh", LanguagePolicy.Resolve("zh", "fr-FR"));
+Equal("ja", LanguagePolicy.Resolve("ja", "es-MX"));
+Equal("es", LanguagePolicy.Resolve("es", "ja-JP"));
 Equal("en", LanguagePolicy.Resolve("unknown", "fr-FR"));
-Equal("ja-JP", LanguagePolicy.Culture("ja")); Equal("es-ES", LanguagePolicy.XamlLanguage("es"));
+Equal("ja-JP", LanguagePolicy.Culture("ja"));
+Equal("es-ES", LanguagePolicy.XamlLanguage("es"));
 Equal(TypographyPolicy.FontStack("en"), TypographyPolicy.FontStack("es"));
 foreach (var code in new[] { "zh", "en", "es", "ja" })
 {
     var fonts = TypographyPolicy.FontStack(code).Split(", ");
-    Equal(code switch { "zh" => "SourceHanSansCN-VF.ttf#Source Han Sans CN VF", "ja" => "SourceHanSansJP-VF.ttf#Source Han Sans JP VF", _ => "SourceSans3VF-Upright.ttf#SourceSans3VF" }, fonts[0].Split('/').Last());
+    Equal(code switch
+    {
+        "zh" => "SourceHanSansCN-VF.ttf#Source Han Sans CN VF",
+        "ja" => "SourceHanSansJP-VF.ttf#Source Han Sans JP VF",
+        _ => "SourceSans3VF-Upright.ttf#SourceSans3VF"
+    }, fonts[0].Split('/').Last());
     Equal("SourceCodeVF-Upright.ttf#SourceCodeVF", TypographyPolicy.MonospaceStack(code).Split(", ")[0].Split('/').Last());
     Equal(code == "ja" ? "SourceHanSansJP-VF.ttf#Source Han Sans JP VF" : "SourceHanSansCN-VF.ttf#Source Han Sans CN VF", TypographyPolicy.MonospaceStack(code).Split(", ")[1].Split('/').Last());
     Equal("Segoe UI Emoji", fonts[^2]);
@@ -53,18 +81,32 @@ var catalog = new TranslationCatalog(languages);
 string Placeholders(string value) => string.Join(",", Regex.Matches(value, @"\{\d+\}").Select(match => match.Value).Order());
 foreach (var (code, values) in languages)
 {
-    if (!resources.Keys.ToHashSet().SetEquals(values.Keys)) throw new Exception($"Translation key mismatch: {code}");
+    if (!resources.Keys.ToHashSet().SetEquals(values.Keys))
+    {
+        throw new Exception($"Translation key mismatch: {code}");
+    }
+
     foreach (var (zh, translated) in values)
     {
-        if (string.IsNullOrWhiteSpace(translated)) throw new Exception($"Missing {code} translation: {zh}");
+        if (string.IsNullOrWhiteSpace(translated))
+        {
+            throw new Exception($"Missing {code} translation: {zh}");
+        }
+
         Equal(Placeholders(zh), Placeholders(translated));
         Equal(translated, catalog.Translate(zh, code));
         Equal(zh, catalog.Translate(zh, "zh"));
-        if (!zh.Contains("{0}")) continue;
+        if (!zh.Contains("{0}"))
+        {
+            continue;
+        }
+
         var arguments = Enumerable.Range(0, Regex.Matches(zh, @"\{(\d+)\}").Max(match => int.Parse(match.Groups[1].Value)) + 1)
             .Select(i => (object)$"ARG_{i}").ToArray();
         foreach (var from in new[] { "zh", "en", "ja", "es" })
+        {
             Equal(string.Format(translated, arguments), catalog.Translate(string.Format(from == "zh" ? zh : languages[from][zh], arguments), code));
+        }
     }
 }
 var xml = XDocument.Load(Path.Combine(app, "MainView.xaml"));
@@ -72,7 +114,13 @@ XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presenta
 var appResources = XDocument.Load(Path.Combine(app, "App.xaml"));
 Equal(TypographyPolicy.FontStack("en"), appResources.Descendants(presentation + "FontFamily").Single().Value);
 foreach (var attribute in xml.Descendants().Attributes().Where(a => Regex.IsMatch(a.Value, "[\\p{IsCJKUnifiedIdeographs}]")))
-    if (!resources.ContainsKey(attribute.Value)) throw new Exception("Untranslated XAML: " + attribute.Value);
+{
+    if (!resources.ContainsKey(attribute.Value))
+    {
+        throw new Exception("Untranslated XAML: " + attribute.Value);
+    }
+}
+
 XNamespace xamlNamespace = "http://schemas.microsoft.com/winfx/2006/xaml";
 var localizedProperties = new[] { "Text", "Content", "Header", "PlaceholderText", "AutomationProperties.Name", "ToolTipService.ToolTip" };
 var expectedViewText = xml.Descendants().SelectMany(element => element.Attributes()
@@ -80,7 +128,10 @@ var expectedViewText = xml.Descendants().SelectMany(element => element.Attribute
     .Select(a => (Name: element.Attribute(xamlNamespace + "Name")?.Value ?? throw new Exception("Missing localization name"), Property: a.Name.LocalName, Original: a.Value))).ToArray();
 Equal(expectedViewText.Length.ToString(), ViewText.Entries.Length.ToString());
 for (var i = 0; i < expectedViewText.Length; i++)
+{
     Equal(expectedViewText[i].ToString(), ViewText.Entries[i].ToString());
+}
+
 Equal("10-bit", catalog.Translate("10 位", "en"));
 Equal("10 位", catalog.Translate("10-bit", "zh"));
 Equal("BT.2020 HLG · 10-bit · 4:2:0", catalog.Translate("BT.2020 HLG · 10 位 · 4:2:0", "en"));
@@ -98,17 +149,34 @@ Equal("BT.2020 HLG · 10 bits · 4:2:0", catalog.Translate("BT.2020 HLG · 10 �
 Equal("Convirtiendo · 123 fotogramas", catalog.Translate("変換中 · 123 フレーム", "es"));
 Equal("Audio 2: AAC", catalog.Translate("音声 2：AAC", "es"));
 foreach (var (code, _) in LanguagePolicy.Choices)
-    if (!File.Exists(Path.Combine(app, "../licenses", LanguagePolicy.TermsFile(code)))) throw new Exception("Missing terms: " + code);
+{
+    if (!File.Exists(Path.Combine(app, "../licenses", LanguagePolicy.TermsFile(code))))
+    {
+        throw new Exception("Missing terms: " + code);
+    }
+}
+
 foreach (var path in new[] { @"C:\视频\测试 位.mp4", @"C:\Users\Public\Videos\sample.mp4", "HEVC Main 10", "p010le", "", "10.0% · 00:03 / 00:30" })
-    foreach (var code in new[] { "zh", "en", "ja", "es" }) Equal(path, catalog.Translate(path, code));
+{
+    foreach (var code in new[] { "zh", "en", "ja", "es" })
+    {
+        Equal(path, catalog.Translate(path, code));
+    }
+}
+
 if (args.Length > 0)
 {
-    using var stream = File.OpenRead(args[0]); using var pe = new PEReader(stream);
+    using var stream = File.OpenRead(args[0]);
+    using var pe = new PEReader(stream);
     var metadata = pe.GetMetadataReader();
     var embedded = metadata.ManifestResources.Select(handle => metadata.GetString(metadata.GetManifestResource(handle).Name)).ToArray();
     foreach (var code in languages.Keys)
     {
-        if (!embedded.Contains($"LumaRecode.Strings.{code}.json")) throw new Exception($"Missing embedded resource: {code}");
+        if (!embedded.Contains($"LumaRecode.Strings.{code}.json"))
+        {
+            throw new Exception($"Missing embedded resource: {code}");
+        }
+
         count++;
     }
 }

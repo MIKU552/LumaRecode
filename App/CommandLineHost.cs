@@ -15,9 +15,13 @@ internal static class CommandLineHost
         for (int i = 0; i < args.Length && args[i] != "--"; i++)
         {
             if (args[i] is "--lang" or "--language" && i + 1 < args.Length)
+            {
                 selection = args[++i];
+            }
             else if (args[i].StartsWith("--lang=", StringComparison.Ordinal) || args[i].StartsWith("--language=", StringComparison.Ordinal))
+            {
                 selection = args[i][(args[i].IndexOf('=') + 1)..];
+            }
         }
         var language = LanguagePolicy.Resolve(selection, L.SystemLanguage);
         var version = typeof(CommandLineHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "unknown";
@@ -42,14 +46,18 @@ internal static class CommandLineHost
             try
             {
                 if (args.Contains("--json"))
+                {
                     Console.Out.WriteLine(BackendJson.Write(new System.Text.Json.Nodes.JsonObject
                     {
                         ["schema_version"] = 1,
                         ["event"] = "error",
                         ["data"] = new System.Text.Json.Nodes.JsonObject { ["code"] = "runtime_unavailable", ["message"] = e.Message }
                     }));
+                }
                 else
+                {
                     Console.Error.WriteLine(e.Message);
+                }
             }
             catch (IOException) { cancellation.Cancel(); return 130; }
             return 3;

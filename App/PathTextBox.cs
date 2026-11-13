@@ -23,7 +23,11 @@ public sealed partial class PathTextBox : TextBox
         var opticalMargin = (Thickness)Application.Current.Resources["ControlTextOpticalMargin"];
         foreach (var name in new[] { "ContentElement", "PlaceholderTextContentPresenter" })
         {
-            if (GetTemplateChild(name) is not FrameworkElement part) continue;
+            if (GetTemplateChild(name) is not FrameworkElement part)
+            {
+                continue;
+            }
+
             part.VerticalAlignment = VerticalAlignment.Center;
             // Move the editor (including caret/selection) and placeholder together,
             // using the same optical offset as adjacent and footer button labels.

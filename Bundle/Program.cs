@@ -18,42 +18,69 @@ internal static class Program
     {
         bool cli = StartupMode.IsCommandLine(args);
         if (cli)
+        {
             ConsoleConnection.Connect();
+        }
+
         try
         {
             var executable = Path.Combine(AppContext.BaseDirectory, "Application", "LumaRecode.exe");
             if (!File.Exists(executable))
+            {
                 throw new FileNotFoundException("LumaRecode application is missing. Please download the complete EXE again.");
+            }
+
             var info = new ProcessStartInfo(executable) { UseShellExecute = false };
             foreach (var argument in args)
+            {
                 info.ArgumentList.Add(argument);
+            }
             // Keep the original working directory for relative input/output paths.
             // Do not use KillOnParentExit: the GUI must survive the extraction entry.
             ConsoleCancelEventHandler keepWaiting = (_, e) => e.Cancel = true;
             if (cli)
+            {
                 Console.CancelKeyPress += keepWaiting;
+            }
+
             try
             {
                 using var child = Process.Start(info) ?? throw new InvalidOperationException("Unable to start LumaRecode.");
                 if (!cli)
+                {
                     return 0;
+                }
+
                 child.WaitForExit();
                 return child.ExitCode;
             }
-            finally { if (cli) Console.CancelKeyPress -= keepWaiting; }
+            finally
+            {
+                if (cli)
+                {
+                    Console.CancelKeyPress -= keepWaiting;
+                }
+            }
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or Win32Exception or InvalidOperationException)
         {
             if (cli)
             {
                 if (args.Contains("--json"))
+                {
                     Console.Out.WriteLine(JsonSerializer.Serialize(
                     new HostError(1, "error", new HostErrorData("runtime_unavailable", error.Message)), CliErrorJsonContext.Default.HostError));
+                }
                 else
+                {
                     Console.Error.WriteLine(error.Message);
+                }
             }
             else
+            {
                 MessageBoxW(IntPtr.Zero, error.Message, "LumaRecode", 0x10);
+            }
+
             return 3;
         }
     }

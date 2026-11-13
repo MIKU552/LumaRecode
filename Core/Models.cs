@@ -6,9 +6,9 @@ namespace VideoConverter.Core;
 /// <summary>Reads the mixed string/numeric fields emitted by ffprobe without culture-dependent conversion.</summary>
 public static class JsonFields
 {
-    public static string S(this JsonNode? node, string key, string fallback = "") => node?[key]?.ToString() ?? fallback;
-    public static int I(this JsonNode? node, string key, int fallback = 0) => int.TryParse(node.S(key), CultureInfo.InvariantCulture, out var n) ? n : fallback;
-    public static bool B(this JsonNode? node, string key) => node.S(key) is "true" or "1";
+    public static string Text(this JsonNode? node, string key, string fallback = "") => node?[key]?.ToString() ?? fallback;
+    public static int Integer(this JsonNode? node, string key, int fallback = 0) => int.TryParse(node.Text(key), CultureInfo.InvariantCulture, out var n) ? n : fallback;
+    public static bool Flag(this JsonNode? node, string key) => node.Text(key) is "true" or "1";
     public static IEnumerable<JsonObject> Objects(this JsonNode? node) => node is JsonArray a ? a.OfType<JsonObject>() : [];
     public static double Number(string? text, double fallback = 0)
     {
@@ -35,7 +35,7 @@ public sealed record MediaTools(string Ffmpeg, string Ffprobe);
 public sealed record MediaInfo(string Path, JsonObject Video, JsonArray Frames, JsonObject Tags, string Kind,
     string? Profile, string Evidence, double Duration, JsonArray Streams, JsonObject Pixel)
 {
-    public IEnumerable<JsonObject> Audio => Streams.Objects().Where(s => s.S("codec_type") == "audio");
+    public IEnumerable<JsonObject> Audio => Streams.Objects().Where(s => s.Text("codec_type") == "audio");
     public IEnumerable<JsonObject> SideData => Video["side_data_list"].Objects().Concat(Frames.Objects().SelectMany(f => f["side_data_list"].Objects()));
 }
 
@@ -65,10 +65,10 @@ public sealed record EncodeOptions(string Purpose = "share", string Codec = "hev
         ["color_range"] = ColorRange,
         ["bit_depth"] = BitDepth
     };
-    public static EncodeOptions FromJson(JsonNode? n) => new(n.S("purpose", "share"), n.S("codec", "hevc"), n.S("output", "sdr"),
-        n.S("transform", "none"), n?["profile"]?.ToString(), n.S("sampling", "auto"), n.S("variant", "standard"),
-        n.S("audio", "auto"), n.S("source_kind", "auto"), n.B("cpu_decode"), n.S("container", "auto"),
-        n.S("color_range", "auto"), n.S("bit_depth", "auto"));
+    public static EncodeOptions FromJson(JsonNode? node) => new(node.Text("purpose", "share"), node.Text("codec", "hevc"), node.Text("output", "sdr"),
+        node.Text("transform", "none"), node?["profile"]?.ToString(), node.Text("sampling", "auto"), node.Text("variant", "standard"),
+        node.Text("audio", "auto"), node.Text("source_kind", "auto"), node.Flag("cpu_decode"), node.Text("container", "auto"),
+        node.Text("color_range", "auto"), node.Text("bit_depth", "auto"));
 }
 
 /// <summary>A shell-free FFmpeg argument vector and the color tags required during output verification.</summary>

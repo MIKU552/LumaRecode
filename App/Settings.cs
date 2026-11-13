@@ -27,7 +27,10 @@ public sealed class UserSettings
             var source = new[] { preferred, Path.Combine(localData, "FrameFlow", "settings.json"),
                 Path.Combine(localData, "VideoConverterWinUI", "settings.json") }.FirstOrDefault(File.Exists);
             if (source is null)
+            {
                 return new();
+            }
+
             var settings = JsonSerializer.Deserialize(File.ReadAllText(source), AppJsonContext.Default.UserSettings) ?? new();
             if (source != preferred)
             {
@@ -57,6 +60,12 @@ public sealed class UserSettings
             File.WriteAllText(temporary, JsonSerializer.Serialize(this, AppJsonContext.Default.UserSettings));
             File.Move(temporary, fileName, true);
         }
-        finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        finally
+        {
+            if (File.Exists(temporary))
+            {
+                File.Delete(temporary);
+            }
+        }
     }
 }

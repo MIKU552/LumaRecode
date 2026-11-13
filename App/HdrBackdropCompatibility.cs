@@ -36,7 +36,7 @@ public sealed class HdrBackdropCompatibility
             effectsEvent = true;
         }
         catch (System.Runtime.InteropServices.COMException) { }
-        window.Activated += (_, e) => { if (e.WindowActivationState != WindowActivationState.Deactivated) Refresh(); };
+        window.Activated += (_, e) => { if (e.WindowActivationState != WindowActivationState.Deactivated) { Refresh(); } };
         try
         {
             display = DisplayInformation.CreateForWindowId(window.AppWindow.Id);
@@ -47,7 +47,10 @@ public sealed class HdrBackdropCompatibility
         {
             disposed = true;
             if (effectsEvent)
+            {
                 system.AdvancedEffectsEnabledChanged -= OnAdvancedEffectsChanged;
+            }
+
             if (display is not null)
             {
                 display.AdvancedColorInfoChanged -= OnAdvancedColorInfoChanged;
@@ -62,7 +65,10 @@ public sealed class HdrBackdropCompatibility
     public void Refresh()
     {
         if (disposed)
+        {
             return;
+        }
+
         bool hdr;
         try
         {
@@ -77,7 +83,9 @@ public sealed class HdrBackdropCompatibility
             root.Background = new SolidColorBrush(accessibility.HighContrast ? system.GetColorValue(UIColorType.Background)
                 : root.ActualTheme == ElementTheme.Dark ? Color.FromArgb(255, 32, 32, 32) : Color.FromArgb(255, 243, 243, 243));
             if (window.SystemBackdrop is not null)
+            {
                 window.SystemBackdrop = null;
+            }
         }
         // Keep genuine Mica in the XAML tree on HDR displays. A window-level
         // backdrop combined with in-root popup composition caused visible halos
@@ -86,9 +94,15 @@ public sealed class HdrBackdropCompatibility
         {
             root.Background = new SolidColorBrush(root.ActualTheme == ElementTheme.Dark ? Color.FromArgb(255, 30, 30, 30) : Color.FromArgb(255, 245, 245, 245));
             if (window.SystemBackdrop is not null)
+            {
                 window.SystemBackdrop = null;
+            }
+
             if (micaLayer.SystemBackdrop is not MicaBackdrop)
+            {
                 micaLayer.SystemBackdrop = new MicaBackdrop();
+            }
+
             micaLayer.Visibility = Visibility.Visible;
         }
         else
@@ -97,7 +111,9 @@ public sealed class HdrBackdropCompatibility
             micaLayer.SystemBackdrop = null;
             root.Background = null;
             if (window.SystemBackdrop is not MicaBackdrop)
+            {
                 window.SystemBackdrop = new MicaBackdrop();
+            }
         }
         RecordState();
     }
@@ -107,7 +123,10 @@ public sealed class HdrBackdropCompatibility
     private void RecordState()
     {
         if (disposed)
+        {
             return;
+        }
+
         var state = $"HDR={hdrActive}; HighContrast={accessibility.HighContrast}; Backdrop={window.SystemBackdrop?.GetType().Name ?? (micaLayer.Visibility == Visibility.Visible ? "NativeMicaElement" : "Opaque")}; Theme={root.ActualTheme}";
         if (state != lastState)
         {
