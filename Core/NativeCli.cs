@@ -111,6 +111,22 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
         }
         catch (InvalidDataException e) { throw new CliException("invalid_options", T(e.Message)); }
     }
+    private async Task<bool> ConfirmOverwriteAsync(string destination, CancellationToken cancellation)
+    {
+        if (Console.IsInputRedirected)
+        {
+            throw new CliException("output_exists", T($"输出已存在：{destination}") + Environment.NewLine +
+                T("使用 --overwrite 确认覆盖，或使用 --skip-existing 跳过。"), 5);
+        }
+        Console.Error.WriteLine(T($"输出文件已存在：{destination}\n是否覆盖？[y/N]"));
+        Console.Error.Flush();
+        // Console input is synchronous on Windows. Keep Ctrl+C responsive while
+        // waiting; cancellation exits the CLI process and its background reader.
+        var answer = await Task.Run(Console.ReadLine, CancellationToken.None).WaitAsync(cancellation);
+        cancellation.ThrowIfCancellationRequested();
+        return answer?.Trim().ToLowerInvariant() is "y" or "yes" or "是" or "はい" or "sí" or "si";
+    }
+
     private void Help(string? command)
     {
         Console.Out.WriteLine(T("用法：") + "LumaRecode.exe " + (command ?? "<command>") + " [options]" + (command is "convert" or "plan" or "probe" ? " INPUT ..." : ""));
@@ -314,11 +330,6 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
                         throw new CliException("output_conflict", T($"输出必须为 {options.Suffix} 文件：{destination}"), 5);
                     }
 
-                    if (File.Exists(destination) && !args.Has("overwrite") && !args.Has("skip_existing"))
-                    {
-                        throw new CliException("output_exists", T($"输出已存在：{destination}"), 5);
-                    }
-
                     seen.Add(destination);
                     plans.Add((media, options, destination));
                 }
@@ -382,12 +393,22 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
 
                     continue;
                 }
+                var overwrite = args.Has("overwrite");
+                if (File.Exists(destination) && !overwrite)
+                {
+                    if (!await ConfirmOverwriteAsync(destination, cancellation))
+                    {
+                        report.Emit("cancelled", JsonValue.Create(destination));
+                        return 130;
+                    }
+                    overwrite = true;
+                }
                 try
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                     report.Clock.Restart();
                     report.Emit("start", new JsonObject { ["options"] = options.ToJson(), ["duration"] = args.Duration is { } duration ? Math.Min(duration, media.Duration) : media.Duration });
-                    await engine.RunAsync(tools, media, options, destination, report.Emit, cancellation, args.Duration, args.Has("overwrite"), reports);
+                    await engine.RunAsync(tools, media, options, destination, report.Emit, cancellation, args.Duration, overwrite, reports);
                     complete++;
                     report.Emit("done", JsonValue.Create(destination));
                 }

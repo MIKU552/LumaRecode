@@ -95,7 +95,7 @@ Precedence: GUI-equivalent defaults → chosen preset → config fields → expl
 
 Quote patterns; `**` requires `--recursive`. Directory scans filter common video extensions and preserve relative subdirectories. Wildcards use the matched files' common parent; explicit files use their filenames. Colliding destinations are rejected before conversion. Output directories are created as needed.
 
-Default names are `stem_SDR-or-HDR_codec_purpose.mp4-or-mkv`, beside the source. Use `--output` for one file or `--output-dir` for a batch; these options are mutually exclusive. Existing outputs fail by default: use `--skip-existing` or `--overwrite`. A temporary output is encoded and verified before replacement. Source and destination paths must differ. Failures and cancellation clean up temporary files.
+Default names are `stem_SDR-or-HDR_codec_purpose.mp4-or-mkv`, beside the source. Use `--output` for one file or `--output-dir` for a batch; these options are mutually exclusive. Interactive runs ask before replacing an existing output, with cancellation as the default. Scripts can use `--skip-existing` to skip or `--overwrite` to approve replacement directly. A temporary output is encoded and verified before replacement. Source and destination paths must differ. Failures and cancellation clean up temporary files.
 
 Jobs run sequentially and stop on error by default. `--continue-on-error` processes the remaining inputs, with a batch exit code reflecting any failures.
 

@@ -44,7 +44,6 @@
   "配色 ": "Color ",
   "浅色": "Light",
   "请调整输出位置": "Check output location",
-  "请更换输出位置": "Choose another output",
   "请确认相机的 Log 曲线。": "Confirm the camera Log curve.",
   "请选择 {0}.exe。": "Select {0}.exe.",
   "请选择 Log 曲线…": "Choose a Log curve…",
@@ -80,7 +79,6 @@
   "手动指定 · PQ HDR": "Manual · PQ HDR",
   "手动指定 · SDR": "Manual · SDR",
   "输出路径": "Output path",
-  "输出文件已存在，程序不会覆盖文件。": "The output already exists. Existing files will not be overwritten.",
   "输出与压缩": "Output & compression",
   "输入解释": "Interpretation",
   "速度 —": "Speed —",
@@ -302,7 +300,6 @@
   "输入不存在：{0}": "Input does not exist: {0}",
   "完成": "done",
   "已跳过": "skipped",
-  "通知": "Notifications",
   "转换完成或失败时发送 Windows 通知": "Send a Windows notification when conversion finishes or fails",
   "转换完成": "Conversion completed",
   "耗时：{0}": "Elapsed: {0}",
@@ -312,5 +309,11 @@
   "失败原因：{0}": "Reason: {0}",
   "Windows 通知当前不可用。": "Windows notifications are currently unavailable.",
   "Windows 未接受此通知。": "Windows did not accept this notification.",
-  "Windows 通知未发送：{0}": "Windows notification was not sent: {0}"
+  "Windows 通知未发送：{0}": "Windows notification was not sent: {0}",
+  "结束后通知": "Notify when finished",
+  "覆盖已有文件？": "Replace the existing file?",
+  "覆盖": "Replace",
+  "输出文件已存在：{0}\n编码和校验成功后，将替换此文件。": "Output file already exists: {0}\nIt will be replaced after successful encoding and verification.",
+  "使用 --overwrite 确认覆盖，或使用 --skip-existing 跳过。": "Use --overwrite to approve replacement or --skip-existing to skip.",
+  "输出文件已存在：{0}\n是否覆盖？[y/N]": "Output file already exists: {0}\nReplace it? [y/N]"
 }

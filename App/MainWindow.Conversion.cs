@@ -9,21 +9,37 @@ public sealed partial class MainWindow
 {
     private async Task StartAsync()
     {
-        if (activeJob is not null || media is null)
+        if (activeJob is not null || media is null || dialogOpen || closing)
         {
             return;
         }
 
         var output = Output.Text.Trim('"', ' ');
-        if (File.Exists(output))
-        {
-            await MessageAsync(L.T("请更换输出位置"), L.T("输出文件已存在，程序不会覆盖文件。"));
-            return;
-        }
         if (!Directory.Exists(Path.GetDirectoryName(output)) || Path.GetExtension(output).ToLowerInvariant() != Suffix)
         {
             await MessageAsync(L.T("请调整输出位置"), L.T($"请选择已有目录，文件后缀应为 {Suffix}。"));
             return;
+        }
+        var overwrite = File.Exists(output);
+        if (overwrite)
+        {
+            try
+            {
+                if (ProcessRunner.SameFile(output, MediaText("path")))
+                {
+                    await MessageAsync(L.T("转换失败"), L.T("不能将源文件用作输出。"));
+                    return;
+                }
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                await MessageAsync(L.T("转换失败"), error.Message);
+                return;
+            }
+            if (!await ConfirmOverwriteAsync(output))
+            {
+                return;
+            }
         }
         var request = new ConversionRequest("convert", ToolsObject(), MediaText("path"), output,
             new EncodeOptions(Purpose: Value(Purpose), Codec: Value(Codec), Output: Hdr ? "hdr" : "sdr",
@@ -31,7 +47,7 @@ public sealed partial class MainWindow
                 Sampling: Value(Sampling), Variant: Value(Variant), Audio: Value(Audio),
                 Container: Value(Container), SourceKind: Value(InputKind),
                 CpuDecode: Control<CheckBox>("CpuDecode").IsChecked == true,
-                ColorRange: Value(ColorRange), BitDepth: Value(BitDepth)));
+                ColorRange: Value(ColorRange), BitDepth: Value(BitDepth)), Overwrite: overwrite);
 
         using var client = new ConversionClient();
         activeJob = client;

@@ -60,7 +60,7 @@ public sealed partial class ConversionClient : IDisposable
                 }
 
                 var options = request.Options ?? throw new InvalidOperationException("Missing encoding options.");
-                var result = await Engine.RunAsync(request.Tools, media, options, request.Output!, emit, token);
+                var result = await Engine.RunAsync(request.Tools, media, options, request.Output!, emit, token, overwrite: request.Overwrite);
                 CompletedResult = ConversionResult.FromMedia(request.Output!, result);
                 return new ConversionEvent("done", JsonValue.Create(request.Output));
             }, receive, lifetime);

@@ -87,6 +87,33 @@ public sealed partial class MainWindow
         }
         finally { dialogOpen = false; Refresh(); }
     }
+    private async Task<bool> ConfirmOverwriteAsync(string output)
+    {
+        if (closing || dialogOpen)
+        {
+            return false;
+        }
+        dialogOpen = true;
+        try
+        {
+            var dialog = UiTypography.Prepare(new ContentDialog
+            {
+                Title = L.T("覆盖已有文件？"),
+                Content = L.T($"输出文件已存在：{output}\n编码和校验成功后，将替换此文件。"),
+                PrimaryButtonText = L.T("覆盖"),
+                CloseButtonText = L.T("取消"),
+                PrimaryButtonStyle = (Style)Application.Current.Resources["DefaultButtonStyle"],
+                CloseButtonStyle = (Style)Application.Current.Resources["AccentButtonStyle"],
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = root.XamlRoot,
+                RequestedTheme = root.RequestedTheme
+            });
+            return await dialog.ShowAsync() == ContentDialogResult.Primary && !closing;
+        }
+        catch (OperationCanceledException) when (closing) { return false; }
+        finally { dialogOpen = false; }
+    }
+
     private async Task MessageAsync(string title, string message)
     {
         if (closing || dialogOpen)
