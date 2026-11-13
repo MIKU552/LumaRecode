@@ -70,7 +70,7 @@ def main():
     args = parser.parse_args(); exe = args.exe.resolve()
     if args.child:
         exercise(exe, *args.child); return
-    with tempfile.TemporaryDirectory(prefix='FrameFlow-pwsh-cancel-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='LumaRecode-pwsh-cancel-') as temporary:
         folder = Path(temporary); source = folder/'中文 & source.mp4'; output = folder/'keep.mkv'
         subprocess.run([shutil.which('ffmpeg'), '-v', 'error', '-f', 'lavfi', '-i',
             'testsrc2=size=1920x1080:rate=30:duration=10', '-c:v', 'libx265', '-preset', 'ultrafast',

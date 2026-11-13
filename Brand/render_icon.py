@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QApplication
 
 root = Path(__file__).resolve().parent
 app = QApplication([])
-renderer = QSvgRenderer(str(root / 'FrameFlow.svg'))
+renderer = QSvgRenderer(str(root / 'LumaRecode.svg'))
 assert renderer.isValid()
 
 def render(size):
@@ -24,7 +24,7 @@ def render(size):
     assert image.save(buffer, 'PNG')
     return bytes(data)
 
-(root / 'FrameFlow.png').write_bytes(render(512))
+(root / 'LumaRecode.png').write_bytes(render(512))
 sizes = [16, 20, 24, 32, 40, 48, 64, 96, 128, 256]
 entries = []
 payloads = []
@@ -35,5 +35,5 @@ for size in sizes:
                                0, 0, 1, 32, len(data), offset))
     payloads.append(data)
     offset += len(data)
-(root.parent / 'App/FrameFlow.ico').write_bytes(struct.pack('<HHH', 0, 1, len(sizes)) + b''.join(entries) + b''.join(payloads))
-print('Rendered FrameFlow PNG and 10-resolution ICO')
+(root.parent / 'App/LumaRecode.ico').write_bytes(struct.pack('<HHH', 0, 1, len(sizes)) + b''.join(entries) + b''.join(payloads))
+print('Rendered LumaRecode PNG and 10-resolution ICO')

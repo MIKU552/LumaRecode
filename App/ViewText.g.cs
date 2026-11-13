@@ -5,9 +5,9 @@ internal static class ViewText
 {
     internal static readonly (string Name, string Property, string Original)[] Entries =
     [
-        ("LocalizedElement0", "Text", "映流 · FrameFlow"),
-        ("LocalizedElement1", "Text", "映流"),
-        ("LocalizedElement2", "Text", "FrameFlow · 视频转码与色彩转换"),
+        ("LocalizedElement0", "Text", "映码 · LumaRecode"),
+        ("LocalizedElement1", "Text", "映码"),
+        ("LocalizedElement2", "Text", "LumaRecode · 视频转码与色彩转换"),
         ("LanguageButton", "AutomationProperties.Name", "界面语言"),
         ("PaletteButton", "ToolTipService.ToolTip", "界面配色"),
         ("PaletteButton", "AutomationProperties.Name", "界面配色"),

@@ -31,7 +31,7 @@ NuGet 依赖分别锁定在 `App/packages.aot.lock.json`、`App/packages.lock.js
 | `./build.ps1 -Compilation Jit` | JIT 单文件 EXE | 内置所需运行时；构建无需原生链接器 |
 | `./build.ps1 -Deployment FrameworkDependent` | JIT ZIP | 用户安装 .NET 11 Runtime、Windows App Runtime 2.6、Python ≥3.14 |
 
-默认产物为 `dist/SelfContained/FrameFlow.exe`。FFmpeg 与 ffprobe 由用户提供。
+默认产物为 `dist/SelfContained/LumaRecode.exe`。FFmpeg 与 ffprobe 由用户提供。
 
 主视图位于 `App/MainView.xaml`。修改翻译文字后运行 `python tools/Update-ViewText.py`，更新 `App/ViewText.g.cs`；构建会检查映射是否一致。检查命令见 [QA 指南](../qa/README.md)，品牌资源生成见 [Brand/README.md](../Brand/README.md)。
 

@@ -43,7 +43,7 @@ def bounds(path):
     return depth, values
 
 
-with tempfile.TemporaryDirectory(prefix='frameflow-formats-') as temporary:
+with tempfile.TemporaryDirectory(prefix='lumarecode-formats-') as temporary:
     folder = Path(temporary)
     base = folder / 'full-444.mkv'
     run(['-f', 'lavfi', '-i', 'nullsrc=s=320x192:r=12:d=0.5,format=yuv444p10le,geq=lum=X/(W-1)*1023:cb=512:cr=512',

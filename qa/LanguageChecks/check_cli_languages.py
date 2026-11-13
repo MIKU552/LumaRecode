@@ -38,15 +38,23 @@ def main():
             if key is not None:
                 assert all(key in values for values in catalogs.values()), key
     count = 0
-    saved_env = {name:os.environ.get(name) for name in ('FRAMEFLOW_LANGUAGE','FRAMEFLOW_SYSTEM_LANGUAGE')}
+    saved_env = {name:os.environ.get(name) for name in ('LUMARECODE_LANGUAGE','LUMARECODE_SYSTEM_LANGUAGE','FRAMEFLOW_LANGUAGE','FRAMEFLOW_SYSTEM_LANGUAGE')}
     try:
+        os.environ.pop('LUMARECODE_LANGUAGE', None)
+        os.environ['FRAMEFLOW_LANGUAGE'] = 'ja'
+        cli.configure_language([])
+        assert cli.LANG == 'ja'
+        os.environ['LUMARECODE_LANGUAGE'] = 'es'
+        cli.configure_language([])
+        assert cli.LANG == 'es'
+        count += 2
         for tag, expected in [('ja-JP','ja'),('JA_jp','ja'),('es-MX','es'),('es-419','es'),('zh-TW','zh'),('fr-FR','en')]:
-            os.environ['FRAMEFLOW_LANGUAGE'] = tag
+            os.environ['LUMARECODE_LANGUAGE'] = tag
             cli.configure_language([])
             assert cli.LANG == expected
             count += 1
-        os.environ['FRAMEFLOW_LANGUAGE'] = 'zh'
-        os.environ['FRAMEFLOW_SYSTEM_LANGUAGE'] = 'es-MX'
+        os.environ['LUMARECODE_LANGUAGE'] = 'zh'
+        os.environ['LUMARECODE_SYSTEM_LANGUAGE'] = 'es-MX'
         cli.configure_language(['--lang','system'])
         assert cli.LANG == 'es'
         cli.configure_language(['--language=ja'])

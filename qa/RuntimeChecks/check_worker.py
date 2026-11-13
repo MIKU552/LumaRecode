@@ -60,7 +60,7 @@ def main():
             '-show_streams', '-of', 'json', str(path)], text=True, encoding='utf-8'))
         return next(s for s in j['streams'] if s['codec_type'] == 'video'), j['streams']
 
-    with tempfile.TemporaryDirectory(prefix='FrameFlow-runtime-') as tmp:
+    with tempfile.TemporaryDirectory(prefix='LumaRecode-runtime-') as tmp:
         folder = Path(tmp)
         source = folder / '测试 source.mp4'
         subprocess.run([tools['ffmpeg'], '-v', 'error', '-f', 'lavfi', '-i',

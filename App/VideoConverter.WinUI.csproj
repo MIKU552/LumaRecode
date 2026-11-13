@@ -15,17 +15,17 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <PublishTrimmed>false</PublishTrimmed>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>FrameFlow.ico</ApplicationIcon>
-    <AssemblyName>FrameFlow</AssemblyName>
-    <Title>映流 · FrameFlow</Title>
-    <Product>映流 · FrameFlow</Product>
+    <ApplicationIcon>LumaRecode.ico</ApplicationIcon>
+    <AssemblyName>LumaRecode</AssemblyName>
+    <Title>映码 · LumaRecode</Title>
+    <Product>映码 · LumaRecode</Product>
     <Description>视频转码与色彩转换</Description>
     <RootNamespace>VideoConverter</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <Version>3.7.4</Version>
+    <Version>3.8.0</Version>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">
@@ -39,12 +39,12 @@
     <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.6.5" />
     <PackageReference Include="Microsoft.WindowsAppSDK.Runtime" Version="2.6.5" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
-    <Content Include="FrameFlow.ico" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="../Brand/FrameFlow.png" Link="Assets/FrameFlow.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="LumaRecode.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../Brand/LumaRecode.png" Link="Assets/LumaRecode.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets/Fonts/*.ttf" CopyToOutputDirectory="PreserveNewest" />
-    <EmbeddedResource Include="Strings.en.json" LogicalName="FrameFlow.Strings.en.json" WithCulture="false" />
-    <EmbeddedResource Include="Strings.ja.json" LogicalName="FrameFlow.Strings.ja.json" WithCulture="false" />
-    <EmbeddedResource Include="Strings.es.json" LogicalName="FrameFlow.Strings.es.json" WithCulture="false" />
+    <EmbeddedResource Include="Strings.en.json" LogicalName="LumaRecode.Strings.en.json" WithCulture="false" />
+    <EmbeddedResource Include="Strings.ja.json" LogicalName="LumaRecode.Strings.ja.json" WithCulture="false" />
+    <EmbeddedResource Include="Strings.es.json" LogicalName="LumaRecode.Strings.es.json" WithCulture="false" />
     <EmbeddedResource Include="../Worker/assets/recommended-presets.json" LogicalName="VideoConverter.EncodingPresets.json" />
     <!-- Files read by path are deployment files, not MRT-qualified UI resources. -->
     <None Include="../Payload/Worker/**" Link="Payload/Worker/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

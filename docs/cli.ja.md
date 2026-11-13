@@ -2,7 +2,7 @@
 
 [简体中文](cli.zh-CN.md) · [English](cli.en.md) · 日本語 · [Español](cli.es.md) · [README](../README.ja.md)
 
-**PowerShell 7** から `FrameFlow.exe` を実行します。引数なしでは GUI が開き、`probe` や `convert` などのサブコマンドを指定すると CLI が動作します。
+**PowerShell 7** から `LumaRecode.exe` を実行します。引数なしでは GUI が開き、`probe` や `convert` などのサブコマンドを指定すると CLI が動作します。
 
 本プログラムは Windows GUI サブシステムを使用します。**テキスト出力は `Out-Host`、JSON 出力は `ConvertFrom-Json` にパイプ接続**すると、終了を待って `$LASTEXITCODE` を取得できます。他のプログラムからはプロセス API で終了を待機できます。
 
@@ -10,13 +10,13 @@
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-./FrameFlow.exe --lang ja --help | Out-Host
-./FrameFlow.exe --version | Out-Host
-./FrameFlow.exe license --text | Out-Host
-./FrameFlow.exe license --accept-terms | Out-Host
-./FrameFlow.exe doctor --json | ConvertFrom-Json
-./FrameFlow.exe probe "D:\Videos\clip.mp4" --json | ConvertFrom-Json
-./FrameFlow.exe convert "D:\Videos\clip.mp4" | Out-Host
+./LumaRecode.exe --lang ja --help | Out-Host
+./LumaRecode.exe --version | Out-Host
+./LumaRecode.exe license --text | Out-Host
+./LumaRecode.exe license --accept-terms | Out-Host
+./LumaRecode.exe doctor --json | ConvertFrom-Json
+./LumaRecode.exe probe "D:\Videos\clip.mp4" --json | ConvertFrom-Json
+./LumaRecode.exe convert "D:\Videos\clip.mp4" | Out-Host
 ```
 
 コンポーネントの利用条件への同意は GUI と CLI で共有します。初回の一括処理では、`license --text` で条件を確認してから `license --accept-terms` を実行するか、タスクに `--accept-terms` を追加します。`--no-settings` は保存済みの GUI 設定を読み込まず、設定も書き込みません。このモードでは `--accept-terms` を追加してください。
@@ -67,13 +67,13 @@ Auto は SDR → SDR、HLG / PQ → HDR、Log → HLG を選択します。`--pr
 `--audio flac` は全音声トラックを確認し、可逆形式と確認できる整数音声を受け付けます。サンプルレート、チャンネル数、整数精度を保持し、コンテナーには MKV を使用します。
 
 ```powershell
-./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
-./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
-./FrameFlow.exe convert hdr.mp4 --range sdr | Out-Host
-./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range sdr | Out-Host
-./FrameFlow.exe convert source-422.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
-./FrameFlow.exe plan clip.mp4 --preset archive-av1-fast --json | ConvertFrom-Json
-./FrameFlow.exe convert lossless.mov --preset archive-hevc --sampling source --color-range source --audio flac | Out-Host
+./LumaRecode.exe convert clip.mp4 --preset archive-hevc | Out-Host
+./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
+./LumaRecode.exe convert hdr.mp4 --range sdr | Out-Host
+./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range sdr | Out-Host
+./LumaRecode.exe convert source-422.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
+./LumaRecode.exe plan clip.mp4 --preset archive-av1-fast --json | ConvertFrom-Json
+./LumaRecode.exe convert lossless.mov --preset archive-hevc --sampling source --color-range source --audio flac | Out-Host
 ```
 
 HDR / Log から SDR への変換には FFmpeg の libplacebo と Vulkan が必要です。JSON 設定では上記のエンコード項目をアンダースコア形式のキーで指定でき、`preset` も使用できます。
@@ -87,10 +87,10 @@ HDR / Log から SDR への変換には FFmpeg の libplacebo と Vulkan が必�
 ## 一括処理と保存先
 
 ```powershell
-./FrameFlow.exe convert a.mp4 b.mov --output-dir "D:\Exports" | Out-Host
-./FrameFlow.exe convert "D:\Videos" --recursive --output-dir "D:\Exports" | Out-Host
-./FrameFlow.exe convert "D:\Videos\**\*.mp4" --recursive --output-dir "D:\Exports" --continue-on-error --json | ConvertFrom-Json
-./FrameFlow.exe convert clip.mp4 --output "D:\Exports\result.mp4" --overwrite | Out-Host
+./LumaRecode.exe convert a.mp4 b.mov --output-dir "D:\Exports" | Out-Host
+./LumaRecode.exe convert "D:\Videos" --recursive --output-dir "D:\Exports" | Out-Host
+./LumaRecode.exe convert "D:\Videos\**\*.mp4" --recursive --output-dir "D:\Exports" --continue-on-error --json | ConvertFrom-Json
+./LumaRecode.exe convert clip.mp4 --output "D:\Exports\result.mp4" --overwrite | Out-Host
 ```
 
 ワイルドカードは引用符で囲みます。`**` には `--recursive` が必要です。ディレクトリの検索対象は一般的な動画拡張子で、相対サブディレクトリ構造を保持します。ワイルドカードでは一致したファイルの共通親ディレクトリを基準にし、個別に指定したファイルにはそのファイル名を使用します。保存先の重複は変換前に検出します。必要な出力ディレクトリは自動作成します。
@@ -108,7 +108,7 @@ HDR / Log から SDR への変換には FFmpeg の libplacebo と Vulkan が必�
 進捗には `fps`, `percent`, `position_seconds`, `duration_seconds`, `elapsed_seconds`, `eta_seconds` が含まれます。不明な進捗率・残り時間は null です。エラーには固定の `code` と説明の `message` があります。`--log FILE` は同じイベントを JSON Lines ファイルに追記し、`--verbose` はテキストモードで FFmpeg のログを表示します。
 
 ```powershell
-./FrameFlow.exe convert clip.mp4 --json --log job.jsonl | ForEach-Object { $_ | ConvertFrom-Json }
+./LumaRecode.exe convert clip.mp4 --json --log job.jsonl | ForEach-Object { $_ | ConvertFrom-Json }
 $LASTEXITCODE
 ```
 

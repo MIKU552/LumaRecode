@@ -28,14 +28,14 @@ internal static class CommandLineHost
             }
             var info = WorkerClient.CreateStartInfo("cli.py", python);
             foreach (var arg in args) info.ArgumentList.Add(arg);
-            info.Environment["FRAMEFLOW_HOSTED"] = "1";
-            info.Environment["FRAMEFLOW_LANGUAGE"] = LanguagePolicy.Resolve(settings.Language, System.Globalization.CultureInfo.CurrentUICulture.Name);
-            info.Environment["FRAMEFLOW_SYSTEM_LANGUAGE"] = LanguagePolicy.Resolve("system", System.Globalization.CultureInfo.CurrentUICulture.Name);
-            info.Environment["FRAMEFLOW_FFMPEG"] = settings.Ffmpeg;
-            info.Environment["FRAMEFLOW_FFPROBE"] = settings.Ffprobe;
-            info.Environment["FRAMEFLOW_LICENSE_DIR"] = LegalNotices.Folder;
-            info.Environment["FRAMEFLOW_TERMS_ACCEPTED"] = settings.AcceptedThirdPartyTerms == LegalNotices.Revision ? "1" : "0";
-            info.Environment["FRAMEFLOW_VERSION"] = typeof(CommandLineHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "unknown";
+            info.Environment["LUMARECODE_HOSTED"] = "1";
+            info.Environment["LUMARECODE_LANGUAGE"] = LanguagePolicy.Resolve(settings.Language, System.Globalization.CultureInfo.CurrentUICulture.Name);
+            info.Environment["LUMARECODE_SYSTEM_LANGUAGE"] = LanguagePolicy.Resolve("system", System.Globalization.CultureInfo.CurrentUICulture.Name);
+            info.Environment["LUMARECODE_FFMPEG"] = settings.Ffmpeg;
+            info.Environment["LUMARECODE_FFPROBE"] = settings.Ffprobe;
+            info.Environment["LUMARECODE_LICENSE_DIR"] = LegalNotices.Folder;
+            info.Environment["LUMARECODE_TERMS_ACCEPTED"] = settings.AcceptedThirdPartyTerms == LegalNotices.Revision ? "1" : "0";
+            info.Environment["LUMARECODE_VERSION"] = typeof(CommandLineHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "unknown";
             using var child = new Process { StartInfo = info };
             child.Start();
             ConsoleCancelEventHandler handler = (_, e) =>

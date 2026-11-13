@@ -108,7 +108,7 @@ if (args.Length > 0)
     var embedded = metadata.ManifestResources.Select(handle => metadata.GetString(metadata.GetManifestResource(handle).Name)).ToArray();
     foreach (var code in languages.Keys)
     {
-        if (!embedded.Contains($"FrameFlow.Strings.{code}.json")) throw new Exception($"Missing embedded resource: {code}");
+        if (!embedded.Contains($"LumaRecode.Strings.{code}.json")) throw new Exception($"Missing embedded resource: {code}");
         count++;
     }
 }

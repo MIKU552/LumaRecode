@@ -1,5 +1,12 @@
 # 更新记录
 
+## 3.8.0
+
+- 项目更名为映码 · LumaRecode，程序与命令行入口统一为 `LumaRecode.exe`。
+- 更新应用图标、四种语言的界面名称与文档。
+- 首次运行自动导入 FrameFlow 的语言、外观、工具路径与许可确认设置。
+- 命令行环境变量使用 `LUMARECODE_` 前缀，同时兼容原有 `FRAMEFLOW_` 前缀。
+
 ## 3.7.4
 
 - 界面统一使用 Source Sans 3 和思源黑体，日志使用 Source Code Pro，并提供中日文字体回退。

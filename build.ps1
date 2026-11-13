@@ -53,7 +53,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Dependency restore failed.' }
     $taskLicenseArgs = @{ProjectRoot=$taskRoot; PythonRuntime=$taskPython}
     if ($taskAot) {
-        dotnet restore Bundle/FrameFlow.Bundle.csproj -r win-x64 --locked-mode
+        dotnet restore Bundle/LumaRecode.Bundle.csproj -r win-x64 --locked-mode
         if ($LASTEXITCODE -ne 0) { throw 'Bundle dependency restore failed.' }
         $taskLicenseArgs.Add('AdditionalAssetsFile',(Join-Path $taskRoot 'Bundle/obj/project.assets.json'))
     }
@@ -71,13 +71,13 @@ try {
     dotnet @taskPublish
     if ($LASTEXITCODE -ne 0) { throw 'WinUI publish failed.' }
     if ($taskAot) {
-        dotnet publish Bundle/FrameFlow.Bundle.csproj --no-restore -c Release -r win-x64 -o $taskOutput
+        dotnet publish Bundle/LumaRecode.Bundle.csproj --no-restore -c Release -r win-x64 -o $taskOutput
         if ($LASTEXITCODE -ne 0) { throw 'Single-file bundle publish failed.' }
     }
     $taskVersion = ([xml](Get-Content -LiteralPath 'App/VideoConverter.WinUI.csproj' -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-    if ($taskBundled) { Write-Output "Built single GUI + CLI EXE: $taskOutput/FrameFlow.exe" }
+    if ($taskBundled) { Write-Output "Built single GUI + CLI EXE: $taskOutput/LumaRecode.exe" }
     else {
-        $taskZip = Join-Path $taskRoot "dist/FrameFlow-$taskVersion-win-x64-framework-dependent.zip"
+        $taskZip = Join-Path $taskRoot "dist/LumaRecode-$taskVersion-win-x64-framework-dependent.zip"
         Compress-Archive -Path "$taskOutput/*" -DestinationPath $taskZip -Force
         Write-Output "Built framework-dependent ZIP: $taskZip"
     }

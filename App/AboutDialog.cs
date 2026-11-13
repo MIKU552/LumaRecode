@@ -13,9 +13,9 @@ internal static class AboutDialog
             .InformationalVersion.Split('+')[0] ?? "unknown";
         var panel = new StackPanel { Spacing = 20, MaxWidth = 520 };
         var identity = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
-        identity.Children.Add(new Image { Source = new BitmapImage(new Uri("ms-appx:///Assets/FrameFlow.png")), Width = 64, Height = 64 });
+        identity.Children.Add(new Image { Source = new BitmapImage(new Uri("ms-appx:///Assets/LumaRecode.png")), Width = 64, Height = 64 });
         var name = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
-        name.Children.Add(new TextBlock { Text = L.T("映流 · FrameFlow"), FontSize = 24, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        name.Children.Add(new TextBlock { Text = L.T("映码 · LumaRecode"), FontSize = 24, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         name.Children.Add(new TextBlock { Text = L.T("版本") + " " + version, FontSize = 13, IsTextSelectionEnabled = true });
         identity.Children.Add(name); panel.Children.Add(identity);
         TextBlock Paragraph(string text) => new() { Text = L.T(text), TextWrapping = TextWrapping.Wrap, FontSize = 14 };
@@ -29,7 +29,7 @@ internal static class AboutDialog
         licensing.Children.Add(Paragraph("项目自主内容采用 MIT License。第三方运行时、字体与 LUT 保留各自许可；FFmpeg 由用户提供。"));
         panel.Children.Add(licensing);
         var links = new StackPanel { Spacing = 4 };
-        links.Children.Add(new HyperlinkButton { Content = L.T("GitHub 项目主页"), NavigateUri = new Uri("https://github.com/MIKU552/FrameFlow"),
+        links.Children.Add(new HyperlinkButton { Content = L.T("GitHub 项目主页"), NavigateUri = new Uri("https://github.com/MIKU552/LumaRecode"),
             Padding = new Thickness(0, 6, 0, 6), HorizontalAlignment = HorizontalAlignment.Left });
         var licenses = new HyperlinkButton { Content = L.T("查看完整许可与第三方声明"), Padding = new Thickness(0, 6, 0, 6), HorizontalAlignment = HorizontalAlignment.Left };
         licenses.Click += (_, _) => LegalNotices.OpenFolder(); links.Children.Add(licenses);

@@ -1,6 +1,6 @@
-FrameFlow — 第三者バイナリコンポーネントの利用条件
+LumaRecode — 第三者バイナリコンポーネントの利用条件
 
-FrameFlow の独自のソースコード、ドキュメント、オリジナルのリソースには MIT License が適用されます。Windows 配布版には Microsoft および Python のランタイム、OpenSSL、OpenOSV LUT などが含まれ、それぞれのライセンスと通知が適用されます。
+LumaRecode の独自のソースコード、ドキュメント、オリジナルのリソースには MIT License が適用されます。Windows 配布版には Microsoft および Python のランタイム、OpenSSL、OpenOSV LUT などが含まれ、それぞれのライセンスと通知が適用されます。
 
 「同意して続行」を選択すると、同梱する第三者コンポーネントに適用される利用条件に従うことに同意したものとします。対象には Windows App SDK、指定された Windows ランタイムバイナリ（単一ファイルのランタイムを含む）に適用される .NET Library License、WinRT 投影アセンブリに適用される Windows SDK の条件、および公式 Python Windows バイナリビルドに含まれる Microsoft 再頒布可能コードの条件があります。ライセンス全文、通知、配布元パッケージの記録は、この licenses ディレクトリにあります。
 

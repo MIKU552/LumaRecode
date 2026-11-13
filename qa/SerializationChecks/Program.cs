@@ -40,4 +40,40 @@ Check(failure.RootElement.GetProperty("schema_version").GetInt32() == 1, "Host e
 Check(failure.RootElement.GetProperty("event").GetString() == "error", "Host error event changed");
 Check(failure.RootElement.GetProperty("data").GetProperty("code").GetString() == "runtime_unavailable" &&
       failure.RootElement.GetProperty("data").GetProperty("message").GetString() == "路径含中文", "Host error data changed");
-Console.WriteLine($"Passed {count} settings compatibility and worker JSON contract checks without touching user files.");
+var sandbox = Directory.CreateTempSubdirectory("LumaRecode-settings-");
+try
+{
+    var legacyFolder = Path.Combine(sandbox.FullName, "FrameFlow");
+    Directory.CreateDirectory(legacyFolder);
+    var legacyFile = Path.Combine(legacyFolder, "settings.json");
+    File.WriteAllText(legacyFile, oldSettings);
+    var migrated = UserSettings.LoadFrom(sandbox.FullName);
+    var preferred = Path.Combine(sandbox.FullName, "LumaRecode", "settings.json");
+    Check(migrated.Language == "zh" && migrated.Ffmpeg == settings.Ffmpeg && migrated.AcceptedThirdPartyTerms == settings.AcceptedThirdPartyTerms, "FrameFlow preferences were not inherited");
+    Check(File.Exists(preferred), "Migrated settings were not saved under LumaRecode");
+    Check(File.ReadAllText(legacyFile) == oldSettings, "Migration changed the original FrameFlow settings");
+    migrated.Language = "es";
+    migrated.SaveTo(sandbox.FullName);
+    Check(UserSettings.LoadFrom(sandbox.FullName).Language == "es", "New settings must take precedence over FrameFlow");
+    Check(File.ReadAllText(legacyFile) == oldSettings, "Saving LumaRecode changed FrameFlow settings");
+
+    var olderBase = Path.Combine(sandbox.FullName, "older");
+    Directory.CreateDirectory(Path.Combine(olderBase, "VideoConverterWinUI"));
+    File.WriteAllText(Path.Combine(olderBase, "VideoConverterWinUI/settings.json"), oldSettings);
+    Check(UserSettings.LoadFrom(olderBase).Theme == "dark", "Original VideoConverterWinUI settings were not inherited");
+    Check(File.Exists(Path.Combine(olderBase, "LumaRecode/settings.json")), "Original settings were not migrated");
+    var emptyBase = Path.Combine(sandbox.FullName, "empty");
+    Check(UserSettings.LoadFrom(emptyBase).Theme == "system" && !Directory.Exists(emptyBase), "Empty settings load should use defaults without writing");
+    File.WriteAllText(preferred, "{broken");
+    Check(UserSettings.LoadFrom(sandbox.FullName).Theme == "system", "Malformed current settings should use defaults");
+    Check(File.ReadAllText(legacyFile) == oldSettings, "Malformed current settings changed the legacy file");
+    Check(!Directory.EnumerateFiles(sandbox.FullName, "*.tmp", SearchOption.AllDirectories).Any(), "Atomic settings save left temporary files");
+}
+finally
+{
+    var relative = Path.GetRelativePath(Path.GetFullPath(Path.GetTempPath()), Path.GetFullPath(sandbox.FullName));
+    if (Path.IsPathRooted(relative) || relative.StartsWith("..", StringComparison.Ordinal) || !sandbox.Name.StartsWith("LumaRecode-settings-", StringComparison.Ordinal))
+        throw new InvalidOperationException("Unexpected test cleanup directory");
+    Directory.Delete(sandbox.FullName, true);
+}
+Console.WriteLine($"Passed {count} settings compatibility, migration and worker JSON contract checks without touching user files.");

@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="Brand/FrameFlow.svg" width="104" height="104" alt="FrameFlow アイコン" />
+  <img src="Brand/LumaRecode.svg" width="104" height="104" alt="LumaRecode アイコン" />
 </p>
-<h1 align="center">映流 · FrameFlow</h1>
+<h1 align="center">映码 · LumaRecode</h1>
 
 [简体中文](README.md) | [English](README.en.md) | 日本語 | [Español](README.es.md)
 
 Windows 11 向けの動画変換・色変換ツールです。ネイティブ WinUI 3 インターフェイスとコマンドラインを備え、FFmpeg による動画圧縮、カメラ Log から HDR / SDR への変換、HDR から SDR への変換を行います。
 
-[ダウンロード](https://github.com/MIKU552/FrameFlow/releases/latest) · [コマンドライン](docs/cli.ja.md) · [変更履歴](CHANGELOG.md)
+[ダウンロード](https://github.com/MIKU552/LumaRecode/releases/latest) · [コマンドライン](docs/cli.ja.md) · [変更履歴](CHANGELOG.md)
 
 ## 主な機能
 
@@ -21,7 +21,7 @@ Windows 11 向けの動画変換・色変換ツールです。ネイティブ Wi
 
 ## 使い始める
 
-1. [Releases](https://github.com/MIKU552/FrameFlow/releases) から **FrameFlow.exe** をダウンロードします。必要なランタイムは同梱されています。
+1. [Releases](https://github.com/MIKU552/LumaRecode/releases) から **LumaRecode.exe** をダウンロードします。必要なランタイムは同梱されています。
 2. `ffmpeg.exe` と `ffprobe.exe` を含む Windows 版 [FFmpeg](https://ffmpeg.org/download.html) を用意します。初回起動時に `PATH` を検索します。右上の歯車からパスを指定することもできます。
 3. 動画をドロップするか「動画を選択」を押し、出力のダイナミックレンジ、プリセット、色変換を確認します。
 4. 保存先を指定し、「変換を開始」を押します。
@@ -52,7 +52,9 @@ SDR 素材は SDR 出力、HLG / PQ 素材は HDR 出力が初期値です。曲
 - クイック共有には対応する Intel QSV 環境。
 - Log 変換には `zscale` と `lut3d`。HDR / Log から SDR への変換には `libplacebo` と Vulkan。
 
-言語とテーマは初期状態でシステムに従います。中国語、英語、日本語、スペイン語のシステム言語に対応し、それ以外は英語になります。設定は `%LOCALAPPDATA%\FrameFlow\settings.json` に保存します。
+言語とテーマは初期状態でシステムに従います。中国語、英語、日本語、スペイン語のシステム言語に対応し、それ以外は英語になります。設定は `%LOCALAPPDATA%\LumaRecode\settings.json` に保存します。
+
+初回起動時に、FrameFlow の言語、外観、ツールのパス設定を引き継ぎます。
 
 Source Sans 3、源ノ角ゴシック（Source Han Sans）、Source Code Pro を同梱しているため、フォントのインストールは不要です。
 
@@ -62,10 +64,10 @@ PowerShell 7 で出力をパイプに接続して実行します。
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-./FrameFlow.exe --lang ja --help | Out-Host
-./FrameFlow.exe probe clip.mp4 --json | ConvertFrom-Json
-./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
-./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
+./LumaRecode.exe --lang ja --help | Out-Host
+./LumaRecode.exe probe clip.mp4 --json | ConvertFrom-Json
+./LumaRecode.exe convert clip.mp4 --preset archive-hevc | Out-Host
+./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
 ```
 
 初めて無人実行する前に `license --text` でコンポーネントの利用条件を確認し、`license --accept-terms` を実行してください。全コマンド、一括処理、終了コードは[CLI ガイド](docs/cli.ja.md)に記載しています。
@@ -75,12 +77,12 @@ PowerShell 7 で出力をパイプに接続して実行します。
 .NET SDK 11.0.100、PowerShell 7、Native AOT に対応する Visual Studio C++ ツールが必要です。
 
 ```powershell
-git clone https://github.com/MIKU552/FrameFlow.git
-cd FrameFlow
+git clone https://github.com/MIKU552/LumaRecode.git
+cd LumaRecode
 ./build.ps1
 ```
 
-生成物は `dist/SelfContained/FrameFlow.exe` です。ビルド方法と依存関係は[開発・配布ドキュメント](docs/dependencies.md)、チェックコマンドは [QA ガイド](qa/README.md)を参照してください。
+生成物は `dist/SelfContained/LumaRecode.exe` です。ビルド方法と依存関係は[開発・配布ドキュメント](docs/dependencies.md)、チェックコマンドは [QA ガイド](qa/README.md)を参照してください。
 
 ## ディレクトリ構成
 

@@ -1,4 +1,4 @@
-"""FrameFlow public CLI. Engine/worker protocol remains shared with the GUI."""
+"""LumaRecode public CLI. Engine/worker protocol remains shared with the GUI."""
 # SPDX-License-Identifier: MIT
 import argparse
 from dataclasses import asdict
@@ -19,7 +19,11 @@ from engine import ASSETS, CONFIG, PROFILES, Cancelled, Job, Options, build_comm
 from media import NO_WINDOW, Tools, inspect_media
 from worker import public_media
 
-VERSION = os.environ.get('FRAMEFLOW_VERSION', 'development')
+def environment(name, default=''):
+    return os.environ.get('LUMARECODE_' + name, os.environ.get('FRAMEFLOW_' + name, default))
+
+
+VERSION = environment('VERSION', 'development')
 VIDEO_TYPES = {'.mp4', '.mov', '.mkv', '.m4v', '.webm', '.avi', '.mts', '.m2ts', '.ts', '.mxf', '.mpg', '.mpeg', '.wmv'}
 CHOICES = dict(purpose=('share', 'archive'), codec=('hevc', 'av1', 'avc'),
                range=('auto', 'sdr', 'hdr'), transform=('auto', 'none', 'log-hdr', 'log-sdr', 'hdr-sdr'),
@@ -80,7 +84,7 @@ class Parser(argparse.ArgumentParser):
 
 def configure_language(argv):
     global LANG, TRANSLATIONS, TRANSLATION_PATTERNS
-    selection = os.environ.get('FRAMEFLOW_LANGUAGE', 'en')
+    selection = environment('LANGUAGE', 'en')
     for index, arg in enumerate(argv):
         if arg == '--':
             break
@@ -88,7 +92,7 @@ def configure_language(argv):
             selection = argv[index + 1]
         elif arg.startswith(('--lang=', '--language=')):
             selection = arg.split('=', 1)[1]
-    LANG = os.environ.get('FRAMEFLOW_SYSTEM_LANGUAGE', os.environ.get('FRAMEFLOW_LANGUAGE', 'en')) if selection == 'system' else selection
+    LANG = environment('SYSTEM_LANGUAGE', environment('LANGUAGE', 'en')) if selection == 'system' else selection
     LANG = LANG.strip().replace('_', '-').split('-')[0].lower()
     if LANG not in ('zh', 'en', 'ja', 'es'): LANG = 'en'
     TRANSLATIONS = {}
@@ -133,12 +137,12 @@ def parser():
         (('--no-settings',), dict(action='store_true', help=tr('Ignore saved GUI paths/consent and do not save settings', '忽略 GUI 已保存路径与许可状态，不保存设置'))),
     ]:
         common.add_argument(*flags, default=argparse.SUPPRESS, **params)
-    result = Parser(prog='FrameFlow.exe', parents=[common], description=tr(
+    result = Parser(prog='LumaRecode.exe', parents=[common], description=tr(
         'One EXE for GUI and CLI. No arguments: open the GUI. Use a command below for headless operation.',
         '同一个 EXE 提供 GUI 与命令行。无参数时打开 GUI；使用下列命令时无界面运行。'),
         epilog=tr('PowerShell 7: append | Out-Host, or | ConvertFrom-Json for --json, to wait and read $LASTEXITCODE.',
                   'PowerShell 7：接 | Out-Host，或在 --json 后接 | ConvertFrom-Json，以等待完成并读取 $LASTEXITCODE。'))
-    result.add_argument('--version', action='version', version=f'FrameFlow {VERSION}', help=tr('Show version and exit', '显示版本并退出'))
+    result.add_argument('--version', action='version', version=f'LumaRecode {VERSION}', help=tr('Show version and exit', '显示版本并退出'))
     commands = result.add_subparsers(dest='command')
     for name, en, zh in [('probe', 'Inspect video and every audio track', '读取视频与全部音轨信息'),
                          ('presets', 'List tested encoding presets', '列出编码预设'),
@@ -176,7 +180,7 @@ def parser():
 
 
 def tool(name, explicit=None):
-    candidate = explicit or shutil.which(name) or os.environ.get('FRAMEFLOW_'+name.upper(), '')
+    candidate = explicit or shutil.which(name) or environment(name.upper())
     path = Path(candidate).expanduser() if candidate else None
     if path is None or not path.is_file():
         raise CliError('tool_unavailable', tr(f'{name} was not found; use --{name} PATH.', f'未找到 {name}；请使用 --{name} 指定路径。'), 3)
@@ -184,9 +188,9 @@ def tool(name, explicit=None):
 
 
 def check_terms(args):
-    if not getattr(args, 'accept_terms', False) and os.environ.get('FRAMEFLOW_TERMS_ACCEPTED') != '1':
-        raise CliError('terms_not_accepted', tr('Read "FrameFlow license --text", then use --accept-terms. No GUI is opened.',
-            '请先阅读 FrameFlow license --text，再使用 --accept-terms 接受组件条款；命令行不会弹出 GUI。'), 6)
+    if not getattr(args, 'accept_terms', False) and environment('TERMS_ACCEPTED') != '1':
+        raise CliError('terms_not_accepted', tr('Read "LumaRecode license --text", then use --accept-terms. No GUI is opened.',
+            '请先阅读 LumaRecode license --text，再使用 --accept-terms 接受组件条款；命令行不会弹出 GUI。'), 6)
 
 
 def expand_inputs(args):
@@ -350,7 +354,7 @@ def main(argv=None):
         if args.command == 'profiles':
             output(dict(schema_version=1, profiles=[dict(id=k, name=translate(v[0]), lut=v[1], input_matrix=v[2], input_range=v[3], targets=['hdr', 'sdr']) for k, v in PROFILES.items()])); return 0
         if args.command == 'license':
-            folder = Path(os.environ.get('FRAMEFLOW_LICENSE_DIR', Path(__file__).parent.parent/'licenses'))
+            folder = Path(environment('LICENSE_DIR', Path(__file__).parent.parent/'licenses'))
             if args.text:
                 terms_file = folder / {'zh':'THIRD-PARTY-TERMS.zh-CN.txt', 'ja':'THIRD-PARTY-TERMS.ja.txt',
                                        'es':'THIRD-PARTY-TERMS.es.txt'}.get(LANG, 'THIRD-PARTY-TERMS.txt')
@@ -359,11 +363,11 @@ def main(argv=None):
                 else:
                     print((folder/'LICENSE').read_text(encoding='utf-8-sig')); print(terms_file.read_text(encoding='utf-8-sig'))
             else:
-                output(dict(schema_version=1, project_license='MIT', directory=str(folder), accepted=getattr(args, 'accept_terms', False) or os.environ.get('FRAMEFLOW_TERMS_ACCEPTED') == '1', manifest=json.loads((folder/'manifest.json').read_text(encoding='utf-8-sig'))))
+                output(dict(schema_version=1, project_license='MIT', directory=str(folder), accepted=getattr(args, 'accept_terms', False) or environment('TERMS_ACCEPTED') == '1', manifest=json.loads((folder/'manifest.json').read_text(encoding='utf-8-sig'))))
             return 0
         signal.signal(signal.SIGINT, cancel)
         if hasattr(signal, 'SIGBREAK'): signal.signal(signal.SIGBREAK, cancel)
-        if os.environ.get('FRAMEFLOW_HOSTED') == '1':
+        if environment('HOSTED') == '1':
             def monitor():
                 while True:
                     data = os.read(sys.stdin.fileno(), 4096)

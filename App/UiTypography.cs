@@ -28,7 +28,7 @@ internal static class UiTypography
     internal static void Configure()
     {
         var font = Family(L.Code);
-        Application.Current.Resources["FrameFlowUIFontFamily"] = font;
+        Application.Current.Resources["LumaRecodeUIFontFamily"] = font;
         Application.Current.Resources["ContentControlThemeFontFamily"] = font;
     }
 

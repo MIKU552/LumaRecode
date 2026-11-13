@@ -1,6 +1,6 @@
-FrameFlow — Condiciones de los componentes binarios de terceros
+LumaRecode — Condiciones de los componentes binarios de terceros
 
-El código fuente, la documentación y los recursos originales de FrameFlow usan la licencia MIT. La distribución para Windows incluye entornos de ejecución de Microsoft y Python, OpenSSL y la LUT de OpenOSV, cada uno con sus propias licencias y avisos.
+El código fuente, la documentación y los recursos originales de LumaRecode usan la licencia MIT. La distribución para Windows incluye entornos de ejecución de Microsoft y Python, OpenSSL y la LUT de OpenOSV, cada uno con sus propias licencias y avisos.
 
 Al elegir «Aceptar y continuar», aceptas cumplir las condiciones aplicables a los componentes de terceros incluidos: Windows App SDK, la .NET Library License para los binarios de ejecución de Windows designados (incluido el entorno de ejecución de archivo único), las condiciones del SDK de Windows para los ensamblados de proyección de WinRT y las del código redistribuible de Microsoft en la compilación binaria oficial de Python para Windows. Los textos completos de las licencias, los avisos y los registros de los paquetes de origen se encuentran en este mismo directorio licenses.
 

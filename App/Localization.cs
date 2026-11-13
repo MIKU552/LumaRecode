@@ -34,7 +34,7 @@ public static class L
         var result = new Dictionary<string, Dictionary<string, string>>();
         foreach (var code in new[] { "en", "ja", "es" })
         {
-            using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream($"FrameFlow.Strings.{code}.json")
+            using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream($"LumaRecode.Strings.{code}.json")
                 ?? throw new InvalidOperationException($"The embedded {code} language resource is missing.");
             result[code] = JsonSerializer.Deserialize(stream, AppJsonContext.Default.DictionaryStringString)!;
         }

@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="Brand/FrameFlow.svg" width="104" height="104" alt="Icono de FrameFlow" />
+  <img src="Brand/LumaRecode.svg" width="104" height="104" alt="Icono de LumaRecode" />
 </p>
-<h1 align="center">映流 · FrameFlow</h1>
+<h1 align="center">映码 · LumaRecode</h1>
 
 [简体中文](README.md) | [English](README.en.md) | [日本語](README.ja.md) | Español
 
-Herramienta de transcodificación de vídeo y conversión de color para Windows 11. FrameFlow ofrece una interfaz nativa WinUI 3 y una línea de comandos para FFmpeg, con compresión de vídeo, conversión de Log de cámara a HDR / SDR y de HDR a SDR.
+Herramienta de transcodificación de vídeo y conversión de color para Windows 11. LumaRecode ofrece una interfaz nativa WinUI 3 y una línea de comandos para FFmpeg, con compresión de vídeo, conversión de Log de cámara a HDR / SDR y de HDR a SDR.
 
-[Descargar](https://github.com/MIKU552/FrameFlow/releases/latest) · [Línea de comandos](docs/cli.es.md) · [Historial de cambios](CHANGELOG.md)
+[Descargar](https://github.com/MIKU552/LumaRecode/releases/latest) · [Línea de comandos](docs/cli.es.md) · [Historial de cambios](CHANGELOG.md)
 
 ## Funciones
 
@@ -21,8 +21,8 @@ Herramienta de transcodificación de vídeo y conversión de color para Windows 
 
 ## Inicio rápido
 
-1. Descarga **FrameFlow.exe** desde [Releases](https://github.com/MIKU552/FrameFlow/releases). Los entornos de ejecución necesarios están incluidos.
-2. Prepara una compilación de [FFmpeg para Windows](https://ffmpeg.org/download.html) con `ffmpeg.exe` y `ffprobe.exe`. FrameFlow busca en `PATH` al iniciarse; también puedes indicar las rutas con el botón de engranaje.
+1. Descarga **LumaRecode.exe** desde [Releases](https://github.com/MIKU552/LumaRecode/releases). Los entornos de ejecución necesarios están incluidos.
+2. Prepara una compilación de [FFmpeg para Windows](https://ffmpeg.org/download.html) con `ffmpeg.exe` y `ffprobe.exe`. LumaRecode busca en `PATH` al iniciarse; también puedes indicar las rutas con el botón de engranaje.
 3. Arrastra un vídeo o pulsa **Elegir vídeo** y comprueba el rango dinámico, el preajuste y la conversión de color.
 4. Elige la ruta de salida y pulsa **Iniciar conversión**.
 
@@ -52,7 +52,9 @@ El vídeo se vuelve a codificar con el preajuste elegido; el audio puede copiars
 - Compatibilidad con Intel QSV para Compartir rápido.
 - `zscale` y `lut3d` para la conversión de Log; `libplacebo` y Vulkan para HDR / Log a SDR.
 
-El idioma y el tema siguen al sistema de forma predeterminada. Se reconocen sistemas en chino, inglés, japonés y español; los demás usan inglés. Los ajustes se guardan en `%LOCALAPPDATA%\FrameFlow\settings.json`.
+El idioma y el tema siguen al sistema de forma predeterminada. Se reconocen sistemas en chino, inglés, japonés y español; los demás usan inglés. Los ajustes se guardan en `%LOCALAPPDATA%\LumaRecode\settings.json`.
+
+En el primer inicio, LumaRecode importa el idioma, la apariencia y las rutas de herramientas de los ajustes de FrameFlow.
 
 Source Sans 3, Source Han Sans y Source Code Pro están incluidos; no necesitas instalar fuentes.
 
@@ -62,10 +64,10 @@ En PowerShell 7, conecta la salida a una canalización:
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-./FrameFlow.exe --lang es --help | Out-Host
-./FrameFlow.exe probe clip.mp4 --json | ConvertFrom-Json
-./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
-./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
+./LumaRecode.exe --lang es --help | Out-Host
+./LumaRecode.exe probe clip.mp4 --json | ConvertFrom-Json
+./LumaRecode.exe convert clip.mp4 --preset archive-hevc | Out-Host
+./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
 ```
 
 Antes del primer uso desatendido, consulta las condiciones de los componentes con `license --text` y ejecuta `license --accept-terms`. La [guía de la CLI](docs/cli.es.md) incluye todos los comandos, el procesamiento por lotes y los códigos de salida.
@@ -75,12 +77,12 @@ Antes del primer uso desatendido, consulta las condiciones de los componentes co
 Se necesitan .NET SDK 11.0.100, PowerShell 7 y las herramientas de Visual Studio C++ compatibles con Native AOT.
 
 ```powershell
-git clone https://github.com/MIKU552/FrameFlow.git
-cd FrameFlow
+git clone https://github.com/MIKU552/LumaRecode.git
+cd LumaRecode
 ./build.ps1
 ```
 
-El resultado es `dist/SelfContained/FrameFlow.exe`. Consulta las opciones de compilación y versiones de dependencias en la [documentación de desarrollo y distribución](docs/dependencies.md), y los comandos de comprobación en la [guía de QA](qa/README.md).
+El resultado es `dist/SelfContained/LumaRecode.exe`. Consulta las opciones de compilación y versiones de dependencias en la [documentación de desarrollo y distribución](docs/dependencies.md), y los comandos de comprobación en la [guía de QA](qa/README.md).
 
 ## Estructura del proyecto
 

@@ -2,7 +2,7 @@
 
 [简体中文](cli.zh-CN.md) · English · [日本語](cli.ja.md) · [Español](cli.es.md) · [README](../README.en.md)
 
-Run `FrameFlow.exe` in **PowerShell 7**. No arguments opens the GUI; subcommands such as `probe` and `convert` run the CLI.
+Run `LumaRecode.exe` in **PowerShell 7**. No arguments opens the GUI; subcommands such as `probe` and `convert` run the CLI.
 
 The program uses the Windows GUI subsystem. **Pipe text output to `Out-Host`, or JSON output to `ConvertFrom-Json`** to wait for completion and read `$LASTEXITCODE`. Other programs can wait through a process API.
 
@@ -10,13 +10,13 @@ Output uses UTF-8. The examples below set the current PowerShell session encodin
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-./FrameFlow.exe --help | Out-Host
-./FrameFlow.exe --version | Out-Host
-./FrameFlow.exe license --text | Out-Host
-./FrameFlow.exe license --accept-terms | Out-Host
-./FrameFlow.exe doctor --json | ConvertFrom-Json
-./FrameFlow.exe probe "D:\Videos\clip.mp4" --json | ConvertFrom-Json
-./FrameFlow.exe convert "D:\Videos\clip.mp4" | Out-Host
+./LumaRecode.exe --help | Out-Host
+./LumaRecode.exe --version | Out-Host
+./LumaRecode.exe license --text | Out-Host
+./LumaRecode.exe license --accept-terms | Out-Host
+./LumaRecode.exe doctor --json | ConvertFrom-Json
+./LumaRecode.exe probe "D:\Videos\clip.mp4" --json | ConvertFrom-Json
+./LumaRecode.exe convert "D:\Videos\clip.mp4" | Out-Host
 ```
 
 GUI and CLI share component-term acceptance. For first-time batch use, read the terms with `license --text`, then run `license --accept-terms` or add `--accept-terms` to the task. `--no-settings` selects independent configuration, ignores saved GUI settings, and disables settings writes; add `--accept-terms` in this mode.
@@ -67,13 +67,13 @@ Range conversion processes pixel values. For sources with missing range tags, pi
 `--audio flac` checks every audio track and accepts confirmed lossless integer input, preserving sample rates, channels, and integer precision. FLAC audio uses MKV.
 
 ```powershell
-./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
-./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
-./FrameFlow.exe convert hdr.mp4 --range sdr | Out-Host
-./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range sdr | Out-Host
-./FrameFlow.exe convert source-422.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
-./FrameFlow.exe plan clip.mp4 --preset archive-av1-fast --json | ConvertFrom-Json
-./FrameFlow.exe convert lossless.mov --preset archive-hevc --sampling source --color-range source --audio flac | Out-Host
+./LumaRecode.exe convert clip.mp4 --preset archive-hevc | Out-Host
+./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
+./LumaRecode.exe convert hdr.mp4 --range sdr | Out-Host
+./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range sdr | Out-Host
+./LumaRecode.exe convert source-422.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
+./LumaRecode.exe plan clip.mp4 --preset archive-av1-fast --json | ConvertFrom-Json
+./LumaRecode.exe convert lossless.mov --preset archive-hevc --sampling source --color-range source --audio flac | Out-Host
 ```
 
 HDR/Log-to-SDR needs FFmpeg libplacebo and Vulkan. A JSON config accepts the encoding fields above, using underscore keys, plus `preset`:
@@ -87,10 +87,10 @@ Precedence: GUI-equivalent defaults → chosen preset → config fields → expl
 ## Batch and destination policy
 
 ```powershell
-./FrameFlow.exe convert a.mp4 b.mov --output-dir "D:\Exports" | Out-Host
-./FrameFlow.exe convert "D:\Videos" --recursive --output-dir "D:\Exports" | Out-Host
-./FrameFlow.exe convert "D:\Videos\**\*.mp4" --recursive --output-dir "D:\Exports" --continue-on-error --json | ConvertFrom-Json
-./FrameFlow.exe convert clip.mp4 --output "D:\Exports\result.mp4" --overwrite | Out-Host
+./LumaRecode.exe convert a.mp4 b.mov --output-dir "D:\Exports" | Out-Host
+./LumaRecode.exe convert "D:\Videos" --recursive --output-dir "D:\Exports" | Out-Host
+./LumaRecode.exe convert "D:\Videos\**\*.mp4" --recursive --output-dir "D:\Exports" --continue-on-error --json | ConvertFrom-Json
+./LumaRecode.exe convert clip.mp4 --output "D:\Exports\result.mp4" --overwrite | Out-Host
 ```
 
 Quote patterns; `**` requires `--recursive`. Directory scans filter common video extensions and preserve relative subdirectories. Wildcards use the matched files' common parent; explicit files use their filenames. Colliding destinations are rejected before conversion. Output directories are created as needed.
@@ -108,7 +108,7 @@ Planned `argv` shows the final output path. Conversion writes to a temporary dir
 Progress includes `fps`, `percent`, `position_seconds`, `duration_seconds`, `elapsed_seconds`, `eta_seconds`; unknown percent/ETA are null. Errors include a stable `code` and readable `message`. `--log FILE` appends the same events to a JSON Lines file; `--verbose` prints FFmpeg logs in text mode.
 
 ```powershell
-./FrameFlow.exe convert clip.mp4 --json --log job.jsonl | ForEach-Object { $_ | ConvertFrom-Json }
+./LumaRecode.exe convert clip.mp4 --json --log job.jsonl | ForEach-Object { $_ | ConvertFrom-Json }
 $LASTEXITCODE
 ```
 

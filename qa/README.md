@@ -12,14 +12,14 @@ python tools/Update-ViewText.py --check
 python Worker/tools/generate_hlg_luts.py --check
 ```
 
-这些检查覆盖四种语言的选择、翻译资源与格式占位符、XAML 映射、设置格式、worker JSON 协议和生成的 LUT。可给 `check_cli_languages.py` 传入 `--exe dist/SelfContained/FrameFlow.exe`，检查打包后的 CLI 语言资源。
+这些检查覆盖四种语言的选择、翻译资源与格式占位符、XAML 映射、设置格式、worker JSON 协议和生成的 LUT。可给 `check_cli_languages.py` 传入 `--exe dist/SelfContained/LumaRecode.exe`，检查打包后的 CLI 语言资源。
 
 ## CLI 与 worker
 
 先运行 `./build.ps1`，再执行集成检查：
 
 ```powershell
-python qa/CliChecks/check_cli.py --exe dist/SelfContained/FrameFlow.exe
+python qa/CliChecks/check_cli.py --exe dist/SelfContained/LumaRecode.exe
 python qa/RuntimeChecks/check_worker.py --deployment dist/NativeAot
 ```
 
@@ -27,7 +27,7 @@ python qa/RuntimeChecks/check_worker.py --deployment dist/NativeAot
 
 ## GUI 启动
 
-发布前直接打开最终的 `FrameFlow.exe`，确认主窗口完成加载，再检查语言切换、配色面板和“关于”窗口。关闭后重新打开，确认语言设置恢复。检查 `%LOCALAPPDATA%\FrameFlow\error.log` 的更新时间及内容。
+发布前直接打开最终的 `LumaRecode.exe`，确认主窗口完成加载，再检查语言切换、配色面板和“关于”窗口。关闭后重新打开，确认语言设置恢复。检查 `%LOCALAPPDATA%\LumaRecode\error.log` 的更新时间及内容。
 
 ## 采样、范围与音频
 
@@ -42,12 +42,12 @@ python qa/FormatChecks/check_formats.py
 保持窗口大小、主题、HDR 和输入法一致，每次仅运行一个待测实例，在菜单操作和编码之前采样：
 
 ```powershell
-./qa/MemoryChecks/Measure-Process.ps1 -Executable '<实际 GUI 路径>/FrameFlow.exe' -Label startup -OutputFile samples.jsonl
+./qa/MemoryChecks/Measure-Process.ps1 -Executable '<实际 GUI 路径>/LumaRecode.exe' -Label startup -OutputFile samples.jsonl
 ```
 
 脚本等待进程年龄至少 30 秒后采样三次，记录私有工作集、私有提交、总工作集和累计 CPU 时间。菜单操作后可用 `-AgeSeconds 0 -Label panels` 单独记录。
 
-AOT 单文件版的实际 GUI 位于 `.net/FrameFlow/<bundle-id>/Application/FrameFlow.exe`。GUI 按主程序采样；CLI 按入口、主程序和任务子进程的合计占用采样。
+AOT 单文件版的实际 GUI 位于 `.net/LumaRecode/<bundle-id>/Application/LumaRecode.exe`。GUI 按主程序采样；CLI 按入口、主程序和任务子进程的合计占用采样。
 
 优化设计与结果见[性能优化](../docs/performance.md)。
 

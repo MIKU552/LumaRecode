@@ -77,7 +77,7 @@ def main():
     parser.add_argument('--check', action='store_true', help='Compare temporary output with committed tables.')
     options = parser.parse_args()
     if options.check:
-        with tempfile.TemporaryDirectory(prefix='frameflow-lut-check-') as temporary:
+        with tempfile.TemporaryDirectory(prefix='lumarecode-lut-check-') as temporary:
             for path in generate(Path(temporary)):
                 content = path.read_bytes()
                 if content != (options.output_dir / path.name).read_bytes():

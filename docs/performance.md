@@ -1,6 +1,6 @@
 # 性能优化 / Performance
 
-FrameFlow 的 GUI 前端使用 WinUI 3 和 Native AOT，转换任务由 Python worker 调用 FFmpeg。
+LumaRecode 的 GUI 前端使用 WinUI 3 和 Native AOT，转换任务由 Python worker 调用 FFmpeg。
 
 ## 实现
 
@@ -30,7 +30,7 @@ FrameFlow 的 GUI 前端使用 WinUI 3 和 Native AOT，转换任务由 Python w
 
 ## 复测
 
-[内存采样脚本](../qa/MemoryChecks/Measure-Process.ps1)记录实际 GUI 进程的计数器。AOT 单文件版的 GUI 位于缓存内的 `Application/FrameFlow.exe`。CLI 按入口、主程序和任务进程的合计占用采样。
+[内存采样脚本](../qa/MemoryChecks/Measure-Process.ps1)记录实际 GUI 进程的计数器。AOT 单文件版的 GUI 位于缓存内的 `Application/LumaRecode.exe`。CLI 按入口、主程序和任务进程的合计占用采样。
 
 命令见 [QA 指南](../qa/README.md)，构建方式见[开发文档](dependencies.md)。
 

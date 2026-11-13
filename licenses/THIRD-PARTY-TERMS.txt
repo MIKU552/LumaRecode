@@ -1,6 +1,6 @@
-FrameFlow - third-party binary component terms
+LumaRecode - third-party binary component terms
 
-The original FrameFlow source, documentation and assets use the MIT
+The original LumaRecode source, documentation and assets use the MIT
 License. The Windows distribution includes Microsoft and Python runtimes,
 OpenSSL, and the OpenOSV LUT, each with its own license and notices.
 

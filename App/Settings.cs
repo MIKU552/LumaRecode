@@ -13,28 +13,41 @@ public sealed class UserSettings
     public string Ffprobe { get; set; } = "";
     public string Python { get; set; } = "";
     public string AcceptedThirdPartyTerms { get; set; } = "";
-    public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FrameFlow");
-    private static string FileName => Path.Combine(Folder, "settings.json");
+    public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LumaRecode");
     public static UserSettings Load()
+        => LoadFrom(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+
+    internal static UserSettings LoadFrom(string localData)
     {
         try
         {
-            var legacy = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VideoConverterWinUI", "settings.json");
-            var source = File.Exists(FileName) ? FileName : legacy;
+            var preferred = Path.Combine(localData, "LumaRecode", "settings.json");
+            var source = new[] { preferred, Path.Combine(localData, "FrameFlow", "settings.json"),
+                Path.Combine(localData, "VideoConverterWinUI", "settings.json") }.FirstOrDefault(File.Exists);
+            if (source is null) return new();
             var settings = JsonSerializer.Deserialize(File.ReadAllText(source), AppJsonContext.Default.UserSettings) ?? new();
-            if (source == legacy) settings.Save();
+            if (source != preferred)
+            {
+                try { settings.SaveTo(localData); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+            }
             return settings;
         }
         catch { return new(); }
     }
     public void Save()
+        => SaveTo(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+
+    internal void SaveTo(string localData)
     {
-        Directory.CreateDirectory(Folder);
-        var temporary = FileName + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        var folder = Path.Combine(localData, "LumaRecode");
+        var fileName = Path.Combine(folder, "settings.json");
+        Directory.CreateDirectory(folder);
+        var temporary = fileName + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
             File.WriteAllText(temporary, JsonSerializer.Serialize(this, AppJsonContext.Default.UserSettings));
-            File.Move(temporary, FileName, true);
+            File.Move(temporary, fileName, true);
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }

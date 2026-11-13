@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="Brand/FrameFlow.svg" width="104" height="104" alt="FrameFlow 图标" />
+  <img src="Brand/LumaRecode.svg" width="104" height="104" alt="LumaRecode 图标" />
 </p>
-<h1 align="center">映流 · FrameFlow</h1>
+<h1 align="center">映码 · LumaRecode</h1>
 
 简体中文 | [English](README.en.md) | [日本語](README.ja.md) | [Español](README.es.md)
 
 面向 Windows 11 的视频转码与色彩转换工具，提供原生 WinUI 3 界面和命令行，使用 FFmpeg 完成视频压缩、相机 Log 转 HDR / SDR，以及 HDR 转 SDR。
 
-[下载](https://github.com/MIKU552/FrameFlow/releases/latest) · [命令行文档](docs/cli.zh-CN.md) · [更新记录](CHANGELOG.md)
+[下载](https://github.com/MIKU552/LumaRecode/releases/latest) · [命令行文档](docs/cli.zh-CN.md) · [更新记录](CHANGELOG.md)
 
 ## 功能
 
@@ -21,7 +21,7 @@
 
 ## 快速开始
 
-1. 从 [Releases](https://github.com/MIKU552/FrameFlow/releases) 下载 **FrameFlow.exe**。程序内置所需运行时，可直接运行。
+1. 从 [Releases](https://github.com/MIKU552/LumaRecode/releases) 下载 **LumaRecode.exe**。程序内置所需运行时，可直接运行。
 2. 准备 Windows 版 [FFmpeg](https://ffmpeg.org/download.html)，包含 `ffmpeg.exe` 和 `ffprobe.exe`。首次运行会从 `PATH` 查找，也可在右上角齿轮中指定路径。
 3. 拖入视频或点击“选择视频”，确认输出动态范围、编码预设和色彩转换。
 4. 选择保存位置，点击“开始转换”。
@@ -52,7 +52,9 @@ SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线�
 - 快速分享需要相应 Intel QSV 支持。
 - Log 转换需要 `zscale`、`lut3d`；HDR / Log 转 SDR 还需要 `libplacebo` 和 Vulkan。
 
-语言和主题默认跟随系统，支持中文、英语、日语和西班牙语系统；其他语言系统默认英文。设置保存在 `%LOCALAPPDATA%\FrameFlow\settings.json`。
+语言和主题默认跟随系统，支持中文、英语、日语和西班牙语系统；其他语言系统默认英文。设置保存在 `%LOCALAPPDATA%\LumaRecode\settings.json`。
+
+首次运行会自动导入 FrameFlow 的语言、外观与工具路径设置。
 
 程序内置 Source Sans 3、思源黑体和 Source Code Pro，无需安装字体。
 
@@ -62,10 +64,10 @@ SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线�
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-./FrameFlow.exe --help | Out-Host
-./FrameFlow.exe probe clip.mp4 --json | ConvertFrom-Json
-./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
-./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
+./LumaRecode.exe --help | Out-Host
+./LumaRecode.exe probe clip.mp4 --json | ConvertFrom-Json
+./LumaRecode.exe convert clip.mp4 --preset archive-hevc | Out-Host
+./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
 ```
 
 首次无人值守使用前，运行 `license --text` 阅读组件条款，再运行 `license --accept-terms`。全部命令、批量用法和退出码见[命令行文档](docs/cli.zh-CN.md)。
@@ -75,12 +77,12 @@ SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线�
 需要 .NET SDK 11.0.100、PowerShell 7，以及支持 Native AOT 的 Visual Studio C++ 工具链。
 
 ```powershell
-git clone https://github.com/MIKU552/FrameFlow.git
-cd FrameFlow
+git clone https://github.com/MIKU552/LumaRecode.git
+cd LumaRecode
 ./build.ps1
 ```
 
-产物为 `dist/SelfContained/FrameFlow.exe`。构建方式与依赖版本见[开发文档](docs/dependencies.md)，检查命令见 [QA 指南](qa/README.md)。
+产物为 `dist/SelfContained/LumaRecode.exe`。构建方式与依赖版本见[开发文档](docs/dependencies.md)，检查命令见 [QA 指南](qa/README.md)。
 
 ## 项目结构
 

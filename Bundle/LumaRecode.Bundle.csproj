@@ -8,11 +8,11 @@
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <ApplicationManifest>../App/app.manifest</ApplicationManifest>
-    <ApplicationIcon>../App/FrameFlow.ico</ApplicationIcon>
-    <AssemblyName>FrameFlow</AssemblyName>
-    <Product>映流 · FrameFlow</Product>
-    <Title>映流 · FrameFlow</Title>
-    <Version>3.7.4</Version>
+    <ApplicationIcon>../App/LumaRecode.ico</ApplicationIcon>
+    <AssemblyName>LumaRecode</AssemblyName>
+    <Product>映码 · LumaRecode</Product>
+    <Title>映码 · LumaRecode</Title>
+    <Version>3.8.0</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
@@ -25,6 +25,6 @@
              Link="Application/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <Target Name="RequireNativePayload" BeforeTargets="PrepareForBuild">
-    <Error Condition="!Exists('../dist/NativeAot/FrameFlow.exe')" Text="Build the Native AOT application before bundling. Use build.ps1." />
+    <Error Condition="!Exists('../dist/NativeAot/LumaRecode.exe')" Text="Build the Native AOT application before bundling. Use build.ps1." />
   </Target>
 </Project>

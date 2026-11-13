@@ -2,7 +2,7 @@
 
 [简体中文](cli.zh-CN.md) · [English](cli.en.md) · [日本語](cli.ja.md) · Español · [README](../README.es.md)
 
-Ejecuta `FrameFlow.exe` en **PowerShell 7**. Sin argumentos abre la interfaz gráfica; con subcomandos como `probe` y `convert` ejecuta la CLI.
+Ejecuta `LumaRecode.exe` en **PowerShell 7**. Sin argumentos abre la interfaz gráfica; con subcomandos como `probe` y `convert` ejecuta la CLI.
 
 El programa usa el subsistema gráfico de Windows. **Conecta el texto a `Out-Host` o el JSON a `ConvertFrom-Json`** para esperar a que termine y consultar `$LASTEXITCODE`. Otros programas pueden esperar mediante una API de procesos.
 
@@ -10,13 +10,13 @@ La salida usa UTF-8. Estos ejemplos configuran la codificación de la sesión ac
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-./FrameFlow.exe --lang es --help | Out-Host
-./FrameFlow.exe --version | Out-Host
-./FrameFlow.exe license --text | Out-Host
-./FrameFlow.exe license --accept-terms | Out-Host
-./FrameFlow.exe doctor --json | ConvertFrom-Json
-./FrameFlow.exe probe "D:\Videos\clip.mp4" --json | ConvertFrom-Json
-./FrameFlow.exe convert "D:\Videos\clip.mp4" | Out-Host
+./LumaRecode.exe --lang es --help | Out-Host
+./LumaRecode.exe --version | Out-Host
+./LumaRecode.exe license --text | Out-Host
+./LumaRecode.exe license --accept-terms | Out-Host
+./LumaRecode.exe doctor --json | ConvertFrom-Json
+./LumaRecode.exe probe "D:\Videos\clip.mp4" --json | ConvertFrom-Json
+./LumaRecode.exe convert "D:\Videos\clip.mp4" | Out-Host
 ```
 
 La interfaz y la CLI comparten la aceptación de las condiciones de los componentes. Antes del primer uso por lotes, consulta `license --text` y ejecuta `license --accept-terms`, o añade `--accept-terms` a la tarea. `--no-settings` ignora los ajustes guardados de la interfaz y desactiva la escritura de ajustes; añade `--accept-terms` al usar este modo.
@@ -67,13 +67,13 @@ La conversión de rango procesa los valores de los píxeles. Si faltan etiquetas
 `--audio flac` comprueba todas las pistas y acepta audio entero confirmado como sin pérdidas, conservando la frecuencia de muestreo, los canales y la precisión entera. El audio FLAC usa MKV.
 
 ```powershell
-./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
-./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
-./FrameFlow.exe convert hdr.mp4 --range sdr | Out-Host
-./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range sdr | Out-Host
-./FrameFlow.exe convert source-422.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
-./FrameFlow.exe plan clip.mp4 --preset archive-av1-fast --json | ConvertFrom-Json
-./FrameFlow.exe convert lossless.mov --preset archive-hevc --sampling source --color-range source --audio flac | Out-Host
+./LumaRecode.exe convert clip.mp4 --preset archive-hevc | Out-Host
+./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
+./LumaRecode.exe convert hdr.mp4 --range sdr | Out-Host
+./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range sdr | Out-Host
+./LumaRecode.exe convert source-422.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
+./LumaRecode.exe plan clip.mp4 --preset archive-av1-fast --json | ConvertFrom-Json
+./LumaRecode.exe convert lossless.mov --preset archive-hevc --sampling source --color-range source --audio flac | Out-Host
 ```
 
 HDR / Log a SDR requiere libplacebo de FFmpeg y Vulkan. Un archivo JSON admite los campos de codificación anteriores con claves separadas por guiones bajos, además de `preset`:
@@ -87,10 +87,10 @@ Prioridad: valores iniciales equivalentes a la interfaz → preajuste → campos
 ## Lotes y rutas de salida
 
 ```powershell
-./FrameFlow.exe convert a.mp4 b.mov --output-dir "D:\Exports" | Out-Host
-./FrameFlow.exe convert "D:\Videos" --recursive --output-dir "D:\Exports" | Out-Host
-./FrameFlow.exe convert "D:\Videos\**\*.mp4" --recursive --output-dir "D:\Exports" --continue-on-error --json | ConvertFrom-Json
-./FrameFlow.exe convert clip.mp4 --output "D:\Exports\result.mp4" --overwrite | Out-Host
+./LumaRecode.exe convert a.mp4 b.mov --output-dir "D:\Exports" | Out-Host
+./LumaRecode.exe convert "D:\Videos" --recursive --output-dir "D:\Exports" | Out-Host
+./LumaRecode.exe convert "D:\Videos\**\*.mp4" --recursive --output-dir "D:\Exports" --continue-on-error --json | ConvertFrom-Json
+./LumaRecode.exe convert clip.mp4 --output "D:\Exports\result.mp4" --overwrite | Out-Host
 ```
 
 Pon los patrones entre comillas; `**` requiere `--recursive`. La búsqueda en directorios filtra extensiones de vídeo comunes y conserva los subdirectorios relativos. Los comodines toman como raíz el directorio padre común de las coincidencias; los archivos explícitos usan su nombre. Los destinos duplicados se rechazan antes de convertir. Los directorios de salida se crean cuando hacen falta.
@@ -108,7 +108,7 @@ El campo `argv` de la planificación muestra la ruta final. La conversión escri
 El progreso incluye `fps`, `percent`, `position_seconds`, `duration_seconds`, `elapsed_seconds` y `eta_seconds`; los porcentajes y tiempos restantes desconocidos son null. Los errores incluyen un `code` estable y un `message` legible. `--log FILE` añade los mismos eventos a un archivo JSON Lines; `--verbose` muestra los registros de FFmpeg en modo texto.
 
 ```powershell
-./FrameFlow.exe convert clip.mp4 --json --log job.jsonl | ForEach-Object { $_ | ConvertFrom-Json }
+./LumaRecode.exe convert clip.mp4 --json --log job.jsonl | ForEach-Object { $_ | ConvertFrom-Json }
 $LASTEXITCODE
 ```
 

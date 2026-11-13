@@ -57,14 +57,14 @@ public sealed class MainWindow : Window
 
     public MainWindow()
     {
-        Title = L.T("映流 · FrameFlow");
+        Title = L.T("映码 · LumaRecode");
         // Compiled XBF avoids runtime XML parsing and reflection over controls.
         // Appearance selects the appropriate native Mica host once the view exists.
         root = new MainView();
         Content = root;
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(Control<Grid>("TitleDrag"));
-        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "FrameFlow.ico"));
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "LumaRecode.ico"));
         var dpi = GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)) / 96d;
         var work = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(AppWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Primary).WorkArea;
         var width = (int)Math.Min(1120 * dpi, work.Width - 64 * dpi);
@@ -175,7 +175,7 @@ public sealed class MainWindow : Window
         var source = new[] { "SourceSummary", "SourceEvidence", "SourceBadge" }.ToDictionary(name => name, name => Control<TextBlock>(name).Text);
         var cancelEnabled = Control<Button>("Cancel").IsEnabled;
         viewLocalization.Apply(root);
-        Title = L.T("映流 · FrameFlow");
+        Title = L.T("映码 · LumaRecode");
         updating = true;
         try
         {

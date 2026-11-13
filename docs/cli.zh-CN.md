@@ -2,7 +2,7 @@
 
 简体中文 · [English](cli.en.md) · [日本語](cli.ja.md) · [Español](cli.es.md) · [README](../README.md)
 
-在 **PowerShell 7** 中运行 `FrameFlow.exe`。无参数时打开 GUI，带 `probe`、`convert` 等子命令时运行 CLI。
+在 **PowerShell 7** 中运行 `LumaRecode.exe`。无参数时打开 GUI，带 `probe`、`convert` 等子命令时运行 CLI。
 
 程序使用 Windows GUI 子系统。终端调用时，**文本输出接 `| Out-Host`，JSON 输出接 `| ConvertFrom-Json`**，通过管道等待命令结束并读取 `$LASTEXITCODE`。其他程序可使用进程 API 等待退出。
 
@@ -12,13 +12,13 @@
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-./FrameFlow.exe --help | Out-Host
-./FrameFlow.exe --version | Out-Host
-./FrameFlow.exe license --text | Out-Host
-./FrameFlow.exe license --accept-terms | Out-Host
-./FrameFlow.exe doctor --json | ConvertFrom-Json
-./FrameFlow.exe probe "D:\Videos\clip.mp4" --json | ConvertFrom-Json
-./FrameFlow.exe convert "D:\Videos\clip.mp4" | Out-Host
+./LumaRecode.exe --help | Out-Host
+./LumaRecode.exe --version | Out-Host
+./LumaRecode.exe license --text | Out-Host
+./LumaRecode.exe license --accept-terms | Out-Host
+./LumaRecode.exe doctor --json | ConvertFrom-Json
+./LumaRecode.exe probe "D:\Videos\clip.mp4" --json | ConvertFrom-Json
+./LumaRecode.exe convert "D:\Videos\clip.mp4" | Out-Host
 ```
 
 GUI 和 CLI 共用组件条款的接受记录。首次批处理可使用 `license --text` 阅读条款，再运行 `license --accept-terms`；也可在任务命令中添加 `--accept-terms`。
@@ -72,23 +72,23 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 
 ```powershell
 # CPU 归档
-./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
+./LumaRecode.exe convert clip.mp4 --preset archive-hevc | Out-Host
 
 # Pocket 3 D-Log M 转 HLG HEVC
-./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
+./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
 
 # HDR 转 SDR，或 Log 转 SDR；需要 FFmpeg libplacebo / Vulkan
-./FrameFlow.exe convert hdr.mp4 --range sdr | Out-Host
-./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range sdr | Out-Host
+./LumaRecode.exe convert hdr.mp4 --range sdr | Out-Host
+./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range sdr | Out-Host
 
 # 422 归档并保留原音轨
-./FrameFlow.exe convert source-422.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
+./LumaRecode.exe convert source-422.mov --preset archive-hevc --sampling 422 --audio copy | Out-Host
 
 # 预览转换参数
-./FrameFlow.exe plan clip.mp4 --preset archive-av1-fast --json | ConvertFrom-Json
+./LumaRecode.exe plan clip.mp4 --preset archive-av1-fast --json | ConvertFrom-Json
 
 # 归档保持采样与范围，音轨转为 FLAC
-./FrameFlow.exe convert lossless.mov --preset archive-hevc --sampling source --color-range source --audio flac | Out-Host
+./LumaRecode.exe convert lossless.mov --preset archive-hevc --sampling source --color-range source --audio flac | Out-Host
 ```
 
 配置文件使用下划线字段名；`range` 对应动态范围，输出文件路径通过 `--output` 指定。
@@ -102,10 +102,10 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 ## 批量、输出与覆盖
 
 ```powershell
-./FrameFlow.exe convert a.mp4 b.mov --output-dir "D:\Exports" | Out-Host
-./FrameFlow.exe convert "D:\Videos" --recursive --output-dir "D:\Exports" | Out-Host
-./FrameFlow.exe convert "D:\Videos\**\*.mp4" --recursive --output-dir "D:\Exports" --continue-on-error --json | ConvertFrom-Json
-./FrameFlow.exe convert clip.mp4 --output "D:\Exports\result.mp4" --overwrite | Out-Host
+./LumaRecode.exe convert a.mp4 b.mov --output-dir "D:\Exports" | Out-Host
+./LumaRecode.exe convert "D:\Videos" --recursive --output-dir "D:\Exports" | Out-Host
+./LumaRecode.exe convert "D:\Videos\**\*.mp4" --recursive --output-dir "D:\Exports" --continue-on-error --json | ConvertFrom-Json
+./LumaRecode.exe convert clip.mp4 --output "D:\Exports\result.mp4" --overwrite | Out-Host
 ```
 
 目录扫描按常见视频扩展名筛选文件，添加 `--recursive` 可扫描子目录。通配符使用引号包围，`**` 配合 `--recursive` 使用。目录扫描保留相对的子目录；通配符以匹配文件共同父目录为根；显式文件按文件名输出。程序在转换前检查重复的输出路径，发生冲突时返回错误。
@@ -123,7 +123,7 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 进度包含 `fps`、`percent`、`position_seconds`、`duration_seconds`、`elapsed_seconds`、`eta_seconds`，未知的百分比或剩余时间为 null。错误包含稳定的 `code` 和可读的 `message`。`--log FILE` 向文件追加相同的 JSON Lines 事件，`--verbose` 在文本模式下显示 FFmpeg 日志。
 
 ```powershell
-./FrameFlow.exe convert clip.mp4 --json --log job.jsonl | ForEach-Object { $_ | ConvertFrom-Json }
+./LumaRecode.exe convert clip.mp4 --json --log job.jsonl | ForEach-Object { $_ | ConvertFrom-Json }
 $LASTEXITCODE
 ```
 

@@ -60,8 +60,8 @@ def main():
         result = call(*words, '--no-settings', '--accept-terms', '--json', status=status, raw=True)
         assert not result.stderr, result.stderr
         return [json.loads(line) for line in result.stdout.splitlines()]
-    assert 'FrameFlow.exe' in call('--help', raw=True).stdout
-    assert '3.7.4' in call('--version', raw=True).stdout
+    assert 'LumaRecode.exe' in call('--help', raw=True).stdout
+    assert '3.8.0' in call('--version', raw=True).stdout
     assert '同一个 EXE' in call('--lang', 'zh', '--help', raw=True).stdout
     assert len(call('--json', 'presets')['presets']) == 7
     assert {p['id'] for p in call('profiles', '--json')['profiles']} == {'milog','pocket3','samsung'}
@@ -70,7 +70,7 @@ def main():
     assert call('unknown', '--json', status=2)['data']['code'] == 'invalid_arguments'
     assert call('doctor', '--ffmpeg', 'missing-ffmpeg.exe', '--no-settings', '--accept-terms', '--json', status=3)['data']['code'] == 'tool_unavailable'
     assert call('doctor', '--no-settings', '--accept-terms', '--json')['encoders']['hevc_qsv']
-    with tempfile.TemporaryDirectory(prefix='FrameFlow-CLI-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='LumaRecode-CLI-') as temporary:
         folder = Path(temporary)
         source = folder/'中文 & source.mp4'
         subprocess.run([shutil.which('ffmpeg'), '-v','error','-f','lavfi','-i',
@@ -144,8 +144,8 @@ def main():
         events('convert',source,'--log',source,status=5)
         events('convert',source,'--log',folder/'absent/log.jsonl',status=5)
         spaced=folder/'程序 path';spaced.mkdir()
-        shutil.copyfile(exe,spaced/'FrameFlow.exe')
-        quoted=subprocess.run([str(spaced/'FrameFlow.exe'),'probe',str(source),'--no-settings','--accept-terms','--json'],capture_output=True,text=True,encoding='utf-8',timeout=30)
+        shutil.copyfile(exe,spaced/'LumaRecode.exe')
+        quoted=subprocess.run([str(spaced/'LumaRecode.exe'),'probe',str(source),'--no-settings','--accept-terms','--json'],capture_output=True,text=True,encoding='utf-8',timeout=30)
         assert quoted.returncode==0 and json.loads(quoted.stdout)['kind']=='sdr', quoted.stderr
         subprocess.run([shutil.which('pwsh'),'-NoProfile','-File',str(Path(__file__).with_name('pipeline.ps1')),'-Launcher',str(exe),'-Video',str(source)],check=True,timeout=30)
         # Run a helper in a hidden real console; target process group receives CTRL+BREAK.

@@ -20,8 +20,8 @@ internal static class Program
         if (cli) ConsoleConnection.Connect();
         try
         {
-            var executable = Path.Combine(AppContext.BaseDirectory, "Application", "FrameFlow.exe");
-            if (!File.Exists(executable)) throw new FileNotFoundException("FrameFlow application is missing. Please download the complete EXE again.");
+            var executable = Path.Combine(AppContext.BaseDirectory, "Application", "LumaRecode.exe");
+            if (!File.Exists(executable)) throw new FileNotFoundException("LumaRecode application is missing. Please download the complete EXE again.");
             var info = new ProcessStartInfo(executable) { UseShellExecute = false };
             foreach (var argument in args) info.ArgumentList.Add(argument);
             // Keep the original working directory for relative input/output paths.
@@ -30,7 +30,7 @@ internal static class Program
             if (cli) Console.CancelKeyPress += keepWaiting;
             try
             {
-                using var child = Process.Start(info) ?? throw new InvalidOperationException("Unable to start FrameFlow.");
+                using var child = Process.Start(info) ?? throw new InvalidOperationException("Unable to start LumaRecode.");
                 if (!cli) return 0;
                 child.WaitForExit(); return child.ExitCode;
             }
@@ -44,7 +44,7 @@ internal static class Program
                     new HostError(1, "error", new HostErrorData("runtime_unavailable", error.Message)), WorkerJsonContext.Default.HostError));
                 else Console.Error.WriteLine(error.Message);
             }
-            else MessageBoxW(IntPtr.Zero, error.Message, "FrameFlow", 0x10);
+            else MessageBoxW(IntPtr.Zero, error.Message, "LumaRecode", 0x10);
             return 3;
         }
     }

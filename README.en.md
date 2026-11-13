@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="Brand/FrameFlow.svg" width="104" height="104" alt="FrameFlow icon" />
+  <img src="Brand/LumaRecode.svg" width="104" height="104" alt="LumaRecode icon" />
 </p>
-<h1 align="center">映流 · FrameFlow</h1>
+<h1 align="center">映码 · LumaRecode</h1>
 
 [简体中文](README.md) | English | [日本語](README.ja.md) | [Español](README.es.md)
 
-Video transcoding and color conversion for Windows 11. FrameFlow provides a native WinUI 3 interface and a command line for FFmpeg, with video compression, camera Log to HDR / SDR, and HDR to SDR workflows.
+Video transcoding and color conversion for Windows 11. LumaRecode provides a native WinUI 3 interface and a command line for FFmpeg, with video compression, camera Log to HDR / SDR, and HDR to SDR workflows.
 
-[Download](https://github.com/MIKU552/FrameFlow/releases/latest) · [Command line](docs/cli.en.md) · [Changelog](CHANGELOG.md)
+[Download](https://github.com/MIKU552/LumaRecode/releases/latest) · [Command line](docs/cli.en.md) · [Changelog](CHANGELOG.md)
 
 ## Features
 
@@ -21,8 +21,8 @@ Video transcoding and color conversion for Windows 11. FrameFlow provides a nati
 
 ## Quick start
 
-1. Download **FrameFlow.exe** from [Releases](https://github.com/MIKU552/FrameFlow/releases). Required runtimes are included.
-2. Obtain a Windows build of [FFmpeg](https://ffmpeg.org/download.html) containing `ffmpeg.exe` and `ffprobe.exe`. FrameFlow checks `PATH` on first use; paths can also be selected with the gear button.
+1. Download **LumaRecode.exe** from [Releases](https://github.com/MIKU552/LumaRecode/releases). Required runtimes are included.
+2. Obtain a Windows build of [FFmpeg](https://ffmpeg.org/download.html) containing `ffmpeg.exe` and `ffprobe.exe`. LumaRecode checks `PATH` on first use; paths can also be selected with the gear button.
 3. Drop a video or choose **Choose video**, then confirm the output range, preset, and color conversion.
 4. Choose the output path and select **Start conversion**.
 
@@ -52,7 +52,9 @@ Video is re-encoded with the selected preset; audio can be copied or transcoded.
 - Intel QSV support for Quick share.
 - `zscale` and `lut3d` for Log conversion; `libplacebo` and Vulkan for HDR / Log to SDR.
 
-Language and theme follow the system by default. Chinese, English, Japanese and Spanish system languages are recognized; other languages default to English. Settings are stored at `%LOCALAPPDATA%\FrameFlow\settings.json`.
+Language and theme follow the system by default. Chinese, English, Japanese and Spanish system languages are recognized; other languages default to English. Settings are stored at `%LOCALAPPDATA%\LumaRecode\settings.json`.
+
+On first launch, LumaRecode imports language, appearance and tool paths from FrameFlow settings.
 
 Source Sans 3, Source Han Sans, and Source Code Pro are included; no font installation is needed.
 
@@ -62,10 +64,10 @@ Run commands through an output pipeline in PowerShell 7:
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-./FrameFlow.exe --help | Out-Host
-./FrameFlow.exe probe clip.mp4 --json | ConvertFrom-Json
-./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
-./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
+./LumaRecode.exe --help | Out-Host
+./LumaRecode.exe probe clip.mp4 --json | ConvertFrom-Json
+./LumaRecode.exe convert clip.mp4 --preset archive-hevc | Out-Host
+./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
 ```
 
 For first-time unattended use, read the component terms with `license --text`, then run `license --accept-terms`. See the [CLI guide](docs/cli.en.md) for commands, batch processing, and exit codes.
@@ -75,12 +77,12 @@ For first-time unattended use, read the component terms with `license --text`, t
 Requires .NET SDK 11.0.100, PowerShell 7, and Visual Studio C++ tools supported by Native AOT.
 
 ```powershell
-git clone https://github.com/MIKU552/FrameFlow.git
-cd FrameFlow
+git clone https://github.com/MIKU552/LumaRecode.git
+cd LumaRecode
 ./build.ps1
 ```
 
-The output is `dist/SelfContained/FrameFlow.exe`. See [development and distribution](docs/dependencies.md) for build options and dependency versions, and the [QA guide](qa/README.md) for checks.
+The output is `dist/SelfContained/LumaRecode.exe`. See [development and distribution](docs/dependencies.md) for build options and dependency versions, and the [QA guide](qa/README.md) for checks.
 
 ## Project structure
 
