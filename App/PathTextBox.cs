@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 namespace VideoConverter;
 
@@ -19,9 +20,14 @@ public sealed partial class PathTextBox : TextBox
         // The native template top-aligns its editing view and placeholder;
         // setting TextBox.VerticalContentAlignment alone does not bind these parts.
         // Center both parts so extra row height is shared above and below the text.
-        if (GetTemplateChild("ContentElement") is FrameworkElement editor)
-            editor.VerticalAlignment = VerticalAlignment.Center;
-        if (GetTemplateChild("PlaceholderTextContentPresenter") is FrameworkElement placeholder)
-            placeholder.VerticalAlignment = VerticalAlignment.Center;
+        var opticalMargin = (Thickness)Application.Current.Resources["ControlTextOpticalMargin"];
+        foreach (var name in new[] { "ContentElement", "PlaceholderTextContentPresenter" })
+        {
+            if (GetTemplateChild(name) is not FrameworkElement part) continue;
+            part.VerticalAlignment = VerticalAlignment.Center;
+            // Move the editor (including caret/selection) and placeholder together,
+            // using the same optical offset as adjacent and footer button labels.
+            part.RenderTransform = new TranslateTransform { Y = opticalMargin.Top };
+        }
     }
 }

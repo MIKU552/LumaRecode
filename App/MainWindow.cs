@@ -607,7 +607,7 @@ public sealed class MainWindow : Window
             notice.Message = warning;
             notice.IsOpen = warning != "";
             Control<TextBlock>("ChooseInputLabel").Text = L.T(media is null ? "选择视频" : "更换视频");
-            Control<Button>("ChooseInput").Style = (Style)root.Resources[media is null ? "SourceChooserAccent" : "PathActionButtonStyle"];
+            Control<Button>("ChooseInput").Style = (Style)root.Resources[media is null ? "AccentActionButtonStyle" : "ActionButtonStyle"];
             Control<Button>("Start").IsEnabled = media is not null && !probing && activeJob is null && warning == "";
             // Regenerate only a name still owned by the application. A user
             // path survives option changes, except for a changed container suffix.

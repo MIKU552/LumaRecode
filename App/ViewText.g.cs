@@ -62,8 +62,8 @@ internal static class ViewText
         ("ElapsedTime", "Text", "已用 00:00"),
         ("RemainingTime", "Text", "剩余 —"),
         ("Status", "Text", "添加素材后开始"),
-        ("OpenFolder", "Content", "打开目录"),
-        ("Cancel", "Content", "取消"),
+        ("OpenFolderLabel", "Text", "打开目录"),
+        ("CancelLabel", "Text", "取消"),
         ("Start", "AutomationProperties.Name", "开始转换"),
         ("LocalizedElement56", "Text", "开始转换"),
     ];

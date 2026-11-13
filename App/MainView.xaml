@@ -15,13 +15,13 @@
       <Setter Property="TextWrapping" Value="Wrap" /><Setter Property="FontSize" Value="13" />
     </Style>
     <Style x:Key="PathTextBoxStyle" TargetType="local:PathTextBox" BasedOn="{StaticResource DefaultTextBoxStyle}" />
-    <Style x:Key="PathActionButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+    <Style x:Key="ActionButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
       <Setter Property="MinHeight" Value="36" />
       <Setter Property="Padding" Value="20,6" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
-    <Style x:Key="SourceChooserAccent" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+    <Style x:Key="AccentActionButtonStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
       <Setter Property="MinHeight" Value="36" />
       <Setter Property="Padding" Value="20,6" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -56,12 +56,12 @@
             <Grid><TextBlock Text="视频素材" Style="{StaticResource Section}" VerticalAlignment="Center" x:Name="LocalizedElement10" /><Border HorizontalAlignment="Right" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="4" Padding="10,4"><TextBlock x:Name="SourceBadge" Text="等待添加" Style="{StaticResource Secondary}" FontSize="12" VerticalAlignment="Center" /></Border></Grid>
             <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
               <local:PathTextBox Style="{StaticResource PathTextBoxStyle}" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" x:Name="InputPath" PlaceholderText="拖入视频，或粘贴文件路径" AutomationProperties.Name="视频路径" />
-              <Button x:Name="ChooseInput" Grid.Column="1" Style="{StaticResource SourceChooserAccent}" MinWidth="116">
+              <Button x:Name="ChooseInput" Grid.Column="1" Style="{StaticResource AccentActionButtonStyle}" MinWidth="116">
                 <!-- An explicit TextBlock follows the same font/fallback policy as
                      the view instead of a template-generated string presenter. -->
                 <!-- Source Han's line box has more space above the visible glyphs.
                      Keep layout height unchanged and shift only the label up by 1 DIP. -->
-                <TextBlock x:Name="ChooseInputLabel" Text="选择视频" FontWeight="Normal" Margin="0,-1,0,1" />
+                <TextBlock x:Name="ChooseInputLabel" Text="选择视频" FontWeight="Normal" Margin="{StaticResource ControlTextOpticalMargin}" />
               </Button>
             </Grid>
             <Grid x:Name="SourceDetails" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="240" /></Grid.ColumnDefinitions>
@@ -125,7 +125,7 @@
   </ScrollViewer>
   <Border Grid.Row="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="32,18,32,20">
     <Grid><StackPanel Spacing="14" MaxWidth="1240" HorizontalAlignment="Stretch">
-      <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="保存到" VerticalAlignment="Center" x:Name="LocalizedElement45" /><local:PathTextBox Style="{StaticResource PathTextBoxStyle}" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" x:Name="Destination" Grid.Column="1" PlaceholderText="选择视频后自动生成" AutomationProperties.Name="输出路径" /><Button x:Name="ChooseOutput" Grid.Column="2" Style="{StaticResource PathActionButtonStyle}"><TextBlock x:Name="ChooseOutputLabel" Text="更改…" FontWeight="Normal" Margin="0,-1,0,1" /></Button></Grid>
+      <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="保存到" VerticalAlignment="Center" x:Name="LocalizedElement45" /><local:PathTextBox Style="{StaticResource PathTextBoxStyle}" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" x:Name="Destination" Grid.Column="1" PlaceholderText="选择视频后自动生成" AutomationProperties.Name="输出路径" /><Button x:Name="ChooseOutput" Grid.Column="2" Style="{StaticResource ActionButtonStyle}"><TextBlock x:Name="ChooseOutputLabel" Text="更改…" FontWeight="Normal" Margin="{StaticResource ControlTextOpticalMargin}" /></Button></Grid>
       <ProgressBar x:Name="Progress" Minimum="0" Maximum="1000" Value="0" Height="6" />
       <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
         <TextBlock x:Name="ProgressPercent" Text="0% · 00:00 / —" FontWeight="SemiBold" FontSize="12" />
@@ -136,9 +136,9 @@
       <Grid x:Name="ActionGrid" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
         <TextBlock x:Name="Status" Text="添加素材后开始" Style="{StaticResource Secondary}" VerticalAlignment="Center" />
         <StackPanel x:Name="ActionButtons" Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-          <Button x:Name="OpenFolder" Content="打开目录" Height="36" IsEnabled="False" />
-          <Button x:Name="Cancel" Content="取消" Height="36" Padding="20,6" IsEnabled="False" />
-          <Button x:Name="Start" Style="{ThemeResource AccentButtonStyle}" MinWidth="140" Height="36" Padding="20,6" IsEnabled="False" AutomationProperties.Name="开始转换"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="" FontSize="12" /><TextBlock Text="开始转换" x:Name="LocalizedElement56" /></StackPanel></Button>
+          <Button x:Name="OpenFolder" Style="{StaticResource ActionButtonStyle}" IsEnabled="False"><TextBlock x:Name="OpenFolderLabel" Text="打开目录" FontWeight="Normal" Margin="{StaticResource ControlTextOpticalMargin}" /></Button>
+          <Button x:Name="Cancel" Style="{StaticResource ActionButtonStyle}" IsEnabled="False"><TextBlock x:Name="CancelLabel" Text="取消" FontWeight="Normal" Margin="{StaticResource ControlTextOpticalMargin}" /></Button>
+          <Button x:Name="Start" Style="{StaticResource AccentActionButtonStyle}" MinWidth="140" IsEnabled="False" AutomationProperties.Name="开始转换"><StackPanel Orientation="Horizontal" Spacing="8" Margin="{StaticResource ControlTextOpticalMargin}"><FontIcon Glyph="" FontSize="12" VerticalAlignment="Center" /><TextBlock Text="开始转换" x:Name="LocalizedElement56" VerticalAlignment="Center" FontWeight="Normal" /></StackPanel></Button>
         </StackPanel>
       </Grid>
     </StackPanel></Grid>
