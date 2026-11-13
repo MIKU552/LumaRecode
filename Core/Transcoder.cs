@@ -173,7 +173,7 @@ public sealed class Transcoder
         => BuildPlan(tools, media, requestedOptions, destination, seconds, forceQsvTimingCompatibility: false);
 
     private EncodingPlan BuildPlan(MediaTools tools, MediaInfo media, EncodeOptions requestedOptions, string destination, double? seconds,
-        bool forceQsvTimingCompatibility)
+        bool forceQsvTimingCompatibility, bool autoLowPower = false)
     {
         Require(seconds is null || double.IsFinite(seconds.Value) && seconds.Value > 0, "--duration 必须为有限正数。");
         var kind = Validate(requestedOptions, media);
@@ -228,7 +228,11 @@ public sealed class Transcoder
         bool colorConversion = colors.Any(p => video.Text(p.Key) != p.Value?.ToString());
         // A QSV surface can stay on the GPU only when the filter chain accepts
         // it. LUTs, tone mapping and software encoders need system-memory frames.
-        bool softwareFrames = options.Transform != "none" || options.Purpose == "archive" || options.CpuDecode || colorConversion;
+        // FFmpeg's automatic display-matrix transform skips hardware surfaces.
+        // Decode these inputs in software so rotations/mirroring are applied
+        // to pixels once, rather than lost when the new stream is muxed.
+        bool displayTransform = media.SideData.Any(s => s.Text("side_data_type") == "Display Matrix");
+        bool softwareFrames = options.Transform != "none" || options.Purpose == "archive" || options.CpuDecode || colorConversion || displayTransform;
         // Different nominal/average rates identify common camera VFR files.
         // Equal or absent rates do not prove CFR; execution can retry once if
         // the QSV runtime returns non-monotonic DTS despite these headers.
@@ -316,7 +320,9 @@ public sealed class Transcoder
         args.AddRange(["-vf", string.Join(',', filters), "-c:v", config.Text("encoder"), "-preset", config.Text("preset")]);
         if (options.Purpose == "share")
         {
-            args.AddRange(["-global_quality:v", config.Text("quality"), "-low_power", "1", "-async_depth", config.Text("async_depth", "4"), "-g", FormatNumber(Math.Max(1, Math.Round(2 * Fps(video))))]);
+            // Keep high-frame-rate inputs below the long-GOP range associated
+            // with device failures on some Arc drivers (Intel article 000095403).
+            args.AddRange(["-global_quality:v", config.Text("quality"), "-low_power", autoLowPower ? "-1" : "1", "-async_depth", config.Text("async_depth", "4"), "-g", FormatNumber(Math.Clamp(Math.Round(2 * Fps(video)), 1, 240))]);
             if (timingCompatibility && options.Codec is "avc" or "hevc")
             {
                 // Some QSV runtimes derive reordered DTS from a fixed cadence.
@@ -431,7 +437,7 @@ public sealed class Transcoder
             Require(!supported.Success || supported.Groups[1].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(options.PixelFormat), $"当前 FFmpeg 的 {encoder} 不支持 {options.PixelFormat}，请更换编码器或采样格式。");
         }
         var filter = plan.Arguments[Array.IndexOf(plan.Arguments, "-vf") + 1];
-        var required = new[] { "zscale", "lut3d", "libplacebo" }.Where(n => filter.Contains(n + "=")).ToArray();
+        var required = new[] { "zscale", "lut3d", "libplacebo", "vpp_qsv" }.Where(n => filter.Contains(n + "=")).ToArray();
         if (required.Length > 0)
         {
             result = await Report(["-hide_banner", "-filters"]);
@@ -445,6 +451,16 @@ public sealed class Transcoder
         options = ResolveFormat(options, source);
         var result = await MediaProbe.InspectAsync(tools, output, cancellation);
         Require(result.Video.Text("pix_fmt").Replace("yuvj", "yuv") == options.PixelFormat || options.Sampling == "gray" && result.Video.Flag("_monochrome"), $"输出像素格式与选择不符，得到 {result.Video.Text("pix_fmt")}。");
+        var displayMatrix = source.SideData.FirstOrDefault(s => s.Text("side_data_type") == "Display Matrix");
+        if (displayMatrix is not null)
+        {
+            var angle = Math.Abs(JsonFields.Number(displayMatrix.Text("rotation"))) % 180;
+            bool swap = Math.Abs(angle - 90) < 1;
+            int width = source.Video.Integer(swap ? "height" : "width");
+            int height = source.Video.Integer(swap ? "width" : "height");
+            Require(result.Video.Integer("width") == width && result.Video.Integer("height") == height,
+                "输出画面尺寸与方向变换不符。");
+        }
         foreach (var p in expected)
         {
             Require(JsonFields.Unspecified(p.Value?.ToString()) || result.Video.Text(p.Key) == p.Value?.ToString(), $"输出色彩标签不符：{p.Key}。");
@@ -521,14 +537,49 @@ public sealed class Transcoder
             }
             var duration = seconds is { } limit && media.Duration > 0 ? Math.Min(limit, media.Duration) : seconds ?? media.Duration;
             var attempt = await EncodeAsync(plan, emit, duration, cancellation);
-            if (attempt.ExitCode != 0 && attempt.TimestampConflict && options.Purpose == "share" && !plan.QsvTimingCompatibility)
+            bool autoLowPower = false;
+            while (attempt.ExitCode != 0 && options.Purpose == "share")
             {
                 cancellation.ThrowIfCancellationRequested();
-                emit("status", JsonValue.Create("检测到 QSV 时间戳冲突，正在使用兼容模式重试…"));
+                bool hardwareDecode = plan.Arguments.Contains("-hwaccel");
+                // AV1 HDR side-data duplication can surface only as EEXIST in
+                // the filter graph. Restrict that recovery to the affected input
+                // and hardware-decode path; an ordinary existing-file error is
+                // never permission to overwrite or retry.
+                bool av1Hdr = media.Video.Text("codec_name") == "av1" && media.SideData.Any(s =>
+                    s.Text("side_data_type") is "Mastering display metadata" or "Content light level metadata");
+                bool retryDecode = hardwareDecode && ((attempt.Errors & (QsvError.Decoder | QsvError.HardwareFormat)) != 0
+                    || av1Hdr && attempt.Errors.HasFlag(QsvError.FilterSideData));
+                bool retryPower = !autoLowPower && attempt.Errors.HasFlag(QsvError.LowPower);
+                bool retryTiming = !plan.QsvTimingCompatibility && attempt.Errors.HasFlag(QsvError.Timestamp);
+                if (!retryDecode && !retryPower && !retryTiming)
+                {
+                    break;
+                }
+                // Each fallback changes a single state monotonically. There
+                // are at most three retries, never a loop on device failures.
+                if (retryDecode)
+                {
+                    emit("status", JsonValue.Create("QSV 解码路径不兼容，正在改用软件解码重试…"));
+                    options = options with
+                    {
+                        CpuDecode = true
+                    };
+                }
+                if (retryPower)
+                {
+                    emit("status", JsonValue.Create("QSV 低功耗模式不受支持，正在自动选择编码模式重试…"));
+                    autoLowPower = true;
+                }
+                if (retryTiming)
+                {
+                    emit("status", JsonValue.Create("检测到 QSV 时间戳冲突，正在使用兼容模式重试…"));
+                }
                 // Only the failed result in this job's private directory is
                 // removed. The destination remains untouched until verified.
                 File.Delete(temporary);
-                plan = BuildPlan(tools, media, options, temporary, seconds, forceQsvTimingCompatibility: true);
+                plan = BuildPlan(tools, media, options, temporary, seconds,
+                    forceQsvTimingCompatibility: plan.QsvTimingCompatibility || retryTiming, autoLowPower: autoLowPower);
                 await CheckRequirementsAsync(tools, options, plan, cancellation, reports);
                 attempt = await EncodeAsync(plan, emit, duration, cancellation);
             }
@@ -555,8 +606,14 @@ public sealed class Transcoder
         }
     }
 
-    /// <summary>Runs one attempt and detects timestamp conflicts while streaming bounded progress/log events.</summary>
-    private async Task<(int ExitCode, bool TimestampConflict)> EncodeAsync(EncodingPlan plan, Action<string, JsonNode?> emit,
+    [Flags]
+    private enum QsvError
+    {
+        None = 0, Timestamp = 1, Decoder = 2, LowPower = 4, FilterSideData = 8, HardwareFormat = 16
+    }
+
+    /// <summary>Runs one attempt and classifies recoverable QSV failures while streaming progress/log events.</summary>
+    private async Task<(int ExitCode, QsvError Errors)> EncodeAsync(EncodingPlan plan, Action<string, JsonNode?> emit,
         double duration, CancellationToken cancellation)
     {
         emit("log", JsonValue.Create(string.Join(' ', plan.Arguments.Select(a => '"' + a.Replace("\"", "\\\"") + '"'))));
@@ -564,7 +621,7 @@ public sealed class Transcoder
         using var process = new Process { StartInfo = ProcessRunner.StartInfo(plan.Arguments[0], plan.Arguments.Skip(1), Assets) };
         process.Start();
         using var registration = cancellation.Register(() => ProcessRunner.Stop(process));
-        bool timestampConflict = false;
+        var errors = QsvError.None;
         var eventLock = new object();
         void Send(string type, JsonNode? value)
         {
@@ -581,8 +638,30 @@ public sealed class Transcoder
                 {
                     if (line.Trim() is { Length: > 0 } text)
                     {
-                        timestampConflict |= text.Contains("Non-monotonic DTS", StringComparison.OrdinalIgnoreCase)
-                            || text.Contains("non monotonically increasing dts", StringComparison.OrdinalIgnoreCase);
+                        if (text.Contains("Non-monotonic DTS", StringComparison.OrdinalIgnoreCase)
+                            || text.Contains("Non-monotonous DTS", StringComparison.OrdinalIgnoreCase)
+                            || text.Contains("non monotonically increasing dts", StringComparison.OrdinalIgnoreCase))
+                        {
+                            errors |= QsvError.Timestamp;
+                        }
+                        if (text.Contains("Error initializing the MFX video decoder", StringComparison.OrdinalIgnoreCase)
+                            || text.Contains("Error submitting packet to decoder", StringComparison.OrdinalIgnoreCase)
+                            || text.Contains("Error decoding header", StringComparison.OrdinalIgnoreCase))
+                        {
+                            errors |= QsvError.Decoder;
+                        }
+                        if (text.Contains("Low power mode is unsupported", StringComparison.OrdinalIgnoreCase))
+                        {
+                            errors |= QsvError.LowPower;
+                        }
+                        if (text.Contains("[vf#", StringComparison.Ordinal) && text.Contains("(File exists)", StringComparison.Ordinal))
+                        {
+                            errors |= QsvError.FilterSideData;
+                        }
+                        if (text.Contains("Impossible to convert between the formats", StringComparison.OrdinalIgnoreCase))
+                        {
+                            errors |= QsvError.HardwareFormat;
+                        }
                         Send("log", JsonValue.Create(text));
                     }
                 }
@@ -621,6 +700,6 @@ public sealed class Transcoder
         }
         finally { ProcessRunner.Stop(process); await process.WaitForExitAsync(); }
         cancellation.ThrowIfCancellationRequested();
-        return (process.ExitCode, timestampConflict);
+        return (process.ExitCode, errors);
     }
 }

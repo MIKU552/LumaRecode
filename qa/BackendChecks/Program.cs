@@ -6,6 +6,10 @@ using VideoConverter;
 using VideoConverter.Core;
 
 Console.InputEncoding = Console.OutputEncoding = new UTF8Encoding(false);
+if (await FfmpegStub.TryRunAsync(args) is { } stubResult)
+{
+    return stubResult;
+}
 if (args.FirstOrDefault() == "--check")
 {
     return CodeChecks.Run();
@@ -73,7 +77,8 @@ if (args.FirstOrDefault() == "--server")
                 else if (action is "run" or "run-events")
                 {
                     var events = new JsonArray();
-                    var result = await engine.RunAsync(tools, media, options, request.Text("output"), (type, value) =>
+                    var runTools = request["ffmpeg"] is not null ? tools with { Ffmpeg = request.Text("ffmpeg") } : tools;
+                    var result = await engine.RunAsync(runTools, media, options, request.Text("output"), (type, value) =>
                     {
                         if (action == "run-events" && type != "progress")
                         {

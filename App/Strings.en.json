@@ -320,5 +320,8 @@
   "复制全部日志": "Copy all log text",
   "已复制": "Copied",
   "复制失败": "Copy failed",
-  "检测到 QSV 时间戳冲突，正在使用兼容模式重试…": "QSV timestamp conflict detected. Retrying in compatibility mode…"
+  "检测到 QSV 时间戳冲突，正在使用兼容模式重试…": "QSV timestamp conflict detected. Retrying in compatibility mode…",
+  "QSV 解码路径不兼容，正在改用软件解码重试…": "QSV decoding is incompatible with this input. Retrying with software decoding…",
+  "QSV 低功耗模式不受支持，正在自动选择编码模式重试…": "QSV low-power mode is unsupported. Retrying with automatic mode selection…",
+  "输出画面尺寸与方向变换不符。": "Output dimensions do not match the orientation transform."
 }

@@ -320,5 +320,8 @@
   "复制全部日志": "Copiar todo el registro",
   "已复制": "Copiado",
   "复制失败": "Error al copiar",
-  "检测到 QSV 时间戳冲突，正在使用兼容模式重试…": "Conflicto de marcas de tiempo de QSV. Reintentando en modo de compatibilidad…"
+  "检测到 QSV 时间戳冲突，正在使用兼容模式重试…": "Conflicto de marcas de tiempo de QSV. Reintentando en modo de compatibilidad…",
+  "QSV 解码路径不兼容，正在改用软件解码重试…": "La decodificación QSV no es compatible con esta entrada. Reintentando con decodificación por software…",
+  "QSV 低功耗模式不受支持，正在自动选择编码模式重试…": "El modo de bajo consumo de QSV no es compatible. Reintentando con selección automática del modo…",
+  "输出画面尺寸与方向变换不符。": "Las dimensiones de salida no coinciden con la transformación de orientación."
 }
