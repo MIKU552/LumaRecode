@@ -1,3 +1,5 @@
+using System.Buffers.Binary;
+using System.Text.Json.Nodes;
 using VideoConverter;
 using VideoConverter.Core;
 
@@ -130,6 +132,59 @@ internal static class CodeChecks
             }
 
             Check(MediaProbe.ReadHexDump("00000000: 0102 03ff  ....").SequenceEqual(new byte[] { 1, 2, 3, 255 }), "ffprobe hex dump excludes ASCII column");
+            var rawHeader = new byte[86];
+            void U16(int offset, ushort value) => BinaryPrimitives.WriteUInt16BigEndian(rawHeader.AsSpan(offset, 2), value);
+            void F32(int offset, float value) => BinaryPrimitives.WriteInt32BigEndian(rawHeader.AsSpan(offset, 4), BitConverter.SingleToInt32Bits(value));
+            BinaryPrimitives.WriteUInt32BigEndian(rawHeader, 86);
+            "prrf"u8.CopyTo(rawHeader.AsSpan(4));
+            U16(8, 78);
+            U16(16, 16);
+            U16(18, 16);
+            U16(26, 65279);
+            F32(28, 2);
+            F32(32, 0.5f);
+            F32(36, 1);
+            F32(52, 1);
+            F32(68, 1);
+            F32(72, 1);
+            using (var rawFile = new FileStream(Path.Combine(root, "raw-header.bin"), FileMode.Create, FileAccess.ReadWrite))
+            {
+                rawFile.Write(rawHeader);
+                var parsed = RawDevelopment.ReadHeader(rawFile, 0, 86);
+                var coefficients = parsed["matrix"]!.AsArray().Select(v => v!.GetValue<double>()).ToArray();
+                Check(Math.Abs(coefficients[0] - 1.716651187971268 * 2 * 65535 / 65279 / 1024) < 1e-12, "RAW WB and camera-to-target matrix");
+                for (int row = 0; row < 3; row++)
+                {
+                    Check(Math.Abs(coefficients.Skip(row * 4).Take(3).Sum() * 256 / 65535 + coefficients[row * 4 + 3]) < 1e-15, "RAW black normalization " + row);
+                }
+                rawHeader[4] = 0;
+                rawFile.Position = 0;
+                rawFile.Write(rawHeader);
+                try
+                {
+                    RawDevelopment.ReadHeader(rawFile, 0, 86);
+                    Check(false, "invalid RAW magic rejection");
+                }
+                catch (InvalidDataException) { Check(true, "invalid RAW magic rejection"); }
+            }
+            foreach (var (a, b, c, d, expected) in new (int, int, int, int, string)[]
+            {
+                (1, 0, 0, 1, ""), (-1, 0, 0, 1, "hflip"), (1, 0, 0, -1, "vflip"), (-1, 0, 0, -1, "hflip,vflip"),
+                (0, -1, 1, 0, "transpose=cclock"), (0, 1, -1, 0, "transpose=clock"),
+                (0, 1, 1, 0, "transpose=cclock_flip"), (0, -1, -1, 0, "transpose=clock_flip")
+            })
+            {
+                var video = new JsonObject
+                {
+                    ["side_data_list"] = new JsonArray(new JsonObject
+                    {
+                        ["side_data_type"] = "Display Matrix",
+                        ["displaymatrix"] = $"00000000: {a * 65536} {b * 65536} 0\n00000001: {c * 65536} {d * 65536} 0\n00000002: 0 0 1073741824"
+                    })
+                };
+                var media = new MediaInfo("source.mov", video, [], new(), "raw", null, "", 1, [], new());
+                Check(string.Join(',', RawDevelopment.Orientation(media)) == expected, "RAW orientation " + expected);
+            }
             foreach (var payload in new[] { new byte[] { 0 }, new byte[] { 10, 4, 1 }, new byte[] { 8, 128 } })
             {
                 try

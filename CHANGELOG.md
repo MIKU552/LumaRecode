@@ -1,5 +1,13 @@
 # 更新记录
 
+## 4.2.0
+
+- 添加 Apple Log 与 Apple Log 2 的 HLG / SDR 转换，Log 列表按 DJI、三星、小米、Apple 排列。
+- 添加单层 Dolby Vision 与 HDR10+ 识别、标准 HDR / SDR 转换，以及软件编码保留逐帧动态元数据。
+- 内置 C# HDR10+ 元数据解析与 x265 JSON 导出，HEVC 通过码流扫描提取元数据。
+- 添加 ProRes RAW 相机参数显影、裁切与方向处理，编码前检查所选 FFmpeg 的相机兼容性。
+- 修复 ffprobe HDR10+ 重复字段导致的素材读取错误。
+
 ## 4.1.4
 
 - 修复 QSV 快速分享丢失旋转或镜像方向的问题，并校验方向变换后的输出尺寸。

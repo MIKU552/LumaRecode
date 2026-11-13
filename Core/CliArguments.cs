@@ -19,14 +19,15 @@ public sealed class CliArguments
         ["codec"] = ["hevc", "av1", "avc"],
         ["range"] = ["auto", "sdr", "hdr"],
         ["transform"] = ["auto", "none", "log-hdr", "log-sdr", "hdr-sdr"],
-        ["profile"] = ["auto", "milog", "pocket3", "samsung"],
+        ["profile"] = ["auto", "pocket3", "samsung", "milog", "applelog", "applelog2"],
         ["sampling"] = ["auto", "source", "420", "422", "444", "gray"],
         ["variant"] = ["standard", "fast"],
         ["audio"] = ["auto", "copy", "aac", "opus", "flac"],
-        ["input_kind"] = ["auto", "sdr", "hlg", "pq", "log"],
+        ["input_kind"] = ["auto", "sdr", "hlg", "pq", "log", "raw"],
         ["color_range"] = ["auto", "source", "limited", "full"],
         ["bit_depth"] = ["auto", "8", "10", "12"],
-        ["container"] = ["auto", "mp4", "mkv"]
+        ["container"] = ["auto", "mp4", "mkv"],
+        ["dynamic_hdr"] = ["preserve", "standard"]
     };
     private static readonly HashSet<string> booleans = ["json", "accept_terms", "no_settings", "text", "recursive", "overwrite", "skip_existing", "continue_on_error", "dry_run", "verbose"];
     private static readonly HashSet<string> commonValues = ["lang", "ffmpeg", "ffprobe"];

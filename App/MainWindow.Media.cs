@@ -150,11 +150,12 @@ public sealed partial class MainWindow
     private void ResetSourceOptions()
     {
         Select(InputKind, "auto");
-        Select(Purpose, "share");
+        Select(Purpose, MediaFlag("dynamic_hdr") ? "archive" : "share");
+        Select(DynamicMetadata, "preserve");
         Select(Codec, "hevc");
         Select(Variant, "standard");
         ApplyPurposeDefaults();
-        Range.SelectedIndex = MediaText("kind") is "log" or "hlg" or "pq" ? 1 : 0;
+        Range.SelectedIndex = MediaText("kind") is "log" or "hlg" or "pq" or "raw" ? 1 : 0;
         Select(Profile, MediaText("profile"));
     }
 
@@ -191,8 +192,14 @@ public sealed partial class MainWindow
             "milog" => L.T("小米 Mi-Log"),
             "pocket3" => "Pocket 3 D-Log M",
             "samsung" => "Samsung Log",
-            _ => MediaText("kind") switch { "hlg" => "HLG HDR", "pq" => "PQ HDR", "sdr" => "SDR", "log" => L.T("Log · 曲线待确认"), _ => L.T("色彩类型待确认") }
+            "applelog" => "Apple Log",
+            "applelog2" => "Apple Log 2",
+            _ => MediaText("kind") switch { "raw" => "ProRes RAW", "hlg" => "HLG HDR", "pq" => "PQ HDR", "sdr" => "SDR", "log" => L.T("Log · 曲线待确认"), _ => L.T("色彩类型待确认") }
         };
+        if (MediaFlag("dynamic_hdr"))
+        {
+            name = media?["dolby_vision"] is JsonObject dv ? $"Dolby Vision Profile {dv.Integer("dv_profile")}" : "HDR10+";
+        }
         var pixel = video.Text("pix_fmt");
         var sampling = MediaText("source_sampling") switch
         {
@@ -202,8 +209,12 @@ public sealed partial class MainWindow
             "gray" => L.T("灰度"),
             _ => pixel
         };
+        if (MediaText("kind") == "raw")
+            sampling = "Bayer";
         var depths = (data["component_depths"] as JsonArray ?? []).Select(item => item!.GetValue<int>()).Distinct().ToArray();
         var depth = depths.Length > 0 ? string.Join("/", depths) + L.T(" 位") : int.TryParse(video.Text("bits_per_raw_sample"), out var bits) && bits > 0 ? bits + L.T(" 位") : L.T("位深未标明");
+        if (MediaText("kind") == "raw")
+            depth = "16" + L.T(" 位");
         if (data.Flag("pixel_float"))
         {
             depth += L.T("浮点");

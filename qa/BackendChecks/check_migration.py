@@ -43,7 +43,13 @@ for sampling, depth, kind, scope in itertools.product(
     ["sdr", "hlg", "pq", "log"],
     ["limited", "full"],
 ):
-    shifts = {"420": (1, 1), "422": (1, 0), "444": (0, 0), "gray": (0, 0), "rgb": (0, 0)}
+    shifts = {
+        "420": (1, 1),
+        "422": (1, 0),
+        "444": (0, 0),
+        "gray": (0, 0),
+        "rgb": (0, 0),
+    }
     w, h = shifts[sampling]
     pixel = {
         "flags": {"rgb": sampling == "rgb"},
@@ -53,7 +59,11 @@ for sampling, depth, kind, scope in itertools.product(
         "log2_chroma_h": h,
     }
     pix = (
-        "gray" if sampling == "gray" else "gbrp" if sampling == "rgb" else "yuv" + sampling + "p"
+        "gray"
+        if sampling == "gray"
+        else "gbrp"
+        if sampling == "rgb"
+        else "yuv" + sampling + "p"
     ) + (str(depth) + "le" if depth > 8 else "")
     video = {
         "index": 0,
@@ -64,7 +74,11 @@ for sampling, depth, kind, scope in itertools.product(
         "avg_frame_rate": "30000/1001",
         "color_range": "tv" if scope == "limited" else "pc",
         "color_primaries": "bt709" if kind == "sdr" else "bt2020",
-        "color_space": "gbr" if sampling == "rgb" else "bt709" if kind == "sdr" else "bt2020nc",
+        "color_space": "gbr"
+        if sampling == "rgb"
+        else "bt709"
+        if kind == "sdr"
+        else "bt2020nc",
         "color_transfer": "smpte2084"
         if kind == "pq"
         else "arib-std-b67"
@@ -99,11 +113,13 @@ for sampling, depth, kind, scope in itertools.product(
             profile="pocket3" if kind == "log" else None,
         )
 
-        def old():
+        def old(o=o, m=m):
             try:
                 validate(o, m)
                 resolved = resolve_format(o, m)
-                argv, colors = build_command(tools, m, o, Path("C:/fixtures/output" + o.suffix))
+                argv, colors = build_command(
+                    tools, m, o, Path("C:/fixtures/output" + o.suffix)
+                )
                 argv[0] = argv[0].lower()
                 return asdict(resolved), argv, colors
             except ValueError as e:
@@ -116,12 +132,17 @@ for sampling, depth, kind, scope in itertools.product(
                 "plan", media=m, options=o, output="C:/fixtures/output" + o.suffix
             )
             plan["argv"][0] = plan["argv"][0].lower()
+            actual.pop("dynamic_hdr")  # Added after the v3.8.0 reference contract.
             actual = (actual, plan["argv"], plan["colors"])
         except ValueError as e:
             actual = str(e)
         assert actual == expected, (sampling, depth, kind, scope, o, expected, actual)
         count += 1
-print("PASS", count, "native/reference format-policy and exact FFmpeg-command comparisons.")
+print(
+    "PASS",
+    count,
+    "native/reference format-policy and exact FFmpeg-command comparisons.",
+)
 for tags in [
     {},
     {"com.xiaomi.record_log": 1},

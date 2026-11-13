@@ -35,7 +35,9 @@ def request(action, **values):
             return str(value)
         raise TypeError(type(value).__name__)
 
-    _server.stdin.write(json.dumps(dict(action=action, **values), default=encode) + "\n")
+    _server.stdin.write(
+        json.dumps(dict(action=action, **values), default=encode) + "\n"
+    )
     _server.stdin.flush()
     result = json.loads(_server.stdout.readline())
     if not result["ok"]:
@@ -89,6 +91,7 @@ class Options:
     container: str = "auto"
     color_range: str = "auto"
     bit_depth: str = "auto"
+    dynamic_hdr: str = "preserve"
 
     @property
     def suffix(self):

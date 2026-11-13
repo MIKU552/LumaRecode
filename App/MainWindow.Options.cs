@@ -18,7 +18,8 @@ public sealed partial class MainWindow
         Choices(Variant, ("standard", L.T("标准实测档")), ("fast", L.T("AV1 更快备用档")));
         Choices(Container, ("auto", L.T("自动 · 按用途选择")), ("mp4", "MP4"), ("mkv", "MKV"));
         Choices(Transform, ("none", L.T("不套用 · 保留 / 标准化")), ("log-hdr", L.T("Log → HDR（HLG）")), ("log-sdr", "Log → SDR"), ("hdr-sdr", "HDR → SDR"));
-        Choices(Profile, ("", L.T("请选择 Log 曲线…")), ("milog", L.T("小米 Mi-Log")), ("pocket3", "Pocket 3 D-Log M"), ("samsung", "Samsung Log"));
+        Choices(Profile, ("", L.T("请选择 Log 曲线…")), ("pocket3", "DJI Pocket 3 D-Log M"), ("samsung", "Samsung Log"), ("milog", L.T("小米 Mi-Log")), ("applelog", "Apple Log"), ("applelog2", "Apple Log 2"));
+        Choices(DynamicMetadata, ("preserve", L.T("保留动态 HDR")), ("standard", L.T("标准 HDR")));
         Choices(Sampling, ("source", L.T("保持原采样")), ("420", "4:2:0"), ("422", "4:2:2"), ("444", "4:4:4"), ("gray", L.T("灰度")));
         Choices(BitDepth, ("8", L.T("8 位")), ("10", L.T("10 位")), ("12", L.T("12 位")));
         Choices(ColorRange, ("source", L.T("保持原范围")), ("limited", L.T("Limited · 有限范围")), ("full", L.T("Full · 全范围")));
@@ -142,16 +143,37 @@ public sealed partial class MainWindow
                 Range.SelectedIndex = 0;
             }
 
-            Control<RadioButton>("HdrChoice").IsEnabled = Kind is "hlg" or "pq" or "log";
+            Control<RadioButton>("HdrChoice").IsEnabled = Kind is "hlg" or "pq" or "log" or "raw";
             if (Hdr && Value(Codec) == "avc")
             {
                 Select(Codec, "hevc");
             }
 
+            if (MediaFlag("dynamic_hdr"))
+            {
+                Select(InputKind, "auto");
+            }
+            bool dynamic = MediaFlag("dynamic_hdr") && Hdr;
+            DynamicMetadata.Visibility = dynamic ? Visibility.Visible : Visibility.Collapsed;
+            Control<TextBlock>("DynamicNote").Visibility = dynamic ? Visibility.Visible : Visibility.Collapsed;
+            bool preserve = dynamic && Value(DynamicMetadata) == "preserve";
+            if (preserve)
+            {
+                Select(Purpose, "archive");
+                if (Value(Codec) == "avc" || MediaFlag("hdr10plus") || media?["dolby_vision"].Integer("dv_profile") == 5)
+                {
+                    Select(Codec, "hevc");
+                }
+                Select(Sampling, "420");
+                Select(BitDepth, "10");
+                Select(ColorRange, "source");
+            }
+            Purpose.Items.OfType<ComboBoxItem>().First().IsEnabled = !preserve;
+            Control<TextBlock>("DynamicNote").Text = L.T(preserve ? "软件编码保留逐帧动态元数据。" : "输出标准 HLG / PQ。");
             UpdateDepthChoices();
             foreach (var item in Codec.Items.OfType<ComboBoxItem>())
             {
-                item.IsEnabled = !Hdr || (string)item.Tag != "avc";
+                item.IsEnabled = (!Hdr || (string)item.Tag != "avc") && (!preserve || (string)item.Tag == "hevc" || (string)item.Tag == "av1" && !MediaFlag("hdr10plus") && media?["dolby_vision"].Integer("dv_profile") != 5);
             }
 
             var fullSampling = Value(Purpose) == "archive" && Value(Codec) != "av1";
@@ -167,6 +189,29 @@ public sealed partial class MainWindow
                 Select(Sampling, DefaultSampling());
             }
 
+            if (preserve)
+            {
+                Select(BitDepth, "10");
+                foreach (var item in BitDepth.Items.OfType<ComboBoxItem>())
+                {
+                    item.IsEnabled = (string)item.Tag == "10";
+                }
+                foreach (var item in Sampling.Items.OfType<ComboBoxItem>())
+                {
+                    item.IsEnabled = (string)item.Tag == "420";
+                }
+                foreach (var item in ColorRange.Items.OfType<ComboBoxItem>())
+                {
+                    item.IsEnabled = (string)item.Tag == "source";
+                }
+            }
+            else
+            {
+                foreach (var item in ColorRange.Items.OfType<ComboBoxItem>())
+                {
+                    item.IsEnabled = true;
+                }
+            }
             var flacAllowed = MediaFlag("flac_eligible");
             Audio.Items.OfType<ComboBoxItem>().Single(item => (string)item.Tag == "flac").IsEnabled = flacAllowed;
             ((ComboBoxItem)Container.Items[1]).IsEnabled = Value(Audio) != "flac";
@@ -216,7 +261,7 @@ public sealed partial class MainWindow
             var curve = Kind == "pq" && !Profile.IsEnabled ? "PQ" : "HLG";
             Control<TextBlock>("TargetNote").Text = (Hdr ? L.T($"BT.2020 {curve} · {Depth} 位 · {sampling}") : L.T($"Rec.709 · {Depth} 位 · {sampling}")) + " · " + dataRange;
             var formatNotes = new List<string>();
-            if (MediaFlag("pixel_rgb"))
+            if (MediaFlag("pixel_rgb") && Kind != "raw")
             {
                 formatNotes.Add(L.T("RGB 输入转换为 YCbCr。"));
             }
@@ -245,7 +290,7 @@ public sealed partial class MainWindow
             Control<TextBlock>("ContainerNote").Text = Value(Container) == "auto"
                 ? Value(Audio) == "flac" ? L.T("自动 → MKV。FLAC 音轨默认使用 MKV 封装。") : L.T($"自动 → {Suffix[1..].ToUpperInvariant()}。快速分享默认 MP4，软件归档默认 MKV。")
                 : Suffix == ".mp4" ? L.T("MP4。复制原音轨时，会在编码前检测封装兼容性。") : L.T("MKV。封装独立于编码质量档和动态范围。");
-            Control<TextBlock>("TransformNote").Text = Value(Transform) switch
+            Control<TextBlock>("TransformNote").Text = Kind == "raw" ? L.T("使用相机白平衡和色彩矩阵显影 RAW。") : Value(Transform) switch
             {
                 "log-hdr" => L.T($"使用对应相机的曲线，转换为 {Depth} 位 HLG。"),
                 "log-sdr" => L.T("解码对应 Log，并将高光映射到 Rec.709。"),
@@ -256,6 +301,22 @@ public sealed partial class MainWindow
             if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe))
             {
                 warning = L.T("未找到 FFmpeg / ffprobe，请设置工具路径。");
+            }
+            else if (MediaFlag("dynamic_hdr") && !MediaFlag("dynamic_hdr_supported"))
+            {
+                warning = L.T("此 Dolby Vision 兼容层暂不受支持。");
+            }
+            else if (preserve && MediaFlag("hdr10plus") && media?["video"].Text("codec_name") != "hevc")
+            {
+                warning = L.T("HDR10+ 元数据提取目前支持 HEVC 输入。");
+            }
+            else if (media?["raw"] is JsonObject rawVersion && !rawVersion.Flag("decoder_version_supported"))
+            {
+                warning = L.T("ProRes RAW 显影需要 FFmpeg 9 或更新版本。");
+            }
+            else if (media?["raw"] is JsonObject raw && !raw.Flag("decoder_supported"))
+            {
+                warning = L.T("当前 FFmpeg 无法解码此 ProRes RAW。请先用支持该相机的 RAW 软件显影为 ProRes 或 HEVC。");
             }
             else if (media is not null && Profile.IsEnabled && Value(Profile) == "")
             {

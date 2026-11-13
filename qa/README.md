@@ -76,3 +76,13 @@ AOT 单文件版的实际 GUI 位于 `.net/LumaRecode/<bundle-id>/Application/Lu
 ## English
 
 Run resource and serialization checks before integration tests. CLI and native backend checks perform real conversions and require the configured FFmpeg filters and GPU support. For memory comparisons, use one process at a time and keep the UI state and process age consistent. Sample the extracted AOT GUI, and account for all processes when measuring CLI jobs.
+
+## HDR and RAW
+
+```powershell
+python qa/HdrChecks/check_hdr.py
+python qa/HdrChecks/check_hdr.py --samples D:/MediaTests/HDR
+python tools/generate_hlg_luts.py --check
+```
+
+HDR checks cover Apple transfer/gamut math, explicit Log detection, per-frame Dolby Vision metadata, HDR10+ JSON round-tripping and ProRes RAW decoder compatibility. Downloaded sample origins and excerpt commands are listed in [sample-sources.json](HdrChecks/sample-sources.json). The full HDR10+ comparison uses hdr10plus_tool on PATH as a development-only reference. Production uses the C# parser. Keep footage outside the source tree. Use `--metadata-only` for SEI ordering, edit-list, sparse-metadata and export checks.

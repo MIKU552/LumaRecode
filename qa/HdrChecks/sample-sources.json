@@ -1,0 +1,77 @@
+{
+  "samples": [
+    {
+      "file": "BL_RPU_dvhe-05_1920x1080@24fps_0_6313.mp4",
+      "source": "https://github.com/DolbyLaboratories/dolby-vision-contents/tree/main/SolLevante_Netflix",
+      "kind": "Dolby Vision Profile 5",
+      "sha256": "87fe0115f3002a621d2380a9f91852ef91a15854a446efe26de8744f77ef5346"
+    },
+    {
+      "file": "BL_RPU_dvhe-08-84_1920x1080@24fps_0_6313.mp4",
+      "source": "https://github.com/DolbyLaboratories/dolby-vision-contents/tree/main/SolLevante_Netflix",
+      "kind": "Dolby Vision Profile 8.4",
+      "sha256": "d81d4c17958946796f30ca28a57776cee187a421649058767c8496cbc1e469bf"
+    },
+    {
+      "file": "BL_RPU_dvhe-08-mapDynamic1000-81_1920x1080@24fps_0_6313.mp4",
+      "source": "https://github.com/DolbyLaboratories/dolby-vision-contents/tree/main/SolLevante_Netflix",
+      "kind": "Dolby Vision Profile 8.1",
+      "sha256": "5f9e9b1a6892853f95cad06a0c104bd0d857580ea0ea52bca2ef2034c1e11334"
+    },
+    {
+      "file": "regular.mkv",
+      "source": "https://github.com/quietvoid/hdr10plus_tool/blob/main/assets/hevc_tests/regular.mkv",
+      "kind": "HDR10+ fixture",
+      "sha256": "358291460ca544616c16ceceea17ce01cee8cd5c365fcd1f637e74eec3cbcd88"
+    },
+    {
+      "file": "4.2K23.976ProResRAWHQ.mov",
+      "source": "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/20298",
+      "download": "https://drive.google.com/file/d/1lbQPzBURKG6J6_L6USXdF6jJDssOsb3O/view",
+      "kind": "Sony / Atomos ProRes RAW HQ, RGGB",
+      "sha256": "bb2c44ea9a4195f07a590b422d7995ef8e19ae7bbd93f14c4fdbfc460cce524c"
+    },
+    {
+      "file": "Apple_Log_CMG_excerpt.mov",
+      "source": "https://www.youtube.com/watch?v=vBSCCosHa2A",
+      "download": "https://bit.ly/apple-log-test-footage",
+      "kind": "Apple Log test footage by Christian Mate Grab",
+      "excerpt_seconds": 0.5,
+      "method": "ffmpeg -i URL -map 0:v:0 -t 0.5 -c:v copy -an -map_metadata 0 -movflags +use_metadata_tags+write_colr Apple_Log_CMG_excerpt.mov",
+      "sha256": "51b267ccdb45e8e822505a8d3d5b515092501c780d643d8f886da26711ec50bd"
+    },
+    {
+      "file": "Apple17_ProRes_RAW_excerpt.mov",
+      "source": "https://www.youtube.com/watch?v=WwPqQwuEV8g",
+      "download": "https://drive.google.com/file/d/1QlsTVrtiDxqVi03k8uo5jJFdpuoFYpcB/view",
+      "kind": "iPhone 17 Pro Max ProRes RAW, Bayer pattern 3",
+      "excerpt_seconds": 0.15,
+      "method": "ffmpeg -i URL -map 0:v:0 -t 0.15 -c:v copy -an -map_metadata 0 -movflags +use_metadata_tags Apple17_ProRes_RAW_excerpt.mov",
+      "sha256": "a839cfd2d6a0ade8c4646fad6a322ed8ba49dcfd879e8da238aa72a031e72d39"
+    },
+    {
+      "file": "dhdr10-opt.hevc",
+      "source": "https://github.com/quietvoid/hdr10plus_tool/blob/main/assets/hevc_tests/dhdr10-opt.hevc",
+      "kind": "HDR10+ SEI ordering fixture",
+      "sha256": "49ea7d65d3972f98be01b03616f38c7ba660151bd5147a0ed0e07b816daaeb45"
+    },
+    {
+      "file": "dts_injected.hevc",
+      "source": "https://github.com/quietvoid/hdr10plus_tool/blob/main/assets/hevc_tests/dts_injected.hevc",
+      "kind": "HDR10+ SEI ordering fixture",
+      "sha256": "113d3a5086a02679472ceda49f0053c027cb8ca152973128d68573639221ffe4"
+    },
+    {
+      "file": "pts_injected.hevc",
+      "source": "https://github.com/quietvoid/hdr10plus_tool/blob/main/assets/hevc_tests/pts_injected.hevc",
+      "kind": "HDR10+ SEI ordering fixture",
+      "sha256": "2ea2dc557b86555e67c275e756bd7849969c067d24cf12ad4982bbe0cb990dc0"
+    },
+    {
+      "file": "multimsg-sei.hevc",
+      "source": "https://github.com/quietvoid/hdr10plus_tool/blob/main/assets/hevc_tests/multimsg-sei.hevc",
+      "kind": "HDR10+ SEI ordering fixture",
+      "sha256": "2b3548af9862aceb161f615f71f3d5ffe8bab1560e000bfc5c3e888ef6a70926"
+    }
+  ]
+}

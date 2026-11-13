@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
@@ -20,7 +21,45 @@ public static class MediaProbe
             throw new InvalidDataException(string.IsNullOrWhiteSpace(result.Error) ? "无法读取视频。" : result.Error.Trim());
         }
 
-        return JsonNode.Parse(result.Output)?.AsObject() ?? throw new InvalidDataException("Invalid ffprobe response.");
+        // ffprobe emits repeated JSON members for HDR10+ percentiles, MaxSCL
+        // and curve anchors. Normalize those members to arrays before JsonNode
+        // builds its key index; otherwise a valid HDR10+ frame throws on access.
+        using var document = JsonDocument.Parse(result.Output);
+        return ReadProbeValue(document.RootElement) as JsonObject ?? throw new InvalidDataException("Invalid ffprobe response.");
+    }
+
+    private static JsonNode? ReadProbeValue(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Object)
+        {
+            var result = new JsonObject();
+            var repeated = new HashSet<string>();
+            foreach (var property in value.EnumerateObject())
+            {
+                var node = ReadProbeValue(property.Value);
+                if (!result.ContainsKey(property.Name))
+                {
+                    result[property.Name] = node;
+                }
+                else if (repeated.Contains(property.Name))
+                {
+                    result[property.Name]!.AsArray().Add(node);
+                }
+                else
+                {
+                    var previous = result[property.Name];
+                    result.Remove(property.Name);
+                    result[property.Name] = new JsonArray(previous, node);
+                    repeated.Add(property.Name);
+                }
+            }
+            return result;
+        }
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            return new JsonArray(value.EnumerateArray().Select(ReadProbeValue).ToArray());
+        }
+        return value.ValueKind == JsonValueKind.Null ? null : JsonValue.Create(value.Clone());
     }
 
     /// <summary>Inspects the first playable video stream, all audio tracks and first-frame side data.</summary>
@@ -30,10 +69,17 @@ public static class MediaProbe
         path = Path.GetFullPath(path);
         var data = await ReadAsync(tools, ["-show_streams", "-show_format", "-show_data", "-of", "json", path], cancellation);
         var streams = data["streams"] as JsonArray ?? [];
-        var video = streams.Objects().FirstOrDefault(s => s.Text("codec_type") == "video" && !s["disposition"].Flag("attached_pic"))
+        var video = streams.Objects().Where(s => s.Text("codec_type") == "video" && !s["disposition"].Flag("attached_pic")).OrderByDescending(s => s.Text("codec_name") == "prores_raw").FirstOrDefault()
             ?? throw new InvalidDataException("文件中没有可用的视频轨。");
         video["_monochrome"] = AvcMonochrome(video);
-        var first = await ReadAsync(tools, ["-select_streams", video.Text("index"), "-read_intervals", "%+#1", "-show_frames", "-of", "json", path], cancellation);
+        bool raw = video.Text("codec_name") == "prores_raw";
+        if (raw)
+        {
+            video["_raw"] = await RawDevelopment.InspectAsync(tools, path, video.Integer("index"), cancellation);
+            video["pix_fmt"] = video["_raw"].Integer("bayer_pattern") == 0 ? "bayer_rggb16le" : "bayer16le";
+            video["color_range"] = "pc";
+        }
+        var first = raw ? new JsonObject() : await ReadAsync(tools, ["-select_streams", video.Text("index"), "-read_intervals", "%+#1", "-show_frames", "-of", "json", path], cancellation);
         var frames = first["frames"] as JsonArray ?? [];
         foreach (var name in new[] { "color_transfer", "color_primaries", "color_space", "color_range" })
         {
@@ -54,6 +100,14 @@ public static class MediaProbe
         }
 
         var (kind, profile, evidence) = Classify(video, tags, await DjiColorAsync(tools, path, streams, cancellation));
+        var side = video["side_data_list"].Objects().Concat(frames.Objects().SelectMany(f => f["side_data_list"].Objects()));
+        var dovi = side.FirstOrDefault(s => s.Text("side_data_type") == "DOVI configuration record");
+        if (dovi is not null)
+        {
+            kind = dovi.Integer("dv_bl_signal_compatibility_id") == 4 ? "hlg" : "pq";
+            profile = null;
+            evidence = $"Dolby Vision Profile {dovi.Integer("dv_profile")}";
+        }
         if (!pixelFormats.TryGetValue(tools.Ffprobe, out var formats))
         {
             var all = await ReadAsync(tools, ["-show_pixel_formats", "-of", "json"], cancellation);
@@ -78,10 +132,29 @@ public static class MediaProbe
     /// <remarks>Only a recognized camera/schema pair selects a specific LUT automatically.</remarks>
     public static (string Kind, string? Profile, string Evidence) Classify(JsonObject video, JsonObject tags, (string Schema, ulong Mode)? dji = null)
     {
+        if (video.Text("codec_name") == "prores_raw")
+        {
+            return ("raw", null, "ProRes RAW · 相机白平衡与色彩矩阵");
+        }
         var lowered = new Dictionary<string, string>();
         foreach (var p in tags)
         {
             lowered[p.Key.ToLowerInvariant()] = (p.Value?.ToString() ?? "").ToLowerInvariant();
+        }
+
+        // Apple identifies the transfer function and primaries together. Never
+        // infer Apple Log solely from an iPhone model, ProRes codec or .MOV suffix.
+        foreach (var key in new[] { "com.apple.proapps.logcolorspace", "com.apple.proapps.color.logcolorspace" })
+        {
+            var value = lowered.GetValueOrDefault(key, "");
+            if (value == "com.apple.apple-wide-gamut.apple-log")
+            {
+                return ("log", "applelog2", "Apple Log 2 · Apple Wide Gamut");
+            }
+            if (value == "com.apple.log.apple-log")
+            {
+                return ("log", "applelog", "Apple Log · BT.2020");
+            }
         }
 
         if (lowered.GetValueOrDefault("com.xiaomi.record_log") is "1" or "true" or "yes")
@@ -398,6 +471,11 @@ public static class MediaProbe
             ["path"] = media.Path,
             ["kind"] = media.Kind,
             ["profile"] = media.Profile,
+            ["dynamic_hdr"] = media.DynamicHdr,
+            ["dynamic_hdr_supported"] = media.DolbyVision is not { } dv || DynamicHdr.SupportsDolbyVision(dv),
+            ["dolby_vision"] = media.DolbyVision?.DeepClone(),
+            ["hdr10plus"] = media.Hdr10Plus,
+            ["raw"] = media.Raw?.DeepClone(),
             ["evidence"] = media.Evidence,
             ["duration"] = media.Duration,
             ["video"] = Select(media.Video, ["codec_name", "width", "height", "pix_fmt", "avg_frame_rate", "r_frame_rate", "color_range", "color_primaries", "color_transfer", "color_space", "profile", "bit_rate", "bits_per_raw_sample", "bits_per_sample"]),

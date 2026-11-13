@@ -1,5 +1,5 @@
 # LUTs are text data, but multi-megabyte numeric diffs are not useful in reviews.
-*.cube -diff
+*.cube -diff -text
 *.ico binary
 *.png binary
 App/Assets/Fonts/*.ttf binary linguist-vendored=true

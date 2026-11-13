@@ -23,6 +23,8 @@
 
 ツールは `PATH`、保存済みの GUI パスの順に検索します。`--ffmpeg PATH --ffprobe PATH` で指定できます。`--lang system|en|zh|ja|es` は出力言語を選択します。
 
+動的 HDR 素材はソフトウェア HEVC でメタデータを保持する設定が初期値です。標準 HDR には `--dynamic-hdr standard --purpose share`、SDR には `--range sdr` を使用します。ProRes RAW は自動的に HLG に現像し、`--range sdr` で SDR に出力します。対応形式は[色変換](color-conversion.md)を参照してください。
+
 ## コマンドとオプション
 
 | コマンド | 内容 |
@@ -46,8 +48,9 @@
 | `--codec` | `hevc`（標準）、`av1`, `avc` |
 | `--range` / `--dynamic-range` | `auto`（標準）、`sdr`, `hdr` |
 | `--transform` | `auto`（標準）、`none`, `log-hdr`, `log-sdr`, `hdr-sdr` |
-| `--profile` | `auto`, `milog`, `pocket3`, `samsung` |
-| `--input-kind` | `auto`, `sdr`, `hlg`, `pq`, `log` |
+| `--profile` | `auto`, `pocket3`, `samsung`, `milog`, `applelog`, `applelog2` |
+| `--dynamic-hdr` | `preserve` / `standard` |
+| `--input-kind` | `auto`, `sdr`, `hlg`, `pq`, `log`, `raw` |
 | `--sampling` | `auto`（標準）、`source`, `420`, `422`, `444`, `gray`。Auto はソフトウェア HEVC / AVC のアーカイブで元のサンプリングを保持し、RGB は 4:4:4、AV1 / 共有は 4:2:0 を選択。422 / 444 / gray はソフトウェア HEVC / AVC を使用 |
 | `--color-range` | `auto`（標準）、`source`, `limited`, `full`。Auto はアーカイブで元のレンジを保持し、共有では Limited に変換 |
 | `--bit-depth` | `auto`, `8`, `10`, `12`。アーカイブは入力とエンコーダーの対応範囲に従い、共有は SDR 8 ビット / HDR 10 ビット |

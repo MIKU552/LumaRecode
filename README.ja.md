@@ -12,7 +12,8 @@ C# / .NET で開発した Windows 11 向けの動画変換・色変換ツール�
 ## 主な機能
 
 - クイック共有・アーカイブ用プリセット。HEVC、AV1、H.264 と MP4 / MKV に対応。
-- Mi-Log、Pocket 3 D-Log M、Samsung Log を HLG HDR または Rec.709 SDR に変換。HLG / PQ から SDR への変換にも対応。
+- DJI D-Log M、Samsung Log、Mi-Log、Apple Log、Apple Log 2 から HLG HDR / Rec.709 SDR への変換、HLG / PQ から SDR への変換。
+- ProRes RAW の現像、Dolby Vision / HDR10+ の識別と変換、ソフトウェアエンコードによる動的メタデータの保持。
 - 解像度、フレームレート、ビット深度、色タグ、音声トラックを読み取り、素材に応じた初期設定を適用。
 - クロマサブサンプリング、Limited / Full レンジ、音声形式の選択。可逆音声の FLAC 変換に対応。
 - 進捗、エンコード fps、処理位置、残り時間の表示と出力形式の検証。
@@ -28,6 +29,8 @@ C# / .NET で開発した Windows 11 向けの動画変換・色変換ツール�
 4. 保存先を指定し、「変換を開始」を押します。
 
 クイック共有は Intel QSV、アーカイブは CPU エンコードを使用します。
+
+Dolby Vision / HDR10+ は、ソフトウェア HEVC で動的メタデータを保持する設定が初期値です。共有用にハードウェアで出力する場合は「標準 HDR」を選択します。ProRes RAW は FFmpeg の対応状況を確認し、カメラのホワイトバランス、色変換行列、ゲインで現像します。対応形式は[色変換](docs/color-conversion.md)を参照してください。
 
 ## エンコードと色変換
 
@@ -103,7 +106,7 @@ licenses/  第三者のライセンス、通知、配布元の記録
 
 本プロジェクトの独自コードは、**Windows 版 Codex** で **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** と **Extra high（`xhigh`）** 推論設定を使用して開発しました。**[MIKU552](https://github.com/MIKU552)** が要件を定義し、機材と素材を提供して実機検証を行っています。
 
-独自のコード、ドキュメント、画像、生成した Mi-Log / Samsung Log LUT には **[MIT License](LICENSE)** が適用されます。第三者の LUT、フォント、ランタイムのライセンスと配布元は [NOTICE](NOTICE) と[第三者コンポーネント](Assets/THIRD_PARTY.md)に記載しています。
+独自のコード、ドキュメント、画像、生成したカメラ Log LUT には **[MIT License](LICENSE)** が適用されます。第三者の LUT、フォント、ランタイムのライセンスと配布元は [NOTICE](NOTICE) と[第三者コンポーネント](Assets/THIRD_PARTY.md)に記載しています。
 
 ## ドキュメント
 

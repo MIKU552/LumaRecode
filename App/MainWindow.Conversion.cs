@@ -48,7 +48,7 @@ public sealed partial class MainWindow
                 Sampling: Value(Sampling), Variant: Value(Variant), Audio: Value(Audio),
                 Container: Value(Container), SourceKind: Value(InputKind),
                 CpuDecode: Control<CheckBox>("CpuDecode").IsChecked == true,
-                ColorRange: Value(ColorRange), BitDepth: Value(BitDepth)), Overwrite: overwrite);
+                ColorRange: Value(ColorRange), BitDepth: Value(BitDepth), DynamicHdr: Value(DynamicMetadata)), Overwrite: overwrite);
 
         using var client = new ConversionClient();
         activeJob = client;
@@ -272,11 +272,12 @@ public sealed partial class MainWindow
     }
     private void UpdateEditingEnabled(bool enabled)
     {
-        foreach (var name in new[] { "InputKind", "OutputRange", "Purpose", "Codec", "Variant", "Container", "Transform", "Sampling", "ColorRange", "Audio", "CpuDecode" })
+        foreach (var name in new[] { "InputKind", "OutputRange", "Purpose", "Codec", "Variant", "Container", "Transform", "Sampling", "ColorRange", "Audio", "CpuDecode", "DynamicMetadata" })
         {
             Control<Microsoft.UI.Xaml.Controls.Control>(name).IsEnabled = enabled;
         }
 
+        InputKind.IsEnabled = enabled && Kind != "raw" && !MediaFlag("dynamic_hdr");
         Profile.IsEnabled = enabled && Value(Transform).StartsWith("log-");
         BitDepth.IsEnabled = enabled && AllowedDepths().Length > 0;
         Output.IsEnabled = enabled;

@@ -23,13 +23,15 @@ GUI and CLI share component-term acceptance. For first-time batch use, read the 
 
 Tools resolve from PATH, then saved GUI paths. Override with `--ffmpeg PATH --ffprobe PATH`. `--lang system|en|zh|ja|es` selects the output language.
 
+Dynamic HDR sources default to software HEVC with metadata preservation. Use `--dynamic-hdr standard --purpose share` for standard HDR, or `--range sdr` for SDR. ProRes RAW automatically develops to HLG; use `--range sdr` for SDR. See [Color conversion](color-conversion.md) for supported formats.
+
 ## Commands and options
 
 | Command | Purpose |
 | --- | --- |
 | `probe INPUT` | Video/audio format, bit depth, color/Log identification, streams, tags, and first-frame side data |
 | `presets` | Encoding presets and encoder settings |
-| `profiles` | Built-in Mi-Log, Pocket 3 D-Log M and Samsung Log profiles/LUTs |
+| `profiles` | Built-in DJI, Samsung, Xiaomi and Apple Log profiles/LUTs |
 | `doctor` | Tool versions and encoder/filter lists; hardware modes depend on the GPU and driver |
 | `license [--text]` | MIT project license, component terms, full notice directory and manifest |
 | `plan INPUT...` | Preview conversion options, FFmpeg arguments, working directory, and output colors |
@@ -46,8 +48,9 @@ Every command supports `--help`. Probe/catalog/doctor/license results are JSON. 
 | `--codec` | `hevc` (default), `av1`, `avc` |
 | `--range` / `--dynamic-range` | `auto` (default), `sdr`, `hdr` |
 | `--transform` | `auto` (default), `none`, `log-hdr`, `log-sdr`, `hdr-sdr` |
-| `--profile` | `auto`, `milog`, `pocket3`, `samsung` |
-| `--input-kind` | `auto`, `sdr`, `hlg`, `pq`, `log` |
+| `--profile` | `auto`, `pocket3`, `samsung`, `milog`, `applelog`, `applelog2` |
+| `--dynamic-hdr` | `preserve` / `standard` |
+| `--input-kind` | `auto`, `sdr`, `hlg`, `pq`, `log`, `raw` |
 | `--sampling` | `auto` (default), `source`, `420`, `422`, `444`, `gray`; Auto keeps source sampling for software HEVC/AVC archive, selects 4:4:4 for RGB, and uses 4:2:0 for AV1/share; 422 / 444 / gray use software HEVC/AVC |
 | `--color-range` | `auto` (default), `source`, `limited`, `full`; Auto keeps source range for archive and converts to Limited for share |
 | `--bit-depth` | `auto`, `8`, `10`, `12`; archive follows source depth and encoder limits; share defaults to 8-bit SDR / 10-bit HDR |

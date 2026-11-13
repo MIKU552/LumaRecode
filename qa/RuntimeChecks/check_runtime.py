@@ -77,7 +77,7 @@ def main():
             ],
             check=True,
         )
-        for profile in ["milog", "pocket3", "samsung"]:
+        for profile in ["pocket3", "samsung", "milog", "applelog", "applelog2"]:
             hlg = folder / (profile + "-hlg.mp4")
             events = call("convert", source, "--input-kind", "log", "--profile", profile, "-o", hlg)
             assert any(e["event"] == "progress" for e in events)

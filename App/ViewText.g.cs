@@ -40,6 +40,8 @@ internal static class ViewText
         ("Transform", "AutomationProperties.Name", "色彩转换"),
         ("Profile", "Header", "相机曲线"),
         ("Profile", "AutomationProperties.Name", "相机曲线"),
+        ("DynamicMetadata", "Header", "动态 HDR"),
+        ("DynamicMetadata", "AutomationProperties.Name", "动态 HDR"),
         ("Sampling", "Header", "色度采样"),
         ("Sampling", "AutomationProperties.Name", "色度采样"),
         ("BitDepth", "Header", "位深"),

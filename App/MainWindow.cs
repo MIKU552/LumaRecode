@@ -50,6 +50,7 @@ public sealed partial class MainWindow : Window
     private ComboBox Container => Control<ComboBox>("Container");
     private RadioButtons Range => Control<RadioButtons>("OutputRange");
     private ComboBox Transform => Control<ComboBox>("Transform");
+    private ComboBox DynamicMetadata => Control<ComboBox>("DynamicMetadata");
     private ComboBox Profile => Control<ComboBox>("Profile");
     private ComboBox InputKind => Control<ComboBox>("InputKind");
     private ComboBox Sampling => Control<ComboBox>("Sampling");
@@ -207,7 +208,7 @@ public sealed partial class MainWindow : Window
                 ClearMedia();
             }
         };
-        foreach (var name in new[] { "Variant", "Container", "Sampling", "ColorRange", "Profile" })
+        foreach (var name in new[] { "Variant", "Container", "Sampling", "ColorRange", "Profile", "DynamicMetadata" })
         {
             Control<ComboBox>(name).SelectionChanged += (_, _) => Refresh();
         }

@@ -21,6 +21,10 @@ public static class OutputPolicy
         || new[] { "rgb", "bgr", "gbr", "argb", "abgr", "rgba", "bgra" }.Any(p => media.Video.Text("pix_fmt").StartsWith(p)) || media.Video.Text("pix_fmt") == "pal8";
     public static string SourceSampling(MediaInfo media)
     {
+        if (media.Raw is not null)
+        {
+            return "444";
+        }
         if (media.Video.Flag("_monochrome"))
         {
             return "gray";
@@ -31,7 +35,7 @@ public static class OutputPolicy
             return "unknown";
         }
 
-        if (IsRgb(media))
+        if (IsRgb(media) || media.Raw is not null)
         {
             return "444";
         }
@@ -58,6 +62,12 @@ public static class OutputPolicy
     /// <summary>Returns usable color precision, excluding alpha and unused storage bits.</summary>
     public static int SourceDepth(MediaInfo media)
     {
+        if (media.Raw is not null)
+        {
+            // Bayer descriptors count red/green/blue sensel coverage rather
+            // than precision per sensel. The decoded RAW plane is 16-bit linear.
+            return 16;
+        }
         var components = media.Pixel["components"].Objects().ToArray();
         if (media.Pixel["flags"].Flag("alpha") && components.Length > 1)
         {
@@ -121,7 +131,7 @@ public static class OutputPolicy
             return "420";
         }
 
-        if (IsRgb(media))
+        if (IsRgb(media) || media.Raw is not null)
         {
             return "444";
         }

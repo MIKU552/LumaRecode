@@ -8,6 +8,8 @@
 
 输出编码为 UTF-8。下面的命令设置当前 PowerShell 会话的输出编码，并显示帮助、工具信息和转换示例。
 
+动态 HDR 素材默认使用软件 HEVC 保留元数据。`--dynamic-hdr standard --purpose share` 输出标准 HDR；`--range sdr` 转为 SDR。ProRes RAW 自动显影为 HLG，可用 `--range sdr` 输出 SDR。支持格式见[色彩转换](color-conversion.md)。
+
 ## 开始使用
 
 ```powershell
@@ -51,6 +53,7 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | `--range` / `--dynamic-range` | `auto` / `sdr` / `hdr`；默认按素材动态范围选择 |
 | `--transform` | `auto` / `none` / `log-hdr` / `log-sdr` / `hdr-sdr` |
 | `--profile` | `auto` / `milog` / `pocket3` / `samsung` |
+| `--dynamic-hdr` | `preserve` / `standard` |
 | `--input-kind` | `auto` / `sdr` / `hlg` / `pq` / `log`；用于人工纠正原片标签 |
 | `--sampling` | `auto` / `source` / `420` / `422` / `444` / `gray`；默认 `auto`：软件 HEVC / AVC 归档保持原采样，RGB 使用 4:4:4；AV1 和分享使用 4:2:0；422 / 444 / gray 需要软件 HEVC / AVC |
 | `--color-range` | `auto` / `source` / `limited` / `full`；默认 `auto`：归档保持原范围，分享转换为 Limited |

@@ -109,11 +109,9 @@ def main():
     assert version in call("--version", raw=True).stdout
     assert "同一个 EXE" in call("--lang", "zh", "--help", raw=True).stdout
     assert len(call("--json", "presets")["presets"]) == 7
-    assert {p["id"] for p in call("profiles", "--json")["profiles"]} == {
-        "milog",
-        "pocket3",
-        "samsung",
-    }
+    assert [p["id"] for p in call("profiles", "--json")["profiles"]] == [
+        "pocket3", "samsung", "milog", "applelog", "applelog2"
+    ]
     assert call("license", "--json", "--no-settings")["project_license"] == "MIT"
     assert (
         call("doctor", "--no-settings", "--json", status=6)["data"]["code"] == "terms_not_accepted"
@@ -284,7 +282,7 @@ def main():
             and converted["video"]["color_range"] == "pc"
         )
         assert not list(folder.glob("*_SDR*")), "Dry-run created an output video"
-        for profile in ("milog", "pocket3", "samsung"):
+        for profile in ("pocket3", "samsung", "milog", "applelog", "applelog2"):
             plan = events("plan", source, "--input-kind", "log", "--profile", profile)
             assert plan[0]["data"]["options"]["transform"] == "log-hdr"
         result = events("convert", source, "--range", "hdr", status=2)

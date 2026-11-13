@@ -12,7 +12,8 @@
 ## 功能
 
 - 按快速分享与软件归档选择预设，支持 HEVC、AV1、H.264 和 MP4 / MKV。
-- 支持 Mi-Log、Pocket 3 D-Log M、Samsung Log 转换为 HLG HDR 或 Rec.709 SDR，以及 HLG / PQ 转 SDR。
+- 支持 DJI D-Log M、Samsung Log、Mi-Log、Apple Log 和 Apple Log 2 转换为 HLG HDR 或 Rec.709 SDR，以及 HLG / PQ 转 SDR。
+- 支持 ProRes RAW 显影、Dolby Vision / HDR10+ 识别与转换，以及软件编码保留动态元数据。
 - 读取分辨率、帧率、位深、色彩标签及音轨，按素材设置默认选项。
 - 设置色度采样、Limited / Full 范围及音轨，支持 FLAC 无损音频。
 - 显示进度、编码帧率、当前位置与剩余时间，完成后校验输出格式。
@@ -28,6 +29,8 @@
 4. 选择保存位置，点击“开始转换”。
 
 “快速分享”使用 Intel QSV；“软件归档”使用 CPU 编码。
+
+Dolby Vision / HDR10+ 素材默认使用软件 HEVC 保留动态元数据；“标准 HDR”可用于硬件快速分享。Dolby Vision 支持单层 Profile 5、8.1、8.4、10.1 和 10.4。ProRes RAW 在确认 FFmpeg 解码兼容性后，根据相机白平衡、色彩矩阵和增益显影，默认输出 HLG。格式与处理流程见[色彩转换](docs/color-conversion.md)。
 
 ## 编码与色彩
 
@@ -103,7 +106,7 @@ licenses/  第三方许可、声明与来源清单
 
 项目自主代码由 **Windows 版 Codex** 使用 **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)**、**极高（xhigh）** 推理设置完成。**[MIKU552](https://github.com/MIKU552)** 负责需求、设备与素材，并进行实机核验。
 
-自主代码、文档、图形及项目生成的 Mi-Log / Samsung Log LUT 采用 **[MIT License](LICENSE)**。第三方 LUT、字体和运行时的许可与来源见 [NOTICE](NOTICE) 和[第三方组件](Assets/THIRD_PARTY.md)。
+自主代码、文档、图形及项目生成的相机 Log LUT 采用 **[MIT License](LICENSE)**。第三方 LUT、字体和运行时的许可与来源见 [NOTICE](NOTICE) 和[第三方组件](Assets/THIRD_PARTY.md)。
 
 ## 文档
 

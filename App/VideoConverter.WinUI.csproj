@@ -25,7 +25,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <Version>4.1.4</Version>
+    <Version>4.2.0</Version>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">

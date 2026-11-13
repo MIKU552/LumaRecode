@@ -33,6 +33,7 @@
 !/qa/BackendChecks/
 !/qa/PerformanceChecks/
 !/qa/TimingChecks/
+!/qa/HdrChecks/
 **/bin/
 **/obj/
 **/__pycache__/

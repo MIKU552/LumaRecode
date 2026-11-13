@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "reviewed_on": "2026-11-12",
+  "reviewed_on": "2026-11-13",
   "scope": "LUT assets only; runtime package notices and hashes are in ../../licenses/manifest.json.",
   "project_license": "MIT",
   "generated_luts": [
@@ -15,6 +15,18 @@
       "license": "MIT",
       "generator": "tools/generate_hlg_luts.py",
       "sha256": "ecf1c7196aae39a734085be4bf50a3c0e87036397a84bb4984dc085407281ae1"
+    },
+    {
+      "path": "Assets/Apple_Log_to_Rec2100_HLG.cube",
+      "license": "MIT",
+      "generator": "tools/generate_hlg_luts.py",
+      "sha256": "6a8947d1b9398ff5b21b91043a6871feedeb34f92d9e28129a7b662950d27ac5"
+    },
+    {
+      "path": "Assets/Apple_Log_2_to_Rec2100_HLG.cube",
+      "license": "MIT",
+      "generator": "tools/generate_hlg_luts.py",
+      "sha256": "5e0b0eb22018a8ee138928574b2fd9173ad9db19aa8eb84bb998210c98eb6910"
     }
   ],
   "third_party_lut": {

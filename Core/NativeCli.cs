@@ -80,7 +80,7 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
         var target = fields.Text("range", "auto");
         if (target == "auto")
         {
-            target = kind is "hlg" or "pq" or "log" ? "hdr" : "sdr";
+            target = kind is "hlg" or "pq" or "log" or "raw" ? "hdr" : "sdr";
         }
 
         var transform = fields.Text("transform", "auto");
@@ -99,6 +99,10 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
             throw new CliException("invalid_arguments", T("--profile 需要 Log 转换；要覆盖错误的色彩标签，请指定 --input-kind log。"));
         }
 
+        if (!fields.ContainsKey("purpose") && media.DynamicHdr && target == "hdr" && fields.Text("dynamic_hdr", "preserve") == "preserve")
+        {
+            fields["purpose"] = "archive";
+        }
         fields["output"] = target;
         fields["source_kind"] = kind;
         fields["transform"] = transform;
@@ -378,7 +382,7 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
                         ["output"] = destination,
                         ["options"] = options.ToJson(),
                         ["pixel_format"] = options.PixelFormat,
-                        ["cwd"] = engine.Assets,
+                        ["cwd"] = plan.WorkingDirectory ?? engine.Assets,
                         ["argv"] = JsonFields.Strings(plan.Arguments),
                         ["expected_colors"] = plan.Colors
                     };

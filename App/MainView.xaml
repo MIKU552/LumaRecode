@@ -97,6 +97,8 @@
             <StackPanel Orientation="Horizontal" Spacing="12"><Border Width="32" Height="32" CornerRadius="8" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><SymbolIcon Symbol="Switch" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" /></Border><TextBlock Text="色彩转换" Style="{StaticResource Section}" VerticalAlignment="Center" x:Name="LocalizedElement32" /></StackPanel>
             <ComboBox x:Name="Transform" Header="LUT / 色调映射" HorizontalAlignment="Stretch" AutomationProperties.Name="色彩转换" />
             <ComboBox x:Name="Profile" Header="相机曲线" HorizontalAlignment="Stretch" AutomationProperties.Name="相机曲线" />
+            <ComboBox x:Name="DynamicMetadata" Header="动态 HDR" HorizontalAlignment="Stretch" AutomationProperties.Name="动态 HDR" />
+            <TextBlock x:Name="DynamicNote" Style="{StaticResource Secondary}" />
             <TextBlock x:Name="TransformNote" Style="{StaticResource Secondary}" />
             <ComboBox x:Name="Sampling" Header="色度采样" HorizontalAlignment="Stretch" AutomationProperties.Name="色度采样" />
             <ComboBox x:Name="BitDepth" Header="位深" HorizontalAlignment="Stretch" AutomationProperties.Name="位深" />

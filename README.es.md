@@ -12,7 +12,8 @@ Herramienta de transcodificación de vídeo y conversión de color para Windows 
 ## Funciones
 
 - Preajustes de Compartir rápido y Archivo por software para HEVC, AV1 y H.264, con salida MP4 / MKV.
-- Conversión de Mi-Log, Pocket 3 D-Log M y Samsung Log a HLG HDR o Rec.709 SDR; conversión de HLG / PQ a SDR.
+- Conversión de DJI D-Log M, Samsung Log, Mi-Log, Apple Log y Apple Log 2 a HLG HDR o Rec.709 SDR; conversión de HLG / PQ a SDR.
+- Revelado de ProRes RAW, detección y conversión de Dolby Vision / HDR10+ y conservación de metadatos dinámicos con codificación por software.
 - Lectura de resolución, tasa de fotogramas, profundidad de bits, etiquetas de color y pistas de audio, con ajustes iniciales según el material.
 - Selección de submuestreo de croma, rango Limited / Full y formato de audio, incluido FLAC sin pérdidas.
 - Progreso, fps de codificación, posición, tiempo restante y verificación del formato de salida.
@@ -28,6 +29,8 @@ Herramienta de transcodificación de vídeo y conversión de color para Windows 
 4. Elige la ruta de salida y pulsa **Iniciar conversión**.
 
 Compartir rápido usa Intel QSV. Archivo por software usa la CPU.
+
+Las fuentes Dolby Vision / HDR10+ usan HEVC por software para conservar los metadatos dinámicos de forma predeterminada. Elige HDR estándar para compartir con codificación por hardware. ProRes RAW comprueba la compatibilidad de FFmpeg y se revela con el balance de blancos, la matriz de color y la ganancia de cámara. Consulta los formatos compatibles en [Conversión de color](docs/color-conversion.md).
 
 ## Codificación y color
 
@@ -103,7 +106,7 @@ licenses/  Licencias, avisos y procedencia de componentes de terceros
 
 El código original del proyecto se desarrolló con **Codex para Windows**, usando **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** y el nivel de razonamiento **Extra high (`xhigh`)**. **[MIKU552](https://github.com/MIKU552)** define los requisitos, aporta el equipo y el material, y verifica la aplicación en dispositivos reales.
 
-El código, la documentación, los gráficos originales y las LUT de Mi-Log / Samsung Log generadas por el proyecto usan la **[licencia MIT](LICENSE)**. Las licencias y procedencia de las LUT, fuentes y entornos de ejecución de terceros figuran en [NOTICE](NOTICE) y en [componentes de terceros](Assets/THIRD_PARTY.md).
+El código, la documentación, los gráficos originales y las LUT de Log de cámara generadas por el proyecto usan la **[licencia MIT](LICENSE)**. Las licencias y procedencia de las LUT, fuentes y entornos de ejecución de terceros figuran en [NOTICE](NOTICE) y en [componentes de terceros](Assets/THIRD_PARTY.md).
 
 ## Documentación
 

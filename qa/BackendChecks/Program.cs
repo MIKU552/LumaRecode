@@ -53,6 +53,21 @@ if (args.FirstOrDefault() == "--server")
                 var (kind, profile, evidence) = MediaProbe.Classify(request["video"]!.AsObject(), request["tags"]!.AsObject(), dji);
                 answer = new JsonArray(JsonValue.Create(kind), JsonValue.Create(profile), JsonValue.Create(evidence));
             }
+            else if (action == "hdr10plus-export")
+            {
+                await using var output = File.Create(request.Text("output"));
+                if (request["frames"] is not null)
+                {
+                    await Hdr10PlusMetadata.ExportAsync(new StringReader(request.Text("frames")), output);
+                }
+                else
+                {
+                    output.Close();
+                    var media = await MediaProbe.InspectAsync(tools, request.Text("path"));
+                    await DynamicHdr.ExtractAsync(tools, media, request.Text("output"), CancellationToken.None);
+                }
+                answer = JsonValue.Create(true);
+            }
             else
             {
                 var media = FromJson(request["media"]!);
@@ -77,7 +92,10 @@ if (args.FirstOrDefault() == "--server")
                 else if (action is "run" or "run-events")
                 {
                     var events = new JsonArray();
-                    var runTools = request["ffmpeg"] is not null ? tools with { Ffmpeg = request.Text("ffmpeg") } : tools;
+                    var runTools = request["ffmpeg"] is not null ? tools with
+                    {
+                        Ffmpeg = request.Text("ffmpeg")
+                    } : tools;
                     var result = await engine.RunAsync(runTools, media, options, request.Text("output"), (type, value) =>
                     {
                         if (action == "run-events" && type != "progress")

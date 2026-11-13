@@ -10,7 +10,9 @@ root = Path(__file__).resolve().parents[2]
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--exe", type=Path, default=root / "dist/SelfContained/LumaRecode.exe")
+    parser.add_argument(
+        "--exe", type=Path, default=root / "dist/SelfContained/LumaRecode.exe"
+    )
     args = parser.parse_args()
     assert args.exe.is_file(), "Build the application first."
     count = 0
@@ -54,7 +56,13 @@ def main():
         )
         count += 1
         status, text = invoke("profiles", "--json")
-        assert status == 0 and len(json.loads(text)["profiles"]) == 3
+        assert status == 0 and [p["id"] for p in json.loads(text)["profiles"]] == [
+            "pocket3",
+            "samsung",
+            "milog",
+            "applelog",
+            "applelog2",
+        ]
         count += 1
     print(f"PASS {count} packaged native CLI language and notice checks.")
 

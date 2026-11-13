@@ -23,6 +23,8 @@ La interfaz y la CLI comparten la aceptación de las condiciones de los componen
 
 Las herramientas se buscan primero en `PATH` y después en las rutas guardadas por la interfaz. Puedes indicar `--ffmpeg PATH --ffprobe PATH`. `--lang system|en|zh|ja|es` selecciona el idioma de salida.
 
+Las fuentes HDR dinámicas usan HEVC por software para conservar metadatos. Usa `--dynamic-hdr standard --purpose share` para HDR estándar o `--range sdr` para SDR. ProRes RAW se revela automáticamente a HLG; usa `--range sdr` para SDR. Consulta [Conversión de color](color-conversion.md).
+
 ## Comandos y opciones
 
 | Comando | Función |
@@ -46,8 +48,9 @@ Todos los comandos admiten `--help`. Los resultados de análisis, catálogos, di
 | `--codec` | `hevc` (predeterminado), `av1`, `avc` |
 | `--range` / `--dynamic-range` | `auto` (predeterminado), `sdr`, `hdr` |
 | `--transform` | `auto` (predeterminado), `none`, `log-hdr`, `log-sdr`, `hdr-sdr` |
-| `--profile` | `auto`, `milog`, `pocket3`, `samsung` |
-| `--input-kind` | `auto`, `sdr`, `hlg`, `pq`, `log` |
+| `--profile` | `auto`, `pocket3`, `samsung`, `milog`, `applelog`, `applelog2` |
+| `--dynamic-hdr` | `preserve` / `standard` |
+| `--input-kind` | `auto`, `sdr`, `hlg`, `pq`, `log`, `raw` |
 | `--sampling` | `auto` (predeterminado), `source`, `420`, `422`, `444`, `gray`. Auto conserva el submuestreo en archivo HEVC / AVC por software, convierte RGB a 4:4:4 y usa 4:2:0 para AV1 / compartir; 422 / 444 / gray usan HEVC / AVC por software |
 | `--color-range` | `auto` (predeterminado), `source`, `limited`, `full`. Auto conserva el rango en archivo y convierte a Limited al compartir |
 | `--bit-depth` | `auto`, `8`, `10`, `12`; archivo sigue la profundidad original y los límites del codificador; compartir usa SDR de 8 bits / HDR de 10 bits |

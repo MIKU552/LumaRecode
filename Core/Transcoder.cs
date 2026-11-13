@@ -22,9 +22,11 @@ public sealed class Transcoder
     // the gamut retained by the camera's Log curve. See each LUT's provenance.
     public static readonly Dictionary<string, (string Name, string File, string Matrix, string Range)> Profiles = new()
     {
+        ["pocket3"] = ("DJI Pocket 3 D-Log M", "DJI_Osmo_DLogM_to_Rec2100_HLG_BT2408_Neutral.cube", "709", "limited"),
+        ["samsung"] = ("Samsung Log", "Samsung_Log_to_Rec2100_HLG.cube", "2020_ncl", "limited"),
         ["milog"] = ("小米 Mi-Log", "REDMI_K90_MiLog_to_Rec2100_HLG.cube", "2020_ncl", "full"),
-        ["pocket3"] = ("Pocket 3 D-Log M", "DJI_Osmo_DLogM_to_Rec2100_HLG_BT2408_Neutral.cube", "709", "limited"),
-        ["samsung"] = ("Samsung Log", "Samsung_Log_to_Rec2100_HLG.cube", "2020_ncl", "limited")
+        ["applelog"] = ("Apple Log", "Apple_Log_to_Rec2100_HLG.cube", "2020_ncl", "limited"),
+        ["applelog2"] = ("Apple Log 2", "Apple_Log_2_to_Rec2100_HLG.cube", "2020_ncl", "limited")
     };
     private static JsonObject Rec709() => new() { ["color_primaries"] = "bt709", ["color_transfer"] = "bt709", ["color_space"] = "bt709", ["color_range"] = "tv" };
     private static JsonObject Hlg() => new() { ["color_primaries"] = "bt2020", ["color_transfer"] = "arib-std-b67", ["color_space"] = "bt2020nc", ["color_range"] = "tv" };
@@ -93,7 +95,15 @@ public sealed class Transcoder
         }
         Require(options.Variant == "standard" || options.Variant == "fast" && options.Purpose == "archive" && options.Codec == "av1", "快速备用质量档仅用于软件归档 AV1。");
         var kind = options.SourceKind == "auto" ? media.Kind : options.SourceKind;
-        Require(kind is "sdr" or "hlg" or "pq" or "log" or "unknown", "请选择有效的输入类型。");
+        Require(kind is "sdr" or "hlg" or "pq" or "log" or "raw" or "unknown", "请选择有效的输入类型。");
+        Require((kind == "raw") == (media.Raw is not null), "ProRes RAW 使用自动识别与相机参数显影。");
+        Require(media.Raw is null || media.Raw.Flag("decoder_version_supported"), "ProRes RAW 显影需要 FFmpeg 9 或更新版本。");
+        Require(media.Raw is null || media.Raw.Flag("decoder_supported"), "当前 FFmpeg 无法解码此 ProRes RAW。请先用支持该相机的 RAW 软件显影为 ProRes 或 HEVC。");
+        if (media.Raw is not null)
+        {
+            RawDevelopment.Orientation(media);
+        }
+        DynamicHdr.Validate(media, options);
         if (options.Transform is "log-hdr" or "log-sdr")
         {
             Require(Profiles.ContainsKey(options.Profile ?? ""), "请选择具体的 Log 曲线。");
@@ -122,7 +132,7 @@ public sealed class Transcoder
     private static string FrameTags(JsonObject colors) => "setparams=" + string.Join(':',
         new[] { ("color_primaries", "color_primaries"), ("color_transfer", "color_trc"), ("color_space", "colorspace"), ("color_range", "range") }
         .Where(p => !JsonFields.Unspecified(colors.Text(p.Item1))).Select(p => p.Item2 + "=" + (p.Item1 == "color_range" ? colors.Text(p.Item1) switch { "pc" => "full", "tv" => "limited", var v => v } : colors.Text(p.Item1))));
-    private static string ToneMap(string range) => $"libplacebo=format=yuv444p16le:colorspace=bt709:color_primaries=bt709:color_trc=bt709:range={range}:tonemapping=bt.2390:apply_dolbyvision=0,sidedata=delete:type=MASTERING_DISPLAY_METADATA,sidedata=delete:type=CONTENT_LIGHT_LEVEL,sidedata=delete:type=DYNAMIC_HDR_PLUS";
+    private static string ToneMap(string range, bool dolby = false) => $"libplacebo=format=yuv444p16le:colorspace=bt709:color_primaries=bt709:color_trc=bt709:range={range}:tonemapping=bt.2390:apply_dolbyvision={(dolby ? 1 : 0)},sidedata=delete:type=MASTERING_DISPLAY_METADATA,sidedata=delete:type=CONTENT_LIGHT_LEVEL,sidedata=delete:type=DYNAMIC_HDR_PLUS";
     // Expand sample range before the RGB LUT, retain float intermediates,
     // then convert the HLG RGB result to BT.2020 YCbCr. Quantize only at output.
     private static string LogFilter(JsonObject video, string profile)
@@ -202,12 +212,19 @@ public sealed class Transcoder
             }
         }
 
+        bool preserveDynamic = DynamicHdr.Preserve(media, options);
+        bool developRaw = media.Raw is not null;
+        bool renderDolby = media.DolbyVision is not null && !preserveDynamic;
+        if (preserveDynamic && media.DolbyVision?.Integer("dv_profile") == 5)
+        {
+            video["color_space"] = "ipt-c2";
+        }
         if (OutputPolicy.IsRgb(media))
         {
             video["color_space"] = "gbr";
         }
 
-        var colors = options.Output == "sdr" ? Rec709() : kind == "log" ? Hlg() : new JsonObject();
+        var colors = options.Output == "sdr" ? Rec709() : kind is "log" or "raw" ? Hlg() : new JsonObject();
         if (colors.Count == 0)
         {
             foreach (var p in colorFlags)
@@ -222,8 +239,7 @@ public sealed class Transcoder
         }
 
         colors["color_range"] = options.ColorRange == "full" ? "pc" : "tv";
-        var dynamic = media.SideData.Select(s => s.Text("side_data_type")).Where(s => new[] { "DOVI", "Dolby Vision", "HDR Dynamic" }.Any(s.Contains)).ToArray();
-        Require(dynamic.Length == 0 || options.Transform == "hdr-sdr" && dynamic.All(s => s.Contains("HDR10+")), "该素材带动态 HDR 元数据。HDR10+ 可选 HDR → SDR，Dolby Vision 需要专门流程。");
+
         var config = (options.Variant == "fast" ? Config["archive_fast_av1"] : Config[options.Purpose]?[options.Codec])!.AsObject();
         bool colorConversion = colors.Any(p => video.Text(p.Key) != p.Value?.ToString());
         // A QSV surface can stay on the GPU only when the filter chain accepts
@@ -232,7 +248,7 @@ public sealed class Transcoder
         // Decode these inputs in software so rotations/mirroring are applied
         // to pixels once, rather than lost when the new stream is muxed.
         bool displayTransform = media.SideData.Any(s => s.Text("side_data_type") == "Display Matrix");
-        bool softwareFrames = options.Transform != "none" || options.Purpose == "archive" || options.CpuDecode || colorConversion || displayTransform;
+        bool softwareFrames = options.Transform != "none" || options.Purpose == "archive" || options.CpuDecode || colorConversion || displayTransform || media.DynamicHdr || developRaw;
         // Different nominal/average rates identify common camera VFR files.
         // Equal or absent rates do not prove CFR; execution can retry once if
         // the QSV runtime returns non-monotonic DTS despite these headers.
@@ -260,9 +276,37 @@ public sealed class Transcoder
             args.AddRange(["-hwaccel", "qsv", "-hwaccel_output_format", "qsv", "-c:v", decoder!]);
         }
 
+        if (developRaw)
+        {
+            // FFmpeg's shared ProRes AVX2 coefficient permutation is incompatible
+            // with the RAW Bayer C IDCT on affected builds (upstream #25461).
+            args.AddRange(["-threads:v", "2", "-filter_threads", "2", "-cpuflags", "-avx2", "-apply_cropping", "0", "-noautorotate"]);
+        }
         args.AddRange(["-i", media.Path, "-map", "0:" + video.Text("index"), "-map", "0:a?", "-map_metadata", options.Transform.StartsWith("log-") ? "-1" : "0", "-map_chapters", "0", "-sn", "-dn"]);
         var filters = new List<string>();
-        if (kind == "log")
+        if (developRaw)
+        {
+            filters.Add(RawDevelopment.Filter(media.Raw!, "raw-calibration.cmd"));
+            filters.AddRange(RawDevelopment.Orientation(media));
+            if (options.Sampling is "420" or "422")
+            {
+                filters.Add("pad=ceil(iw/2)*2:" + (options.Sampling == "420" ? "ceil(ih/2)*2" : "ih"));
+            }
+        }
+        else if (preserveDynamic)
+        {
+            // In particular, Profile 5 stores IPTPQc2 code values. Passing these
+            // through a YCbCr/RGB converter would invalidate its RPU metadata.
+            filters.Add("null");
+        }
+        else if (renderDolby)
+        {
+            if (options.Output == "hdr")
+            {
+                filters.Add($"libplacebo=format=yuv444p16le:colorspace=bt2020nc:color_primaries=bt2020:color_trc={(kind == "hlg" ? "arib-std-b67" : "smpte2084")}:range={(options.ColorRange == "full" ? "pc" : "tv")}:apply_dolbyvision=1");
+            }
+        }
+        else if (kind == "log")
         {
             if (OutputPolicy.IsRgb(media))
             {
@@ -280,11 +324,15 @@ public sealed class Transcoder
 
             filters.Add(FrameTags(video));
         }
-        if (options.Transform is "hdr-sdr" or "log-sdr")
+        if (options.Transform is "hdr-sdr" or "log-sdr" || developRaw && options.Output == "sdr")
         {
-            filters.Add(ToneMap(options.ColorRange == "full" ? "pc" : "tv"));
+            filters.Add(ToneMap(options.ColorRange == "full" ? "pc" : "tv", renderDolby));
         }
 
+        if (media.DynamicHdr && !preserveDynamic)
+        {
+            filters.Add("sidedata=delete:type=DOVI_RPU_BUFFER,sidedata=delete:type=DOVI_METADATA,sidedata=delete:type=DYNAMIC_HDR_PLUS");
+        }
         if (gpu)
         {
             if (timingCompatibility)
@@ -302,7 +350,7 @@ public sealed class Transcoder
                 filters.Add($"vpp_qsv=format={(options.Depth == 10 ? "p010le" : "nv12")}{colorOptions}");
             }
         }
-        else
+        else if (!preserveDynamic)
         {
             var conversion = new List<string> { "range=" + options.ColorRange, "dither=error_diffusion" };
             foreach (var (key, target) in new[] { ("color_primaries", "primaries"), ("color_transfer", "transfer"), ("color_space", "matrix") })
@@ -353,6 +401,15 @@ public sealed class Transcoder
                 extra[p.Key] = p.Value?.DeepClone();
             }
 
+            if (preserveDynamic && media.DolbyVision is not null && options.Codec == "hevc")
+            {
+                extra["vbv-maxrate"] = 100000;
+                extra["vbv-bufsize"] = 100000;
+            }
+            if (preserveDynamic && media.Hdr10Plus)
+            {
+                extra["dhdr10-info"] = "hdr10plus.json";
+            }
             var metadata = options.Output == "hdr" && kind == "pq" && options.Codec is "hevc" or "av1" ? HdrMetadata(media.SideData, options.Codec) : [];
             if (options.Codec == "hevc" && metadata.Length > 0)
             {
@@ -366,15 +423,27 @@ public sealed class Transcoder
                     string.Join(':', extra.Select(p => p.Key + "=" + p.Value).Concat(metadata))]);
             }
         }
+        if (media.DolbyVision is not null && options.Purpose == "archive" && options.Codec is "hevc" or "av1")
+        {
+            args.AddRange(["-dolbyvision", preserveDynamic ? "1" : "0"]);
+        }
+        if (preserveDynamic)
+        {
+            args.AddRange(["-strict", "unofficial"]);
+        }
         foreach (var (key, flag) in colorFlags)
         {
-            if (!JsonFields.Unspecified(colors.Text(key)))
+            if (!JsonFields.Unspecified(colors.Text(key)) && !(preserveDynamic && media.DolbyVision?.Integer("dv_profile") == 5))
             {
                 args.AddRange([flag, colors.Text(key)]);
             }
         }
 
         args.AddRange(["-fps_mode:v", "passthrough", "-enc_time_base:v", "filter"]);
+        if (developRaw)
+        {
+            args.AddRange(["-metadata:s:v:0", "rotate=0"]);
+        }
         var audio = ResolveAudio(options);
         if (audio == "copy")
         {
@@ -415,7 +484,7 @@ public sealed class Transcoder
         }
 
         args.Add(Path.GetFullPath(destination));
-        return new(args.ToArray(), colors, options, timingCompatibility);
+        return new(args.ToArray(), colors, options, timingCompatibility, developRaw || preserveDynamic && media.Hdr10Plus ? Path.GetDirectoryName(Path.GetFullPath(destination)) : null);
     }
     private string ResolveAudio(EncodeOptions options) => options.Audio == "auto" ? options.Purpose == "archive" ? Config["audio"].Text("archive_default") : Config["audio"]!["share_default"].Text(options.Codec) : options.Audio;
     /// <summary>Checks the selected FFmpeg build for required encoders, formats and filters.</summary>
@@ -437,7 +506,7 @@ public sealed class Transcoder
             Require(!supported.Success || supported.Groups[1].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(options.PixelFormat), $"当前 FFmpeg 的 {encoder} 不支持 {options.PixelFormat}，请更换编码器或采样格式。");
         }
         var filter = plan.Arguments[Array.IndexOf(plan.Arguments, "-vf") + 1];
-        var required = new[] { "zscale", "lut3d", "libplacebo", "vpp_qsv" }.Where(n => filter.Contains(n + "=")).ToArray();
+        var required = new[] { "zscale", "lut3d", "libplacebo", "vpp_qsv", "sendcmd", "geq", "colorchannelmixer" }.Where(n => filter.Contains(n + "=") || filter.Contains(n + "@")).ToArray();
         if (required.Length > 0)
         {
             result = await Report(["-hide_banner", "-filters"]);
@@ -452,18 +521,47 @@ public sealed class Transcoder
         var result = await MediaProbe.InspectAsync(tools, output, cancellation);
         Require(result.Video.Text("pix_fmt").Replace("yuvj", "yuv") == options.PixelFormat || options.Sampling == "gray" && result.Video.Flag("_monochrome"), $"输出像素格式与选择不符，得到 {result.Video.Text("pix_fmt")}。");
         var displayMatrix = source.SideData.FirstOrDefault(s => s.Text("side_data_type") == "Display Matrix");
-        if (displayMatrix is not null)
+        if (displayMatrix is not null || source.Raw is not null)
         {
             var angle = Math.Abs(JsonFields.Number(displayMatrix.Text("rotation"))) % 180;
             bool swap = Math.Abs(angle - 90) < 1;
-            int width = source.Video.Integer(swap ? "height" : "width");
-            int height = source.Video.Integer(swap ? "width" : "height");
+            int width = source.Video.Integer("width"), height = source.Video.Integer("height");
+            if (source.Raw is { } raw)
+            {
+                var crop = raw["crop"]!.AsArray().Select(v => v!.GetValue<int>()).ToArray();
+                width = raw.Integer("width") - crop[0] - crop[1];
+                height = raw.Integer("height") - crop[2] - crop[3];
+            }
+            if (swap)
+                (width, height) = (height, width);
+            if (source.Raw is not null)
+            {
+                if (options.Sampling is "420" or "422")
+                    width += width % 2;
+                if (options.Sampling == "420")
+                    height += height % 2;
+            }
             Require(result.Video.Integer("width") == width && result.Video.Integer("height") == height,
                 "输出画面尺寸与方向变换不符。");
         }
         foreach (var p in expected)
         {
             Require(JsonFields.Unspecified(p.Value?.ToString()) || result.Video.Text(p.Key) == p.Value?.ToString(), $"输出色彩标签不符：{p.Key}。");
+        }
+        if (DynamicHdr.Preserve(source, options))
+        {
+            if (source.DolbyVision is { } dv)
+            {
+                Require(result.DolbyVision is { } after && after.Integer("dv_profile") == (options.Codec == "av1" ? 10 : dv.Integer("dv_profile") == 10 ? 8 : dv.Integer("dv_profile"))
+                    && after.Integer("dv_bl_signal_compatibility_id") == dv.Integer("dv_bl_signal_compatibility_id"), "输出缺少对应的 Dolby Vision 配置。");
+                Require(JsonNode.DeepEquals(source.SideData.FirstOrDefault(s => s.Text("side_data_type") == "Dolby Vision Metadata"),
+                    result.SideData.FirstOrDefault(s => s.Text("side_data_type") == "Dolby Vision Metadata")), "输出 Dolby Vision 首帧元数据不符。");
+            }
+            if (source.Hdr10Plus)
+            {
+                Require(result.Hdr10Plus && JsonNode.DeepEquals(source.SideData.FirstOrDefault(s => s.Text("side_data_type").Contains("HDR10+")),
+                    result.SideData.FirstOrDefault(s => s.Text("side_data_type").Contains("HDR10+"))), "输出 HDR10+ 首帧元数据不符。");
+            }
         }
 
         if (options.Audio == "flac")
@@ -520,6 +618,16 @@ public sealed class Transcoder
             var temporary = Path.Combine(scratch, Path.GetFileName(output));
             var plan = Plan(tools, media, options, temporary, seconds);
             await CheckRequirementsAsync(tools, options, plan, cancellation, reports);
+            if (media.Raw is not null)
+            {
+                emit("status", JsonValue.Create("正在读取 RAW 相机参数…"));
+                await RawDevelopment.PrepareAsync(tools, media, Path.Combine(scratch, "raw-calibration.cmd"), seconds, cancellation);
+            }
+            if (DynamicHdr.Preserve(media, options) && media.Hdr10Plus)
+            {
+                emit("status", JsonValue.Create("正在提取 HDR10+ 动态元数据…"));
+                await DynamicHdr.ExtractAsync(tools, media, Path.Combine(scratch, "hdr10plus.json"), cancellation);
+            }
             if (options.Suffix == ".mp4" && ResolveAudio(options) == "copy" && media.Audio.Any())
             {
                 emit("status", JsonValue.Create("正在检查 MP4 音轨兼容性…"));
@@ -618,7 +726,7 @@ public sealed class Transcoder
     {
         emit("log", JsonValue.Create(string.Join(' ', plan.Arguments.Select(a => '"' + a.Replace("\"", "\\\"") + '"'))));
         cancellation.ThrowIfCancellationRequested();
-        using var process = new Process { StartInfo = ProcessRunner.StartInfo(plan.Arguments[0], plan.Arguments.Skip(1), Assets) };
+        using var process = new Process { StartInfo = ProcessRunner.StartInfo(plan.Arguments[0], plan.Arguments.Skip(1), plan.WorkingDirectory ?? Assets) };
         process.Start();
         using var registration = cancellation.Register(() => ProcessRunner.Stop(process));
         var errors = QsvError.None;
