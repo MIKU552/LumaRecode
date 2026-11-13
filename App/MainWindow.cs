@@ -718,7 +718,13 @@ public sealed class MainWindow : Window
             });
         }
         catch (Exception error) { if (!closing) await MessageAsync(L.T("读取失败"), error.Message); }
-        finally { probes.Remove(client); probing = false; Refresh(); }
+        finally
+        {
+            probes.Remove(client);
+            probing = false;
+            if (!closing)
+                Refresh();
+        }
     }
     // A new source starts from share defaults; subsequent user selections are
     // retained by Refresh as long as the source and encoder can support them.
@@ -1089,6 +1095,10 @@ public sealed class MainWindow : Window
     {
         if (closing || activeJob is null)
         {
+            // Invalidate queued probe results before releasing the window.
+            // A cancelled probe can still have a previously queued media event.
+            closing = true;
+            generation++;
             foreach (var probe in probes)
                 probe.Dispose();
             return;
