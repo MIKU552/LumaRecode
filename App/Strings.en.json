@@ -315,5 +315,9 @@
   "覆盖": "Replace",
   "输出文件已存在：{0}\n编码和校验成功后，将替换此文件。": "Output file already exists: {0}\nIt will be replaced after successful encoding and verification.",
   "使用 --overwrite 确认覆盖，或使用 --skip-existing 跳过。": "Use --overwrite to approve replacement or --skip-existing to skip.",
-  "输出文件已存在：{0}\n是否覆盖？[y/N]": "Output file already exists: {0}\nReplace it? [y/N]"
+  "输出文件已存在：{0}\n是否覆盖？[y/N]": "Output file already exists: {0}\nReplace it? [y/N]",
+  "复制": "Copy",
+  "复制全部日志": "Copy all log text",
+  "已复制": "Copied",
+  "复制失败": "Copy failed"
 }

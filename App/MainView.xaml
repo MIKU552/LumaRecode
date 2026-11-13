@@ -14,6 +14,7 @@
       <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
       <Setter Property="TextWrapping" Value="Wrap" /><Setter Property="FontSize" Value="13" />
     </Style>
+    <Style x:Key="LogTextBoxStyle" TargetType="local:LogTextBox" BasedOn="{StaticResource DefaultTextBoxStyle}" />
     <Style x:Key="PathTextBoxStyle" TargetType="local:PathTextBox" BasedOn="{StaticResource DefaultTextBoxStyle}" />
     <Style x:Key="ActionButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
       <Setter Property="MinHeight" Value="36" />
@@ -119,7 +120,21 @@
           </StackPanel>
         </Border>
       </Grid>
-      <Expander x:Name="LogPanel" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="转换日志"><Expander.Header><StackPanel Orientation="Horizontal" Spacing="12"><SymbolIcon Symbol="Document" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /><TextBlock Text="转换日志" FontSize="14" VerticalAlignment="Center" x:Name="LocalizedElement44" /></StackPanel></Expander.Header><TextBox IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" x:Name="Log" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Height="160" FontFamily="Consolas" FontSize="12" ScrollViewer.VerticalScrollBarVisibility="Auto" /></Expander>
+      <Expander x:Name="LogPanel" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="转换日志">
+        <Expander.Header>
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <SymbolIcon Symbol="Document" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <TextBlock Text="转换日志" FontSize="14" VerticalAlignment="Center" x:Name="LocalizedElement44" />
+            <Button x:Name="CopyLog" MinWidth="0" MinHeight="28" Padding="8,4" VerticalAlignment="Center" IsEnabled="False" ToolTipService.ToolTip="复制全部日志" AutomationProperties.Name="复制全部日志">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <FontIcon Glyph="&#xE8C8;" FontSize="12" />
+                <TextBlock x:Name="CopyLogLabel" Text="复制" FontWeight="Normal" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Expander.Header>
+        <local:LogTextBox x:Name="Log" Style="{StaticResource LogTextBoxStyle}" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Height="160" FontFamily="Consolas" FontSize="12" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+      </Expander>
     </StackPanel>
     </Grid>
   </ScrollViewer>

@@ -315,5 +315,9 @@
   "覆盖": "Reemplazar",
   "输出文件已存在：{0}\n编码和校验成功后，将替换此文件。": "El archivo de salida ya existe: {0}\nSe reemplazará cuando la codificación y la verificación finalicen correctamente.",
   "使用 --overwrite 确认覆盖，或使用 --skip-existing 跳过。": "Usa --overwrite para autorizar el reemplazo o --skip-existing para omitirlo.",
-  "输出文件已存在：{0}\n是否覆盖？[y/N]": "El archivo de salida ya existe: {0}\n¿Reemplazarlo? [y/N]"
+  "输出文件已存在：{0}\n是否覆盖？[y/N]": "El archivo de salida ya existe: {0}\n¿Reemplazarlo? [y/N]",
+  "复制": "Copiar",
+  "复制全部日志": "Copiar todo el registro",
+  "已复制": "Copiado",
+  "复制失败": "Error al copiar"
 }

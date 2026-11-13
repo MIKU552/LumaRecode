@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json.Nodes;
 using Microsoft.UI.Xaml.Controls;
 using VideoConverter.Core;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace VideoConverter;
 
@@ -183,6 +184,39 @@ public sealed partial class MainWindow
         }
     }
 
+    private async Task CopyLogAsync()
+    {
+        FlushLog();
+        var text = Control<TextBox>("Log").Text;
+        if (text.Length == 0)
+        {
+            return;
+        }
+        var generation = ++copyLogGeneration;
+        var button = Control<Button>("CopyLog");
+        var label = Control<TextBlock>("CopyLogLabel");
+        try
+        {
+            var package = new DataPackage { RequestedOperation = DataPackageOperation.Copy };
+            package.SetText(text);
+            Clipboard.SetContent(package);
+            Clipboard.Flush();
+            label.Text = L.T("已复制");
+            ToolTipService.SetToolTip(button, L.T("已复制"));
+        }
+        catch (Exception error) when (error is System.Runtime.InteropServices.COMException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            label.Text = L.T("复制失败");
+            ToolTipService.SetToolTip(button, error.Message);
+        }
+        await Task.Delay(1800);
+        if (!closing && copyLogGeneration == generation)
+        {
+            label.Text = L.T("复制");
+            ToolTipService.SetToolTip(button, L.T("复制全部日志"));
+        }
+    }
+
     private void FlushLog()
     {
         if (!conversionLog.Changed)
@@ -190,7 +224,9 @@ public sealed partial class MainWindow
             return;
         }
 
-        Control<TextBox>("Log").Text = conversionLog.Snapshot();
+        var text = conversionLog.Snapshot();
+        Control<TextBox>("Log").Text = text;
+        Control<Button>("CopyLog").IsEnabled = text.Length > 0;
         lastLogUpdate = System.Diagnostics.Stopwatch.GetTimestamp();
     }
     private static bool TryNumber(string text, out double value) => double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value) && double.IsFinite(value);

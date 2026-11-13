@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using VideoConverter.Core;
 using Windows.ApplicationModel.DataTransfer;
 
@@ -35,6 +36,7 @@ public sealed partial class MainWindow : Window
     private JsonObject? media;
     private readonly ConversionLog conversionLog = new();
     private long lastLogUpdate;
+    private int copyLogGeneration;
     private readonly Stopwatch clock = new();
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer clockTimer;
     private double encodedSeconds, encodedFrames, conversionSpeed, currentFps;
@@ -163,6 +165,14 @@ public sealed partial class MainWindow : Window
     }
     private void WireEvents()
     {
+        var copyLog = Control<Button>("CopyLog");
+        // Native button handling runs first; stop pointer input here before it
+        // reaches the enclosing Expander header's toggle button.
+        copyLog.AddHandler(UIElement.PointerPressedEvent,
+            new PointerEventHandler((_, args) => args.Handled = true), true);
+        copyLog.AddHandler(UIElement.PointerReleasedEvent,
+            new PointerEventHandler((_, args) => args.Handled = true), true);
+        copyLog.Click += async (_, _) => await CopyLogAsync();
         Control<CheckBox>("NotifyWhenFinished").Click += (_, _) =>
         {
             settings.NotifyWhenFinished = Control<CheckBox>("NotifyWhenFinished").IsChecked == true;
