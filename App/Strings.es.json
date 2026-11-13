@@ -319,5 +319,6 @@
   "复制": "Copiar",
   "复制全部日志": "Copiar todo el registro",
   "已复制": "Copiado",
-  "复制失败": "Error al copiar"
+  "复制失败": "Error al copiar",
+  "检测到 QSV 时间戳冲突，正在使用兼容模式重试…": "Conflicto de marcas de tiempo de QSV. Reintentando en modo de compatibilidad…"
 }

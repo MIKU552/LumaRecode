@@ -170,6 +170,10 @@ public sealed class Transcoder
     /// <summary>Builds a shell-free command, resolved options and expected output color tags.</summary>
     /// <param name="seconds">Optional positive duration in seconds, measured from the start of the input.</param>
     public EncodingPlan Plan(MediaTools tools, MediaInfo media, EncodeOptions requestedOptions, string destination, double? seconds = null)
+        => BuildPlan(tools, media, requestedOptions, destination, seconds, forceQsvTimingCompatibility: false);
+
+    private EncodingPlan BuildPlan(MediaTools tools, MediaInfo media, EncodeOptions requestedOptions, string destination, double? seconds,
+        bool forceQsvTimingCompatibility)
     {
         Require(seconds is null || double.IsFinite(seconds.Value) && seconds.Value > 0, "--duration 必须为有限正数。");
         var kind = Validate(requestedOptions, media);
@@ -225,6 +229,19 @@ public sealed class Transcoder
         // A QSV surface can stay on the GPU only when the filter chain accepts
         // it. LUTs, tone mapping and software encoders need system-memory frames.
         bool softwareFrames = options.Transform != "none" || options.Purpose == "archive" || options.CpuDecode || colorConversion;
+        // Different nominal/average rates identify common camera VFR files.
+        // Equal or absent rates do not prove CFR; execution can retry once if
+        // the QSV runtime returns non-monotonic DTS despite these headers.
+        var averageRate = JsonFields.Number(video.Text("avg_frame_rate"));
+        var nominalRate = JsonFields.Number(video.Text("r_frame_rate"));
+        bool timingCompatibility = options.Purpose == "share" && (forceQsvTimingCompatibility ||
+            averageRate > 0 && nominalRate > 0 && Math.Abs(averageRate - nominalRate) > Math.Max(0.01, nominalRate * 0.001));
+        if (timingCompatibility && options.Depth != OutputPolicy.SourceDepth(media))
+        {
+            // VPP quantizes PTS to its nominal frame interval. Convert depth in
+            // software for VFR; unchanged QSV surfaces can bypass VPP entirely.
+            softwareFrames = true;
+        }
         var decoder = video.Text("codec_name") switch
         {
             "h264" => "h264_qsv",
@@ -266,13 +283,20 @@ public sealed class Transcoder
 
         if (gpu)
         {
-            var colorOptions = ":out_range=" + colors.Text("color_range");
-            if (options.Output == "sdr")
+            if (timingCompatibility)
             {
-                colorOptions += ":out_color_matrix=bt709:out_color_primaries=bt709:out_color_transfer=bt709";
+                filters.Add(FrameTags(colors));
             }
+            else
+            {
+                var colorOptions = ":out_range=" + colors.Text("color_range");
+                if (options.Output == "sdr")
+                {
+                    colorOptions += ":out_color_matrix=bt709:out_color_primaries=bt709:out_color_transfer=bt709";
+                }
 
-            filters.Add($"vpp_qsv=format={(options.Depth == 10 ? "p010le" : "nv12")}{colorOptions}");
+                filters.Add($"vpp_qsv=format={(options.Depth == 10 ? "p010le" : "nv12")}{colorOptions}");
+            }
         }
         else
         {
@@ -293,6 +317,12 @@ public sealed class Transcoder
         if (options.Purpose == "share")
         {
             args.AddRange(["-global_quality:v", config.Text("quality"), "-low_power", "1", "-async_depth", config.Text("async_depth", "4"), "-g", FormatNumber(Math.Max(1, Math.Round(2 * Fps(video))))]);
+            if (timingCompatibility && options.Codec is "avc" or "hevc")
+            {
+                // Some QSV runtimes derive reordered DTS from a fixed cadence.
+                // I/P-only encoding preserves VFR PTS without that reordering.
+                args.AddRange(["-bf:v", "0"]);
+            }
             if (options.Codec == "hevc")
             {
                 args.AddRange(["-profile:v", options.Depth == 10 ? "main10" : "main"]);
@@ -379,7 +409,7 @@ public sealed class Transcoder
         }
 
         args.Add(Path.GetFullPath(destination));
-        return new(args.ToArray(), colors, options);
+        return new(args.ToArray(), colors, options, timingCompatibility);
     }
     private string ResolveAudio(EncodeOptions options) => options.Audio == "auto" ? options.Purpose == "archive" ? Config["audio"].Text("archive_default") : Config["audio"]!["share_default"].Text(options.Codec) : options.Audio;
     /// <summary>Checks the selected FFmpeg build for required encoders, formats and filters.</summary>
@@ -489,67 +519,20 @@ public sealed class Transcoder
                     throw new InvalidDataException($"当前 FFmpeg 无法将原音轨（{string.Join(", ", media.Audio.Select(s => s.Text("codec_name", "未知")).Distinct().Order())}）直接封装为 MP4。请选择 AAC 音轨，或改用 MKV 封装。");
                 }
             }
-            emit("log", JsonValue.Create(string.Join(' ', plan.Arguments.Select(a => '"' + a.Replace("\"", "\\\"") + '"'))));
-            cancellation.ThrowIfCancellationRequested();
-            using var process = new Process { StartInfo = ProcessRunner.StartInfo(plan.Arguments[0], plan.Arguments.Skip(1), Assets) };
-            process.Start();
-            using var registration = cancellation.Register(() => ProcessRunner.Stop(process));
-            var eventLock = new object();
-            void Send(string type, JsonNode? value)
+            var duration = seconds is { } limit && media.Duration > 0 ? Math.Min(limit, media.Duration) : seconds ?? media.Duration;
+            var attempt = await EncodeAsync(plan, emit, duration, cancellation);
+            if (attempt.ExitCode != 0 && attempt.TimestampConflict && options.Purpose == "share" && !plan.QsvTimingCompatibility)
             {
-                lock (eventLock)
-                {
-                    emit(type, value);
-                }
+                cancellation.ThrowIfCancellationRequested();
+                emit("status", JsonValue.Create("检测到 QSV 时间戳冲突，正在使用兼容模式重试…"));
+                // Only the failed result in this job's private directory is
+                // removed. The destination remains untouched until verified.
+                File.Delete(temporary);
+                plan = BuildPlan(tools, media, options, temporary, seconds, forceQsvTimingCompatibility: true);
+                await CheckRequirementsAsync(tools, options, plan, cancellation, reports);
+                attempt = await EncodeAsync(plan, emit, duration, cancellation);
             }
-            async Task ReadErrors()
-            {
-                try
-                {
-                    while (await process.StandardError.ReadLineAsync() is { } line)
-                    {
-                        if (line.Trim() is { Length: > 0 } text)
-                        {
-                            Send("log", JsonValue.Create(text));
-                        }
-                    }
-                }
-                catch { ProcessRunner.Stop(process); throw; }
-            }
-            async Task ReadProgress()
-            {
-                try
-                {
-                    var progress = new JsonObject();
-                    while (await process.StandardOutput.ReadLineAsync() is { } line)
-                    {
-                        var pair = line.Trim().Split('=', 2);
-                        if (pair.Length == 2 && pair[0] is "frame" or "out_time_us" or "speed" or "fps")
-                        {
-                            progress[pair[0]] = pair[1].Trim();
-                        }
-                        else if (pair[0] == "progress")
-                        {
-                            progress["duration"] = seconds is { } limit && media.Duration > 0 ? Math.Min(limit, media.Duration) : seconds ?? media.Duration;
-                            Send("progress", progress.DeepClone());
-                        }
-                        else if (pair.Length == 1 && line.Trim().Length > 0)
-                        {
-                            Send("log", JsonValue.Create(line.Trim()));
-                        }
-                    }
-                }
-                catch { ProcessRunner.Stop(process); throw; }
-            }
-            // Both redirected pipes must be drained concurrently. Waiting for
-            // the process first could deadlock when either OS pipe buffer fills.
-            try
-            {
-                await Task.WhenAll(ReadProgress(), ReadErrors(), process.WaitForExitAsync());
-            }
-            finally { ProcessRunner.Stop(process); await process.WaitForExitAsync(); }
-            cancellation.ThrowIfCancellationRequested();
-            Require(process.ExitCode == 0, $"FFmpeg 转码失败（{process.ExitCode}）。请查看日志，或改用软件归档 / 软件解码。");
+            Require(attempt.ExitCode == 0, $"FFmpeg 转码失败（{attempt.ExitCode}）。请查看日志，或改用软件归档 / 软件解码。");
             emit("status", JsonValue.Create("正在核对输出色彩和采样格式…"));
             var result = await VerifyAsync(tools, media, options, plan.Colors, temporary, cancellation);
             cancellation.ThrowIfCancellationRequested();
@@ -570,5 +553,74 @@ public sealed class Transcoder
                 Directory.Delete(scratch, recursive: true);
             }
         }
+    }
+
+    /// <summary>Runs one attempt and detects timestamp conflicts while streaming bounded progress/log events.</summary>
+    private async Task<(int ExitCode, bool TimestampConflict)> EncodeAsync(EncodingPlan plan, Action<string, JsonNode?> emit,
+        double duration, CancellationToken cancellation)
+    {
+        emit("log", JsonValue.Create(string.Join(' ', plan.Arguments.Select(a => '"' + a.Replace("\"", "\\\"") + '"'))));
+        cancellation.ThrowIfCancellationRequested();
+        using var process = new Process { StartInfo = ProcessRunner.StartInfo(plan.Arguments[0], plan.Arguments.Skip(1), Assets) };
+        process.Start();
+        using var registration = cancellation.Register(() => ProcessRunner.Stop(process));
+        bool timestampConflict = false;
+        var eventLock = new object();
+        void Send(string type, JsonNode? value)
+        {
+            lock (eventLock)
+            {
+                emit(type, value);
+            }
+        }
+        async Task ReadErrors()
+        {
+            try
+            {
+                while (await process.StandardError.ReadLineAsync() is { } line)
+                {
+                    if (line.Trim() is { Length: > 0 } text)
+                    {
+                        timestampConflict |= text.Contains("Non-monotonic DTS", StringComparison.OrdinalIgnoreCase)
+                            || text.Contains("non monotonically increasing dts", StringComparison.OrdinalIgnoreCase);
+                        Send("log", JsonValue.Create(text));
+                    }
+                }
+            }
+            catch { ProcessRunner.Stop(process); throw; }
+        }
+        async Task ReadProgress()
+        {
+            try
+            {
+                var progress = new JsonObject();
+                while (await process.StandardOutput.ReadLineAsync() is { } line)
+                {
+                    var pair = line.Trim().Split('=', 2);
+                    if (pair.Length == 2 && pair[0] is "frame" or "out_time_us" or "speed" or "fps")
+                    {
+                        progress[pair[0]] = pair[1].Trim();
+                    }
+                    else if (pair[0] == "progress")
+                    {
+                        progress["duration"] = duration;
+                        Send("progress", progress.DeepClone());
+                    }
+                    else if (pair.Length == 1 && line.Trim().Length > 0)
+                    {
+                        Send("log", JsonValue.Create(line.Trim()));
+                    }
+                }
+            }
+            catch { ProcessRunner.Stop(process); throw; }
+        }
+        // Drain both pipes concurrently; a full pipe must not block process exit.
+        try
+        {
+            await Task.WhenAll(ReadProgress(), ReadErrors(), process.WaitForExitAsync());
+        }
+        finally { ProcessRunner.Stop(process); await process.WaitForExitAsync(); }
+        cancellation.ThrowIfCancellationRequested();
+        return (process.ExitCode, timestampConflict);
     }
 }

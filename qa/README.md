@@ -24,9 +24,13 @@ python tools/generate_hlg_luts.py --check
 ```powershell
 python qa/CliChecks/check_cli.py --exe dist/SelfContained/LumaRecode.exe
 python qa/RuntimeChecks/check_runtime.py --exe dist/SelfContained/LumaRecode.exe
+dotnet build qa/BackendChecks/BackendChecks.csproj -c Release
+python qa/TimingChecks/check_timing.py
 ```
 
 集成检查需要 FFmpeg、ffprobe、可用的 Intel QSV 编码器和 Vulkan / libplacebo。它们执行实际编码、输出校验、PowerShell 管道、取消和临时文件清理。测试使用临时目录与合成输入。
+
+时间戳检查覆盖可变帧率的 QSV 编码、8/10 位转换与 SDR/HLG/PQ，逐帧比较显示时间并检查 DTS 顺序。可给 `check_timing.py` 传入 `--sample PATH`，检查相机原片和时间戳冲突后的自动重试。
 
 ## GUI 启动
 

@@ -70,10 +70,17 @@ if (args.FirstOrDefault() == "--server")
                 {
                     answer = engine.ResolveFormat(options, media).ToJson();
                 }
-                else if (action == "run")
+                else if (action is "run" or "run-events")
                 {
-                    answer = ToJson(await engine.RunAsync(tools, media, options, request.Text("output"), (_, _) => { },
-                    seconds: request["seconds"] is null ? null : JsonFields.Number(request.Text("seconds")), overwrite: request.Flag("overwrite")));
+                    var events = new JsonArray();
+                    var result = await engine.RunAsync(tools, media, options, request.Text("output"), (type, value) =>
+                    {
+                        if (action == "run-events" && type != "progress")
+                        {
+                            events.Add(new JsonObject { ["event"] = type, ["data"] = value?.DeepClone() });
+                        }
+                    }, seconds: request["seconds"] is null ? null : JsonFields.Number(request.Text("seconds")), overwrite: request.Flag("overwrite"));
+                    answer = action == "run-events" ? new JsonObject { ["media"] = ToJson(result), ["events"] = events } : ToJson(result);
                 }
                 else if (action == "plan")
                 {

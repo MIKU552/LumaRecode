@@ -32,6 +32,7 @@
 !/qa/FormatChecks/
 !/qa/BackendChecks/
 !/qa/PerformanceChecks/
+!/qa/TimingChecks/
 **/bin/
 **/obj/
 **/__pycache__/
