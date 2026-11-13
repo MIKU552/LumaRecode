@@ -59,7 +59,9 @@
               <Button x:Name="ChooseInput" Grid.Column="1" Style="{StaticResource SourceChooserAccent}" MinWidth="116">
                 <!-- An explicit TextBlock follows the same font/fallback policy as
                      the view instead of a template-generated string presenter. -->
-                <TextBlock x:Name="ChooseInputLabel" Text="选择视频" FontWeight="Normal" />
+                <!-- Source Han's line box has more space above the visible glyphs.
+                     Keep layout height unchanged and shift only the label up by 1 DIP. -->
+                <TextBlock x:Name="ChooseInputLabel" Text="选择视频" FontWeight="Normal" Margin="0,-1,0,1" />
               </Button>
             </Grid>
             <Grid x:Name="SourceDetails" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="240" /></Grid.ColumnDefinitions>
@@ -123,7 +125,7 @@
   </ScrollViewer>
   <Border Grid.Row="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="32,18,32,20">
     <Grid><StackPanel Spacing="14" MaxWidth="1240" HorizontalAlignment="Stretch">
-      <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="保存到" VerticalAlignment="Center" x:Name="LocalizedElement45" /><local:PathTextBox Style="{StaticResource PathTextBoxStyle}" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" x:Name="Destination" Grid.Column="1" PlaceholderText="选择视频后自动生成" AutomationProperties.Name="输出路径" /><Button x:Name="ChooseOutput" Grid.Column="2" Style="{StaticResource PathActionButtonStyle}"><TextBlock x:Name="ChooseOutputLabel" Text="更改…" FontWeight="Normal" /></Button></Grid>
+      <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="保存到" VerticalAlignment="Center" x:Name="LocalizedElement45" /><local:PathTextBox Style="{StaticResource PathTextBoxStyle}" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" x:Name="Destination" Grid.Column="1" PlaceholderText="选择视频后自动生成" AutomationProperties.Name="输出路径" /><Button x:Name="ChooseOutput" Grid.Column="2" Style="{StaticResource PathActionButtonStyle}"><TextBlock x:Name="ChooseOutputLabel" Text="更改…" FontWeight="Normal" Margin="0,-1,0,1" /></Button></Grid>
       <ProgressBar x:Name="Progress" Minimum="0" Maximum="1000" Value="0" Height="6" />
       <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
         <TextBlock x:Name="ProgressPercent" Text="0% · 00:00 / —" FontWeight="SemiBold" FontSize="12" />
