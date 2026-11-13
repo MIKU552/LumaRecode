@@ -8,11 +8,8 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(root / 'Worker'))
-from engine import ASSETS, Job, Options, build_command, resolve_format, validate
-from media import Tools, inspect_media
-from output_policy import flac_eligibility
-from worker import public_media
+sys.path.insert(0, str(root / 'qa/BackendChecks'))
+from native_backend import ASSETS, Job, Options, build_command, resolve_format, validate, Tools, inspect_media, flac_eligibility, public_media
 
 tools = Tools(shutil.which('ffmpeg'), shutil.which('ffprobe'))
 assert tools.ffmpeg and tools.ffprobe

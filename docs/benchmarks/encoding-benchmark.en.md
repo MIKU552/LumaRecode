@@ -16,9 +16,9 @@ FrameFlow's encoding presets come from on-device tests recorded on October 29–
 | Quick share HEVC | hevc_qsv | TU4, ICQ24 | `async_depth=4` |
 | Quick share AV1 | av1_qsv | TU4, ICQ26 | `async_depth=4` |
 
-Configuration: [recommended-presets.json](../../Worker/assets/recommended-presets.json). The `archive`, `archive_fast_av1`, `share`, and `audio` sections come from the test configuration. File hashes are in [preset-provenance.json](data/preset-provenance.json).
+Configuration: [recommended-presets.json](../../Assets/recommended-presets.json). The `archive`, `archive_fast_av1`, `share`, and `audio` sections come from the test configuration. File hashes are in [preset-provenance.json](data/preset-provenance.json).
 
-[engine.py](../../Worker/engine.py) sets maximum GOP durations of about eight seconds for software encoding and two seconds for Quick share, with `pools=16` for x265 and `low_power=1` for QSV. Output settings select bit depth and chroma sampling. SVT-AV1's `lp` selects the parallelism level; `lp=0` chose level 5 on this machine.
+[Transcoder.cs](../../Core/Transcoder.cs) sets maximum GOP durations of about eight seconds for software encoding and two seconds for Quick share, with `pools=16` for x265 and `low_power=1` for QSV. Output settings select bit depth and chroma sampling. SVT-AV1's `lp` selects the parallelism level; `lp=0` chose level 5 on this machine.
 
 Archive copies audio tracks by default. Quick share uses stereo AAC at 256 kbps for AVC / HEVC and stereo Opus VBR at 192 kbps / 48 kHz for AV1.
 

@@ -41,7 +41,7 @@ internal static class Program
             if (cli)
             {
                 if (args.Contains("--json")) Console.Out.WriteLine(JsonSerializer.Serialize(
-                    new HostError(1, "error", new HostErrorData("runtime_unavailable", error.Message)), WorkerJsonContext.Default.HostError));
+                    new HostError(1, "error", new HostErrorData("runtime_unavailable", error.Message)), ConversionJsonContext.Default.HostError));
                 else Console.Error.WriteLine(error.Message);
             }
             else MessageBoxW(IntPtr.Zero, error.Message, "LumaRecode", 0x10);

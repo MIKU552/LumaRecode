@@ -5,7 +5,7 @@
 
 简体中文 | [English](README.en.md) | [日本語](README.ja.md) | [Español](README.es.md)
 
-面向 Windows 11 的视频转码与色彩转换工具，提供原生 WinUI 3 界面和命令行，使用 FFmpeg 完成视频压缩、相机 Log 转 HDR / SDR，以及 HDR 转 SDR。
+基于 C# / .NET 的 Windows 11 视频转码与色彩转换工具，提供原生 WinUI 3 界面和命令行，使用 FFmpeg 完成视频压缩、相机 Log 转 HDR / SDR，以及 HDR 转 SDR。
 
 [下载](https://github.com/MIKU552/LumaRecode/releases/latest) · [命令行文档](docs/cli.zh-CN.md) · [更新记录](CHANGELOG.md)
 
@@ -43,7 +43,7 @@ FLAC 用于可确认的整数 PCM 和无损音轨，保留每条音轨的采样�
 
 SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线的 Log 素材默认转换为 HLG。可在“输入解释”和“相机曲线”中手动选择素材类型。
 
-视频按所选预设重新编码，音频可复制或转码。完整参数见 [recommended-presets.json](Worker/assets/recommended-presets.json)，测试结果见[编码预设测试](docs/benchmarks/encoding-benchmark.zh-CN.md)。
+视频按所选预设重新编码，音频可复制或转码。完整参数见 [recommended-presets.json](Assets/recommended-presets.json)，测试结果见[编码预设测试](docs/benchmarks/encoding-benchmark.zh-CN.md)。
 
 ## 运行要求
 
@@ -89,7 +89,8 @@ cd LumaRecode
 ```text
 App/       WinUI 3 界面、主题、本地化和任务交互
 Bundle/    单文件打包入口
-Worker/    命令行、素材探测、FFmpeg 调用和 LUT
+Core/      素材探测、格式规则、FFmpeg 调用与命令行
+Assets/    LUT、编码预设与资源来源记录
 Brand/     图标源文件与生成工具
 tools/     许可收集和本地化代码生成
 qa/        自动检查与内存采样工具
@@ -101,7 +102,7 @@ licenses/  第三方许可、声明与来源清单
 
 项目自主代码由 **Windows 版 Codex** 使用 **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)**、**极高（xhigh）** 推理设置完成。**[MIKU552](https://github.com/MIKU552)** 负责需求、设备与素材，并进行实机核验。
 
-自主代码、文档、图形及项目生成的 Mi-Log / Samsung Log LUT 采用 **[MIT License](LICENSE)**。第三方 LUT、字体和运行时的许可与来源见 [NOTICE](NOTICE) 和[第三方组件](Worker/assets/THIRD_PARTY.md)。
+自主代码、文档、图形及项目生成的 Mi-Log / Samsung Log LUT 采用 **[MIT License](LICENSE)**。第三方 LUT、字体和运行时的许可与来源见 [NOTICE](NOTICE) 和[第三方组件](Assets/THIRD_PARTY.md)。
 
 ## 文档
 

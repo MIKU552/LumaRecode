@@ -3,6 +3,6 @@
   <ItemGroup>
     <Compile Include="../../App/Settings.cs" Link="Settings.cs"/>
     <Compile Include="../../App/AppJsonContext.cs" Link="AppJsonContext.cs"/>
-    <Compile Include="../../App/WorkerRequest.cs" Link="WorkerRequest.cs"/>
+    <Compile Include="../../App/ConversionRequest.cs" Link="ConversionRequest.cs"/>
   </ItemGroup>
 </Project>

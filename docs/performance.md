@@ -1,6 +1,6 @@
 # 性能优化 / Performance
 
-LumaRecode 的 GUI 前端使用 WinUI 3 和 Native AOT，转换任务由 Python worker 调用 FFmpeg。
+LumaRecode 的 GUI 前端使用 WinUI 3 和 Native AOT，转换核心使用 C# / .NET，直接管理 FFmpeg 任务。
 
 ## 实现
 
@@ -8,9 +8,10 @@ LumaRecode 的 GUI 前端使用 WinUI 3 和 Native AOT，转换任务由 Python 
 | --- | --- |
 | 按需加载 | 首次打开时创建配色面板，首次展开时创建 ColorPicker |
 | 编译视图 | XAML 编译为 XBF，本地化使用生成的控件映射 |
-| 源生成序列化 | 为设置、翻译资源和 worker JSON 生成序列化代码 |
+| 源生成序列化 | 为设置、翻译资源和命令行 JSON 生成序列化代码 |
 | 控件缓存 | 复用主视图控件引用，路径与日志禁用拼写检查和文字预测 |
-| Native AOT | 发布时将前端编译为本机代码 |
+| Native AOT | 发布时将界面与转换核心编译为本机代码 |
+| 进程内转换核心 | GUI 与 CLI 直接调用同一 C# 核心，按需启动 FFmpeg / ffprobe |
 | 单文件入口 | 提取依赖并启动 AOT 主程序；GUI 启动后入口退出 |
 
 ## 内存结果

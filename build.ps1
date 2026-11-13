@@ -15,43 +15,19 @@ try {
     function Reset-GeneratedDirectory([string]$RelativePath) {
         $taskTarget = [IO.Path]::GetFullPath((Join-Path $taskRoot $RelativePath))
         if (-not $taskTarget.StartsWith($taskRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Invalid generated directory.' }
-        if ($RelativePath -notin @('Payload/Worker','Payload/Runtime','dist/SelfContained','dist/FrameworkDependent','dist/NativeAot')) { throw 'Unexpected generated directory.' }
+        if ($RelativePath -notin @('dist/SelfContained','dist/FrameworkDependent','dist/NativeAot')) { throw 'Unexpected generated directory.' }
         if (Test-Path -LiteralPath $taskTarget) { Remove-Item -LiteralPath $taskTarget -Recurse -Force }
         New-Item -ItemType Directory -Path $taskTarget -Force | Out-Null
     }
     $taskOutput = Join-Path $taskRoot "dist/$Deployment"
     Reset-GeneratedDirectory "dist/$Deployment"
-    Reset-GeneratedDirectory 'Payload/Worker'
-    Get-ChildItem -LiteralPath 'Worker' -Filter '*.py' -File | Copy-Item -Destination 'Payload/Worker'
-    foreach ($taskLanguage in @('en','ja','es')) {
-        Copy-Item -LiteralPath "App/Strings.$taskLanguage.json" -Destination "Payload/Worker/strings.$taskLanguage.json"
-    }
-    New-Item -ItemType Directory -Path 'Payload/Worker/assets' -Force | Out-Null
-    Get-ChildItem -LiteralPath 'Worker/assets' -Filter '*.cube' -File | Copy-Item -Destination 'Payload/Worker/assets'
-    Copy-Item -LiteralPath 'Worker/assets/recommended-presets.json' -Destination 'Payload/Worker/assets'
-
-    $taskPython = $null
-    if ($taskBundled) {
-        $taskCache = Join-Path $taskRoot 'build-cache'
-        New-Item -ItemType Directory -Path $taskCache -Force | Out-Null
-        $taskArchive = Join-Path $taskCache 'python-3.15.2-embed-amd64.zip'
-        $taskExpected = 'd012f3aa29cf07436dae8aea1fec0fd195c2612a0b059b1f915ae0afb9ad1f62'
-        if (-not (Test-Path -LiteralPath $taskArchive)) {
-            Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.15.2/python-3.15.2-embed-amd64.zip' -OutFile $taskArchive
-        }
-        if ((Get-FileHash -LiteralPath $taskArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $taskExpected) { throw 'Official Python archive checksum mismatch.' }
-        Reset-GeneratedDirectory 'Payload/Runtime'
-        Expand-Archive -LiteralPath $taskArchive -DestinationPath 'Payload/Runtime'
-        $taskPython = Join-Path $taskRoot 'Payload/Runtime'
-    }
-
     $taskRestore = @('restore','App/VideoConverter.WinUI.csproj','-r','win-x64','--locked-mode',"-p:PublishAot=$($taskAot.ToString().ToLowerInvariant())")
     if (Test-Path -LiteralPath 'build-cache/nuget') {
         $taskRestore += @('--source','https://api.nuget.org/v3/index.json','--source',(Join-Path $taskRoot 'build-cache/nuget'))
     }
     dotnet @taskRestore
     if ($LASTEXITCODE -ne 0) { throw 'Dependency restore failed.' }
-    $taskLicenseArgs = @{ProjectRoot=$taskRoot; PythonRuntime=$taskPython}
+    $taskLicenseArgs = @{ProjectRoot=$taskRoot}
     if ($taskAot) {
         dotnet restore Bundle/LumaRecode.Bundle.csproj -r win-x64 --locked-mode
         if ($LASTEXITCODE -ne 0) { throw 'Bundle dependency restore failed.' }

@@ -6,8 +6,8 @@ App/Assets/Fonts/*.ttf binary linguist-vendored=true
 # Preserve upstream legal text bytes and the hashes in license-manifest.json.
 LICENSE -text
 NOTICE -text
-Worker/assets/**/*.txt -text -whitespace
-Worker/assets/OpenOSV/LICENSE -text
-Worker/assets/OpenOSV/NOTICE -text
+Assets/**/*.txt -text -whitespace
+Assets/OpenOSV/LICENSE -text
+Assets/OpenOSV/NOTICE -text
 # Retain full upstream legal documents without counting them as application code.
 licenses/** -text -whitespace conflict-marker-size=32 linguist-vendored=true

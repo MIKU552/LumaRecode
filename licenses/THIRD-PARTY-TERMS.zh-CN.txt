@@ -1,10 +1,10 @@
 LumaRecode — 第三方二进制组件条款说明
 
-LumaRecode 自主源码、文档与原创资源采用 MIT License。Windows 发行包含微软与 Python 运行时、OpenSSL 和 OpenOSV LUT 等第三方组件，分别适用各自的许可与声明。
+LumaRecode 自主源码、文档与原创资源采用 MIT License。Windows 发行包含微软运行时、字体和 OpenOSV LUT 等第三方组件，分别适用各自的许可与声明。
 
-选择“同意并继续”表示同意遵守随附第三方组件的适用条款，包括 Windows App SDK、指定 Windows 运行时二进制文件（含单文件运行时）适用的 .NET Library License、WinRT 投影程序集适用的 Windows SDK 条款，以及官方 Python Windows 二进制构建内微软可分发代码的条款。完整许可、声明及来源包记录保存在同一 licenses 目录中。
+选择“同意并继续”表示同意遵守随附第三方组件的适用条款，包括 Windows App SDK、指定 Windows 运行时二进制文件（含单文件运行时）适用的 .NET Library License、WinRT 投影程序集适用的 Windows SDK 条款。完整许可、声明及来源包记录保存在同一 licenses 目录中。
 
-尤其应保留微软的版权、商标和专利声明；不得暗示获得微软背书；微软 Windows 二进制组件须按条款在微软操作系统、运行时技术或应用平台上使用；不得将其包含在恶意、欺骗性或违法程序中。除适用条款允许的情形外，不得修改或再分发微软组件。分发含有这些组件的程序时，应保留必要声明，并取得条款要求的接收者同意。Python-LICENSE.txt 中列有 Windows 二进制构建的附加条件；Windows App SDK 的再分发权利和要求列于对应包的许可文本中。
+尤其应保留微软的版权、商标和专利声明；不得暗示获得微软背书；微软 Windows 二进制组件须按条款在微软操作系统、运行时技术或应用平台上使用；不得将其包含在恶意、欺骗性或违法程序中。除适用条款允许的情形外，不得修改或再分发微软组件。分发含有这些组件的程序时，应保留必要声明，并取得条款要求的接收者同意。Windows App SDK 的再分发权利和要求列于对应包的许可文本中。
 
 .NET Library License 规定了将目标代码作为本应用一部分分发的条件。Windows SDK 的 REDIST 清单包含用于调用 WinRT API 的、未经修改的 Microsoft.Windows.SDK.NET.Ref 包文件。完整条款见 DotNet-Library-LICENSE.html、Windows-SDK-Net-Ref-LICENSE.rtf 和 Windows-SDK-REDIST.html，包括使用、再分发、声明和适用数据收集规定。
 

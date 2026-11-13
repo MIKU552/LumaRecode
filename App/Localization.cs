@@ -41,6 +41,7 @@ public static class L
         return result;
     }
     public static string T(string? text) => catalog.Translate(text, Code);
+    public static string Translate(string? text, string code) => catalog.Translate(text, code);
 }
 
 public sealed class ViewLocalization

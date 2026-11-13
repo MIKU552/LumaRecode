@@ -5,7 +5,7 @@
 
 [简体中文](README.md) | English | [日本語](README.ja.md) | [Español](README.es.md)
 
-Video transcoding and color conversion for Windows 11. LumaRecode provides a native WinUI 3 interface and a command line for FFmpeg, with video compression, camera Log to HDR / SDR, and HDR to SDR workflows.
+Video transcoding and color conversion for Windows 11, built with C# and .NET. LumaRecode provides a native WinUI 3 interface and a command line for FFmpeg, with video compression, camera Log to HDR / SDR, and HDR to SDR workflows.
 
 [Download](https://github.com/MIKU552/LumaRecode/releases/latest) · [Command line](docs/cli.en.md) · [Changelog](CHANGELOG.md)
 
@@ -43,7 +43,7 @@ FLAC accepts confirmed lossless integer audio, including integer PCM, and preser
 
 SDR sources default to SDR output, HLG / PQ sources retain HDR, and recognized Log profiles convert to HLG. Input interpretation and Camera profile let you select the source type manually.
 
-Video is re-encoded with the selected preset; audio can be copied or transcoded. See [recommended-presets.json](Worker/assets/recommended-presets.json) for the settings and the [encoding benchmark](docs/benchmarks/encoding-benchmark.en.md) for measurements.
+Video is re-encoded with the selected preset; audio can be copied or transcoded. See [recommended-presets.json](Assets/recommended-presets.json) for the settings and the [encoding benchmark](docs/benchmarks/encoding-benchmark.en.md) for measurements.
 
 ## Requirements
 
@@ -89,7 +89,8 @@ The output is `dist/SelfContained/LumaRecode.exe`. See [development and distribu
 ```text
 App/       WinUI 3 UI, appearance, localization, and job interaction
 Bundle/    Single-file packaging entry
-Worker/    CLI, source inspection, FFmpeg execution, and LUTs
+Core/      Source inspection, format policies, FFmpeg execution, and CLI
+Assets/    LUTs, encoding presets, and source records
 Brand/     Icon sources and generation tools
 tools/     License collection and localization code generation
 qa/        Automated checks and memory sampling
@@ -101,7 +102,7 @@ licenses/  Third-party licenses, notices, and provenance
 
 Original project code was developed with **Codex for Windows**, using **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** with **Extra high (`xhigh`)** reasoning. **[MIKU552](https://github.com/MIKU552)** defines requirements, supplies hardware and footage, and verifies the application.
 
-Original code, documentation, graphics, and generated Mi-Log / Samsung Log LUTs use the **[MIT License](LICENSE)**. Licenses and sources for third-party LUTs, fonts, and runtimes are listed in [NOTICE](NOTICE) and [third-party components](Worker/assets/THIRD_PARTY.md).
+Original code, documentation, graphics, and generated Mi-Log / Samsung Log LUTs use the **[MIT License](LICENSE)**. Licenses and sources for third-party LUTs, fonts, and runtimes are listed in [NOTICE](NOTICE) and [third-party components](Assets/THIRD_PARTY.md).
 
 ## Documentation
 

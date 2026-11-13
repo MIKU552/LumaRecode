@@ -21,7 +21,7 @@
 
 コンポーネントの利用条件への同意は GUI と CLI で共有します。初回の一括処理では、`license --text` で条件を確認してから `license --accept-terms` を実行するか、タスクに `--accept-terms` を追加します。`--no-settings` は保存済みの GUI 設定を読み込まず、設定も書き込みません。このモードでは `--accept-terms` を追加してください。
 
-ツールは `PATH`、保存済みの GUI パスの順に検索します。`--ffmpeg PATH --ffprobe PATH` で指定でき、`--python PATH` で同梱 Python を置き換えられます。`--lang system|en|zh|ja|es` は出力言語を選択します。
+ツールは `PATH`、保存済みの GUI パスの順に検索します。`--ffmpeg PATH --ffprobe PATH` で指定できます。`--lang system|en|zh|ja|es` は出力言語を選択します。
 
 ## コマンドとオプション
 

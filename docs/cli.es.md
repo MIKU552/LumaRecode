@@ -21,7 +21,7 @@ La salida usa UTF-8. Estos ejemplos configuran la codificación de la sesión ac
 
 La interfaz y la CLI comparten la aceptación de las condiciones de los componentes. Antes del primer uso por lotes, consulta `license --text` y ejecuta `license --accept-terms`, o añade `--accept-terms` a la tarea. `--no-settings` ignora los ajustes guardados de la interfaz y desactiva la escritura de ajustes; añade `--accept-terms` al usar este modo.
 
-Las herramientas se buscan primero en `PATH` y después en las rutas guardadas por la interfaz. Puedes indicar `--ffmpeg PATH --ffprobe PATH`; `--python PATH` sustituye el Python incluido. `--lang system|en|zh|ja|es` selecciona el idioma de salida.
+Las herramientas se buscan primero en `PATH` y después en las rutas guardadas por la interfaz. Puedes indicar `--ffmpeg PATH --ffprobe PATH`. `--lang system|en|zh|ja|es` selecciona el idioma de salida.
 
 ## Comandos y opciones
 

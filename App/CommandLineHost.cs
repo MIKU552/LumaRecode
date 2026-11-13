@@ -1,6 +1,5 @@
-using System.Diagnostics;
 using System.Reflection;
-using System.Text.Json;
+using VideoConverter.Core;
 
 namespace VideoConverter;
 
@@ -11,71 +10,39 @@ internal static class CommandLineHost
         ConsoleConnection.Connect();
         var noSettings = args.TakeWhile(a => a != "--").Contains("--no-settings");
         var settings = noSettings ? new UserSettings() : UserSettings.Load();
-        WorkerClient.ExternalPython = WorkerClient.FindTool("python", settings.Python);
-        string? python = null;
-        for (var i = 0; i < args.Length && args[i] != "--"; i++)
+        string selection = settings.Language;
+        for (int i = 0; i < args.Length && args[i] != "--"; i++)
         {
-            if (args[i] == "--python" && i + 1 < args.Length) python = args[++i];
-            else if (args[i].StartsWith("--python=", StringComparison.Ordinal)) python = args[i][9..];
+            if (args[i] is "--lang" or "--language" && i + 1 < args.Length) selection = args[++i];
+            else if (args[i].StartsWith("--lang=", StringComparison.Ordinal) || args[i].StartsWith("--language=", StringComparison.Ordinal)) selection = args[i][(args[i].IndexOf('=') + 1)..];
         }
-        var cancelled = false;
+        var language = LanguagePolicy.Resolve(selection, L.SystemLanguage);
+        var version = typeof(CommandLineHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "unknown";
+        using var cancellation = new CancellationTokenSource();
+        ConsoleCancelEventHandler cancel = (_, e) => { e.Cancel = true; cancellation.Cancel(); };
+        Console.CancelKeyPress += cancel;
         try
         {
-            if (python is not null)
+            var context = new CliContext(version, LegalNotices.Folder, settings.AcceptedThirdPartyTerms == LegalNotices.Revision,
+                new MediaTools(settings.Ffmpeg, settings.Ffprobe), text => L.Translate(text, language), language);
+            var code = await new NativeCli(ConversionClient.Engine, context).RunAsync(args, cancellation.Token);
+            if (!noSettings && code == 0 && args.TakeWhile(a => a != "--").Contains("--accept-terms") && settings.AcceptedThirdPartyTerms != LegalNotices.Revision)
             {
-                python = File.Exists(python) ? Path.GetFullPath(python) : WorkerClient.FindTool(Path.GetFileNameWithoutExtension(python), "");
-                await WorkerClient.CheckPythonAsync(python);
+                var current = UserSettings.Load(); current.AcceptedThirdPartyTerms = LegalNotices.Revision; current.Save();
             }
-            var info = WorkerClient.CreateStartInfo("cli.py", python);
-            foreach (var arg in args) info.ArgumentList.Add(arg);
-            info.Environment["LUMARECODE_HOSTED"] = "1";
-            info.Environment["LUMARECODE_LANGUAGE"] = LanguagePolicy.Resolve(settings.Language, System.Globalization.CultureInfo.CurrentUICulture.Name);
-            info.Environment["LUMARECODE_SYSTEM_LANGUAGE"] = LanguagePolicy.Resolve("system", System.Globalization.CultureInfo.CurrentUICulture.Name);
-            info.Environment["LUMARECODE_FFMPEG"] = settings.Ffmpeg;
-            info.Environment["LUMARECODE_FFPROBE"] = settings.Ffprobe;
-            info.Environment["LUMARECODE_LICENSE_DIR"] = LegalNotices.Folder;
-            info.Environment["LUMARECODE_TERMS_ACCEPTED"] = settings.AcceptedThirdPartyTerms == LegalNotices.Revision ? "1" : "0";
-            info.Environment["LUMARECODE_VERSION"] = typeof(CommandLineHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "unknown";
-            using var child = new Process { StartInfo = info };
-            child.Start();
-            ConsoleCancelEventHandler handler = (_, e) =>
-            {
-                e.Cancel = true; cancelled = true;
-                try { child.StandardInput.WriteLine("cancel"); child.StandardInput.Flush(); }
-                catch (Exception error) when (error is IOException or InvalidOperationException) { }
-            };
-            Console.CancelKeyPress += handler;
-            async Task ForwardAsync(Stream source, Stream destination)
-            {
-                try { await source.CopyToAsync(destination); }
-                catch (IOException)
-                {
-                    cancelled = true;
-                    try { await child.StandardInput.WriteLineAsync("cancel"); await child.StandardInput.FlushAsync(); }
-                    catch (Exception error) when (error is IOException or InvalidOperationException) { }
-                    await source.CopyToAsync(Stream.Null);
-                }
-            }
+            return code;
+        }
+        catch (Exception e) when (e is IOException or InvalidDataException or InvalidOperationException or System.Text.Json.JsonException or UnauthorizedAccessException)
+        {
             try
             {
-                await Task.WhenAll(ForwardAsync(child.StandardOutput.BaseStream, Console.OpenStandardOutput()),
-                    ForwardAsync(child.StandardError.BaseStream, Console.OpenStandardError()), child.WaitForExitAsync());
+                if (args.Contains("--json")) Console.Out.WriteLine(BackendJson.Write(new System.Text.Json.Nodes.JsonObject
+                    { ["schema_version"] = 1, ["event"] = "error", ["data"] = new System.Text.Json.Nodes.JsonObject { ["code"] = "runtime_unavailable", ["message"] = e.Message } }));
+                else Console.Error.WriteLine(e.Message);
             }
-            finally { Console.CancelKeyPress -= handler; }
-            if (!noSettings && child.ExitCode == 0 && settings.AcceptedThirdPartyTerms != LegalNotices.Revision && args.TakeWhile(a => a != "--").Contains("--accept-terms"))
-            {
-                var current = UserSettings.Load();
-                current.AcceptedThirdPartyTerms = LegalNotices.Revision;
-                current.Save();
-            }
-            return cancelled ? 130 : child.ExitCode;
+            catch (IOException) { cancellation.Cancel(); return 130; }
+            return 3;
         }
-        catch (Exception error) when (error is IOException or InvalidOperationException or System.ComponentModel.Win32Exception)
-        {
-            if (args.Contains("--json")) Console.Out.WriteLine(JsonSerializer.Serialize(
-                new HostError(1, "error", new HostErrorData("runtime_unavailable", error.Message)), WorkerJsonContext.Default.HostError));
-            else Console.Error.WriteLine(error.Message);
-            return cancelled ? 130 : 3;
-        }
+        finally { Console.CancelKeyPress -= cancel; }
     }
 }

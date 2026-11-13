@@ -5,7 +5,7 @@
 
 [简体中文](README.md) | [English](README.en.md) | [日本語](README.ja.md) | Español
 
-Herramienta de transcodificación de vídeo y conversión de color para Windows 11. LumaRecode ofrece una interfaz nativa WinUI 3 y una línea de comandos para FFmpeg, con compresión de vídeo, conversión de Log de cámara a HDR / SDR y de HDR a SDR.
+Herramienta de transcodificación de vídeo y conversión de color para Windows 11, desarrollada con C# y .NET. LumaRecode ofrece una interfaz nativa WinUI 3 y una línea de comandos para FFmpeg, con compresión de vídeo, conversión de Log de cámara a HDR / SDR y de HDR a SDR.
 
 [Descargar](https://github.com/MIKU552/LumaRecode/releases/latest) · [Línea de comandos](docs/cli.es.md) · [Historial de cambios](CHANGELOG.md)
 
@@ -43,7 +43,7 @@ FLAC admite audio entero confirmado como sin pérdidas, incluido PCM entero, y c
 
 El material SDR se convierte por defecto a SDR; HLG / PQ conserva HDR; los perfiles Log reconocidos se convierten a HLG. **Interpretación** y **Perfil de cámara** permiten indicar manualmente el tipo de material.
 
-El vídeo se vuelve a codificar con el preajuste elegido; el audio puede copiarse o convertirse. Los parámetros están en [recommended-presets.json](Worker/assets/recommended-presets.json) y las mediciones en el [informe de pruebas de codificación, en inglés](docs/benchmarks/encoding-benchmark.en.md).
+El vídeo se vuelve a codificar con el preajuste elegido; el audio puede copiarse o convertirse. Los parámetros están en [recommended-presets.json](Assets/recommended-presets.json) y las mediciones en el [informe de pruebas de codificación, en inglés](docs/benchmarks/encoding-benchmark.en.md).
 
 ## Requisitos
 
@@ -89,7 +89,8 @@ El resultado es `dist/SelfContained/LumaRecode.exe`. Consulta las opciones de co
 ```text
 App/       Interfaz WinUI 3, apariencia, idiomas y gestión de tareas
 Bundle/    Empaquetado en un único archivo
-Worker/    CLI, análisis del material, ejecución de FFmpeg y LUT
+Core/      Análisis del material, reglas de formato, FFmpeg y CLI
+Assets/    LUT, preajustes de codificación y registros de origen
 Brand/     Archivos originales del icono y herramientas de generación
 tools/     Recopilación de licencias y generación de código de idiomas
 qa/        Comprobaciones automáticas y medición de memoria
@@ -101,7 +102,7 @@ licenses/  Licencias, avisos y procedencia de componentes de terceros
 
 El código original del proyecto se desarrolló con **Codex para Windows**, usando **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** y el nivel de razonamiento **Extra high (`xhigh`)**. **[MIKU552](https://github.com/MIKU552)** define los requisitos, aporta el equipo y el material, y verifica la aplicación en dispositivos reales.
 
-El código, la documentación, los gráficos originales y las LUT de Mi-Log / Samsung Log generadas por el proyecto usan la **[licencia MIT](LICENSE)**. Las licencias y procedencia de las LUT, fuentes y entornos de ejecución de terceros figuran en [NOTICE](NOTICE) y en [componentes de terceros](Worker/assets/THIRD_PARTY.md).
+El código, la documentación, los gráficos originales y las LUT de Mi-Log / Samsung Log generadas por el proyecto usan la **[licencia MIT](LICENSE)**. Las licencias y procedencia de las LUT, fuentes y entornos de ejecución de terceros figuran en [NOTICE](NOTICE) y en [componentes de terceros](Assets/THIRD_PARTY.md).
 
 ## Documentación
 

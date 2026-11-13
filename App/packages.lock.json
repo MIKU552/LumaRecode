@@ -70,6 +70,9 @@
         "dependencies": {
           "Microsoft.WindowsAppSDK.Base": "2.6.5"
         }
+      },
+      "lumarecode.core": {
+        "type": "Project"
       }
     },
     "net11.0-windows10.0.26100/win-x64": {

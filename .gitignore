@@ -16,7 +16,8 @@
 !/licenses/
 !/App/
 !/Bundle/
-!/Worker/
+!/Core/
+!/Assets/
 !/Brand/
 !/qa/
 /App/app.ico
@@ -28,6 +29,7 @@
 !/qa/MemoryChecks/
 !/qa/SerializationChecks/
 !/qa/FormatChecks/
+!/qa/BackendChecks/
 **/bin/
 **/obj/
 **/__pycache__/

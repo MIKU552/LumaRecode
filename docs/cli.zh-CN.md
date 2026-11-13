@@ -23,7 +23,7 @@
 
 GUI 和 CLI 共用组件条款的接受记录。首次批处理可使用 `license --text` 阅读条款，再运行 `license --accept-terms`；也可在任务命令中添加 `--accept-terms`。
 
-FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可用 `--ffmpeg PATH --ffprobe PATH` 覆盖；`--python PATH` 可覆盖内置 Python。`--no-settings` 使用独立配置，忽略 GUI 设置并禁用设置写入；使用此模式时添加 `--accept-terms`。
+FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可用 `--ffmpeg PATH --ffprobe PATH` 覆盖。`--no-settings` 使用独立配置，忽略 GUI 设置并禁用设置写入；使用此模式时添加 `--accept-terms`。
 
 ## 命令
 

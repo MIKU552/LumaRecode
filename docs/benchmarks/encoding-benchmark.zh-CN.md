@@ -16,9 +16,9 @@ FrameFlow 的编码预设来自 2026 年 10 月 29–30 日的本机测试。测
 | 快速分享 HEVC | hevc_qsv | TU4、ICQ24 | `async_depth=4` |
 | 快速分享 AV1 | av1_qsv | TU4、ICQ26 | `async_depth=4` |
 
-配置文件：[recommended-presets.json](../../Worker/assets/recommended-presets.json)。其中 `archive`、`archive_fast_av1`、`share` 和 `audio` 四节来自测试配置，文件哈希见 [preset-provenance.json](data/preset-provenance.json)。
+配置文件：[recommended-presets.json](../../Assets/recommended-presets.json)。其中 `archive`、`archive_fast_av1`、`share` 和 `audio` 四节来自测试配置，文件哈希见 [preset-provenance.json](data/preset-provenance.json)。
 
-[engine.py](../../Worker/engine.py) 设置软件编码最大 GOP 约 8 秒、快速分享约 2 秒，并为 x265 设置 `pools=16`、QSV 设置 `low_power=1`。位深和色度采样取自输出设置。SVT-AV1 的 `lp` 表示并行等级；本机 `lp=0` 选择等级 5。
+[Transcoder.cs](../../Core/Transcoder.cs) 设置软件编码最大 GOP 约 8 秒、快速分享约 2 秒，并为 x265 设置 `pools=16`、QSV 设置 `low_power=1`。位深和色度采样取自输出设置。SVT-AV1 的 `lp` 表示并行等级；本机 `lp=0` 选择等级 5。
 
 归档默认复制音轨；分享 AVC / HEVC 使用 AAC 256 kbps 双声道，AV1 使用 Opus 192 kbps、48 kHz 双声道 VBR。
 

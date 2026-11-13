@@ -5,15 +5,15 @@
   "project_license": "MIT",
   "generated_luts": [
     {
-      "path": "Worker/assets/REDMI_K90_MiLog_to_Rec2100_HLG.cube",
+      "path": "Assets/REDMI_K90_MiLog_to_Rec2100_HLG.cube",
       "license": "MIT",
-      "generator": "Worker/tools/generate_hlg_luts.py",
+      "generator": "tools/generate_hlg_luts.py",
       "sha256": "8019f23548691365d81ac2dddf1a5300ed226269add338e3bbcd0b64c739a2f3"
     },
     {
-      "path": "Worker/assets/Samsung_Log_to_Rec2100_HLG.cube",
+      "path": "Assets/Samsung_Log_to_Rec2100_HLG.cube",
       "license": "MIT",
-      "generator": "Worker/tools/generate_hlg_luts.py",
+      "generator": "tools/generate_hlg_luts.py",
       "sha256": "ecf1c7196aae39a734085be4bf50a3c0e87036397a84bb4984dc085407281ae1"
     }
   ],
@@ -22,7 +22,7 @@
     "source": "https://github.com/Kemerd/OpenOSV/blob/v0.6.4/luts/Rec2100_HLG/DJI_Osmo_DLogM_to_Rec2100_HLG_BT2408_Neutral.cube",
     "license": "Apache-2.0",
     "unchanged": true,
-    "path": "Worker/assets/DJI_Osmo_DLogM_to_Rec2100_HLG_BT2408_Neutral.cube",
+    "path": "Assets/DJI_Osmo_DLogM_to_Rec2100_HLG_BT2408_Neutral.cube",
     "sha256": "123114d3353e10b39e59ae930c97d2ffdb7531f79ae2d9e7d143af03620ecd1d"
   }
 }

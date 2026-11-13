@@ -24,7 +24,7 @@ public sealed class MainWindow : Window
     private readonly Dictionary<string, RadioMenuFlyoutItem> languageItems = new();
     private readonly UserSettings settings = UserSettings.Load();
     private readonly Appearance appearance;
-    private WorkerClient? activeJob;
+    private ConversionClient? activeJob;
     private bool updating, probing, closing, dialogOpen, audioUsesDefault = true, depthUsesDefault = true;
     private int generation;
     private string ffmpeg = "", ffprobe = "", automaticOutput = "", completedOutput = "";
@@ -33,7 +33,7 @@ public sealed class MainWindow : Window
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer clockTimer;
     private double encodedSeconds, encodedFrames, conversionSpeed, currentFps;
     private bool completed;
-    private readonly List<WorkerClient> probes = new();
+    private readonly List<ConversionClient> probes = new();
     private TextBox Input => Control<TextBox>("InputPath");
     private TextBox Output => Control<TextBox>("Destination");
     private ComboBox Purpose => Control<ComboBox>("Purpose");
@@ -87,7 +87,7 @@ public sealed class MainWindow : Window
             try { if (!await LegalNotices.RequireAcceptanceAsync(root, settings, Relocalize)) { Close(); return; } }
             finally { dialogOpen = false; }
             Reflow(root.ActualWidth);
-            if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe) || !WorkerClient.HasBundledPython && WorkerClient.ExternalPython == "") await ConfigureToolsAsync();
+            if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe)) await ConfigureToolsAsync();
             var args = Environment.GetCommandLineArgs();
             if (args.Length > 1 && File.Exists(args[1])) { Input.Text = args[1]; await InspectAsync(); }
         };
@@ -340,12 +340,11 @@ public sealed class MainWindow : Window
     }
     private string MediaText(string key, string fallback = "") => media is { } item && item.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() ?? fallback : fallback;
     private void SetStatus(string text) => Control<TextBlock>("Status").Text = L.T(text);
-    private WorkerTools ToolsObject() => new(ffmpeg, ffprobe);
+    private ConversionTools ToolsObject() => new(ffmpeg, ffprobe);
     private void ResolveTools()
     {
-        ffmpeg = WorkerClient.FindTool("ffmpeg", settings.Ffmpeg);
-        ffprobe = WorkerClient.FindTool("ffprobe", settings.Ffprobe);
-        WorkerClient.ExternalPython = WorkerClient.FindTool("python", settings.Python);
+        ffmpeg = ConversionClient.FindTool("ffmpeg", settings.Ffmpeg);
+        ffprobe = ConversionClient.FindTool("ffprobe", settings.Ffprobe);
     }
     private static JsonElement LoadEncodingConfig()
     {
@@ -461,7 +460,6 @@ public sealed class MainWindow : Window
                 _ => L.T("保留原片动态范围，按目标格式标准化色彩。") };
             var warning = "";
             if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe)) warning = L.T("未找到 FFmpeg / ffprobe，请设置工具路径。");
-            else if (!WorkerClient.HasBundledPython && WorkerClient.ExternalPython == "") warning = L.T("未找到 Python，请在工具路径中选择 Python 3.14 或更新版本。");
             else if (media is not null && Profile.IsEnabled && Value(Profile) == "") warning = L.T("请确认相机的 Log 曲线。");
             else if (media is not null && Kind == "unknown" && !Profile.IsEnabled) warning = L.T("没有可靠的曲线标记，请确认输入解释。");
             else if (media is not null && Profile.IsEnabled && SourceDepth < 10) warning = L.T("Log 转换需要对应相机的高位深原片。");
@@ -527,19 +525,19 @@ public sealed class MainWindow : Window
         var path = Input.Text.Trim('"', ' ');
         if (path == "" || path.Equals(MediaText("path"), StringComparison.OrdinalIgnoreCase)) return;
         if (!File.Exists(path)) { await MessageAsync(L.T("无法读取"), L.T("请选择有效的视频文件。")); return; }
-        if (ffmpeg == "" || ffprobe == "" || !WorkerClient.HasBundledPython && WorkerClient.ExternalPython == "")
+        if (ffmpeg == "" || ffprobe == "")
         {
             await ConfigureToolsAsync();
-            if (ffmpeg == "" || ffprobe == "" || !WorkerClient.HasBundledPython && WorkerClient.ExternalPython == "") return;
+            if (ffmpeg == "" || ffprobe == "") return;
         }
         var token = ++generation;
         media = null; probing = true; SetStatus(L.T("正在读取相机元数据…"));
         foreach (var name in new[] { "SourceVideo", "SourceColor", "SourceAudio" }) Control<TextBlock>(name).Visibility = Visibility.Collapsed;
         Control<TextBlock>("SourceSummary").Text = L.T("正在识别素材…"); Refresh();
-        using var worker = new WorkerClient(); probes.Add(worker);
+        using var client = new ConversionClient(); probes.Add(client);
         try
         {
-            await worker.RunAsync(new WorkerRequest("probe", ToolsObject(), path), (type, data) =>
+            await client.RunAsync(new ConversionRequest("probe", ToolsObject(), path), (type, data) =>
             {
                 if (token != generation) return;
                 if (type == "media") ApplyMedia(data);
@@ -547,7 +545,7 @@ public sealed class MainWindow : Window
             });
         }
         catch (Exception error) { if (!closing) await MessageAsync(L.T("读取失败"), error.Message); }
-        finally { probes.Remove(worker); probing = false; Refresh(); }
+        finally { probes.Remove(client); probing = false; Refresh(); }
     }
     private void ApplyMedia(JsonElement data)
     {
@@ -635,15 +633,15 @@ public sealed class MainWindow : Window
         if (File.Exists(output)) { await MessageAsync(L.T("请更换输出位置"), L.T("输出文件已存在，程序不会覆盖文件。")); return; }
         if (!Directory.Exists(Path.GetDirectoryName(output)) || Path.GetExtension(output).ToLowerInvariant() != Suffix)
         { await MessageAsync(L.T("请调整输出位置"), L.T($"请选择已有目录，文件后缀应为 {Suffix}。")); return; }
-        var request = new WorkerRequest("convert", ToolsObject(), MediaText("path"), output,
-            new WorkerOptions(Value(Purpose), Value(Codec), Hdr ? "hdr" : "sdr", Value(Transform),
+        var request = new ConversionRequest("convert", ToolsObject(), MediaText("path"), output,
+            new ConversionOptions(Value(Purpose), Value(Codec), Hdr ? "hdr" : "sdr", Value(Transform),
                 Value(Profile) == "" ? null : Value(Profile), Value(Sampling), Value(Variant),
                 Value(Audio), Value(Container), Value(InputKind), Control<CheckBox>("CpuDecode").IsChecked == true, Value(ColorRange), Value(BitDepth)));
-        using var worker = new WorkerClient(); activeJob = worker;
+        using var client = new ConversionClient(); activeJob = client;
         completed = false; encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
         clock.Restart(); clockTimer.Start(); UpdateTransferStats();
         Control<TextBox>("Log").Text = ""; Control<ProgressBar>("Progress").Value = 0; SetBusy(true); SetStatus(L.T("正在启动转换…"));
-        try { await worker.RunAsync(request, Receive); }
+        try { await client.RunAsync(request, Receive); }
         catch (Exception error) { await MessageAsync(L.T("转换失败"), error.Message); SetStatus(L.T("转换失败")); }
         finally { clock.Stop(); clockTimer.Stop(); activeJob = null; UpdateTransferStats(); SetBusy(false); Refresh(); if (closing) Close(); }
     }
@@ -718,7 +716,6 @@ public sealed class MainWindow : Window
         panel.Children.Add(new TextBlock { Text = L.T("自动查找 PATH，也可以选择自己的 FFmpeg 和 ffprobe。"), TextWrapping = TextWrapping.Wrap });
         var fields = new Dictionary<string, TextBox>();
         var toolFields = new List<(string name, string value)> { ("ffmpeg", ffmpeg), ("ffprobe", ffprobe) };
-        if (!WorkerClient.HasBundledPython) toolFields.Add(("python", WorkerClient.ExternalPython));
         foreach (var (name, value) in toolFields)
         {
             var grid = new Grid { ColumnSpacing = 8 }; grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -731,11 +728,8 @@ public sealed class MainWindow : Window
                 var picker = new FileOpenPicker(); picker.FileTypeFilter.Add(".exe"); WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
                 var file = await picker.PickSingleFileAsync();
                 if (file is null) return; box.Text = file.Path;
-                if (name != "python")
-                {
-                    var peer = name == "ffmpeg" ? "ffprobe" : "ffmpeg"; var candidate = Path.Combine(Path.GetDirectoryName(file.Path)!, peer + ".exe");
-                    if (fields[peer].Text == "" && File.Exists(candidate)) fields[peer].Text = candidate;
-                }
+                var peer = name == "ffmpeg" ? "ffprobe" : "ffmpeg"; var candidate = Path.Combine(Path.GetDirectoryName(file.Path)!, peer + ".exe");
+                if (fields[peer].Text == "" && File.Exists(candidate)) fields[peer].Text = candidate;
             };
         }
         var notice = new InfoBar { IsClosable = false, Severity = InfoBarSeverity.Error, IsOpen = false }; panel.Children.Add(notice);
@@ -745,14 +739,10 @@ public sealed class MainWindow : Window
             var deferral = e.GetDeferral(); dialog.IsPrimaryButtonEnabled = false;
             try
             {
-                foreach (var (name, box) in fields) await WorkerClient.CheckToolAsync(box.Text.Trim('"', ' '), name);
+                foreach (var (name, box) in fields) await ConversionClient.CheckToolAsync(box.Text.Trim('"', ' '), name);
                 ffmpeg = fields["ffmpeg"].Text.Trim('"', ' '); ffprobe = fields["ffprobe"].Text.Trim('"', ' ');
                 settings.Ffmpeg = ffmpeg; settings.Ffprobe = ffprobe; settings.Save();
-                if (fields.TryGetValue("python", out var python))
-                {
-                    WorkerClient.ExternalPython = python.Text.Trim('"', ' ');
-                    settings.Python = WorkerClient.ExternalPython; settings.Save();
-                }
+
             }
             catch (Exception error) { e.Cancel = true; notice.Message = L.T(error.Message); notice.IsOpen = true; }
             finally { dialog.IsPrimaryButtonEnabled = true; deferral.Complete(); }

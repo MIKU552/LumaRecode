@@ -5,7 +5,7 @@
 
 [简体中文](README.md) | [English](README.en.md) | 日本語 | [Español](README.es.md)
 
-Windows 11 向けの動画変換・色変換ツールです。ネイティブ WinUI 3 インターフェイスとコマンドラインを備え、FFmpeg による動画圧縮、カメラ Log から HDR / SDR への変換、HDR から SDR への変換を行います。
+C# / .NET で開発した Windows 11 向けの動画変換・色変換ツールです。ネイティブ WinUI 3 インターフェイスとコマンドラインを備え、FFmpeg による動画圧縮、カメラ Log から HDR / SDR への変換、HDR から SDR への変換を行います。
 
 [ダウンロード](https://github.com/MIKU552/LumaRecode/releases/latest) · [コマンドライン](docs/cli.ja.md) · [変更履歴](CHANGELOG.md)
 
@@ -43,7 +43,7 @@ FLAC は整数 PCM と、可逆形式と確認できる整数音声に対応し�
 
 SDR 素材は SDR 出力、HLG / PQ 素材は HDR 出力が初期値です。曲線を識別できた Log 素材は HLG に変換します。「入力形式」と「カメラプロファイル」で素材の種類を手動指定できます。
 
-動画は選択したプリセットで再エンコードします。音声はコピーまたは変換できます。設定値は [recommended-presets.json](Worker/assets/recommended-presets.json)、測定結果は[エンコードベンチマーク（英語）](docs/benchmarks/encoding-benchmark.en.md)を参照してください。
+動画は選択したプリセットで再エンコードします。音声はコピーまたは変換できます。設定値は [recommended-presets.json](Assets/recommended-presets.json)、測定結果は[エンコードベンチマーク（英語）](docs/benchmarks/encoding-benchmark.en.md)を参照してください。
 
 ## 動作要件
 
@@ -89,7 +89,8 @@ cd LumaRecode
 ```text
 App/       WinUI 3 UI、外観、ローカライズ、ジョブ操作
 Bundle/    単一ファイルへのパッケージ化
-Worker/    CLI、素材の解析、FFmpeg の実行、LUT
+Core/      素材解析、形式の規則、FFmpeg の実行、CLI
+Assets/    LUT、エンコードプリセット、配布元の記録
 Brand/     アイコンのソースと生成ツール
 tools/     ライセンス収集とローカライズコードの生成
 qa/        自動チェックとメモリ測定
@@ -101,7 +102,7 @@ licenses/  第三者のライセンス、通知、配布元の記録
 
 本プロジェクトの独自コードは、**Windows 版 Codex** で **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** と **Extra high（`xhigh`）** 推論設定を使用して開発しました。**[MIKU552](https://github.com/MIKU552)** が要件を定義し、機材と素材を提供して実機検証を行っています。
 
-独自のコード、ドキュメント、画像、生成した Mi-Log / Samsung Log LUT には **[MIT License](LICENSE)** が適用されます。第三者の LUT、フォント、ランタイムのライセンスと配布元は [NOTICE](NOTICE) と[第三者コンポーネント](Worker/assets/THIRD_PARTY.md)に記載しています。
+独自のコード、ドキュメント、画像、生成した Mi-Log / Samsung Log LUT には **[MIT License](LICENSE)** が適用されます。第三者の LUT、フォント、ランタイムのライセンスと配布元は [NOTICE](NOTICE) と[第三者コンポーネント](Assets/THIRD_PARTY.md)に記載しています。
 
 ## ドキュメント
 

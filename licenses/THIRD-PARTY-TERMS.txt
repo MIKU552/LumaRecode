@@ -1,15 +1,14 @@
 LumaRecode - third-party binary component terms
 
 The original LumaRecode source, documentation and assets use the MIT
-License. The Windows distribution includes Microsoft and Python runtimes,
-OpenSSL, and the OpenOSV LUT, each with its own license and notices.
+License. The Windows distribution includes Microsoft runtimes and
+the OpenOSV LUT, each with its own license and notices.
 
 By choosing "Agree and continue", you agree to comply with the applicable
 terms for the bundled third-party components, including the Microsoft
 Windows App SDK, .NET Library License for designated Windows runtime
 binaries (including the single-file runtime), Windows SDK terms for
-the WinRT projection assemblies, and Microsoft Distributable Code in the
-official Python Windows binary build. Full license texts, notices and
+the WinRT projection assemblies. Full license texts, notices and
 their source-package records are in this same licenses directory.
 
 In particular, preserve the Microsoft copyright, trademark and patent
@@ -19,9 +18,8 @@ application platforms; and do not include them in malicious, deceptive or
 unlawful programs. Do not modify or redistribute Microsoft components
 except as permitted by their applicable terms. If redistributing a program
 that contains them, preserve the required notices and obtain the required
-recipient agreement for those components. The additional Windows-binary
-conditions are stated in Python-LICENSE.txt; Windows App SDK redistribution
-rights and requirements are in the corresponding package license texts.
+recipient agreement for those components. Windows App SDK redistribution rights and requirements are in the
+corresponding package license texts.
 
 The .NET Library License sets the conditions for distributing object code
 as part of this application. Windows SDK REDIST.TXT covers the unmodified

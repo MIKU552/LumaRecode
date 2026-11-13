@@ -2,7 +2,7 @@
 """Reproduce the project's Mi-Log and Samsung Log HLG tables using stdlib only.
 
 This is the project's own transfer-function implementation, not vendor code.
-Technical references and licensing scope: ../assets/THIRD_PARTY.md.
+Technical references and licensing scope: ../Assets/THIRD_PARTY.md.
 The independently licensed OpenOSV LUT is not generated or changed here.
 """
 import argparse
@@ -18,7 +18,7 @@ HLG_B = 1 - 4 * HLG_A
 HLG_C = 0.5 - HLG_A * log(4 * HLG_A)
 GRAY_SCALE = 0.38 ** 2 / (3 * 0.18)
 SHOULDER = 0.45
-ASSETS = Path(__file__).resolve().parents[1] / 'assets'
+ASSETS = Path(__file__).resolve().parents[1] / 'Assets'
 
 
 def linear_milog(code):
