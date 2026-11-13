@@ -1,13 +1,24 @@
 {
-  "app_version": "3.7.3",
+  "app_version": "3.7.4",
   "distribution_basis": [
     "Windows App SDK production package terms, section 3, for files placed with the application by NuGet",
     ".NET Library License for designated Windows binaries and single-file runtime; MIT and notices for remaining files; Windows SDK terms where applicable",
     "Windows SDK license and its Microsoft.Windows.SDK.NET.Ref REDIST list for unmodified WinRT projection binaries",
     "Official CPython Windows binary license including its Additional Conditions for this Windows binary build",
-    "Unmodified OpenOSV LUT under Apache-2.0 with its original LICENSE and NOTICE"
+    "Unmodified OpenOSV LUT under Apache-2.0 with its original LICENSE and NOTICE",
+    "Unmodified Source Sans 3, Source Han Sans and Source Code Pro fonts under SIL OFL 1.1, with original copyrights and license texts"
   ],
   "dotnet_sdk": "11.0.100",
+  "fonts": {
+    "families": [
+      "Source Sans 3",
+      "Source Han Sans CN",
+      "Source Han Sans JP",
+      "Source Code Pro"
+    ],
+    "license": "OFL-1.1",
+    "sources": "Fonts/manifest.json"
+  },
   "implicit_runtime_packs": [
     {
       "files": [

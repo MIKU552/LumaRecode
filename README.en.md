@@ -3,7 +3,7 @@
 </p>
 <h1 align="center">映流 · FrameFlow</h1>
 
-[简体中文](README.md) | English
+[简体中文](README.md) | English | [日本語](README.ja.md) | [Español](README.es.md)
 
 Video transcoding and color conversion for Windows 11. FrameFlow provides a native WinUI 3 interface and a command line for FFmpeg, with video compression, camera Log to HDR / SDR, and HDR to SDR workflows.
 
@@ -23,7 +23,7 @@ Video transcoding and color conversion for Windows 11. FrameFlow provides a nati
 
 1. Download **FrameFlow.exe** from [Releases](https://github.com/MIKU552/FrameFlow/releases). Required runtimes are included.
 2. Obtain a Windows build of [FFmpeg](https://ffmpeg.org/download.html) containing `ffmpeg.exe` and `ffprobe.exe`. FrameFlow checks `PATH` on first use; paths can also be selected with the gear button.
-3. Drop a video or choose **Select video**, then confirm the output range, preset, and color conversion.
+3. Drop a video or choose **Choose video**, then confirm the output range, preset, and color conversion.
 4. Choose the output path and select **Start conversion**.
 
 Quick share uses Intel QSV. Software archive uses CPU encoding.
@@ -53,6 +53,8 @@ Video is re-encoded with the selected preset; audio can be copied or transcoded.
 - `zscale` and `lut3d` for Log conversion; `libplacebo` and Vulkan for HDR / Log to SDR.
 
 Language and theme follow the system by default. Chinese, English, Japanese and Spanish system languages are recognized; other languages default to English. Settings are stored at `%LOCALAPPDATA%\FrameFlow\settings.json`.
+
+Source Sans 3, Source Han Sans, and Source Code Pro are included; no font installation is needed.
 
 ## Command line
 
@@ -97,7 +99,7 @@ licenses/  Third-party licenses, notices, and provenance
 
 Original project code was developed with **Codex for Windows**, using **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** with **Extra high (`xhigh`)** reasoning. **[MIKU552](https://github.com/MIKU552)** defines requirements, supplies hardware and footage, and verifies the application.
 
-Original code, documentation, graphics, and generated Mi-Log / Samsung Log LUTs use the **[MIT License](LICENSE)**. Licenses and sources for third-party LUTs and runtimes are listed in [NOTICE](NOTICE) and [third-party components](Worker/assets/THIRD_PARTY.md).
+Original code, documentation, graphics, and generated Mi-Log / Samsung Log LUTs use the **[MIT License](LICENSE)**. Licenses and sources for third-party LUTs, fonts, and runtimes are listed in [NOTICE](NOTICE) and [third-party components](Worker/assets/THIRD_PARTY.md).
 
 ## Documentation
 

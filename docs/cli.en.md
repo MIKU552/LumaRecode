@@ -1,6 +1,6 @@
 # Command line
 
-[简体中文](cli.zh-CN.md) · [README](../README.en.md)
+[简体中文](cli.zh-CN.md) · English · [日本語](cli.ja.md) · [Español](cli.es.md) · [README](../README.en.md)
 
 Run `FrameFlow.exe` in **PowerShell 7**. No arguments opens the GUI; subcommands such as `probe` and `convert` run the CLI.
 

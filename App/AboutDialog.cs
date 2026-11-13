@@ -26,7 +26,7 @@ internal static class AboutDialog
         panel.Children.Add(credits);
         var licensing = new StackPanel { Spacing = 8 };
         licensing.Children.Add(new TextBlock { Text = L.T("许可与第三方组件"), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-        licensing.Children.Add(Paragraph("项目自主内容采用 MIT License。第三方运行时与 LUT 保留各自许可；FFmpeg 由用户提供。"));
+        licensing.Children.Add(Paragraph("项目自主内容采用 MIT License。第三方运行时、字体与 LUT 保留各自许可；FFmpeg 由用户提供。"));
         panel.Children.Add(licensing);
         var links = new StackPanel { Spacing = 4 };
         links.Children.Add(new HyperlinkButton { Content = L.T("GitHub 项目主页"), NavigateUri = new Uri("https://github.com/MIKU552/FrameFlow"),

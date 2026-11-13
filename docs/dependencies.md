@@ -35,6 +35,12 @@ NuGet 依赖分别锁定在 `App/packages.aot.lock.json`、`App/packages.lock.js
 
 主视图位于 `App/MainView.xaml`。修改翻译文字后运行 `python tools/Update-ViewText.py`，更新 `App/ViewText.g.cs`；构建会检查映射是否一致。检查命令见 [QA 指南](../qa/README.md)，品牌资源生成见 [Brand/README.md](../Brand/README.md)。
 
+## 字体
+
+界面使用 Source Sans 3、思源黑体中文与日文字体，日志使用 Source Code Pro，并回退到对应的思源黑体。字体随应用提供，无需安装。
+
+原始字体位于 `App/Assets/Fonts/`，版权和 SIL OFL 1.1 原文位于 `licenses/Fonts/`。上游提交、下载地址和 SHA-256 固定在[字体来源清单](../licenses/Fonts/manifest.json)；构建时校验字体与许可文件的哈希。
+
 ## 单文件结构
 
 `Bundle/` 使用 .NET 单文件提取机制打包 AOT 主程序、Windows App SDK、Python、worker、LUT 和许可文件。首次启动时，依赖提取到用户临时缓存。
@@ -54,7 +60,7 @@ GUI 模式下，入口启动 AOT 主程序后退出。CLI 模式下，入口继�
 
 `tools/Collect-Licenses.ps1` 检查依赖图与许可记录，并将 Python 依赖原文和来源保存到 `licenses/Python-dependencies/`。
 
-项目自主内容采用 MIT；第三方运行时和 LUT 使用各自许可。各组件的分发依据、LUT 来源及完整原文入口见[第三方组件](../Worker/assets/THIRD_PARTY.md)。
+项目自主内容采用 MIT；第三方运行时、字体和 LUT 使用各自许可。各组件的分发依据、LUT 来源及完整原文入口见[第三方组件](../Worker/assets/THIRD_PARTY.md)。
 
 ## English
 

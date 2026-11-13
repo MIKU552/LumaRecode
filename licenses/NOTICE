@@ -20,3 +20,7 @@ and dependencies of the official CPython Windows build, including OpenSSL.
 Their licenses and notices are included in licenses/.
 
 FFmpeg and ffprobe are supplied by the user and run as separate processes.
+
+Source Sans 3, Source Han Sans and Source Code Pro are bundled unmodified
+under the SIL Open Font License 1.1. Their original license texts,
+copyright notices and pinned upstream sources are in licenses/Fonts/.

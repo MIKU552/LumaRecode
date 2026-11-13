@@ -2,6 +2,7 @@
 *.cube -diff
 *.ico binary
 *.png binary
+App/Assets/Fonts/*.ttf binary linguist-vendored=true
 # Preserve upstream legal text bytes and the hashes in license-manifest.json.
 LICENSE -text
 NOTICE -text

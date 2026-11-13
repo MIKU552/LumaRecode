@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
+using System.Security.Cryptography;
 using VideoConverter;
 
 int count = 0;
@@ -19,16 +20,32 @@ Equal("en", LanguagePolicy.Resolve("en", "zh-CN")); Equal("zh", LanguagePolicy.R
 Equal("ja", LanguagePolicy.Resolve("ja", "es-MX")); Equal("es", LanguagePolicy.Resolve("es", "ja-JP"));
 Equal("en", LanguagePolicy.Resolve("unknown", "fr-FR"));
 Equal("ja-JP", LanguagePolicy.Culture("ja")); Equal("es-ES", LanguagePolicy.XamlLanguage("es"));
-Equal(TypographyPolicy.FontStack("zh"), TypographyPolicy.FontStack("en"));
-Equal(TypographyPolicy.FontStack("zh"), TypographyPolicy.FontStack("es"));
+Equal(TypographyPolicy.FontStack("en"), TypographyPolicy.FontStack("es"));
 foreach (var code in new[] { "zh", "en", "es", "ja" })
 {
     var fonts = TypographyPolicy.FontStack(code).Split(", ");
-    Equal("Segoe UI Variable", fonts[0]);
-    Equal(code == "ja" ? "Yu Gothic UI" : "Microsoft YaHei UI", fonts[2]);
-    Equal("Consolas", TypographyPolicy.MonospaceStack(code).Split(", ")[0]);
+    Equal(code switch { "zh" => "SourceHanSansCN-VF.ttf#Source Han Sans CN VF", "ja" => "SourceHanSansJP-VF.ttf#Source Han Sans JP VF", _ => "SourceSans3VF-Upright.ttf#SourceSans3VF" }, fonts[0].Split('/').Last());
+    Equal("SourceCodeVF-Upright.ttf#SourceCodeVF", TypographyPolicy.MonospaceStack(code).Split(", ")[0].Split('/').Last());
+    Equal(code == "ja" ? "SourceHanSansJP-VF.ttf#Source Han Sans JP VF" : "SourceHanSansCN-VF.ttf#Source Han Sans CN VF", TypographyPolicy.MonospaceStack(code).Split(", ")[1].Split('/').Last());
+    Equal("Segoe UI Emoji", fonts[^2]);
+    Equal("Segoe UI Symbol", fonts[^1]);
 }
 var app = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../App"));
+var fontFolder = Path.Combine(app, "Assets/Fonts");
+using (var fontManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(app, "../licenses/Fonts/manifest.json"))))
+{
+    var records = fontManifest.RootElement.EnumerateArray().ToArray();
+    Equal("4", records.Count(record => record.GetProperty("file").GetString()!.EndsWith(".ttf")).ToString());
+    Equal("7", records.Length.ToString());
+    foreach (var record in records)
+    {
+        var name = record.GetProperty("file").GetString()!;
+        var path = Path.Combine(name.EndsWith(".ttf") ? fontFolder : Path.Combine(app, "../licenses/Fonts"), name);
+        using var stream = File.OpenRead(path);
+        Equal(record.GetProperty("sha256").GetString()!, Convert.ToHexStringLower(SHA256.HashData(stream)));
+        Equal(record.GetProperty("bytes").GetInt64().ToString(), stream.Length.ToString());
+    }
+}
 var resources = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(app, "Strings.en.json")))!;
 var languages = new[] { "en", "ja", "es" }.ToDictionary(code => code, code =>
     JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(app, $"Strings.{code}.json")))!);

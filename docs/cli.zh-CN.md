@@ -1,6 +1,6 @@
 # 命令行
 
-[English](cli.en.md) · [返回 README](../README.md)
+简体中文 · [English](cli.en.md) · [日本語](cli.ja.md) · [Español](cli.es.md) · [README](../README.md)
 
 在 **PowerShell 7** 中运行 `FrameFlow.exe`。无参数时打开 GUI，带 `probe`、`convert` 等子命令时运行 CLI。
 

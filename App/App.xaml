@@ -4,7 +4,7 @@
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries><XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls"/></ResourceDictionary.MergedDictionaries>
-      <FontFamily x:Key="FrameFlowUIFontFamily">Segoe UI Variable, Segoe UI, Microsoft YaHei UI, Microsoft YaHei, Yu Gothic UI, Meiryo, Segoe UI Emoji, Segoe UI Symbol</FontFamily>
+      <FontFamily x:Key="FrameFlowUIFontFamily">ms-appx:///Assets/Fonts/SourceSans3VF-Upright.ttf#SourceSans3VF, ms-appx:///Assets/Fonts/SourceHanSansCN-VF.ttf#Source Han Sans CN VF, ms-appx:///Assets/Fonts/SourceHanSansJP-VF.ttf#Source Han Sans JP VF, Segoe UI Emoji, Segoe UI Symbol</FontFamily>
       <Style TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{ThemeResource FrameFlowUIFontFamily}" />
       </Style>

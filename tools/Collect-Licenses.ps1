@@ -98,7 +98,18 @@ $taskPythonFiles = @(if ($PythonRuntime) {
     }
 })
 $taskVersion = ([xml](Get-Content -LiteralPath (Join-Path $taskRoot 'App/VideoConverter.WinUI.csproj') -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+$taskFontRecords = Get-Content -LiteralPath (Join-Path $taskOutput 'Fonts/manifest.json') -Raw | ConvertFrom-Json -AsHashtable
+foreach ($taskFontRecord in $taskFontRecords) {
+    $taskFontPath = if ($taskFontRecord.file.EndsWith('.ttf')) {
+        Join-Path $taskRoot "App/Assets/Fonts/$($taskFontRecord.file)"
+    } else { Join-Path $taskOutput "Fonts/$($taskFontRecord.file)" }
+    if ((Get-FileHash -LiteralPath $taskFontPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $taskFontRecord.sha256) {
+        throw "Bundled font or license checksum mismatch: $($taskFontRecord.file)"
+    }
+}
 $taskManifest = [ordered]@{schema_version=2;project_license='MIT';app_version=$taskVersion;reviewed_on='2026-11-12';packages=$taskRecords.ToArray();implicit_runtime_packs=$taskRuntimeRecords.ToArray();dotnet_sdk='11.0.100';python_bundled=[bool]$PythonRuntime;python_runtime='3.15.2';python_archive_sha256='d012f3aa29cf07436dae8aea1fec0fd195c2612a0b059b1f915ae0afb9ad1f62';distribution_basis=@('Windows App SDK production package terms, section 3, for files placed with the application by NuGet','.NET Library License for designated Windows binaries and single-file runtime; MIT and notices for remaining files; Windows SDK terms where applicable','Windows SDK license and its Microsoft.Windows.SDK.NET.Ref REDIST list for unmodified WinRT projection binaries','Official CPython Windows binary license including its Additional Conditions for this Windows binary build','Unmodified OpenOSV LUT under Apache-2.0 with its original LICENSE and NOTICE');third_party_rights_separate=$true}
+$taskManifest['fonts'] = @{license='OFL-1.1';sources='Fonts/manifest.json';families=@('Source Sans 3','Source Han Sans CN','Source Han Sans JP','Source Code Pro')}
+$taskManifest.distribution_basis += 'Unmodified Source Sans 3, Source Han Sans and Source Code Pro fonts under SIL OFL 1.1, with original copyrights and license texts'
 ConvertTo-CanonicalObject $taskManifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $taskOutput 'manifest.json') -Encoding utf8
 ConvertTo-CanonicalObject $taskPythonFiles | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $taskOutput 'Python-payload-sha256.json') -Encoding utf8
 Write-Output "Collected legal text for $($taskRecords.Count) resolved NuGet packages."

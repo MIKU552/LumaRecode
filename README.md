@@ -3,7 +3,7 @@
 </p>
 <h1 align="center">映流 · FrameFlow</h1>
 
-简体中文 | [English](README.en.md)
+简体中文 | [English](README.en.md) | [日本語](README.ja.md) | [Español](README.es.md)
 
 面向 Windows 11 的视频转码与色彩转换工具，提供原生 WinUI 3 界面和命令行，使用 FFmpeg 完成视频压缩、相机 Log 转 HDR / SDR，以及 HDR 转 SDR。
 
@@ -54,6 +54,8 @@ SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线�
 
 语言和主题默认跟随系统，支持中文、英语、日语和西班牙语系统；其他语言系统默认英文。设置保存在 `%LOCALAPPDATA%\FrameFlow\settings.json`。
 
+程序内置 Source Sans 3、思源黑体和 Source Code Pro，无需安装字体。
+
 ## 命令行
 
 在 PowerShell 7 中使用输出管道运行命令：
@@ -97,7 +99,7 @@ licenses/  第三方许可、声明与来源清单
 
 项目自主代码由 **Windows 版 Codex** 使用 **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)**、**极高（xhigh）** 推理设置完成。**[MIKU552](https://github.com/MIKU552)** 负责需求、设备与素材，并进行实机核验。
 
-自主代码、文档、图形及项目生成的 Mi-Log / Samsung Log LUT 采用 **[MIT License](LICENSE)**。第三方 LUT 和运行时的许可与来源见 [NOTICE](NOTICE) 和[第三方组件](Worker/assets/THIRD_PARTY.md)。
+自主代码、文档、图形及项目生成的 Mi-Log / Samsung Log LUT 采用 **[MIT License](LICENSE)**。第三方 LUT、字体和运行时的许可与来源见 [NOTICE](NOTICE) 和[第三方组件](Worker/assets/THIRD_PARTY.md)。
 
 ## 文档
 

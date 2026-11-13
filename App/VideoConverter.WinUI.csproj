@@ -25,7 +25,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <Version>3.7.3</Version>
+    <Version>3.7.4</Version>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">
@@ -41,6 +41,7 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
     <Content Include="FrameFlow.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../Brand/FrameFlow.png" Link="Assets/FrameFlow.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets/Fonts/*.ttf" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="Strings.en.json" LogicalName="FrameFlow.Strings.en.json" WithCulture="false" />
     <EmbeddedResource Include="Strings.ja.json" LogicalName="FrameFlow.Strings.ja.json" WithCulture="false" />
     <EmbeddedResource Include="Strings.es.json" LogicalName="FrameFlow.Strings.es.json" WithCulture="false" />

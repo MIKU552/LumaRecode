@@ -1,0 +1,110 @@
+<p align="center">
+  <img src="Brand/FrameFlow.svg" width="104" height="104" alt="Icono de FrameFlow" />
+</p>
+<h1 align="center">映流 · FrameFlow</h1>
+
+[简体中文](README.md) | [English](README.en.md) | [日本語](README.ja.md) | Español
+
+Herramienta de transcodificación de vídeo y conversión de color para Windows 11. FrameFlow ofrece una interfaz nativa WinUI 3 y una línea de comandos para FFmpeg, con compresión de vídeo, conversión de Log de cámara a HDR / SDR y de HDR a SDR.
+
+[Descargar](https://github.com/MIKU552/FrameFlow/releases/latest) · [Línea de comandos](docs/cli.es.md) · [Historial de cambios](CHANGELOG.md)
+
+## Funciones
+
+- Preajustes de Compartir rápido y Archivo por software para HEVC, AV1 y H.264, con salida MP4 / MKV.
+- Conversión de Mi-Log, Pocket 3 D-Log M y Samsung Log a HLG HDR o Rec.709 SDR; conversión de HLG / PQ a SDR.
+- Lectura de resolución, tasa de fotogramas, profundidad de bits, etiquetas de color y pistas de audio, con ajustes iniciales según el material.
+- Selección de submuestreo de croma, rango Limited / Full y formato de audio, incluido FLAC sin pérdidas.
+- Progreso, fps de codificación, posición, tiempo restante y verificación del formato de salida.
+- Mica, temas claro / oscuro / del sistema y colores de énfasis. Interfaz en chino simplificado, inglés, japonés y español.
+- Procesamiento por lotes, archivos de configuración, vista previa de comandos y eventos JSON mediante la CLI.
+
+## Inicio rápido
+
+1. Descarga **FrameFlow.exe** desde [Releases](https://github.com/MIKU552/FrameFlow/releases). Los entornos de ejecución necesarios están incluidos.
+2. Prepara una compilación de [FFmpeg para Windows](https://ffmpeg.org/download.html) con `ffmpeg.exe` y `ffprobe.exe`. FrameFlow busca en `PATH` al iniciarse; también puedes indicar las rutas con el botón de engranaje.
+3. Arrastra un vídeo o pulsa **Elegir vídeo** y comprueba el rango dinámico, el preajuste y la conversión de color.
+4. Elige la ruta de salida y pulsa **Iniciar conversión**.
+
+Compartir rápido usa Intel QSV. Archivo por software usa la CPU.
+
+## Codificación y color
+
+| Uso | Codificadores | Contenedor predeterminado | Audio predeterminado |
+| --- | --- | --- | --- |
+| Compartir rápido | Intel QSV: HEVC / AV1 / H.264 | MP4 | AAC para HEVC / H.264; Opus para AV1 |
+| Archivo por software | x265 / SVT-AV1 / x264 | MKV | Copiar las pistas originales |
+
+Puedes elegir por separado el contenedor, el submuestreo, la profundidad de bits, el rango de color y el audio. Compartir rápido usa por defecto SDR de 8 bits o HDR de 10 bits. Archivo por software conserva la profundidad del original dentro de los límites del codificador: 8 / 10 / 12 bits para HEVC y 8 / 10 bits para AVC y AV1.
+
+El archivo con HEVC / H.264 por software conserva el submuestreo original. Las entradas RGB se convierten por defecto a YCbCr 4:4:4; AV1 y Compartir rápido usan 4:2:0. Puedes reducir el submuestreo y la profundidad dentro de los límites del original: una entrada de 8 bits 4:2:0 permanece en ese formato; una de 10 bits 4:2:2 permite elegir 10 / 8 bits y 4:2:2 / 4:2:0. Archivo por software conserva el rango Limited / Full original; Compartir rápido usa Limited. El submuestreo, la profundidad y el rango están en **Conversión de color**; el contenedor y el audio están en **Formato y audio**.
+
+FLAC admite audio entero confirmado como sin pérdidas, incluido PCM entero, y conserva la frecuencia de muestreo, los canales y la precisión entera de cada pista. El audio FLAC usa MKV.
+
+El material SDR se convierte por defecto a SDR; HLG / PQ conserva HDR; los perfiles Log reconocidos se convierten a HLG. **Interpretación** y **Perfil de cámara** permiten indicar manualmente el tipo de material.
+
+El vídeo se vuelve a codificar con el preajuste elegido; el audio puede copiarse o convertirse. Los parámetros están en [recommended-presets.json](Worker/assets/recommended-presets.json) y las mediciones en el [informe de pruebas de codificación, en inglés](docs/benchmarks/encoding-benchmark.en.md).
+
+## Requisitos
+
+- Windows 11 x64.
+- FFmpeg / ffprobe con los codificadores y filtros necesarios, aportados por el usuario.
+- Compatibilidad con Intel QSV para Compartir rápido.
+- `zscale` y `lut3d` para la conversión de Log; `libplacebo` y Vulkan para HDR / Log a SDR.
+
+El idioma y el tema siguen al sistema de forma predeterminada. Se reconocen sistemas en chino, inglés, japonés y español; los demás usan inglés. Los ajustes se guardan en `%LOCALAPPDATA%\FrameFlow\settings.json`.
+
+Source Sans 3, Source Han Sans y Source Code Pro están incluidos; no necesitas instalar fuentes.
+
+## Línea de comandos
+
+En PowerShell 7, conecta la salida a una canalización:
+
+```powershell
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+./FrameFlow.exe --lang es --help | Out-Host
+./FrameFlow.exe probe clip.mp4 --json | ConvertFrom-Json
+./FrameFlow.exe convert clip.mp4 --preset archive-hevc | Out-Host
+./FrameFlow.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
+```
+
+Antes del primer uso desatendido, consulta las condiciones de los componentes con `license --text` y ejecuta `license --accept-terms`. La [guía de la CLI](docs/cli.es.md) incluye todos los comandos, el procesamiento por lotes y los códigos de salida.
+
+## Compilar desde el código fuente
+
+Se necesitan .NET SDK 11.0.100, PowerShell 7 y las herramientas de Visual Studio C++ compatibles con Native AOT.
+
+```powershell
+git clone https://github.com/MIKU552/FrameFlow.git
+cd FrameFlow
+./build.ps1
+```
+
+El resultado es `dist/SelfContained/FrameFlow.exe`. Consulta las opciones de compilación y versiones de dependencias en la [documentación de desarrollo y distribución](docs/dependencies.md), y los comandos de comprobación en la [guía de QA](qa/README.md).
+
+## Estructura del proyecto
+
+```text
+App/       Interfaz WinUI 3, apariencia, idiomas y gestión de tareas
+Bundle/    Empaquetado en un único archivo
+Worker/    CLI, análisis del material, ejecución de FFmpeg y LUT
+Brand/     Archivos originales del icono y herramientas de generación
+tools/     Recopilación de licencias y generación de código de idiomas
+qa/        Comprobaciones automáticas y medición de memoria
+docs/      Guías, documentación de desarrollo y datos de pruebas
+licenses/  Licencias, avisos y procedencia de componentes de terceros
+```
+
+## Desarrollo y licencia
+
+El código original del proyecto se desarrolló con **Codex para Windows**, usando **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** y el nivel de razonamiento **Extra high (`xhigh`)**. **[MIKU552](https://github.com/MIKU552)** define los requisitos, aporta el equipo y el material, y verifica la aplicación en dispositivos reales.
+
+El código, la documentación, los gráficos originales y las LUT de Mi-Log / Samsung Log generadas por el proyecto usan la **[licencia MIT](LICENSE)**. Las licencias y procedencia de las LUT, fuentes y entornos de ejecución de terceros figuran en [NOTICE](NOTICE) y en [componentes de terceros](Worker/assets/THIRD_PARTY.md).
+
+## Documentación
+
+- [Línea de comandos](docs/cli.es.md)
+- [Desarrollo y distribución](docs/dependencies.md)
+- [Rendimiento](docs/performance.md)
+- [Pruebas de codificación, en inglés](docs/benchmarks/encoding-benchmark.en.md)
+- [Historial de cambios](CHANGELOG.md)

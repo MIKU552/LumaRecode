@@ -29,3 +29,5 @@ Microsoft.Windows.SDK.NET.Ref package files used to call WinRT APIs.
 See DotNet-Library-LICENSE.html, Windows-SDK-Net-Ref-LICENSE.rtf and
 Windows-SDK-REDIST.html. Read the full terms, including their limits on
 use, redistribution, notices and applicable data collection provisions.
+
+Source Sans 3, Source Han Sans and Source Code Pro are included as unmodified font files under the SIL Open Font License 1.1. Their copyright notices, full licenses and source records are in the Fonts subdirectory.
