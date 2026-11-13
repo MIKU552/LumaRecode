@@ -16,6 +16,7 @@ Herramienta de transcodificación de vídeo y conversión de color para Windows 
 - Lectura de resolución, tasa de fotogramas, profundidad de bits, etiquetas de color y pistas de audio, con ajustes iniciales según el material.
 - Selección de submuestreo de croma, rango Limited / Full y formato de audio, incluido FLAC sin pérdidas.
 - Progreso, fps de codificación, posición, tiempo restante y verificación del formato de salida.
+- Notificaciones de Windows al completar o fallar una tarea, con una casilla junto a Abrir carpeta.
 - Mica, temas claro / oscuro / del sistema y colores de énfasis. Interfaz en chino simplificado, inglés, japonés y español.
 - Procesamiento por lotes, archivos de configuración, vista previa de comandos y eventos JSON mediante la CLI.
 

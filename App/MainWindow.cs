@@ -22,6 +22,9 @@ public sealed partial class MainWindow : Window
     private readonly UserSettings settings = UserSettings.Load();
     private readonly Appearance appearance;
     private ConversionClient? activeJob;
+    private readonly JobNotifications notifications;
+    private string jobInputPath = "";
+    private bool jobTerminalHandled;
     // Selection changes also fire during programmatic updates. The updating
     // guard prevents recursive Refresh calls; default flags preserve explicit
     // user audio/depth choices until the purpose or source changes.
@@ -82,6 +85,25 @@ public sealed partial class MainWindow : Window
         UiTypography.Attach(root);
         appearance = new Appearance(root, this, settings);
         BuildLanguageMenu();
+        notifications = new JobNotifications(() => DispatcherQueue.TryEnqueue(() =>
+        {
+            if (closing)
+            {
+                return;
+            }
+            if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter &&
+                presenter.State == Microsoft.UI.Windowing.OverlappedPresenterState.Minimized)
+            {
+                presenter.Restore();
+            }
+            Activate();
+        }));
+        Control<CheckBox>("NotifyWhenFinished").IsChecked = settings.NotifyWhenFinished;
+        Closed += (_, _) => notifications.Close();
+        if (StartupMode.IsNotificationActivation(Environment.GetCommandLineArgs()[1..]))
+        {
+            notifications.TryRegister(out _);
+        }
         WireEvents();
         ResolveTools();
         Refresh();
@@ -141,6 +163,11 @@ public sealed partial class MainWindow : Window
     }
     private void WireEvents()
     {
+        Control<CheckBox>("NotifyWhenFinished").Click += (_, _) =>
+        {
+            settings.NotifyWhenFinished = Control<CheckBox>("NotifyWhenFinished").IsChecked == true;
+            settings.Save();
+        };
         Control<Button>("ChooseInput").Click += async (_, _) => await ChooseInputAsync();
         Control<Button>("ChooseOutput").Click += async (_, _) => await ChooseOutputAsync();
         Control<Button>("ToolsButton").Click += async (_, _) => await ConfigureToolsAsync();

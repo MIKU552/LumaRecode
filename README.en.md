@@ -16,6 +16,7 @@ Video transcoding and color conversion for Windows 11, built with C# and .NET. L
 - Source inspection for resolution, frame rate, bit depth, color tags, and audio tracks, with automatic defaults.
 - Chroma sampling, Limited / Full range, and audio controls, including lossless FLAC audio.
 - Progress, encoding fps, position, remaining time, and output format verification.
+- Windows notifications for completed and failed jobs, controlled by the checkbox beside Open folder.
 - Mica, light / dark / system themes, accent colors, and Simplified Chinese, English, Japanese and Spanish.
 - Batch processing, configuration files, command previews, and JSON events through the CLI.
 

@@ -35,6 +35,8 @@ public sealed partial class MainWindow
 
         using var client = new ConversionClient();
         activeJob = client;
+        jobInputPath = request.Path;
+        jobTerminalHandled = false;
         completed = false;
         encodedSeconds = encodedFrames = conversionSpeed = currentFps = 0;
         clock.Restart();
@@ -49,7 +51,12 @@ public sealed partial class MainWindow
         {
             await client.RunAsync(request, ReceiveAsync);
         }
-        catch (Exception error) { await MessageAsync(L.T("转换失败"), error.Message); SetStatus("转换失败"); }
+        catch (Exception error)
+        {
+            SetStatus("转换失败");
+            NotifyJobFinished(null, error.Message);
+            await MessageAsync(L.T("转换失败"), error.Message);
+        }
         finally
         {
             clock.Stop();
@@ -112,6 +119,10 @@ public sealed partial class MainWindow
             completedOutput = data?.ToString() ?? "";
             Control<ProgressBar>("Progress").Value = 1000;
             SetStatus("转换完成 · 已核对色彩与采样格式");
+            if (activeJob?.CompletedResult is { } result)
+            {
+                NotifyJobFinished(result, null);
+            }
         }
         else if (type == "cancelled")
         {
@@ -125,6 +136,7 @@ public sealed partial class MainWindow
             Control<Expander>("LogPanel").IsExpanded = true;
             conversionLog.Append(L.T(data?.ToString()));
             FlushLog();
+            NotifyJobFinished(null, data?.ToString() ?? "");
             await MessageAsync(L.T("转换失败"), data?.ToString() ?? "");
         }
         if (type is "done" or "cancelled" or "error")
@@ -132,6 +144,29 @@ public sealed partial class MainWindow
             FlushLog();
         }
     }
+    private void NotifyJobFinished(ConversionResult? result, string? error)
+    {
+        if (jobTerminalHandled)
+        {
+            return;
+        }
+        jobTerminalHandled = true;
+        clock.Stop();
+        clockTimer.Stop();
+        if (!settings.NotifyWhenFinished)
+        {
+            return;
+        }
+        var payload = result is not null
+            ? JobNotificationContent.Success(jobInputPath, clock.Elapsed, result, L.T)
+            : JobNotificationContent.Failure(jobInputPath, clock.Elapsed, error ?? "", L.T);
+        if (!notifications.TryShow(payload, out var deliveryError))
+        {
+            conversionLog.Append(L.T($"Windows 通知未发送：{deliveryError}") + "\r\n");
+            FlushLog();
+        }
+    }
+
     private void FlushLog()
     {
         if (!conversionLog.Changed)

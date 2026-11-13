@@ -10,5 +10,7 @@
     <Compile Include="../../App/TranslationCatalog.cs" Link="TranslationCatalog.cs" />
     <Compile Include="../../App/ConversionEventPump.cs" Link="ConversionEventPump.cs" />
     <Compile Include="../../App/ConversionLog.cs" Link="ConversionLog.cs" />
+    <Compile Include="../../App/ConversionResult.cs" Link="ConversionResult.cs" />
+    <Compile Include="../../App/JobNotificationContent.cs" Link="JobNotificationContent.cs" />
   </ItemGroup>
 </Project>

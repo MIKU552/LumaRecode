@@ -301,5 +301,16 @@
   "输出已存在：{0}": "La salida ya existe: {0}",
   "输入不存在：{0}": "La entrada no existe: {0}",
   "完成": "completado",
-  "已跳过": "omitido"
+  "已跳过": "omitido",
+  "通知": "Notificaciones",
+  "转换完成或失败时发送 Windows 通知": "Enviar una notificación de Windows al finalizar o fallar la conversión",
+  "转换完成": "Conversión completada",
+  "耗时：{0}": "Tiempo empleado: {0}",
+  "大小：{0}": "Tamaño: {0}",
+  "时长：{0}": "Duración: {0}",
+  "格式：{0}": "Formato: {0}",
+  "失败原因：{0}": "Motivo: {0}",
+  "Windows 通知当前不可用。": "Las notificaciones de Windows no están disponibles en este momento.",
+  "Windows 未接受此通知。": "Windows no aceptó esta notificación.",
+  "Windows 通知未发送：{0}": "No se envió la notificación de Windows: {0}"
 }

@@ -5,4 +5,7 @@
     <Compile Include="../../App/AppJsonContext.cs" Link="AppJsonContext.cs"/>
     <Compile Include="../../App/CliError.cs" Link="CliError.cs"/>
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../App/StartupMode.cs" Link="StartupMode.cs" />
+  </ItemGroup>
 </Project>

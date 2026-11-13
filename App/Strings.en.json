@@ -301,5 +301,16 @@
   "输出已存在：{0}": "Output exists: {0}",
   "输入不存在：{0}": "Input does not exist: {0}",
   "完成": "done",
-  "已跳过": "skipped"
+  "已跳过": "skipped",
+  "通知": "Notifications",
+  "转换完成或失败时发送 Windows 通知": "Send a Windows notification when conversion finishes or fails",
+  "转换完成": "Conversion completed",
+  "耗时：{0}": "Elapsed: {0}",
+  "大小：{0}": "Size: {0}",
+  "时长：{0}": "Duration: {0}",
+  "格式：{0}": "Format: {0}",
+  "失败原因：{0}": "Reason: {0}",
+  "Windows 通知当前不可用。": "Windows notifications are currently unavailable.",
+  "Windows 未接受此通知。": "Windows did not accept this notification.",
+  "Windows 通知未发送：{0}": "Windows notification was not sent: {0}"
 }

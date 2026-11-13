@@ -19,6 +19,7 @@ internal static class Program
     }
     private static void RunGui()
     {
+        JobNotifications.ConfigureIdentity();
         WinRT.ComWrappersSupport.InitializeComWrappers();
         // Stable WinUI 2.6 optimizations are opt-in for template compatibility.
         foreach (var change in new[] {

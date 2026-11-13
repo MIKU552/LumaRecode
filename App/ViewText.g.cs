@@ -62,6 +62,8 @@ internal static class ViewText
         ("ElapsedTime", "Text", "已用 00:00"),
         ("RemainingTime", "Text", "剩余 —"),
         ("Status", "Text", "添加素材后开始"),
+        ("NotifyWhenFinished", "ToolTipService.ToolTip", "转换完成或失败时发送 Windows 通知"),
+        ("NotifyWhenFinishedLabel", "Text", "通知"),
         ("OpenFolderLabel", "Text", "打开目录"),
         ("CancelLabel", "Text", "取消"),
         ("Start", "AutomationProperties.Name", "开始转换"),

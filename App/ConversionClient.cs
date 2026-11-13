@@ -11,6 +11,10 @@ public sealed partial class ConversionClient : IDisposable
     private readonly object gate = new();
     private CancellationTokenSource? cancellation;
     private bool disposed;
+    public ConversionResult? CompletedResult
+    {
+        get; private set;
+    }
     public bool Running
     {
         get
@@ -37,6 +41,7 @@ public sealed partial class ConversionClient : IDisposable
                 throw new InvalidOperationException("This client already has an active job.");
             }
 
+            CompletedResult = null;
             cancellation = lifetime;
         }
         try
@@ -55,7 +60,8 @@ public sealed partial class ConversionClient : IDisposable
                 }
 
                 var options = request.Options ?? throw new InvalidOperationException("Missing encoding options.");
-                await Engine.RunAsync(request.Tools, media, options, request.Output!, emit, token);
+                var result = await Engine.RunAsync(request.Tools, media, options, request.Output!, emit, token);
+                CompletedResult = ConversionResult.FromMedia(request.Output!, result);
                 return new ConversionEvent("done", JsonValue.Create(request.Output));
             }, receive, lifetime);
         }

@@ -18,6 +18,7 @@ internal static class RuntimeChecks
     internal static async Task RunAsync()
     {
         CheckLog();
+        NotificationChecks.Run();
         await CheckEventsAsync();
         await CheckSynchronizationContextAsync();
         await CheckReportsAsync();

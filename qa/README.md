@@ -50,7 +50,7 @@ dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release
 dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release -- --tools
 ```
 
-检查有界事件队列、接收线程上下文、取消与异常退出、日志容量和 Unicode 边界，以及能力查询的成功复用、失败重试和超时。微基准输出五轮测量的中位数；`--tools` 需要 PATH 中的 FFmpeg。
+检查通知的四种语言、成功／失败字段、XML 转义与长度边界，以及有界事件队列、接收线程上下文、取消与异常退出、日志容量和 Unicode 边界，以及能力查询的成功复用、失败重试和超时。微基准输出五轮测量的中位数；`--tools` 需要 PATH 中的 FFmpeg。
 
 ## 内存采样
 

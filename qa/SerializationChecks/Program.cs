@@ -9,6 +9,7 @@ const string oldSettings = """
 {"Theme":"dark","Language":"zh","Backdrop":"mica","SystemAccent":false,"CustomColor":"#107C10","Ffmpeg":"C:\\视频 & tools\\ffmpeg.exe","Ffprobe":"D:\\ffprobe.exe","Python":"","AcceptedThirdPartyTerms":"windows-runtime-terms-2026-11-12-mit"}
 """;
 var settings = JsonSerializer.Deserialize(oldSettings, AppJsonContext.Default.UserSettings)!;
+Check(settings.NotifyWhenFinished, "Existing settings should enable task notifications by default");
 Check(settings.Language == "zh" && settings.Ffmpeg == @"C:\视频 & tools\ffmpeg.exe", "Existing settings or Unicode paths changed");
 using var oldDocument = JsonDocument.Parse(oldSettings);
 using var newDocument = JsonDocument.Parse(JsonSerializer.Serialize(settings, AppJsonContext.Default.UserSettings));
@@ -20,9 +21,14 @@ foreach (var property in oldDocument.RootElement.EnumerateObject())
     }
 }
 
-Check(newDocument.RootElement.EnumerateObject().Count() == 8, "Unexpected settings properties");
+Check(newDocument.RootElement.EnumerateObject().Count() == 9, "Unexpected settings properties");
+Check(JsonSerializer.Deserialize("{}", AppJsonContext.Default.UserSettings)!.NotifyWhenFinished, "New settings should enable task notifications");
 Check(JsonSerializer.Deserialize("{}", AppJsonContext.Default.UserSettings)!.Theme == "system", "Missing setting defaults changed");
 Check(JsonSerializer.Deserialize("{\"a\":\"中文\"}", AppJsonContext.Default.DictionaryStringString)!["a"] == "中文", "Translation resource decoding changed");
+
+Check(!StartupMode.IsCommandLine(["----AppNotificationActivated:"]), "Notification activation must not enter CLI mode");
+Check(StartupMode.IsCommandLine(["probe", "----AppNotificationActivated:"]), "A positional input must not select notification activation");
+Check(StartupMode.IsCommandLine(["convert", "source.mp4"]), "Notification support changed normal CLI dispatch");
 
 // Startup errors are consumed by PowerShell JSON pipelines before WinUI loads.
 using var failure = JsonDocument.Parse(JsonSerializer.Serialize(
@@ -44,7 +50,9 @@ try
     Check(File.Exists(preferred), "Migrated settings were not saved under LumaRecode");
     Check(File.ReadAllText(legacyFile) == oldSettings, "Migration changed the original FrameFlow settings");
     migrated.Language = "es";
+    migrated.NotifyWhenFinished = false;
     migrated.SaveTo(sandbox.FullName);
+    Check(!UserSettings.LoadFrom(sandbox.FullName).NotifyWhenFinished, "Disabled notification preference was not saved");
     Check(UserSettings.LoadFrom(sandbox.FullName).Language == "es", "New settings must take precedence over FrameFlow");
     Check(File.ReadAllText(legacyFile) == oldSettings, "Saving LumaRecode changed FrameFlow settings");
 
