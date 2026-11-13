@@ -57,7 +57,7 @@ internal static class ViewText
         ("LocalizedElement45", "Text", "保存到"),
         ("Destination", "PlaceholderText", "选择视频后自动生成"),
         ("Destination", "AutomationProperties.Name", "输出路径"),
-        ("ChooseOutput", "Content", "更改…"),
+        ("ChooseOutputLabel", "Text", "更改…"),
         ("TransferSpeed", "Text", "速度 —"),
         ("ElapsedTime", "Text", "已用 00:00"),
         ("RemainingTime", "Text", "剩余 —"),
