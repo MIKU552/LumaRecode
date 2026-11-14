@@ -33,7 +33,7 @@ Compartir rápido usa Intel QSV. Archivo por software usa la CPU.
 
 | Archivo | Plataforma y requisitos |
 | --- | --- |
-| `LumaRecode.exe` | Native x64, optimizado para la CPU del equipo de compilación; las instrucciones necesarias figuran en las notas de la versión |
+| `LumaRecode.exe` | X64, con un perfil de instrucciones x64 común |
 | `LumaRecode-APX.exe` | x64 con compatibilidad Intel APX tanto en la CPU como en Windows |
 | `LumaRecode-ARM64.exe` | Windows ARM64, con aplicación y códec de imagen nativos ARM64 |
 
@@ -105,13 +105,16 @@ Se necesitan .NET SDK 11.0.100, PowerShell 7 y las herramientas de compilación 
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
 ./build.ps1
+./build.ps1 -Target X64
 ./build.ps1 -Target Apx
 ./build.ps1 -Target Arm64
 ```
 
-La compilación Native x64 predeterminada genera `dist/SelfContained/LumaRecode.exe`. APX y ARM64 usan `dist/SelfContained-Apx/` y `dist/SelfContained-Arm64/`.
+Native es el modo automático predeterminado: elige ARM64 en Windows ARM64, APX en Windows x64 con soporte APX y X64 en los demás equipos x64. Optimiza para la CPU de compilación y genera `dist/SelfContained/LumaRecode.exe`.
 
-Abre `LumaRecode.sln` con Visual Studio 2026 18.12 o posterior. Selecciona `App` como proyecto de inicio y Debug para depurar. Al compilar `Release | x64`, `Release-APX | x64` o `Release | ARM64`, el proyecto `Packaging` genera el EXE correspondiente. Consulta la [configuración de desarrollo](docs/dependencies.md) y la [guía de QA](qa/README.md).
+Los destinos explícitos X64, Apx y Arm64 compilan para sus respectivos conjuntos de instrucciones y usan `dist/SelfContained-X64/`, `dist/SelfContained-Apx/` y `dist/SelfContained-Arm64/`. Releases ofrece estos tres EXE de destino fijo.
+
+Abre `LumaRecode.sln` con Visual Studio 2026 18.12 o posterior. Selecciona `App` como proyecto de inicio y Debug para depurar. `Release | Native` selecciona y optimiza para el equipo de compilación; `Release | x64`, `Release-APX | x64` y `Release | ARM64` seleccionan destinos fijos. El proyecto `Packaging` genera el EXE. Consulta la [configuración de desarrollo](docs/dependencies.md) y la [guía de QA](qa/README.md).
 
 ## Estructura del proyecto
 

@@ -33,7 +33,7 @@ Quick share uses Intel QSV. Software archive uses CPU encoding.
 
 | Download | Platform and requirements |
 | --- | --- |
-| `LumaRecode.exe` | Native x64, optimized for the build computer's CPU; required instructions are listed in the release notes |
+| `LumaRecode.exe` | X64, using the common x64 instruction-set profile |
 | `LumaRecode-APX.exe` | x64 with Intel APX support in both the CPU and Windows |
 | `LumaRecode-ARM64.exe` | Windows ARM64, with a native ARM64 app and image codec |
 
@@ -105,13 +105,16 @@ Requires .NET SDK 11.0.100, PowerShell 7, and Visual Studio C++ x64 / ARM64 buil
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
 ./build.ps1
+./build.ps1 -Target X64
 ./build.ps1 -Target Apx
 ./build.ps1 -Target Arm64
 ```
 
-The default Native x64 build produces `dist/SelfContained/LumaRecode.exe`. APX and ARM64 use `dist/SelfContained-Apx/` and `dist/SelfContained-Arm64/`.
+Native is the default automatic mode: ARM64 on ARM64 Windows, APX on x64 Windows with APX support, and X64 otherwise. It optimizes for the build CPU and produces `dist/SelfContained/LumaRecode.exe`.
 
-Open `LumaRecode.sln` in Visual Studio 2026 18.12 or later. Set `App` as the startup project and use Debug for debugging. Building `Release | x64`, `Release-APX | x64` or `Release | ARM64` runs the `Packaging` project and creates the corresponding single EXE. See [development and distribution](docs/dependencies.md) for setup and the [QA guide](qa/README.md) for checks.
+Explicit X64, Apx and Arm64 targets compile for their respective instruction sets and write to `dist/SelfContained-X64/`, `dist/SelfContained-Apx/` and `dist/SelfContained-Arm64/`. Releases contain these three fixed-target EXEs.
+
+Open `LumaRecode.sln` in Visual Studio 2026 18.12 or later. Set `App` as the startup project and use Debug for debugging. `Release | Native` selects and optimizes for the build machine; `Release | x64`, `Release-APX | x64` and `Release | ARM64` select fixed targets. The `Packaging` project creates the single EXE. See [development and distribution](docs/dependencies.md) for setup and the [QA guide](qa/README.md) for checks.
 
 ## Project structure
 

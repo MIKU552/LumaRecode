@@ -36,7 +36,7 @@ internal static class Program
             const uint apxFeature = 90; // PF_APX_F_INSTRUCTIONS_AVAILABLE, Windows SDK winnt.h.
             if (!IsProcessorFeaturePresent(apxFeature))
             {
-                throw new InvalidOperationException("This APX build requires an APX-capable CPU and Windows with APX enabled. Use the Native build on this PC.\nAPX 版本需要支持并启用 APX 的 CPU 和 Windows，请使用适合本机的 Native 版本。");
+                throw new InvalidOperationException("This APX build requires an APX-capable CPU and Windows with APX enabled. Use a compatible X64 or ARM64 build.\nAPX 版本需要支持并启用 APX 的 CPU 和 Windows，请使用适合本机的 X64 或 ARM64 版本。");
             }
 #endif
             var executable = Path.Combine(AppContext.BaseDirectory, "Application", "LumaRecode.exe");

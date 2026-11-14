@@ -17,7 +17,7 @@ python qa/BuildChecks/check_build.py
 python qa/BuildChecks/check_build.py --artifacts
 ```
 
-基础检查验证 MSBuild 的目标映射、中间目录隔离、锁文件选择及两种架构的原生库哈希。`--artifacts` 在三个版本构建后运行，另检查 AOT 指令集、EXE / DLL 的 PE 架构、分发许可清单、Native CLI 与 APX 启动检查。在支持 APX 的设备上，该检查会运行 APX CLI；不支持时验证明确的错误响应。
+基础检查覆盖 Native 自动选择、三个显式目标、APX 开关与 ARM64 主机的组合，以及实际系统架构、MSBuild 映射、中间目录隔离、锁文件和原生库哈希。`--artifacts` 在 Native 和三个显式目标构建后运行，另检查 AOT 指令集、EXE / DLL 的 PE 架构、分发许可清单、Native CLI 与 APX 启动检查。在支持 APX 的设备上，该检查会运行 APX CLI；不支持时验证明确的错误响应。
 
 ARM64 完整运行检查需要 ARM64 Windows 设备。APX 转码检查需要支持 APX 的 CPU 与 Windows。
 

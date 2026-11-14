@@ -13,12 +13,12 @@
     <AssemblyName>LumaRecode</AssemblyName>
     <Product>映码 · LumaRecode</Product>
     <Title>映码 · LumaRecode</Title>
-    <Version>4.4.0</Version>
+    <Version>4.4.1</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <NuGetLockFilePath Condition="'$(LumaRecodeArchitecture)' == 'arm64'">packages.arm64.lock.json</NuGetLockFilePath>
-    <DefineConstants Condition="'$(LumaBuildTarget)' == 'Apx'">$(DefineConstants);LUMARECODE_APX</DefineConstants>
+    <DefineConstants Condition="'$(LumaResolvedTarget)' == 'Apx' or '$(LumaBuildTarget)' == 'Apx'">$(DefineConstants);LUMARECODE_APX</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../App/StartupMode.cs" Link="StartupMode.cs" />

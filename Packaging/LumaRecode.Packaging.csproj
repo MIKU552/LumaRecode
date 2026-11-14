@@ -2,19 +2,21 @@
   <PropertyGroup>
     <TargetFramework>net11.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <Platforms>x64;ARM64</Platforms>
+    <Platforms>Native;x64;ARM64</Platforms>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <Configurations>Debug;Release;Release-APX</Configurations>
     <IsPackable>false</IsPackable>
     <EnableDefaultItems>false</EnableDefaultItems>
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
     <LumaRecodeTarget Condition="'$(LumaRecodeTarget)' == '' and '$(Platform)' == 'ARM64'">Arm64</LumaRecodeTarget>
     <LumaRecodeTarget Condition="'$(LumaRecodeTarget)' == '' and '$(Configuration)' == 'Release-APX'">Apx</LumaRecodeTarget>
+    <LumaRecodeTarget Condition="'$(LumaRecodeTarget)' == '' and '$(Platform)' == 'x64'">X64</LumaRecodeTarget>
     <LumaRecodeTarget Condition="'$(LumaRecodeTarget)' == ''">Native</LumaRecodeTarget>
     <LumaNativeToolsSwitch Condition="'$(UseEnvironmentalNativeTools)' == 'true'">-UseEnvironmentalNativeTools</LumaNativeToolsSwitch>
   </PropertyGroup>
   <ItemGroup>
     <!-- Order the solution build before publication without shipping this assembly. -->
-    <ProjectReference Include="../App/VideoConverter.WinUI.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../App/VideoConverter.WinUI.csproj" ReferenceOutputAssembly="false" Condition="'$(LumaRecodeTarget)' != 'Native'" />
   </ItemGroup>
   <Target Name="BuildDistribution" AfterTargets="Build"
           Condition="'$(DesignTimeBuild)' != 'true' and ('$(Configuration)' == 'Release' or '$(Configuration)' == 'Release-APX')">

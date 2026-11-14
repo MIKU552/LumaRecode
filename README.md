@@ -33,7 +33,7 @@
 
 | 下载文件 | 平台与要求 |
 | --- | --- |
-| `LumaRecode.exe` | Native x64，按构建电脑的 CPU 指令集优化；所需指令集见对应发布说明 |
+| `LumaRecode.exe` | X64，通用 x64 指令集配置 |
 | `LumaRecode-APX.exe` | x64，CPU 与 Windows 均需支持 Intel APX |
 | `LumaRecode-ARM64.exe` | Windows ARM64，原生 ARM64 应用与图片编解码库 |
 
@@ -112,13 +112,16 @@ SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线�
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
 ./build.ps1
+./build.ps1 -Target X64
 ./build.ps1 -Target Apx
 ./build.ps1 -Target Arm64
 ```
 
-默认构建 Native x64，产物为 `dist/SelfContained/LumaRecode.exe`。APX 与 ARM64 分别输出到 `dist/SelfContained-Apx/` 和 `dist/SelfContained-Arm64/`。
+默认的 Native 模式自动选择本机目标：ARM64 系统使用 ARM64；x64 系统支持 APX 时使用 APX，否则使用 X64，并按构建 CPU 的指令集优化。产物为 `dist/SelfContained/LumaRecode.exe`。
 
-使用 Visual Studio 2026 18.12 或更新版本打开 `LumaRecode.sln`。以 `App` 为启动项目，Debug 配置可直接调试；构建 `Release | x64`、`Release-APX | x64` 或 `Release | ARM64` 时，`Packaging` 项目会自动生成对应的单文件 EXE。安装与配置见[开发文档](docs/dependencies.md)，检查命令见 [QA 指南](qa/README.md)。
+显式指定 X64、Apx 或 Arm64 时，按对应目标的指令集编译，输出到 `dist/SelfContained-X64/`、`dist/SelfContained-Apx/` 或 `dist/SelfContained-Arm64/`。Releases 提供这三种固定目标的 EXE。
+
+使用 Visual Studio 2026 18.12 或更新版本打开 `LumaRecode.sln`。以 `App` 为启动项目，Debug 配置可直接调试。`Release | Native` 自动选择本机目标并优化；`Release | x64`、`Release-APX | x64` 和 `Release | ARM64` 构建固定目标。`Packaging` 项目会生成对应的单文件 EXE。安装与配置见[开发文档](docs/dependencies.md)，检查命令见 [QA 指南](qa/README.md)。
 
 ## 项目结构
 

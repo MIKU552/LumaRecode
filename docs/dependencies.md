@@ -28,11 +28,16 @@ NuGet 依赖按架构锁定：x64 使用 `App/packages.aot.lock.json`、`App/pac
 
 | 命令 | RID | AOT 指令集 | 输出目录 |
 | --- | --- | --- | --- |
-| `./build.ps1` | `win-x64` | `native`，使用构建 CPU 的指令集 | `dist/SelfContained/` |
+| `./build.ps1` / `-Target Native` | 自动选择 | `native`，使用构建 CPU 的指令集 | `dist/SelfContained/` |
+| `./build.ps1 -Target X64` | `win-x64` | `x86-64-v2` | `dist/SelfContained-X64/` |
 | `./build.ps1 -Target Apx` | `win-x64` | `apx` | `dist/SelfContained-Apx/` |
 | `./build.ps1 -Target Arm64` | `win-arm64` | `armv8-a` | `dist/SelfContained-Arm64/` |
 
-每个目录生成一个 `LumaRecode.exe`。Native 版面向拥有构建 CPU 所需指令集的 x64 设备；APX 版要求 CPU 和 Windows 均支持 APX，入口在启动 AOT 应用前检查系统能力。ARM64 版使用通用 ARMv8-A 基线，并默认选择软件归档。
+每个目录生成一个 `LumaRecode.exe`。Native 模式先读取 Windows 的实际系统架构：ARM64 系统选择 ARM64；x64 系统的 CPU 与 Windows 均支持 APX 时选择 APX，否则选择 X64。随后按构建 CPU 支持的指令集优化。Native 产物面向支持这些指令集的设备。
+
+显式目标按固定指令集优化，可在不同架构的主机上交叉编译。X64 使用 x86-64-v2，APX 启用 APX，ARM64 使用 ARMv8-A。APX 入口在加载应用前检查 CPU 和系统支持；ARM64 默认选择软件归档。
+
+Native 优化需要与系统架构一致的 .NET SDK。ARM64 系统即使使用 x64 仿真终端，也会识别为 ARM64；若当前 SDK 为 x64，可切换至 ARM64 SDK，或显式指定 `-Target Arm64` 交叉编译。
 
 ARM64 交叉编译需要安装 Visual Studio C++ ARM64 / ARM64EC 构建工具；x64 需要 C++ x64 / x86 工具。[Native AOT 交叉编译文档](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile)列出了工具链要求。
 
@@ -65,7 +70,8 @@ ARM64 使用 NEON，x64 使用 libjpeg-turbo 的 x86 SIMD。固定源码版本�
 
 | 解决方案配置 | 打包目标 |
 | --- | --- |
-| Release / x64 | Native x64 |
+| Release / Native | 自动选择本机目标，并按构建 CPU 优化 |
+| Release / x64 | X64 |
 | Release-APX / x64 | APX x64 |
 | Release / ARM64 | ARM64 |
 
@@ -74,6 +80,7 @@ ARM64 使用 NEON，x64 使用 libjpeg-turbo 的 x86 SIMD。固定源码版本�
 通过命令行调用同一套解决方案配置：
 
 ```powershell
+dotnet build LumaRecode.sln -c Release -p:Platform=Native
 dotnet build LumaRecode.sln -c Release -p:Platform=x64
 dotnet build LumaRecode.sln -c Release-APX -p:Platform=x64
 dotnet build LumaRecode.sln -c Release -p:Platform=ARM64
@@ -113,9 +120,11 @@ GUI 模式下，入口启动 AOT 主程序后退出。CLI 模式下，入口继�
 
 ## English
 
-Use the pinned .NET SDK, PowerShell 7 and Visual Studio C++ tools for x64 / ARM64. `build.ps1` defaults to Native x64 (`IlcInstructionSet=native`); `-Target Apx` selects APX x64, and `-Target Arm64` selects ARM64 with an ARMv8-A baseline. The Native variant requires the build CPU's selected instructions. APX requires CPU and OS support, checked by the launcher. ARM64 defaults to software encoding. FFmpeg is user-supplied.
+Use the pinned .NET SDK, PowerShell 7 and Visual Studio C++ tools for x64 / ARM64. Native automatically selects ARM64 on ARM64 Windows, APX on APX-enabled x64 Windows, and X64 otherwise, then optimizes for the build CPU with `IlcInstructionSet=native`. This requires an SDK matching the OS architecture, including when the shell runs under emulation.
 
-Open `LumaRecode.sln` in Visual Studio 2026 18.12 or later with WinUI, C# desktop and C++ build tools installed. Use `App` as the startup project for Debug. Build `Release | x64`, `Release-APX | x64` or `Release | ARM64` to have `Packaging` run the complete single-EXE pipeline. Outputs are `dist/SelfContained/`, `dist/SelfContained-Apx/` and `dist/SelfContained-Arm64/`.
+Explicit `-Target X64`, `-Target Apx` and `-Target Arm64` use x86-64-v2, APX and ARMv8-A respectively, allowing cross-compilation. APX requires CPU and OS support, checked by the launcher. ARM64 defaults to software encoding. FFmpeg is user-supplied.
+
+Open `LumaRecode.sln` in Visual Studio 2026 18.12 or later with WinUI, C# desktop and C++ build tools installed. Use `App` as the startup project for Debug. Build `Release | Native` for automatic selection and CPU optimization, or use `Release | x64`, `Release-APX | x64` and `Release | ARM64` for fixed targets. Outputs are `dist/SelfContained/`, `dist/SelfContained-X64/`, `dist/SelfContained-Apx/` and `dist/SelfContained-Arm64/`.
 
 `-Compilation Jit` selects the JIT build; `-Deployment FrameworkDependent` produces a ZIP requiring external runtimes. APX uses self-contained AOT. Each target has separate restore, native payload and license directories, with architecture-specific lock files and Ultra HDR binaries.
 

@@ -5,62 +5,104 @@
     <BuildType Name="Release-APX" />
     <Platform Name="x64" />
     <Platform Name="ARM64" />
+    <Platform Name="Native" />
   </Configurations>
   <Project Path="App/VideoConverter.WinUI.csproj">
+    <BuildType Solution="Debug|Native" Project="?" />
     <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|Native" Project="?" />
     <BuildType Solution="Release-APX|x64" Project="Release" />
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="Debug|ARM64" Project="ARM64" />
+    <Platform Solution="Debug|Native" Project="?" />
     <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Platform Solution="Release-APX|Native" Project="?" />
     <Platform Solution="Release|ARM64" Project="ARM64" />
+    <Platform Solution="Release|Native" Project="x64" />
+    <Build Solution="*|Native" Project="false" />
     <Build Solution="Release-APX|ARM64" Project="false" />
   </Project>
   <Project Path="Bundle/LumaRecode.Bundle.csproj">
+    <BuildType Solution="Debug|Native" Project="?" />
     <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|Native" Project="?" />
     <BuildType Solution="Release-APX|x64" Project="Release" />
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="Debug|ARM64" Project="ARM64" />
+    <Platform Solution="Debug|Native" Project="?" />
     <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Platform Solution="Release-APX|Native" Project="?" />
     <Platform Solution="Release|ARM64" Project="ARM64" />
+    <Platform Solution="Release|Native" Project="x64" />
     <Build Project="false" />
   </Project>
   <Project Path="Core/LumaRecode.Core.csproj">
+    <BuildType Solution="Debug|Native" Project="?" />
     <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|Native" Project="?" />
     <BuildType Solution="Release-APX|x64" Project="Release" />
+    <Platform Solution="Debug|Native" Project="?" />
     <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Platform Solution="Release-APX|Native" Project="?" />
+    <Build Solution="*|Native" Project="false" />
     <Build Solution="Release-APX|ARM64" Project="false" />
   </Project>
   <Project Path="Packaging/LumaRecode.Packaging.csproj">
+    <BuildType Solution="Debug|Native" Project="?" />
     <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|Native" Project="?" />
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="Debug|ARM64" Project="ARM64" />
+    <Platform Solution="Debug|Native" Project="?" />
     <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Platform Solution="Release-APX|Native" Project="?" />
     <Platform Solution="Release|ARM64" Project="ARM64" />
+    <Platform Solution="Release|Native" Project="Native" />
     <Build Solution="Debug|*" Project="false" />
     <Build Solution="Release-APX|ARM64" Project="false" />
+    <Build Solution="Release-APX|Native" Project="false" />
   </Project>
   <Project Path="qa/BackendChecks/BackendChecks.csproj">
+    <BuildType Solution="Debug|Native" Project="?" />
     <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|Native" Project="?" />
     <BuildType Solution="Release-APX|x64" Project="Release" />
+    <Platform Solution="Debug|Native" Project="?" />
     <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Platform Solution="Release-APX|Native" Project="?" />
     <Build Project="false" />
   </Project>
   <Project Path="qa/LanguageChecks/LanguageChecks.csproj">
+    <BuildType Solution="Debug|Native" Project="?" />
     <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|Native" Project="?" />
     <BuildType Solution="Release-APX|x64" Project="Release" />
+    <Platform Solution="Debug|Native" Project="?" />
     <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Platform Solution="Release-APX|Native" Project="?" />
     <Build Project="false" />
   </Project>
   <Project Path="qa/PerformanceChecks/PerformanceChecks.csproj">
+    <BuildType Solution="Debug|Native" Project="?" />
     <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|Native" Project="?" />
     <BuildType Solution="Release-APX|x64" Project="Release" />
+    <Platform Solution="Debug|Native" Project="?" />
     <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Platform Solution="Release-APX|Native" Project="?" />
     <Build Project="false" />
   </Project>
   <Project Path="qa/SerializationChecks/SerializationChecks.csproj">
+    <BuildType Solution="Debug|Native" Project="?" />
     <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|Native" Project="?" />
     <BuildType Solution="Release-APX|x64" Project="Release" />
+    <Platform Solution="Debug|Native" Project="?" />
     <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Platform Solution="Release-APX|Native" Project="?" />
     <Build Project="false" />
   </Project>
+  <Properties Name="Visual Studio">
+    <Property Name="MinimumVersion" Value="18.12.0.0" />
+  </Properties>
 </Solution>

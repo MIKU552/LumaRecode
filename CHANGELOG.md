@@ -1,5 +1,12 @@
 # 更新记录
 
+## 4.4.1
+
+- Native 自动选择本机的 x64、APX 或 ARM64 目标，并启用本机指令集优化。
+- 添加显式 X64 目标，与 APX、ARM64 一起支持固定目标和交叉编译。
+- 添加 Visual Studio Release / Native 配置；自动选择 APX 时保留启动兼容性检查。
+- 在构建前检查 Native 优化所需的 SDK 架构，支持识别仿真环境下的实际系统架构。
+
 ## 4.4.0
 
 - 添加 Native、Intel APX 与 ARM64 构建目标，默认使用本机指令集的 Native AOT。

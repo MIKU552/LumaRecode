@@ -1,13 +1,14 @@
 <#
 .SYNOPSIS
-Builds a Native, APX or ARM64 single-file GUI/CLI application.
+Builds an automatic Native, explicit x64, APX or ARM64 GUI/CLI application.
 .DESCRIPTION
 Each target has isolated restore, payload, license and publish directories.
-Native AOT targets the build CPU by default; APX explicitly requires APX hardware.
+Native selects the OS architecture/APX capability and optimizes for the build CPU.
+Explicit targets use their own instruction sets and support cross-compilation.
 ARM64 cross-compilation requires the Visual Studio C++ ARM64 toolchain.
 #>
 param(
-    [ValidateSet('Native','Apx','Arm64')][string]$Target = 'Native',
+    [ValidateSet('Native','X64','Apx','Arm64')][string]$Target = 'Native',
     [ValidateSet('SelfContained','FrameworkDependent')][string]$Deployment = 'SelfContained',
     [ValidateSet('Aot','Jit')][string]$Compilation = 'Aot',
     [switch]$UseEnvironmentalNativeTools
@@ -15,14 +16,27 @@ param(
 $ErrorActionPreference = 'Stop'
 Push-Location -LiteralPath $PSScriptRoot
 try {
-    $Target = @{native='Native';apx='Apx';arm64='Arm64'}[$Target.ToLowerInvariant()]
-    $taskArchitecture = if ($Target -eq 'Arm64') { 'arm64' } else { 'x64' }
-    $taskPlatform = if ($Target -eq 'Arm64') { 'ARM64' } else { 'x64' }
-    $taskIsa = @{Native='native';Apx='apx';Arm64='armv8-a'}[$Target]
-    $taskRid = "win-$taskArchitecture"
+    . (Join-Path $PSScriptRoot 'tools/BuildTarget.ps1')
+    $taskHost = Get-LumaBuildHost
+    $taskPlan = Resolve-LumaBuildTarget -Target $Target -SystemArchitecture $taskHost.Architecture -ApxAvailable $taskHost.ApxAvailable
+    $Target = $taskPlan.RequestedTarget
+    $taskArchitecture = $taskPlan.Architecture
+    $taskPlatform = $taskPlan.Platform
+    $taskIsa = $taskPlan.InstructionSet
+    $taskRid = $taskPlan.RuntimeIdentifier
     $taskBundled = $Deployment -eq 'SelfContained'
     $taskAot = $taskBundled -and $Compilation -eq 'Aot'
-    if ($Target -eq 'Apx' -and -not $taskAot) { throw 'The APX target requires self-contained Native AOT.' }
+    if ($taskPlan.ResolvedTarget -eq 'Apx' -and -not $taskAot) { throw 'The APX target requires self-contained Native AOT.' }
+    if ($Target -eq 'Native' -and $taskAot) {
+        # The AOT compiler cannot infer another architecture's native extensions.
+        # Detect an emulated SDK before restoring or removing any output files.
+        $taskSdkRid = & dotnet msbuild Core/LumaRecode.Core.csproj -nologo -getProperty:NETCoreSdkRuntimeIdentifier
+        if ($LASTEXITCODE -ne 0) { throw 'Cannot determine the .NET SDK architecture.' }
+        if (($taskSdkRid -join '').Trim() -ne $taskRid) {
+            throw "Native CPU optimization requires the $taskRid .NET SDK. Use that SDK or select -Target $($taskPlan.ResolvedTarget) for cross-compilation."
+        }
+    }
+    Write-Output "Target: $Target -> $($taskPlan.ResolvedTarget) ($taskRid), AOT instruction set: $taskIsa"
     $taskRoot = [IO.Path]::GetFullPath($PSScriptRoot).TrimEnd([IO.Path]::DirectorySeparatorChar)
     $taskOutputRelative = if ($Target -eq 'Native') { "dist/$Deployment" } else { "dist/$Deployment-$Target" }
     $taskPayloadRelative = "dist/NativeAot/$Target"
@@ -46,7 +60,7 @@ try {
     }
 
     Invoke-DotNet @('run','--project','qa/LanguageChecks/LanguageChecks.csproj','-c','Release')
-    $taskCommon = @('-r',$taskRid,"-p:Platform=$taskPlatform","-p:LumaBuildTarget=$Target")
+    $taskCommon = @('-r',$taskRid,"-p:Platform=$taskPlatform","-p:LumaBuildTarget=$Target","-p:LumaResolvedTarget=$($taskPlan.ResolvedTarget)")
     Invoke-DotNet (@('restore','App/VideoConverter.WinUI.csproj','--locked-mode',"-p:PublishAot=$($taskAot.ToString().ToLowerInvariant())") + $taskCommon)
     $taskLicenseArgs = @{
         ProjectRoot=$taskRoot;Architecture=$taskArchitecture;OutputDirectory=$taskLegal

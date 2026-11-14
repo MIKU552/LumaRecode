@@ -37,7 +37,9 @@ MediaProbe → OutputPolicy / Transcoder.Plan → 要求检查 → FFmpeg
 
 ## 构建与打包
 
-`build.ps1 -Target` 选择 Native、Apx 或 Arm64。`Directory.Build.props` 按目标隔离中间文件，App 和 Bundle 按架构选择 NuGet 锁文件。App 先发布 AOT 载荷，Bundle 随后将其打包为单个 EXE；APX 入口在运行载荷前检查 Windows 报告的 APX 能力。发布选项与 Visual Studio 配置见[开发与分发](dependencies.md)。
+`build.ps1 -Target` 支持 Native、X64、Apx 和 Arm64。`tools/BuildTarget.ps1` 将 Native 解析为实际系统目标并选择本机指令集优化；显式目标使用各自的固定指令集。`IsWow64Process2` 读取实际系统架构，`IsProcessorFeaturePresent` 判断 APX 是否可执行。
+
+`Directory.Build.props` 按请求的目标隔离中间文件，App 和 Bundle 按架构选择 NuGet 锁文件。App 先发布 AOT 载荷，Bundle 随后将其打包为单个 EXE；解析后的 APX 目标会在入口启用运行前检查。Visual Studio 的 Release / Native 配置直接调用自动构建流程。发布选项见[开发与分发](dependencies.md)。
 
 ## 线程与生命周期
 
@@ -72,6 +74,6 @@ The WinUI frontend and CLI share the C# conversion core. `MediaProbe` captures s
 
 GUI events pass through a bounded, ordered channel and return to the caller's synchronization context. Source generations reject stale probe results. The preview scheduler runs one renderer and replaces pending work with the newest frame. Its LRU holds at most 12 PNGs and 8 MiB; source changes and hidden previews release the cache. Viewport rendering uses a 1024-pixel SDR pipe, while exports retain full-resolution processing.
 
-Open `LumaRecode.sln` in Visual Studio. Its `Packaging` project invokes `build.ps1` for Native, APX or ARM64, with isolated intermediate files, payloads, licenses and architecture-specific lock files. The APX launcher checks OS capability before loading the AOT payload. ARM64 defaults to software encoding and uses an ARM64 Ultra HDR library.
+Open `LumaRecode.sln` in Visual Studio. Its `Packaging` project invokes `build.ps1` for automatic Native or explicit X64, APX and ARM64. Native resolves the real OS architecture and APX capability, then optimizes for the build CPU. Explicit targets use fixed instruction sets. Each request owns its intermediate files, payload and licenses. The resolved APX target enables the launch check before loading AOT code. ARM64 defaults to software encoding and uses an ARM64 Ultra HDR library.
 
 Run `tools/Check-Source.ps1` for source checks. Follow `.editorconfig`, keep media numbers culture-independent, document ownership and format contracts, and update provenance when changing shipped resources. Build outputs and test footage stay outside tracked source.
