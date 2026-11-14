@@ -34,6 +34,7 @@
 !/qa/PerformanceChecks/
 !/qa/TimingChecks/
 !/qa/HdrChecks/
+!/qa/FrameChecks/
 **/bin/
 **/obj/
 **/__pycache__/

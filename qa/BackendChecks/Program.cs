@@ -53,6 +53,48 @@ if (args.FirstOrDefault() == "--server")
                 var (kind, profile, evidence) = MediaProbe.Classify(request["video"]!.AsObject(), request["tags"]!.AsObject(), dji);
                 answer = new JsonArray(JsonValue.Create(kind), JsonValue.Create(profile), JsonValue.Create(evidence));
             }
+            else if (action is "image-export" or "image-preview")
+            {
+                var media = await MediaProbe.InspectAsync(tools, request.Text("path"));
+                var timeline = await FrameTimeline.LoadAsync(tools, media);
+                var exporter = new FrameExporter(engine);
+                var options = new ImageExportOptions(request.Integer("frame"), request.Text("format", "sdr"), request.Text("source_kind", "auto"), request["profile"]?.ToString(), request.Flag("motion"),
+                    request["start_frame"] is null ? null : new FrameRange(request.Integer("start_frame"), request.Integer("end_frame")), Purpose: request.Text("purpose", "archive"), MotionSize: request.Text("motion_size", "source"));
+                if (action == "image-preview")
+                {
+                    File.WriteAllBytes(request.Text("output"), await exporter.PreviewAsync(tools, media, timeline, options));
+                    answer = JsonValue.Create(true);
+                }
+                else
+                {
+                    var result = await exporter.ExportAsync(tools, media, options, request.Text("output"), (_, _) => { }, timeline: timeline);
+                    answer = new JsonObject { ["width"] = result.Width, ["height"] = result.Height, ["bytes"] = result.Bytes, ["format"] = result.Format, ["motion_duration"] = result.MotionDuration };
+                }
+            }
+            else if (action == "motion-photo")
+            {
+                await MotionPhoto.WriteAsync(File.ReadAllBytes(request.Text("path")), request.Text("video"), request.Text("output"), request.Integer("timestamp_us"));
+                var info = MotionPhoto.Inspect(request.Text("output"));
+                answer = new JsonObject { ["offset"] = info.VideoOffset, ["length"] = info.VideoLength, ["timestamp_us"] = info.PresentationTimestampUs, ["ultrahdr"] = info.UltraHdr };
+            }
+            else if (action is "ultrahdr-encode" or "ultrahdr-inspect")
+            {
+                var bytes = File.ReadAllBytes(request.Text("path"));
+                if (action == "ultrahdr-encode")
+                {
+                    bytes = UltraHdrCodec.Encode(bytes, request.Integer("width"), request.Integer("height"), request.Flag("hlg"));
+                    File.WriteAllBytes(request.Text("output"), bytes);
+                }
+                var info = UltraHdrCodec.Inspect(bytes);
+                answer = new JsonObject { ["width"] = info.Width, ["height"] = info.Height, ["gain_width"] = info.GainMapWidth, ["gain_height"] = info.GainMapHeight };
+            }
+            else if (action == "timeline")
+            {
+                var info = await MediaProbe.InspectAsync(tools, request.Text("path"));
+                var timeline = await FrameTimeline.LoadAsync(tools, info);
+                answer = new JsonObject { ["count"] = timeline.Count, ["packet_indexed"] = timeline.PacketIndexed, ["duration"] = timeline.Duration,
+                    ["pts"] = new JsonArray(timeline.Frames.Select(f => (JsonNode?)JsonValue.Create(f.Pts)).ToArray()) };
+            }
             else if (action == "hdr10plus-export")
             {
                 await using var output = File.Create(request.Text("output"));
@@ -102,12 +144,14 @@ if (args.FirstOrDefault() == "--server")
                         {
                             events.Add(new JsonObject { ["event"] = type, ["data"] = value?.DeepClone() });
                         }
-                    }, seconds: request["seconds"] is null ? null : JsonFields.Number(request.Text("seconds")), overwrite: request.Flag("overwrite"));
+                    }, seconds: request["seconds"] is null ? null : JsonFields.Number(request.Text("seconds")), overwrite: request.Flag("overwrite"),
+                        selection: request["start_frame"] is null ? null : new FrameRange(request.Integer("start_frame"), request["end_frame"] is null ? null : request.Integer("end_frame")), motionPhoto: request.Flag("motion_photo"));
                     answer = action == "run-events" ? new JsonObject { ["media"] = ToJson(result), ["events"] = events } : ToJson(result);
                 }
                 else if (action == "plan")
                 {
-                    var plan = engine.Plan(tools, media, options, request.Text("output"));
+                    var selection = request["start_frame"] is null ? null : new FrameRange(request.Integer("start_frame"), request["end_frame"] is null ? null : request.Integer("end_frame"));
+                    var plan = await engine.PlanAsync(tools, media, options, request.Text("output"), selection, motionPhoto: request.Flag("motion_photo"));
                     answer = new JsonObject { ["argv"] = JsonFields.Strings(plan.Arguments), ["colors"] = plan.Colors, ["options"] = plan.Options.ToJson(), ["software_decode"] = plan.UsesSoftwareDecoding };
                 }
                 else

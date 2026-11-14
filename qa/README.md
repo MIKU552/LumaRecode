@@ -86,3 +86,11 @@ python tools/generate_hlg_luts.py --check
 ```
 
 HDR checks cover Apple transfer/gamut math, explicit Log detection, per-frame Dolby Vision metadata, HDR10+ JSON round-tripping and ProRes RAW decoder compatibility. Downloaded sample origins and excerpt commands are listed in [sample-sources.json](HdrChecks/sample-sources.json). The full HDR10+ comparison uses hdr10plus_tool on PATH as a development-only reference. Production uses the C# parser. Keep footage outside the source tree. Use `--metadata-only` for SEI ordering, edit-list, sparse-metadata and export checks.
+
+## Frame and image exports
+
+```powershell
+python qa/FrameChecks/check_frames.py --reference D:/Dev/libultrahdr/ultrahdr_app.exe
+```
+
+Checks CFR / VFR frame identity across keyframes, sample-accurate PCM-to-FLAC cuts, HDR / SDR image exports, RGB channel order, Google gain-map decoding, Motion Photo byte ranges and the cover frame timestamp. The optional upstream decoder is a development-only oracle.

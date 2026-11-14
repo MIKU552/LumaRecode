@@ -9,3 +9,8 @@ LumaRecode の独自のソースコード、ドキュメント、オリジナル
 .NET Library License は、本アプリの一部としてオブジェクトコードを配布する条件を定めています。Windows SDK の REDIST リストは、WinRT API の呼び出しに使用する、未変更の Microsoft.Windows.SDK.NET.Ref パッケージファイルを対象としています。DotNet-Library-LICENSE.html、Windows-SDK-Net-Ref-LICENSE.rtf、Windows-SDK-REDIST.html を参照してください。使用、再頒布、通知、および該当するデータ収集に関する規定を含む、利用条件の全文をお読みください。
 
 Source Sans 3、源ノ角ゴシック（Source Han Sans）、Source Code Pro のフォントファイルは、SIL Open Font License 1.1 に基づき、変更せずに同梱しています。著作権表示、ライセンス全文、配布元の記録は Fonts サブディレクトリにあります。
+
+Ultra HDR 画像のエンコードには libultrahdr 2.0.2 と libjpeg-turbo 3.2.1 を使用します。MIT、Apache-2.0、BSD、IJG、および MSVC STL の Apache-2.0 WITH LLVM-exception の原文は UltraHDR サブフォルダーにあります。
+
+This product includes Gain Map technology under license by Adobe.
+This software is based in part on the work of the Independent JPEG Group.

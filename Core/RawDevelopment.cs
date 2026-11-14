@@ -18,7 +18,8 @@ public static class RawDevelopment
         { -0.666684351832489, 1.616481236634939, 0.015768545813911 },
         { 0.017639857445311, -0.042770613257809, 0.942103121235474 }
     };
-    private static string N(double value) => value.ToString("G17", CultureInfo.InvariantCulture);
+    // sendcmd uses FFmpeg duration syntax, which rejects exponent notation.
+    private static string N(double value) => value.ToString("0.#################", CultureInfo.InvariantCulture);
 
     /// <summary>Reads calibration from a validated, directly addressable ProRes RAW frame.</summary>
     public static JsonObject ReadHeader(FileStream file, long position, long packetSize)
@@ -177,10 +178,14 @@ public static class RawDevelopment
     }
 
     /// <summary>Streams packet headers into timestamped calibration commands without retaining video frames in memory.</summary>
-    public static async Task PrepareAsync(MediaTools tools, MediaInfo media, string destination, double? seconds, CancellationToken cancellation)
+    public static async Task PrepareAsync(MediaTools tools, MediaInfo media, string destination, double? seconds, CancellationToken cancellation, FrameWindow? window = null)
     {
-        var args = new List<string> { "-v", "error", "-select_streams", media.Video.Text("index"), "-show_packets", "-show_entries", "packet=pos,size,pts_time", "-of", "compact=p=0:nk=0" };
-        if (seconds is not null)
+        var args = new List<string> { "-v", "error", "-select_streams", media.Video.Text("index"), "-show_packets", "-show_entries", "packet=pos,size,pts", "-of", "compact=p=0:nk=0" };
+        if (window is not null)
+        {
+            args.AddRange(["-read_intervals", N(window.SeekFrame > 0 ? window.SeekSeconds : 0) + "%" + N(window.EndSeconds + 0.1)]);
+        }
+        else if (seconds is not null)
         {
             args.AddRange(["-read_intervals", "%+" + N(seconds.Value + 0.1)]);
         }
@@ -192,6 +197,8 @@ public static class RawDevelopment
         using var file = File.OpenRead(media.Path);
         await using var writer = new StreamWriter(destination, false, new UTF8Encoding(false));
         var initial = media.Video["_raw"]!.AsObject();
+        var timeBase = media.Video.Text("time_base").Split('/');
+        long numerator = long.Parse(timeBase[0], CultureInfo.InvariantCulture), denominator = long.Parse(timeBase[1], CultureInfo.InvariantCulture);
         string previous = "";
         try
         {
@@ -209,7 +216,9 @@ public static class RawDevelopment
                 {
                     continue;
                 }
-                double time = Math.Max(0, JsonFields.Number(fields.GetValueOrDefault("pts_time")) - JsonFields.Number(media.Video.Text("start_time")));
+                double sourceTime = (double)long.Parse(fields["pts"], CultureInfo.InvariantCulture) * numerator / denominator;
+                double time = previous.Length == 0 ? 0 : Math.Max(0, sourceTime
+                    - (window is { SeekFrame: > 0 } ? window.SeekSeconds : JsonFields.Number(media.Video.Text("start_time"))));
                 await writer.WriteLineAsync(N(time) + " " + coefficients + ";");
                 previous = coefficients;
             }

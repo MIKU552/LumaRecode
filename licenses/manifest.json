@@ -1,11 +1,12 @@
 {
-  "app_version": "4.2.0",
+  "app_version": "4.3.0",
   "backend": "native-dotnet",
   "distribution_basis": [
     "Windows App SDK production package terms, section 3, for files placed with the application by NuGet",
     ".NET Library License for designated Windows binaries and single-file runtime; MIT and notices for remaining files; Windows SDK terms where applicable",
     "Windows SDK license and its Microsoft.Windows.SDK.NET.Ref REDIST list for unmodified WinRT projection binaries",
     "Unmodified OpenOSV LUT under Apache-2.0 with its original LICENSE and NOTICE",
+    "libultrahdr under MIT and Apache-2.0, image_io under Apache-2.0, modp_b64 under BSD-3-Clause; Adobe gain-map notice retained; libjpeg-turbo under IJG/BSD with original texts and acknowledgment; MSVC STL under Apache-2.0 WITH LLVM-exception",
     "Unmodified Source Sans 3, Source Han Sans and Source Code Pro fonts under SIL OFL 1.1, with original copyrights and license texts"
   ],
   "dotnet_sdk": "11.0.100",
@@ -110,6 +111,85 @@
       "version": "11.0.0"
     }
   ],
+  "native_codecs": {
+    "binary": {
+      "architecture": "windows-x64",
+      "bytes": 1088000,
+      "file": "uhdr.dll",
+      "sha256": "1cdab3db0d7bae28e98ebc056f5e542b373dc6e7c4709b602aefc742e4d39528"
+    },
+    "build": {
+      "compiler": "MSVC 14.44 x64",
+      "configuration": "Release /MD",
+      "examples": false,
+      "heif": false,
+      "jpeg": "static, SIMD, no TurboJPEG API",
+      "metadata": [
+        "XMP",
+        "ISO 21496-1"
+      ],
+      "script": "tools/Build-UltraHdr.ps1"
+    },
+    "components": [
+      {
+        "license": "MIT AND Apache-2.0",
+        "name": "libultrahdr",
+        "source": "https://codeload.github.com/google/libultrahdr/zip/refs/tags/v2.0.2",
+        "source_sha256": "854ae3cb55ebbc60c42d317dd83bb0796bb1027637abb1e17bfaff0304a8c15f",
+        "version": "2.0.2"
+      },
+      {
+        "license": "IJG AND BSD-3-Clause",
+        "name": "libjpeg-turbo",
+        "source": "https://codeload.github.com/libjpeg-turbo/libjpeg-turbo/zip/refs/tags/3.2.1",
+        "source_sha256": "f18088e5528c2d3a615fa6f50de222fc46c92fb208ed29cd3ecd77be79cab42a",
+        "version": "3.2.1"
+      }
+    ],
+    "licenses": [
+      {
+        "file": "Adobe-NOTICE.txt",
+        "sha256": "746d8c9c414b335bb7c9615918a15a6489a4dcc1c5c3aac2bda410d1072c332a"
+      },
+      {
+        "file": "image_io-LICENSE.txt",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      {
+        "file": "libjpeg-turbo-LICENSE.md",
+        "sha256": "ba6bceebcba0fdd35488477c2cca8c4632ce82c74dbfbc87d886ce6fc4433579"
+      },
+      {
+        "file": "libjpeg-turbo-README.ijg",
+        "sha256": "75815e3bf6484201a3c3d17a1bbf10f2e8e3237f84df10a2357ea896db2a81d6"
+      },
+      {
+        "file": "libultrahdr-LICENSE-APACHE.txt",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      {
+        "file": "libultrahdr-LICENSE-MIT.txt",
+        "sha256": "029624bf1488ed7b8c92727d267c95f588c9c12fa6932c207884c2641a7e9d37"
+      },
+      {
+        "file": "libultrahdr-LICENSE.txt",
+        "sha256": "c9247b5cb07866938643cc238292434e6f2af8642e1fce10771c0e4cc7909316"
+      },
+      {
+        "file": "modp_b64-LICENSE.txt",
+        "sha256": "d47e8390fb0d7ad4a18f26aedd6283c7ab6b5b4fabab536ccb4db7f9f6d90c08"
+      },
+      {
+        "file": "MSVC-STL-LICENSE.txt",
+        "sha256": "1fc6b6db121d4555d8f661937d7f6013693cd8fd67495d5e5d98c1d18fb83eda"
+      }
+    ],
+    "notices": [
+      "This product includes Gain Map technology under license by Adobe.",
+      "This software is based in part on the work of the Independent JPEG Group."
+    ],
+    "schema_version": 1
+  },
   "packages": [
     {
       "files": [
@@ -291,7 +371,7 @@
     }
   ],
   "project_license": "MIT",
-  "reviewed_on": "2026-11-12",
+  "reviewed_on": "2026-11-14",
   "schema_version": 2,
   "third_party_rights_separate": true
 }

@@ -1,0 +1,17 @@
+{
+  "archive": {
+    "avc": { "encoder": "libx264", "preset": "fast", "quality": 20 },
+    "hevc": { "encoder": "libx265", "preset": "fast", "quality": 23 }
+  },
+  "share": {
+    "avc": { "encoder": "h264_qsv", "preset": "6", "quality": 22, "async_depth": 4 },
+    "hevc": { "encoder": "hevc_qsv", "preset": "6", "quality": 24, "async_depth": 4 }
+  },
+  "audio": {
+    "encoder": "aac",
+    "profile": "aac_low",
+    "sample_rate": 48000,
+    "stereo_bitrate_kbps": 160,
+    "mono_bitrate_kbps": 80
+  }
+}

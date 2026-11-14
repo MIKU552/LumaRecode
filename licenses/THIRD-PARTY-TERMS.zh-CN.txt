@@ -9,3 +9,8 @@ LumaRecode 自主源码、文档与原创资源采用 MIT License。Windows 发�
 .NET Library License 规定了将目标代码作为本应用一部分分发的条件。Windows SDK 的 REDIST 清单包含用于调用 WinRT API 的、未经修改的 Microsoft.Windows.SDK.NET.Ref 包文件。完整条款见 DotNet-Library-LICENSE.html、Windows-SDK-Net-Ref-LICENSE.rtf 和 Windows-SDK-REDIST.html，包括使用、再分发、声明和适用数据收集规定。
 
 Source Sans 3、思源黑体与 Source Code Pro 采用 SIL Open Font License 1.1，以未修改的字体文件随程序提供。字体版权、许可全文与来源记录保存在 Fonts 子目录中。
+
+Ultra HDR 图片编码使用 libultrahdr 2.0.2 和 libjpeg-turbo 3.2.1。MIT、Apache-2.0、BSD、IJG 许可及 MSVC STL 的 Apache-2.0 WITH LLVM-exception 原文保存在 UltraHDR 子目录。
+
+This product includes Gain Map technology under license by Adobe.
+This software is based in part on the work of the Independent JPEG Group.

@@ -61,13 +61,13 @@ public static class DynamicHdr
     }
 
     /// <summary>Exports decoded HDR10+ frame side data to x265's JSON format.</summary>
-    public static async Task ExtractAsync(MediaTools tools, MediaInfo media, string destination, CancellationToken cancellation)
+    public static async Task ExtractAsync(MediaTools tools, MediaInfo media, string destination, CancellationToken cancellation, FrameRange? selection = null)
     {
         if (media.Video.Text("codec_name") == "hevc" && media.Video.Text("start_pts") != "")
         {
             try
             {
-                await Hdr10PlusBitstream.ExtractAsync(tools, media, destination, cancellation);
+                await Hdr10PlusBitstream.ExtractAsync(tools, media, destination, cancellation, selection);
                 return;
             }
             catch (Hdr10PlusBitstream.FallbackException)
@@ -89,7 +89,7 @@ public static class DynamicHdr
         try
         {
             await using var output = File.Create(destination);
-            await Hdr10PlusMetadata.ExportAsync(probe.StandardOutput, output, cancellation);
+            await Hdr10PlusMetadata.ExportAsync(probe.StandardOutput, output, cancellation, selection);
             await probe.WaitForExitAsync(cancellation);
             if (probe.ExitCode != 0)
             {

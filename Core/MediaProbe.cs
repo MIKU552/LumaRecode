@@ -72,6 +72,7 @@ public static class MediaProbe
         var video = streams.Objects().Where(s => s.Text("codec_type") == "video" && !s["disposition"].Flag("attached_pic")).OrderByDescending(s => s.Text("codec_name") == "prores_raw").FirstOrDefault()
             ?? throw new InvalidDataException("文件中没有可用的视频轨。");
         video["_monochrome"] = AvcMonochrome(video);
+        video["_format_start_time"] = data["format"].Text("start_time", "0");
         bool raw = video.Text("codec_name") == "prores_raw";
         if (raw)
         {

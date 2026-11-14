@@ -9,3 +9,8 @@ En particular, conserva los avisos de derechos de autor, marcas y patentes de Mi
 La .NET Library License establece las condiciones para distribuir código objeto como parte de esta aplicación. La lista REDIST del SDK de Windows incluye los archivos sin modificar del paquete Microsoft.Windows.SDK.NET.Ref utilizados para llamar a las API de WinRT. Consulta DotNet-Library-LICENSE.html, Windows-SDK-Net-Ref-LICENSE.rtf y Windows-SDK-REDIST.html. Lee las condiciones completas, incluidas sus limitaciones de uso, redistribución, avisos y disposiciones aplicables sobre recopilación de datos.
 
 Source Sans 3, Source Han Sans y Source Code Pro se incluyen como archivos de fuentes sin modificar bajo la SIL Open Font License 1.1. Sus avisos de derechos de autor, licencias completas y registros de origen están en el subdirectorio Fonts.
+
+La codificación de imágenes Ultra HDR utiliza libultrahdr 2.0.2 y libjpeg-turbo 3.2.1. Las licencias originales MIT, Apache-2.0, BSD e IJG, y Apache-2.0 WITH LLVM-exception de MSVC STL, se encuentran en la subcarpeta UltraHDR.
+
+This product includes Gain Map technology under license by Adobe.
+This software is based in part on the work of the Independent JPEG Group.

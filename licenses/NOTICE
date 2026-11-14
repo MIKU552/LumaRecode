@@ -23,3 +23,8 @@ FFmpeg and ffprobe are supplied by the user and run as separate processes.
 Source Sans 3, Source Han Sans and Source Code Pro are bundled unmodified
 under the SIL Open Font License 1.1. Their original license texts,
 copyright notices and pinned upstream sources are in licenses/Fonts/.
+
+Ultra HDR image encoding uses libultrahdr and libjpeg-turbo.
+Their original licenses and notices are retained in licenses/UltraHDR/.
+This product includes Gain Map technology under license by Adobe.
+This software is based in part on the work of the Independent JPEG Group.

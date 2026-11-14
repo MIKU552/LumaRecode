@@ -145,17 +145,28 @@ public static class Hdr10PlusMetadata
     /// <summary>Writes the x265 per-frame schema without retaining the movie's metadata in memory.</summary>
     /// <remarks>Every decoded frame needs one representable HDR10+ record. Unsupported fields
     /// fail before encoding. Scene summaries are omitted because x265 uses SceneInfo directly.</remarks>
-    public static async Task ExportAsync(TextReader frames, Stream output, CancellationToken cancellation = default)
+    public static async Task ExportAsync(TextReader frames, Stream output, CancellationToken cancellation = default, FrameRange? selection = null)
     {
         using var writer = new Utf8JsonWriter(output);
         writer.WriteStartObject();
         writer.WriteStartArray("SceneInfo");
         string? previous = null, profile = null;
-        long sequence = 0, scene = -1, sceneStart = 0;
+        long sequence = 0, scene = -1, sceneStart = 0, inputFrame = 0;
         while (await frames.ReadLineAsync(cancellation) is { } line)
         {
             if (!line.StartsWith("frame|", StringComparison.Ordinal) && line != "frame")
             {
+                continue;
+            }
+            long index = inputFrame++;
+            if (index < (selection?.Start ?? 0))
+            {
+                continue;
+            }
+            if (selection?.End is { } end && index >= end)
+            {
+                // Continue draining the probe pipe without retaining or parsing
+                // the rest of the movie. Scene indices below start at zero.
                 continue;
             }
             if (line.Length > 65536)

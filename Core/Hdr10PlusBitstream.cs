@@ -10,7 +10,7 @@ internal static class Hdr10PlusBitstream
     internal sealed class FallbackException : Exception;
     private static InvalidDataException Invalid() => new("无法完整保留此 HDR10+ 元数据：invalid or unsupported bitstream。请选择标准 HDR。");
 
-    public static async Task ExtractAsync(MediaTools tools, MediaInfo media, string destination, CancellationToken cancellation)
+    public static async Task ExtractAsync(MediaTools tools, MediaInfo media, string destination, CancellationToken cancellation, FrameRange? selection = null)
     {
         var directory = Path.GetDirectoryName(destination)!;
         // Store only SEI bytes and a matching size/PTS index. A separate small
@@ -35,7 +35,7 @@ internal static class Hdr10PlusBitstream
             await IndexPacketsAsync(tools, media, directory, cancellation);
             using var reader = new PacketReader(directory, media.Video.Text("time_base"), cancellation);
             await using var json = File.Create(destination);
-            await Hdr10PlusMetadata.ExportAsync(reader, json, cancellation);
+            await Hdr10PlusMetadata.ExportAsync(reader, json, cancellation, selection);
         }
         finally
         {

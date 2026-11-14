@@ -28,6 +28,21 @@
 
 Source Sans 3、思源黑体 CN / JP 和 Source Code Pro 以原始文件随应用分发，采用 SIL OFL 1.1。原始版权、许可和固定版本来源见 [licenses/Fonts](../licenses/Fonts/manifest.json)。
 
+## Ultra HDR 编码
+
+| 组件 | 许可 | 分发内容 |
+| --- | --- | --- |
+| [libultrahdr 2.0.2](https://github.com/google/libultrahdr/tree/v2.0.2) | MIT、Apache-2.0 | `uhdr.dll`，包含 XMP 与 ISO 21496-1 增益图元数据支持 |
+| image_io / modp_b64 | Apache-2.0 / BSD-3-Clause | 随 libultrahdr 编译的内部组件 |
+| [libjpeg-turbo 3.2.1](https://github.com/libjpeg-turbo/libjpeg-turbo/tree/3.2.1) | IJG、BSD-3-Clause | 静态链接到 `uhdr.dll` 的 JPEG 编解码器 |
+| MSVC STL | Apache-2.0 WITH LLVM-exception | C++ 模板代码；微软运行库按现有运行时条款分发 |
+
+原始许可、版权及 Adobe Gain Map 声明保存在 [licenses/UltraHDR](../licenses/UltraHDR/)。源码下载哈希、构建选项和二进制哈希见 [Native/manifest.json](../App/Native/manifest.json)。构建脚本为 [Build-UltraHdr.ps1](../tools/Build-UltraHdr.ps1)。
+
+This product includes Gain Map technology under license by Adobe.
+
+This software is based in part on the work of the Independent JPEG Group.
+
 ## 外部工具与资源
 
 | 项目 | 使用方式 |

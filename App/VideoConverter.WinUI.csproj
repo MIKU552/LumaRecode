@@ -25,7 +25,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <Version>4.2.0</Version>
+    <Version>4.3.0</Version>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">
@@ -43,6 +43,7 @@
     <Content Include="LumaRecode.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../Brand/LumaRecode.png" Link="Assets/LumaRecode.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets/Fonts/*.ttf" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Native/uhdr.dll" Link="uhdr.dll" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="Strings.en.json" LogicalName="LumaRecode.Strings.en.json" WithCulture="false" />
     <EmbeddedResource Include="Strings.ja.json" LogicalName="LumaRecode.Strings.ja.json" WithCulture="false" />
     <EmbeddedResource Include="Strings.es.json" LogicalName="LumaRecode.Strings.es.json" WithCulture="false" />

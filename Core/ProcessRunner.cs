@@ -54,11 +54,11 @@ public static class ProcessRunner
     /// <summary>Captures a bounded-duration probe while draining both pipes concurrently.</summary>
     /// <remarks>Cancellation kills the child tree and waits for EOF, so a cancelled probe cannot outlive its task.</remarks>
     public static async Task<ProcessResult> CaptureAsync(string executable, IEnumerable<string> arguments,
-        CancellationToken cancellation = default, int timeoutSeconds = 25)
+        CancellationToken cancellation = default, int timeoutSeconds = 25, string? directory = null)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, timeout.Token);
-        using var process = new Process { StartInfo = StartInfo(executable, arguments) };
+        using var process = new Process { StartInfo = StartInfo(executable, arguments, directory) };
         cancellation.ThrowIfCancellationRequested();
         process.Start();
         using var registration = linked.Token.Register(() => Stop(process));

@@ -12,7 +12,7 @@ public sealed class CliException(string code, string message, int status = 2) : 
 /// <summary>Parses commands and options without shell reparsing or runtime reflection.</summary>
 public sealed class CliArguments
 {
-    public static readonly string[] Commands = ["probe", "presets", "profiles", "doctor", "license", "convert", "plan"];
+    public static readonly string[] Commands = ["probe", "presets", "profiles", "doctor", "license", "convert", "plan", "frames", "image"];
     public static readonly Dictionary<string, string[]> Choices = new()
     {
         ["purpose"] = ["share", "archive"],
@@ -29,9 +29,9 @@ public sealed class CliArguments
         ["container"] = ["auto", "mp4", "mkv"],
         ["dynamic_hdr"] = ["preserve", "standard"]
     };
-    private static readonly HashSet<string> booleans = ["json", "accept_terms", "no_settings", "text", "recursive", "overwrite", "skip_existing", "continue_on_error", "dry_run", "verbose"];
+    private static readonly HashSet<string> booleans = ["json", "accept_terms", "no_settings", "text", "recursive", "overwrite", "skip_existing", "continue_on_error", "dry_run", "verbose", "motion"];
     private static readonly HashSet<string> commonValues = ["lang", "ffmpeg", "ffprobe"];
-    private static readonly HashSet<string> taskValues = ["output", "output_dir", "config", "preset", "duration", "log"];
+    private static readonly HashSet<string> taskValues = ["output", "output_dir", "config", "preset", "duration", "log", "start_frame", "end_frame", "start_time", "end_time", "frame", "image_format", "quality", "motion_start_frame", "motion_end_frame", "motion_size"];
     public string? Command
     {
         get; private set;
@@ -159,16 +159,27 @@ public sealed class CliArguments
         }
         if (!parsed.Help && !parsed.Version)
         {
-            if (parsed.Command == "probe" && parsed.Inputs.Count != 1 || parsed.Command is "convert" or "plan" && parsed.Inputs.Count == 0
-                || parsed.Command is not ("probe" or "convert" or "plan") && parsed.Inputs.Count > 0)
+            if (parsed.Command is "probe" or "frames" or "image" && parsed.Inputs.Count != 1 || parsed.Command is "convert" or "plan" && parsed.Inputs.Count == 0
+                || parsed.Command is not ("probe" or "convert" or "plan" or "frames" or "image") && parsed.Inputs.Count > 0)
             {
                 throw new CliException("invalid_arguments", "Invalid number of input paths.");
             }
 
-            if (parsed.Command is not ("convert" or "plan") && (parsed.Values.Keys.Any(n => taskValues.Contains(n) || Choices.ContainsKey(n) || n == "cpu_decode")
-                || parsed.Flags.Any(n => n is "recursive" or "overwrite" or "skip_existing" or "continue_on_error" or "dry_run" or "verbose")))
+            if (parsed.Command is not ("convert" or "plan" or "image") && (parsed.Values.Keys.Any(n => taskValues.Contains(n) || Choices.ContainsKey(n) || n == "cpu_decode")
+                || parsed.Flags.Any(n => n is "recursive" or "overwrite" or "skip_existing" or "continue_on_error" or "dry_run" or "verbose" or "motion")))
             {
                 throw new CliException("invalid_arguments", "Encoding options require convert or plan.");
+            }
+
+            string[] imageOnly = ["frame", "image_format", "quality", "motion_start_frame", "motion_end_frame", "motion_size"];
+            if (parsed.Command != "image" && (parsed.Has("motion") || imageOnly.Any(parsed.Values.ContainsKey)))
+            {
+                throw new CliException("invalid_arguments", "Image options require image.");
+            }
+            if (parsed.Command == "image" && (parsed.Values.Keys.Any(key => !commonValues.Contains(key) && key is not ("output" or "log" or "frame" or "image_format" or "quality" or "motion_start_frame" or "motion_end_frame" or "motion_size" or "input_kind" or "profile" or "purpose"))
+                || parsed.Flags.Any(key => key is "recursive" or "continue_on_error")))
+            {
+                throw new CliException("invalid_arguments", "Unsupported image option.");
             }
 
             if (parsed.Has("text") && parsed.Command != "license")

@@ -9,7 +9,7 @@ public sealed record CliContext(string Version, string LicenseFolder, bool Terms
     Func<string, string> Translate, string Language = "en");
 
 /// <summary>Headless command orchestration with deterministic plans, batch conflict checks and stable exit codes.</summary>
-public sealed class NativeCli(Transcoder engine, CliContext context)
+public sealed partial class NativeCli(Transcoder engine, CliContext context)
 {
     private string T(string text) => context.Translate(text);
     private static string? Env(string key) => Environment.GetEnvironmentVariable("LUMARECODE_" + key) ?? Environment.GetEnvironmentVariable("FRAMEFLOW_" + key);
@@ -133,13 +133,13 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
 
     private void Help(string? command)
     {
-        Console.Out.WriteLine(T("用法：") + "LumaRecode.exe " + (command ?? "<command>") + " [options]" + (command is "convert" or "plan" or "probe" ? " INPUT ..." : ""));
+        Console.Out.WriteLine(T("用法：") + "LumaRecode.exe " + (command ?? "<command>") + " [options]" + (command is "convert" or "plan" or "probe" or "frames" or "image" ? " INPUT ..." : ""));
         Console.Out.WriteLine();
         if (command is null)
         {
             Console.Out.WriteLine(T("同一个 EXE 提供 GUI 与命令行。无参数时打开 GUI；使用下列命令时无界面运行。"));
             Console.Out.WriteLine("\n" + T("位置参数") + ":");
-            string[] descriptions = ["读取视频与全部音轨信息", "列出编码预设", "列出内置 Log/LUT 曲线", "检查工具与编码器、滤镜", "读取组件条款与许可路径", "转换文件、目录或通配符", "查看解析选项和 FFmpeg 参数，不编码"];
+            string[] descriptions = ["读取视频与全部音轨信息", "列出编码预设", "列出内置 Log/LUT 曲线", "检查工具与编码器、滤镜", "读取组件条款与许可路径", "转换文件、目录或通配符", "查看解析选项和 FFmpeg 参数，不编码", "读取逐帧时间轴信息", "导出图片或 Android 动态照片"];
             for (int i = 0; i < CliArguments.Commands.Length; i++)
             {
                 Console.Out.WriteLine("  " + CliArguments.Commands[i].PadRight(12) + T(descriptions[i]));
@@ -172,9 +172,16 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
             }
 
             Row("--duration SECONDS", "只转换指定秒数");
+            Row("--start-frame N, --end-frame N", "从 0 开始计帧，结束帧不包含在输出中");
+            Row("--start-time S, --end-time S", "按秒选择范围，吸附到下一帧；不能与帧范围混用");
             Row("--overwrite", "成功编码并校验后才替换已有输出");
             Row("--log PATH", "向日志追加逐行 JSON 事件");
             Console.Out.WriteLine("  -r, --recursive\n  --cpu-decode, --no-cpu-decode\n  --skip-existing\n  --continue-on-error\n  --dry-run\n  --verbose");
+        }
+        if (command == "image")
+        {
+            Console.Out.WriteLine("  --image-format {auto,hdr,ultrahdr,sdr,png}\n  --frame N\n  --quality 1..100\n  --motion\n  --motion-size {source,1080,720}\n  --motion-start-frame N, --motion-end-frame N\n  --input-kind {auto,sdr,hlg,pq,log,raw}\n  --profile {auto,pocket3,samsung,milog,applelog,applelog2}\n  --purpose {share,archive}\n  -o, --output PATH\n  --overwrite\n  --skip-existing\n  --dry-run");
+            Console.Out.WriteLine(T("帧编号从 0 开始，结束帧不包含在输出中；动态照片文件名以 MP.jpg 结尾。"));
         }
         Console.Out.WriteLine("\n" + T("PowerShell 7：接 | Out-Host，或在 --json 后接 | ConvertFrom-Json，以等待完成并读取 $LASTEXITCODE。"));
     }
@@ -198,7 +205,7 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
             }
             if (args.Command == "presets")
             {
-                Output(new JsonObject { ["schema_version"] = 1, ["presets"] = Presets() });
+                Output(new JsonObject { ["schema_version"] = 1, ["presets"] = Presets(), ["motion_photo"] = engine.MotionConfig.DeepClone() });
                 return 0;
             }
             if (args.Command == "profiles")
@@ -273,7 +280,7 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
 
                     values[name + "_version"] = result.Output.Split('\n')[0].Trim();
                 }
-                foreach (var (flag, key, names) in new[] { ("-encoders", "encoders", new[] { "hevc_qsv", "av1_qsv", "h264_qsv", "libx265", "libsvtav1", "libx264", "aac", "libopus", "flac" }), ("-filters", "filters", new[] { "zscale", "lut3d", "libplacebo" }) })
+                foreach (var (flag, key, names) in new[] { ("-encoders", "encoders", new[] { "hevc_qsv", "av1_qsv", "h264_qsv", "libx265", "libsvtav1", "libx264", "aac", "libopus", "flac", "libaom-av1", "mjpeg", "png", "rawvideo" }), ("-filters", "filters", new[] { "zscale", "lut3d", "libplacebo", "iccgen", "trim", "atrim" }) })
                 {
                     var result = await ProcessRunner.CaptureAsync(tools.Ffmpeg, ["-hide_banner", flag], cancellation, 15);
                     if (result.ExitCode != 0)
@@ -302,6 +309,10 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
                 Output(value);
                 return 0;
             }
+            if (args.Command is "frames" or "image")
+            {
+                return await FrameCommandAsync(args, tools, report, cancellation);
+            }
             if (args.Duration is { } seconds && (!double.IsFinite(seconds) || seconds <= 0))
             {
                 throw new CliException("invalid_arguments", T("--duration 必须为有限正数。"));
@@ -312,7 +323,7 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
             // Plan the whole batch before creating outputs. This detects
             // collisions with every input (including hard links), not just the
             // currently encoded source, before any overwrite can occur.
-            var plans = new List<(MediaInfo Media, EncodeOptions Options, string Destination)>();
+            var plans = new List<(MediaInfo Media, EncodeOptions Options, string Destination, FrameRange? Frames, FrameTimeline? Timeline)>();
             var sources = inputs.Select(p => p.Path).ToArray();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             int failures = 0;
@@ -322,6 +333,8 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
                 {
                     var media = await MediaProbe.InspectAsync(tools, path, cancellation);
                     var options = Resolve(valuesForEncoding, media);
+                    FrameTimeline? timeline = HasFrameSelection(args) ? await FrameTimeline.LoadAsync(tools, media, cancellation) : null;
+                    FrameRange? selection = timeline is null ? null : ReadFrameSelection(args, timeline);
                     var name = $"{Path.GetFileNameWithoutExtension(path)}_{options.Output.ToUpperInvariant()}_{options.Codec}_{options.Purpose}{options.Suffix}";
                     var destination = Path.GetFullPath(args.Get("output") ?? (args.Get("output_dir") is { } dir ? Path.Combine(dir, Path.GetDirectoryName(relative) ?? "", name) : Path.Combine(Path.GetDirectoryName(path)!, name)));
                     if (seen.Contains(destination) || sources.Any(p => ProcessRunner.SameFile(destination, p)))
@@ -335,7 +348,7 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
                     }
 
                     seen.Add(destination);
-                    plans.Add((media, options, destination));
+                    plans.Add((media, options, destination, selection, timeline));
                 }
                 catch (Exception e) when (e is CliException or InvalidDataException or IOException or UnauthorizedAccessException)
                 {
@@ -365,7 +378,7 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
             for (int i = 0; i < plans.Count; i++)
             {
                 cancellation.ThrowIfCancellationRequested();
-                var (media, options, destination) = plans[i];
+                var (media, options, destination, selection, timeline) = plans[i];
                 report.Context = new JsonObject { ["job"] = i + 1, ["total_jobs"] = plans.Count, ["input"] = media.Path, ["output"] = destination };
                 if (File.Exists(destination) && args.Has("skip_existing"))
                 {
@@ -373,7 +386,7 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
                     report.Emit("skipped", JsonValue.Create(destination));
                     continue;
                 }
-                var plan = engine.Plan(tools, media, options, destination, args.Duration);
+                var plan = engine.Plan(tools, media, options, destination, args.Duration, selection is null ? null : timeline!.Resolve(selection));
                 if (args.Command == "plan" || args.Has("dry_run"))
                 {
                     var value = new JsonObject
@@ -411,8 +424,8 @@ public sealed class NativeCli(Transcoder engine, CliContext context)
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                     report.Clock.Restart();
-                    report.Emit("start", new JsonObject { ["options"] = options.ToJson(), ["duration"] = args.Duration is { } duration ? Math.Min(duration, media.Duration) : media.Duration });
-                    await engine.RunAsync(tools, media, options, destination, report.Emit, cancellation, args.Duration, overwrite, reports);
+                    report.Emit("start", new JsonObject { ["options"] = options.ToJson(), ["duration"] = selection is not null ? timeline!.Resolve(selection).Duration : args.Duration is { } duration ? Math.Min(duration, media.Duration) : media.Duration });
+                    await engine.RunAsync(tools, media, options, destination, report.Emit, cancellation, args.Duration, overwrite, reports, selection, cachedTimeline: timeline);
                     complete++;
                     report.Emit("done", JsonValue.Create(destination));
                 }

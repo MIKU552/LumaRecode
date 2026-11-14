@@ -8,7 +8,7 @@ namespace VideoConverter.Core;
 /// <summary>Resolves encoding policy, builds FFmpeg arguments and publishes verified output files.</summary>
 /// <remarks>Planning has no process or filesystem side effects. Execution uses a sibling
 /// temporary directory and only moves a verified result to its final destination.</remarks>
-public sealed class Transcoder
+public sealed partial class Transcoder
 {
     public string Assets
     {
@@ -18,6 +18,8 @@ public sealed class Transcoder
     {
         get;
     }
+    private readonly Lazy<JsonObject> motionConfig;
+    public JsonObject MotionConfig => motionConfig.Value;
     // Matrix/range describe YCbCr decoding into the LUT's RGB domain, not
     // the gamut retained by the camera's Log curve. See each LUT's provenance.
     public static readonly Dictionary<string, (string Name, string File, string Matrix, string Range)> Profiles = new()
@@ -39,11 +41,12 @@ public sealed class Transcoder
             throw new InvalidDataException(message);
         }
     }
-    private static string FormatNumber(double value) => value.ToString("G", CultureInfo.InvariantCulture);
+    private static string FormatNumber(double value) => value.ToString("0.#################", CultureInfo.InvariantCulture);
     public Transcoder(string assets)
     {
         Assets = Path.GetFullPath(assets);
         Config = JsonNode.Parse(File.ReadAllText(Path.Combine(Assets, "recommended-presets.json")))!.AsObject();
+        motionConfig = new(() => JsonNode.Parse(File.ReadAllText(Path.Combine(Assets, "motion-photo-presets.json")))!.AsObject());
     }
     /// <summary>Resolves source-dependent defaults and enforces codec, sampling and depth limits.</summary>
     /// <remarks>Call before using PixelFormat or Depth; their values must be concrete.</remarks>
@@ -179,15 +182,17 @@ public sealed class Transcoder
     }
     /// <summary>Builds a shell-free command, resolved options and expected output color tags.</summary>
     /// <param name="seconds">Optional positive duration in seconds, measured from the start of the input.</param>
-    public EncodingPlan Plan(MediaTools tools, MediaInfo media, EncodeOptions requestedOptions, string destination, double? seconds = null)
-        => BuildPlan(tools, media, requestedOptions, destination, seconds, forceQsvTimingCompatibility: false);
+    public EncodingPlan Plan(MediaTools tools, MediaInfo media, EncodeOptions requestedOptions, string destination, double? seconds = null,
+        FrameWindow? window = null, bool motionPhoto = false, string motionSize = "source")
+        => BuildPlan(tools, media, requestedOptions, destination, seconds, forceQsvTimingCompatibility: false, window: window, motionPhoto: motionPhoto, motionSize: motionSize);
 
     private EncodingPlan BuildPlan(MediaTools tools, MediaInfo media, EncodeOptions requestedOptions, string destination, double? seconds,
-        bool forceQsvTimingCompatibility, bool autoLowPower = false)
+        bool forceQsvTimingCompatibility, bool autoLowPower = false, FrameWindow? window = null, bool motionPhoto = false, string motionSize = "source")
     {
         Require(seconds is null || double.IsFinite(seconds.Value) && seconds.Value > 0, "--duration 必须为有限正数。");
+        Require(!motionPhoto || motionSize is "source" or "1080" or "720", "请选择有效的动态视频分辨率。");
         var kind = Validate(requestedOptions, media);
-        var options = ResolveFormat(requestedOptions, media);
+        var options = ResolveFormat(FrameOptions(media, requestedOptions, window is not null, motionPhoto), media);
         var video = media.Video.DeepClone().AsObject();
         video["color_range"] = OutputPolicy.SourceRange(media, kind == "log" ? Profiles[options.Profile!].Range : null) == "full" ? "pc" : "tv";
         if (IsHdr(kind))
@@ -240,7 +245,7 @@ public sealed class Transcoder
 
         colors["color_range"] = options.ColorRange == "full" ? "pc" : "tv";
 
-        var config = (options.Variant == "fast" ? Config["archive_fast_av1"] : Config[options.Purpose]?[options.Codec])!.AsObject();
+        var config = (motionPhoto ? MotionConfig[options.Purpose]?[options.Codec] : options.Variant == "fast" ? Config["archive_fast_av1"] : Config[options.Purpose]?[options.Codec])!.AsObject();
         bool colorConversion = colors.Any(p => video.Text(p.Key) != p.Value?.ToString());
         // A QSV surface can stay on the GPU only when the filter chain accepts
         // it. LUTs, tone mapping and software encoders need system-memory frames.
@@ -248,7 +253,7 @@ public sealed class Transcoder
         // Decode these inputs in software so rotations/mirroring are applied
         // to pixels once, rather than lost when the new stream is muxed.
         bool displayTransform = media.SideData.Any(s => s.Text("side_data_type") == "Display Matrix");
-        bool softwareFrames = options.Transform != "none" || options.Purpose == "archive" || options.CpuDecode || colorConversion || displayTransform || media.DynamicHdr || developRaw;
+        bool softwareFrames = options.Transform != "none" || options.Purpose == "archive" || options.CpuDecode || colorConversion || displayTransform || media.DynamicHdr || developRaw || window is not null || motionPhoto;
         // Different nominal/average rates identify common camera VFR files.
         // Equal or absent rates do not prove CFR; execution can retry once if
         // the QSV runtime returns non-monotonic DTS despite these headers.
@@ -282,8 +287,20 @@ public sealed class Transcoder
             // with the RAW Bayer C IDCT on affected builds (upstream #25461).
             args.AddRange(["-threads:v", "2", "-filter_threads", "2", "-cpuflags", "-avx2", "-apply_cropping", "0", "-noautorotate"]);
         }
-        args.AddRange(["-i", media.Path, "-map", "0:" + video.Text("index"), "-map", "0:a?", "-map_metadata", options.Transform.StartsWith("log-") ? "-1" : "0", "-map_chapters", "0", "-sn", "-dn"]);
+        if (window is { SeekFrame: > 0 })
+        {
+            args.AddRange(["-seek_timestamp", "1", "-ss", FormatNumber(window.SeekSeconds)]);
+        }
+        args.AddRange(["-i", media.Path, "-map", "0:" + video.Text("index"), "-map", motionPhoto ? "0:a:0?" : "0:a?", "-map_metadata", motionPhoto || options.Transform.StartsWith("log-") ? "-1" : "0", "-map_chapters", motionPhoto || window is not null ? "-1" : "0", "-sn", "-dn"]);
         var filters = new List<string>();
+        if (window is not null)
+        {
+            filters.Add($"trim=start_frame={window.Start - window.SeekFrame}:end_frame={window.End - window.SeekFrame}");
+        }
+        if (motionPhoto && !developRaw)
+        {
+            filters.Add("pad=ceil(iw/2)*2:ceil(ih/2)*2");
+        }
         if (developRaw)
         {
             filters.Add(RawDevelopment.Filter(media.Raw!, "raw-calibration.cmd"));
@@ -365,6 +382,14 @@ public sealed class Transcoder
             filters.Add("format=" + (options.Purpose == "share" && options.Depth == 10 ? "p010le" : options.PixelFormat));
             filters.Add(FrameTags(colors));
         }
+        if (motionPhoto && motionSize != "source")
+        {
+            filters.Add(MotionScaleFilter(motionSize));
+        }
+        if (window is not null)
+        {
+            filters.Add("setpts=PTS-STARTPTS");
+        }
         args.AddRange(["-vf", string.Join(',', filters), "-c:v", config.Text("encoder"), "-preset", config.Text("preset")]);
         if (options.Purpose == "share")
         {
@@ -384,7 +409,7 @@ public sealed class Transcoder
         }
         else
         {
-            args.AddRange(["-crf", config.Text("quality"), "-pix_fmt", options.PixelFormat, "-g", FormatNumber(Math.Max(1, Math.Round(8 * Fps(video))))]);
+            args.AddRange(["-crf", config.Text("quality"), "-pix_fmt", options.PixelFormat, "-g", FormatNumber(Math.Max(1, Math.Round((motionPhoto ? 2 : 8) * Fps(video))))]);
             var extra = new JsonObject();
             if (options.Codec == "hevc")
             {
@@ -445,7 +470,32 @@ public sealed class Transcoder
             args.AddRange(["-metadata:s:v:0", "rotate=0"]);
         }
         var audio = ResolveAudio(options);
-        if (audio == "copy")
+        var audioFilters = new List<string>();
+        if (window is not null && media.Audio.Any())
+        {
+            double origin = window.SeekFrame > 0 ? window.SeekSeconds : JsonFields.Number(media.Video.Text("_format_start_time"));
+            // Input seeking offsets timestamps on each audio stream's sample
+            // clock. Restore that integer offset before trimming in source
+            // time, avoiding one-sample errors at rational video boundaries.
+            audioFilters.Add($"asetpts=PTS+round({FormatNumber(origin)}*SR)/SR/TB");
+            audioFilters.Add($"atrim=start={FormatNumber(window.StartSeconds)}:end={FormatNumber(window.EndSeconds)}");
+            audioFilters.Add($"asetpts=PTS-({FormatNumber(window.StartSeconds)})/TB");
+        }
+        if (motionPhoto && media.Audio.Any())
+        {
+            audioFilters.Add($"aformat=sample_fmts=s16:sample_rates=48000:channel_layouts={(media.Audio.First().Integer("channels") == 1 ? "mono" : "stereo")}");
+        }
+        if (audioFilters.Count > 0)
+        {
+            args.AddRange(["-af", string.Join(',', audioFilters)]);
+        }
+        if (motionPhoto && media.Audio.Any())
+        {
+            var policy = MotionConfig["audio"]!;
+            bool mono = media.Audio.First().Integer("channels") == 1;
+            args.AddRange(["-c:a", policy.Text("encoder"), "-profile:a", policy.Text("profile"), "-b:a", policy.Text(mono ? "mono_bitrate_kbps" : "stereo_bitrate_kbps") + "k", "-ar", policy.Text("sample_rate"), "-ac", mono ? "1" : "2"]);
+        }
+        else if (audio == "copy")
         {
             args.AddRange(["-c:a", "copy"]);
         }
@@ -515,13 +565,21 @@ public sealed class Transcoder
         }
     }
     /// <summary>Probes the encoded file before publication and checks the requested format and metadata.</summary>
-    public async Task<MediaInfo> VerifyAsync(MediaTools tools, MediaInfo source, EncodeOptions options, JsonObject expected, string output, CancellationToken cancellation = default)
+    public async Task<MediaInfo> VerifyAsync(MediaTools tools, MediaInfo source, EncodeOptions options, JsonObject expected, string output, CancellationToken cancellation = default, bool motionPhoto = false, string motionSize = "source")
     {
         options = ResolveFormat(options, source);
         var result = await MediaProbe.InspectAsync(tools, output, cancellation);
+        if (motionPhoto)
+        {
+            var audio = result.Audio.ToArray();
+            bool hasAudio = source.Audio.Any();
+            Require(audio.Length == (hasAudio ? 1 : 0) && (!hasAudio || audio[0].Text("codec_name") == "aac"
+                && audio[0].Text("profile") == "LC" && audio[0].Integer("sample_rate") == 48000
+                && audio[0].Integer("channels") == (source.Audio.First().Integer("channels") == 1 ? 1 : 2)), "动态照片音频格式校验失败。");
+        }
         Require(result.Video.Text("pix_fmt").Replace("yuvj", "yuv") == options.PixelFormat || options.Sampling == "gray" && result.Video.Flag("_monochrome"), $"输出像素格式与选择不符，得到 {result.Video.Text("pix_fmt")}。");
         var displayMatrix = source.SideData.FirstOrDefault(s => s.Text("side_data_type") == "Display Matrix");
-        if (displayMatrix is not null || source.Raw is not null)
+        if (displayMatrix is not null || source.Raw is not null || motionPhoto)
         {
             var angle = Math.Abs(JsonFields.Number(displayMatrix.Text("rotation"))) % 180;
             bool swap = Math.Abs(angle - 90) < 1;
@@ -541,8 +599,24 @@ public sealed class Transcoder
                 if (options.Sampling == "420")
                     height += height % 2;
             }
-            Require(result.Video.Integer("width") == width && result.Video.Integer("height") == height,
-                "输出画面尺寸与方向变换不符。");
+            if (motionPhoto && source.Raw is null)
+            {
+                width += width % 2;
+                height += height % 2;
+            }
+            if (motionPhoto && motionSize != "source")
+            {
+                int actualWidth = result.Video.Integer("width"), actualHeight = result.Video.Integer("height");
+                int longSide = motionSize == "1080" ? 1920 : 1280, shortSide = motionSize == "1080" ? 1080 : 720;
+                int boundWidth = width >= height ? longSide : shortSide, boundHeight = width >= height ? shortSide : longSide;
+                Require(actualWidth > 0 && actualHeight > 0 && actualWidth <= Math.Min(width, boundWidth) && actualHeight <= Math.Min(height, boundHeight)
+                    && Math.Abs((double)actualWidth / actualHeight - (double)width / height) <= 2d / actualHeight, "输出画面尺寸与方向变换不符。");
+            }
+            else
+            {
+                Require(result.Video.Integer("width") == width && result.Video.Integer("height") == height,
+                    "输出画面尺寸与方向变换不符。");
+            }
         }
         foreach (var p in expected)
         {
@@ -600,7 +674,8 @@ public sealed class Transcoder
     /// <summary>Encodes, verifies and atomically publishes a result; cancellation removes only job-owned files.</summary>
     /// <remarks>Existing outputs are replaced only after successful verification when overwrite is true.</remarks>
     public async Task<MediaInfo> RunAsync(MediaTools tools, MediaInfo media, EncodeOptions requestedOptions, string output,
-        Action<string, JsonNode?> emit, CancellationToken cancellation = default, double? seconds = null, bool overwrite = false, ToolReportCache? reports = null)
+        Action<string, JsonNode?> emit, CancellationToken cancellation = default, double? seconds = null, bool overwrite = false, ToolReportCache? reports = null,
+        FrameRange? selection = null, bool motionPhoto = false, FrameTimeline? cachedTimeline = null, string motionSize = "source")
     {
         output = Path.GetFullPath(output);
         Require(!ProcessRunner.SameFile(output, media.Path), "不能将源文件用作输出。");
@@ -608,7 +683,18 @@ public sealed class Transcoder
         var parent = Path.GetDirectoryName(output)!;
         Require(Directory.Exists(parent) && Path.GetExtension(output).Equals(requestedOptions.Suffix, StringComparison.OrdinalIgnoreCase), $"请选择已有的输出目录，文件后缀应为 {requestedOptions.Suffix}。");
         Validate(requestedOptions, media);
-        var options = ResolveFormat(requestedOptions, media);
+        Require(selection is null || seconds is null, "逐帧裁剪不能同时使用 --duration。");
+        FrameTimeline? timeline = null;
+        FrameWindow? window = null;
+        if (selection is not null)
+        {
+            emit("status", JsonValue.Create("正在读取逐帧时间轴…"));
+            timeline = cachedTimeline?.Matches(media.Path) == true ? cachedTimeline : await FrameTimeline.LoadAsync(tools, media, cancellation);
+            window = timeline.Resolve(selection);
+        }
+        var options = ResolveFormat(FrameOptions(media, requestedOptions, selection is not null, motionPhoto), media);
+        var verificationSource = window is not null && DynamicHdr.Preserve(media, options)
+            ? await FirstSelectedFrameAsync(tools, media, timeline!, window.Start, cancellation) : media;
         // Keep the temporary result on the output volume so the final move is
         // atomic. A failed/cancelled encode never truncates an existing output.
         var scratch = Path.Combine(parent, ".video-converter-" + Guid.NewGuid().ToString("N"));
@@ -616,17 +702,17 @@ public sealed class Transcoder
         try
         {
             var temporary = Path.Combine(scratch, Path.GetFileName(output));
-            var plan = Plan(tools, media, options, temporary, seconds);
+            var plan = Plan(tools, media, options, temporary, seconds, window, motionPhoto, motionSize);
             await CheckRequirementsAsync(tools, options, plan, cancellation, reports);
             if (media.Raw is not null)
             {
                 emit("status", JsonValue.Create("正在读取 RAW 相机参数…"));
-                await RawDevelopment.PrepareAsync(tools, media, Path.Combine(scratch, "raw-calibration.cmd"), seconds, cancellation);
+                await RawDevelopment.PrepareAsync(tools, media, Path.Combine(scratch, "raw-calibration.cmd"), seconds, cancellation, window);
             }
             if (DynamicHdr.Preserve(media, options) && media.Hdr10Plus)
             {
                 emit("status", JsonValue.Create("正在提取 HDR10+ 动态元数据…"));
-                await DynamicHdr.ExtractAsync(tools, media, Path.Combine(scratch, "hdr10plus.json"), cancellation);
+                await DynamicHdr.ExtractAsync(tools, media, Path.Combine(scratch, "hdr10plus.json"), cancellation, selection);
             }
             if (options.Suffix == ".mp4" && ResolveAudio(options) == "copy" && media.Audio.Any())
             {
@@ -643,7 +729,7 @@ public sealed class Transcoder
                     throw new InvalidDataException($"当前 FFmpeg 无法将原音轨（{string.Join(", ", media.Audio.Select(s => s.Text("codec_name", "未知")).Distinct().Order())}）直接封装为 MP4。请选择 AAC 音轨，或改用 MKV 封装。");
                 }
             }
-            var duration = seconds is { } limit && media.Duration > 0 ? Math.Min(limit, media.Duration) : seconds ?? media.Duration;
+            var duration = window?.Duration ?? (seconds is { } limit && media.Duration > 0 ? Math.Min(limit, media.Duration) : seconds ?? media.Duration);
             var attempt = await EncodeAsync(plan, emit, duration, cancellation);
             bool autoLowPower = false;
             while (attempt.ExitCode != 0 && options.Purpose == "share")
@@ -687,18 +773,21 @@ public sealed class Transcoder
                 // removed. The destination remains untouched until verified.
                 File.Delete(temporary);
                 plan = BuildPlan(tools, media, options, temporary, seconds,
-                    forceQsvTimingCompatibility: plan.QsvTimingCompatibility || retryTiming, autoLowPower: autoLowPower);
+                    forceQsvTimingCompatibility: plan.QsvTimingCompatibility || retryTiming, autoLowPower: autoLowPower, window: window, motionPhoto: motionPhoto, motionSize: motionSize);
                 await CheckRequirementsAsync(tools, options, plan, cancellation, reports);
                 attempt = await EncodeAsync(plan, emit, duration, cancellation);
             }
             Require(attempt.ExitCode == 0, $"FFmpeg 转码失败（{attempt.ExitCode}）。请查看日志，或改用软件归档 / 软件解码。");
             emit("status", JsonValue.Create("正在核对输出色彩和采样格式…"));
-            var result = await VerifyAsync(tools, media, options, plan.Colors, temporary, cancellation);
+            var result = await VerifyAsync(tools, verificationSource, options, plan.Colors, temporary, cancellation, motionPhoto, motionSize);
             cancellation.ThrowIfCancellationRequested();
             // Recheck cancellation immediately before the only operation that
             // can replace an existing destination.
             File.Move(temporary, output, overwrite);
-            return result;
+            return result with
+            {
+                Path = output
+            };
         }
         finally
         {

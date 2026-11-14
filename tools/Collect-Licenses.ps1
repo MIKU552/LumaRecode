@@ -107,8 +107,17 @@ foreach ($taskFontRecord in $taskFontRecords) {
         throw "Bundled font or license checksum mismatch: $($taskFontRecord.file)"
     }
 }
-$taskManifest = [ordered]@{schema_version=2;project_license='MIT';app_version=$taskVersion;reviewed_on='2026-11-12';packages=$taskRecords.ToArray();implicit_runtime_packs=$taskRuntimeRecords.ToArray();dotnet_sdk='11.0.100';backend='native-dotnet';distribution_basis=@('Windows App SDK production package terms, section 3, for files placed with the application by NuGet','.NET Library License for designated Windows binaries and single-file runtime; MIT and notices for remaining files; Windows SDK terms where applicable','Windows SDK license and its Microsoft.Windows.SDK.NET.Ref REDIST list for unmodified WinRT projection binaries','Unmodified OpenOSV LUT under Apache-2.0 with its original LICENSE and NOTICE');third_party_rights_separate=$true}
+$taskManifest = [ordered]@{schema_version=2;project_license='MIT';app_version=$taskVersion;reviewed_on='2026-11-14';packages=$taskRecords.ToArray();implicit_runtime_packs=$taskRuntimeRecords.ToArray();dotnet_sdk='11.0.100';backend='native-dotnet';distribution_basis=@('Windows App SDK production package terms, section 3, for files placed with the application by NuGet','.NET Library License for designated Windows binaries and single-file runtime; MIT and notices for remaining files; Windows SDK terms where applicable','Windows SDK license and its Microsoft.Windows.SDK.NET.Ref REDIST list for unmodified WinRT projection binaries','Unmodified OpenOSV LUT under Apache-2.0 with its original LICENSE and NOTICE');third_party_rights_separate=$true}
 $taskManifest['fonts'] = @{license='OFL-1.1';sources='Fonts/manifest.json';families=@('Source Sans 3','Source Han Sans CN','Source Han Sans JP','Source Code Pro')}
+$taskNativeManifest = Get-Content -LiteralPath (Join-Path $taskRoot 'App/Native/manifest.json') -Raw | ConvertFrom-Json -AsHashtable
+$taskNativeBinary = Join-Path $taskRoot 'App/Native/uhdr.dll'
+if ((Get-FileHash -LiteralPath $taskNativeBinary -Algorithm SHA256).Hash.ToLowerInvariant() -ne $taskNativeManifest.binary.sha256) { throw 'Ultra HDR binary checksum mismatch.' }
+foreach ($taskNativeLicense in $taskNativeManifest.licenses) {
+    $taskLicensePath = Join-Path $taskRoot "licenses/UltraHDR/$($taskNativeLicense.file)"
+    if ((Get-FileHash -LiteralPath $taskLicensePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $taskNativeLicense.sha256) { throw "Ultra HDR license checksum mismatch: $($taskNativeLicense.file)" }
+}
+$taskManifest['native_codecs'] = $taskNativeManifest
+$taskManifest.distribution_basis += 'libultrahdr under MIT and Apache-2.0, image_io under Apache-2.0, modp_b64 under BSD-3-Clause; Adobe gain-map notice retained; libjpeg-turbo under IJG/BSD with original texts and acknowledgment; MSVC STL under Apache-2.0 WITH LLVM-exception'
 $taskManifest.distribution_basis += 'Unmodified Source Sans 3, Source Han Sans and Source Code Pro fonts under SIL OFL 1.1, with original copyrights and license texts'
 ConvertTo-CanonicalObject $taskManifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $taskOutput 'manifest.json') -Encoding utf8
 Write-Output "Collected legal text for $($taskRecords.Count) resolved NuGet packages."

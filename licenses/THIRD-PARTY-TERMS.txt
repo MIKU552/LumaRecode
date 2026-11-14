@@ -29,3 +29,8 @@ Windows-SDK-REDIST.html. Read the full terms, including their limits on
 use, redistribution, notices and applicable data collection provisions.
 
 Source Sans 3, Source Han Sans and Source Code Pro are included as unmodified font files under the SIL Open Font License 1.1. Their copyright notices, full licenses and source records are in the Fonts subdirectory.
+
+Ultra HDR image encoding uses libultrahdr 2.0.2 and libjpeg-turbo 3.2.1. The original MIT, Apache-2.0, BSD and IJG licenses, and the MSVC STL Apache-2.0 WITH LLVM-exception license, are in the UltraHDR subdirectory.
+
+This product includes Gain Map technology under license by Adobe.
+This software is based in part on the work of the Independent JPEG Group.

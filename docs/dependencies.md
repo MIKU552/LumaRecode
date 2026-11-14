@@ -10,6 +10,7 @@
 | Windows SDK BuildTools | 10.0.28000.2957 | Windows 资源与清单 |
 | Windows API target | 10.0.26100.0 | Windows API 编译合约 |
 | MSVC linker | 14.44.35230 | AOT 构建使用的原生链接器 |
+| libultrahdr / libjpeg-turbo | 2.0.2 / 3.2.1 | Ultra HDR JPEG 编码 |
 | PySide6 | 6.12.0 | 可选图标生成工具 |
 
 AOT 构建需要[受支持的 Visual Studio C++ 工具链](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/)。在已安装 C++ 工具的开发环境中运行：
@@ -31,6 +32,8 @@ NuGet 依赖分别锁定在 `App/packages.aot.lock.json`、`App/packages.lock.js
 | `./build.ps1 -Deployment FrameworkDependent` | JIT ZIP | 用户安装 .NET 11 Runtime、Windows App Runtime 2.6 |
 
 默认产物为 `dist/SelfContained/LumaRecode.exe`。FFmpeg 与 ffprobe 由用户提供。
+
+`App/Native/uhdr.dll` 是 Ultra HDR 图片编解码组件，首次导出 Ultra HDR 时加载。普通视频转换与 SDR 预览不加载该组件。发布包内置所需 DLL；重新编译该组件可在 x64 MSVC 开发环境中运行 `tools/Build-UltraHdr.ps1`，需要 CMake、Ninja 和 NASM。固定源码版本及哈希见 [原生组件清单](../App/Native/manifest.json)。
 
 主视图位于 `App/MainView.xaml`。修改翻译文字后运行 `python tools/Update-ViewText.py`，更新 `App/ViewText.g.cs`；构建会检查映射是否一致。检查命令见 [QA 指南](../qa/README.md)，品牌资源生成见 [Brand/README.md](../Brand/README.md)。
 
