@@ -313,11 +313,21 @@ public sealed partial class MainWindow : Window
     }
     /// <summary>Repositions the same controls at two width breakpoints, without rebuilding job state.</summary>
     /// <remarks>Auto rows stretch the paired cards together in two columns; a single column uses each card's natural height.</remarks>
+    private (bool Narrow, bool Compact, bool Photo, bool Preview)? lastLayout;
     private void Reflow(double width)
     {
         var narrow = width < 960;
-        var grid = Control<Grid>("SettingsGrid");
+        var compact = width < 760;
         bool preview = sourceMedia is not null && (PhotoMode || Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").IsChecked == true);
+        var layout = (narrow, compact, PhotoMode, preview);
+        if (lastLayout == layout)
+        {
+            return;
+        }
+        lastLayout = layout;
+        // Width changes within a breakpoint are handled by star columns. Only
+        // cross the WinRT/layout boundary when the structure actually changes.
+        var grid = Control<Grid>("SettingsGrid");
         int settingsRow = preview ? 2 : 1;
         var rows = PhotoMode ? settingsRow + 1 : settingsRow + (narrow ? 3 : 2);
         while (grid.RowDefinitions.Count < rows)
@@ -347,7 +357,6 @@ public sealed partial class MainWindow : Window
         Grid.SetRow(format, settingsRow + (narrow ? 2 : 1));
         Grid.SetColumnSpan(format, narrow ? 1 : 2);
 
-        var compact = width < 760;
         var frameNumber = Control<NumberBox>("FrameNumber");
         Grid.SetColumn(frameNumber, compact ? 0 : 2);
         Grid.SetRow(frameNumber, compact ? 1 : 0);
@@ -411,6 +420,7 @@ public sealed partial class MainWindow : Window
     {
         if (closing || activeJob is null)
         {
+            bool joinFrames = !closing && (previewSession is not null || timelineTask is not null || !previewTeardown.IsCompleted);
             // Invalidate queued probe results before releasing the window.
             // A cancelled probe can still have a previously queued media event.
             closing = true;
@@ -419,7 +429,13 @@ public sealed partial class MainWindow : Window
             {
                 probe.Dispose();
             }
-
+            if (joinFrames)
+            {
+                args.Cancel = true;
+                await StopFrameWorkAsync();
+                // Complete this closing event before issuing the final close.
+                DispatcherQueue.TryEnqueue(Close);
+            }
             return;
         }
         args.Cancel = true;

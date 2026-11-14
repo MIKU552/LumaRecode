@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 
 namespace VideoConverter.Core;
 
+/// <summary>Zero-based cover frame and an optional end-exclusive motion range on the source timeline.</summary>
 public sealed record ImageExportOptions(int Frame = 0, string Format = "sdr", string SourceKind = "auto", string? Profile = null,
     bool Motion = false, FrameRange? MotionFrames = null, int Quality = 95, string Purpose = "archive", string MotionSize = "source")
 {
@@ -39,7 +40,7 @@ public sealed class FrameExporter(Transcoder engine)
         Require(kind != "log" || !string.IsNullOrWhiteSpace(options.Profile ?? source.Profile), "请选择相机曲线。");
     }
 
-    private static EncodeOptions RenderOptions(MediaInfo source, ImageExportOptions options, bool sdr, string purpose = "archive")
+    internal static EncodeOptions RenderOptions(MediaInfo source, ImageExportOptions options, bool sdr, string purpose = "archive")
     {
         string kind = Kind(source, options);
         string? profile = options.Profile ?? source.Profile;
@@ -53,6 +54,7 @@ public sealed class FrameExporter(Transcoder engine)
             BitDepth: depth.ToString(CultureInfo.InvariantCulture), DynamicHdr: "standard");
     }
 
+    /// <summary>Centers a three-second clip around the cover, shifting it inward at the source boundaries.</summary>
     public static FrameRange DefaultMotionRange(FrameTimeline timeline, int frame)
     {
         double center = timeline.Position(frame);
@@ -62,26 +64,12 @@ public sealed class FrameExporter(Transcoder engine)
         return new(first, Math.Min(timeline.Count, Math.Max(frame + 1, last)));
     }
 
-    /// <summary>Produces a bounded SDR PNG for the selected source frame; callers debounce and cancel scrubbing.</summary>
-    public async Task<byte[]> PreviewAsync(MediaTools tools, MediaInfo source, FrameTimeline timeline, ImageExportOptions options, CancellationToken cancellation = default)
-    {
-        var directory = Directory.CreateTempSubdirectory("LumaRecode-preview-");
-        try
-        {
-            var result = await RenderAsync(tools, source, timeline, options with
-            {
-                Format = "png",
-                Motion = false
-            }, directory.FullName,
-                preview: true, cancellation).ConfigureAwait(false);
-            return await File.ReadAllBytesAsync(result.Path, cancellation).ConfigureAwait(false);
-        }
-        finally
-        {
-            Directory.Delete(directory.FullName, recursive: true);
-        }
-    }
+    /// <summary>Renders a bounded SDR viewport frame without probing or writing an image file.</summary>
+    public Task<byte[]> PreviewAsync(MediaTools tools, MediaInfo source, FrameTimeline timeline, ImageExportOptions options, CancellationToken cancellation = default)
+        => new FramePreview(engine).RenderAsync(tools, source, timeline, options, cancellation);
 
+    /// <summary>Renders a full-resolution still, optionally appends a verified movie, then publishes atomically.</summary>
+    /// <remarks>The caller owns the source snapshot. A cached timeline is reused only while its file identity matches.</remarks>
     public async Task<ImageExportResult> ExportAsync(MediaTools tools, MediaInfo source, ImageExportOptions options, string destination,
         Action<string, JsonNode?> emit, bool overwrite = false, CancellationToken cancellation = default, FrameTimeline? timeline = null)
     {
@@ -109,7 +97,7 @@ public sealed class FrameExporter(Transcoder engine)
         {
             emit("decoder", JsonValue.Create("software"));
             emit("status", JsonValue.Create("正在提取所选帧…"));
-            var image = await RenderAsync(tools, source, timeline, options, directory, preview: false, cancellation).ConfigureAwait(false);
+            var image = await RenderAsync(tools, source, timeline, options, directory, cancellation).ConfigureAwait(false);
             string temporary = image.Path;
             double motionDuration = 0;
             if (options.Motion)
@@ -154,9 +142,9 @@ public sealed class FrameExporter(Transcoder engine)
     }
 
     private async Task<(string Path, int Width, int Height)> RenderAsync(MediaTools tools, MediaInfo source, FrameTimeline timeline,
-        ImageExportOptions options, string directory, bool preview, CancellationToken cancellation)
+        ImageExportOptions options, string directory, CancellationToken cancellation)
     {
-        bool sdr = preview || options.Format is "sdr" or "png";
+        bool sdr = options.Format is "sdr" or "png";
         var render = RenderOptions(source, options, sdr);
         var window = timeline.Resolve(new(options.Frame, options.Frame + 1));
         var plan = engine.Plan(tools, source, render, Path.Combine(directory, "unused.mkv"), window: window);
@@ -168,17 +156,13 @@ public sealed class FrameExporter(Transcoder engine)
         var arguments = plan.Arguments.Take(input + 2).ToList();
         string filter = plan.Arguments[Array.IndexOf(plan.Arguments, "-vf") + 1];
         string destination;
-        if (preview)
-        {
-            filter += ",scale=w='min(iw,1024)':h='min(ih,1024)':force_original_aspect_ratio=decrease";
-        }
         var encoding = new List<string>();
         if (sdr)
         {
-            filter += ",zscale=primaries=bt709:transfer=iec61966-2-1:matrix=gbr:range=full,format=gbrp16le,format=" + (!preview && options.Format == "png" && OutputPolicy.SourceDepth(source) > 8 ? "rgb48be" : "rgb24")
+            filter += ",zscale=primaries=bt709:transfer=iec61966-2-1:matrix=gbr:range=full,format=gbrp16le,format=" + (options.Format == "png" && OutputPolicy.SourceDepth(source) > 8 ? "rgb48be" : "rgb24")
                 + ",iccgen=color_primaries=bt709:color_trc=iec61966-2-1:force=1";
-            destination = Path.Combine(directory, preview || options.Format == "png" ? "frame.png" : "frame.jpg");
-            encoding.AddRange(preview || options.Format == "png" ? ["-c:v", "png"] : ["-c:v", "mjpeg", "-q:v", Math.Clamp((101 - options.Quality) / 3 + 1, 1, 31).ToString(CultureInfo.InvariantCulture), "-pix_fmt", "yuvj444p"]);
+            destination = Path.Combine(directory, options.Format == "png" ? "frame.png" : "frame.jpg");
+            encoding.AddRange(options.Format == "png" ? ["-c:v", "png"] : ["-c:v", "mjpeg", "-q:v", Math.Clamp((101 - options.Quality) / 3 + 1, 1, 31).ToString(CultureInfo.InvariantCulture), "-pix_fmt", "yuvj444p"]);
         }
         else if (options.Format == "hdr")
         {
@@ -229,7 +213,7 @@ public sealed class FrameExporter(Transcoder engine)
             return (destination, info.Width, info.Height);
         }
         var image = await MediaProbe.InspectAsync(tools, destination, cancellation).ConfigureAwait(false);
-        if (options.Format == "hdr" && !preview)
+        if (options.Format == "hdr")
         {
             Require(image.Video.Text("color_transfer") == "smpte2084" && image.Video.Text("color_primaries") == "bt2020" && OutputPolicy.SourceDepth(image) >= 10,
                 "HDR 图片色彩或位深校验失败。");

@@ -105,7 +105,10 @@ def cuts(folder):
             )
             after = frame_means(destination)
             assert len(after) == end - start, (start, end, len(after))
-            assert max(abs(a - b) for a, b in zip(before[start:end], after)) < 1.6
+            assert (
+                max(abs(a - b) for a, b in zip(before[start:end], after, strict=False))
+                < 1.6
+            )
             checks += 1
     return source, checks
 
@@ -514,6 +517,27 @@ def motion_info(path):
     }
 
 
+def previews(folder, source):
+    means = []
+    for frame in (0, 16, 17, 62):
+        output = folder / f"preview-{frame}.png"
+        native.request("image-preview", path=source, output=output, frame=frame)
+        data = output.read_bytes()
+        assert data[:8] == b"\x89PNG\r\n\x1a\n" and b"iCCP" in data
+        assert struct.unpack_from(">II", data, 16) == (128, 72)
+        means.append(frame_means(output)[0])
+    assert all(a < b for a, b in zip(means, means[1:], strict=False)), means
+    # Exercise the scale limit after FFmpeg applies a display rotation.
+    rotated = folder / "mono-rotated.mov"
+    if rotated.exists():
+        output = folder / "preview-rotated.png"
+        native.request("image-preview", path=rotated, output=output, frame=4)
+        width, height = struct.unpack_from(">II", output.read_bytes(), 16)
+        assert height == 1024 and width < height
+        return 5
+    return 4
+
+
 def color_order(folder, reference):
     if not reference:
         return 0
@@ -559,6 +583,7 @@ if __name__ == "__main__":
         count += audio_cut(folder)
         count += images(folder, source, args.reference)
         count += motion_audio_and_orientation(folder)
+        count += previews(folder, source)
         count += color_order(folder, args.reference)
         if args.exe:
             count += cli_checks(folder, folder / "hlg.mkv", args.exe.resolve())

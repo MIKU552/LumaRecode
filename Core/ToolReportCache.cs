@@ -6,7 +6,7 @@ namespace VideoConverter.Core;
 public sealed class ToolReportCache
 {
     private const int Capacity = 32;
-    private readonly object gate = new();
+    private readonly Lock gate = new();
     private readonly Dictionary<ReportKey, ProcessResult> reports = new();
 
     public async Task<ProcessResult> CaptureAsync(string executable, string[] arguments,

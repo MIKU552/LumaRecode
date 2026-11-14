@@ -57,7 +57,7 @@ public sealed partial class MainWindow
             }
             catch (Exception error) { await MessageAsync(L.T("读取失败"), error.Message); return; }
         }
-        previewCancellation?.Cancel();
+        var pendingPreview = Task.WhenAll(previewTeardown, previewSession?.CancelAsync() ?? Task.CompletedTask);
         var request = new ConversionRequest(PhotoMode ? "image" : "convert", ToolsObject(), MediaText("path"), output,
             SelectedOptions(), Overwrite: overwrite, Frames: TrimVideo ? VideoFrames : null,
             Image: PhotoMode ? SelectedImageOptions() : null, Timeline: frameTimeline);
@@ -81,6 +81,7 @@ public sealed partial class MainWindow
         SetStatus("正在启动转换…");
         try
         {
+            await pendingPreview;
             await client.RunAsync(request, ReceiveAsync);
         }
         catch (Exception error)

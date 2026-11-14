@@ -20,7 +20,7 @@ internal static class AboutDialog
         name.Children.Add(new TextBlock { Text = L.T("版本") + " " + version, FontSize = 13, IsTextSelectionEnabled = true });
         identity.Children.Add(name);
         panel.Children.Add(identity);
-        TextBlock Paragraph(string text) => new()
+        static TextBlock Paragraph(string text) => new()
         {
             Text = L.T(text),
             TextWrapping = TextWrapping.Wrap,

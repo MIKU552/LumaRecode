@@ -8,12 +8,13 @@ public sealed partial class MainWindow
 {
     private async Task ConfigureToolsAsync()
     {
-        if (activeJob is not null || dialogOpen)
+        if (activeJob is not null || probing || dialogOpen)
         {
             return;
         }
 
         dialogOpen = true;
+        var previousTools = ToolsObject();
         var panel = new StackPanel { Spacing = 16, MinWidth = 460 };
         panel.Children.Add(new TextBlock { Text = L.T("自动查找 PATH，也可以选择自己的 FFmpeg 和 ffprobe。"), TextWrapping = TextWrapping.Wrap });
         var fields = new Dictionary<string, TextBox>();
@@ -86,6 +87,12 @@ public sealed partial class MainWindow
             await dialog.ShowAsync();
         }
         finally { dialogOpen = false; Refresh(); }
+        if (!closing && sourceMedia is not null && previousTools != ToolsObject())
+        {
+            // Decoder support and format descriptors belong to the selected
+            // tool build. Re-inspect rather than retaining the old snapshot.
+            await InspectAsync(force: true);
+        }
     }
     private async Task<bool> ConfirmOverwriteAsync(string output)
     {

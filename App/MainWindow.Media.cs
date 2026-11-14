@@ -71,7 +71,7 @@ public sealed partial class MainWindow
         }
     }
     /// <summary>Probes one source asynchronously and applies only the current generation's results.</summary>
-    private async Task InspectAsync()
+    private async Task InspectAsync(bool force = false)
     {
         if (activeJob is not null || probing)
         {
@@ -79,7 +79,7 @@ public sealed partial class MainWindow
         }
 
         var path = Input.Text.Trim('"', ' ');
-        if (path == "" || path.Equals(MediaText("path"), StringComparison.OrdinalIgnoreCase))
+        if (path == "" || !force && path.Equals(MediaText("path"), StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -98,6 +98,7 @@ public sealed partial class MainWindow
             }
         }
         var token = ++generation;
+        ResetFrameSource();
         media = null;
         sourceMedia = null;
         softwareDecodeFallback = false;
@@ -167,7 +168,6 @@ public sealed partial class MainWindow
 
     private void ApplyMedia(JsonObject data)
     {
-        ResetFrameSource();
         updating = true;
         media = data;
         ResetSourceOptions();
@@ -222,11 +222,17 @@ public sealed partial class MainWindow
             _ => pixel
         };
         if (MediaText("kind") == "raw")
+        {
             sampling = "Bayer";
+        }
+
         var depths = (data["component_depths"] as JsonArray ?? []).Select(item => item!.GetValue<int>()).Distinct().ToArray();
         var depth = depths.Length > 0 ? string.Join("/", depths) + L.T(" 位") : int.TryParse(video.Text("bits_per_raw_sample"), out var bits) && bits > 0 ? bits + L.T(" 位") : L.T("位深未标明");
         if (MediaText("kind") == "raw")
+        {
             depth = "16" + L.T(" 位");
+        }
+
         if (data.Flag("pixel_float"))
         {
             depth += L.T("浮点");

@@ -12,7 +12,7 @@
     <AssemblyName>LumaRecode</AssemblyName>
     <Product>映码 · LumaRecode</Product>
     <Title>映码 · LumaRecode</Title>
-    <Version>4.3.0</Version>
+    <Version>4.3.1</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
@@ -24,7 +24,8 @@
     <Content Include="../dist/NativeAot/**/*" Exclude="../dist/NativeAot/**/*.pdb"
              Link="Application/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-  <Target Name="RequireNativePayload" BeforeTargets="PrepareForBuild">
+  <!-- IDE and formatting workspaces can load a fresh checkout before publishing. -->
+  <Target Name="RequireNativePayload" BeforeTargets="PrepareForBuild" Condition="'$(DesignTimeBuild)' != 'true'">
     <Error Condition="!Exists('../dist/NativeAot/LumaRecode.exe')" Text="Build the Native AOT application before bundling. Use build.ps1." />
   </Target>
 </Project>

@@ -11,7 +11,7 @@ public static class MediaProbe
 {
     // Format descriptors depend on the ffprobe build, not on individual files.
     // Cached nodes are read-only after publication and never reparented.
-    private static readonly ConcurrentDictionary<string, JsonObject> pixelFormats = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<(string Path, long Bytes, long Modified), JsonObject> pixelFormats = new();
 
     public static async Task<JsonObject> ReadAsync(MediaTools tools, IEnumerable<string> arguments, CancellationToken cancellation = default)
     {
@@ -110,7 +110,9 @@ public static class MediaProbe
             profile = null;
             evidence = $"Dolby Vision Profile {dovi.Integer("dv_profile")}";
         }
-        if (!pixelFormats.TryGetValue(tools.Ffprobe, out var formats))
+        var probeFile = new FileInfo(tools.Ffprobe);
+        var probeKey = (probeFile.FullName.ToUpperInvariant(), probeFile.Length, probeFile.LastWriteTimeUtc.Ticks);
+        if (!pixelFormats.TryGetValue(probeKey, out var formats))
         {
             var all = await ReadAsync(tools, ["-show_pixel_formats", "-of", "json"], cancellation);
             formats = new();
@@ -124,7 +126,7 @@ public static class MediaProbe
                 pixelFormats.Clear();
             }
 
-            pixelFormats.TryAdd(tools.Ffprobe, formats);
+            pixelFormats.TryAdd(probeKey, formats);
         }
         var duration = JsonFields.Number(data["format"].Text("duration"), JsonFields.Number(video.Text("duration")));
         return new(path, video, frames, tags, kind, profile, evidence, duration, streams, formats[video.Text("pix_fmt")] as JsonObject ?? new());
@@ -454,7 +456,7 @@ public static class MediaProbe
     /// <summary>Creates a detached presentation snapshot; detailed mode also includes original probe evidence.</summary>
     public static JsonObject Describe(MediaInfo media, bool detailed = false)
     {
-        JsonObject Select(JsonObject source, string[] fields)
+        static JsonObject Select(JsonObject source, string[] fields)
         {
             var result = new JsonObject();
             foreach (var name in fields)

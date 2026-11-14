@@ -8,7 +8,7 @@ namespace VideoConverter;
 // CsWinRT generates AOT-safe interface metadata for IDisposable on this type.
 public sealed partial class ConversionClient : IDisposable
 {
-    private readonly object gate = new();
+    private readonly Lock gate = new();
     private CancellationTokenSource? cancellation;
     private bool disposed;
     public ConversionResult? CompletedResult

@@ -5,6 +5,21 @@ using System.Text.Json.Nodes;
 using VideoConverter;
 using VideoConverter.Core;
 
+if (args.FirstOrDefault() == "--binary-tool")
+{
+    File.WriteAllText(args[1], Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
+    Console.Error.Write(new string('x', 100_000) + "diagnostic-tail");
+    if (args[2] == "wait")
+    {
+        await Task.Delay(Timeout.Infinite);
+    }
+    else
+    {
+        var bytes = Enumerable.Range(0, int.Parse(args[2], CultureInfo.InvariantCulture)).Select(i => (byte)i).ToArray();
+        await Console.OpenStandardOutput().WriteAsync(bytes);
+    }
+    return 0;
+}
 if (args.FirstOrDefault() == "--report-tool")
 {
     File.AppendAllText(args[1], "run\n");
@@ -15,6 +30,7 @@ if (args.FirstOrDefault() == "--report-tool")
 if (args.Contains("--check"))
 {
     await RuntimeChecks.RunAsync();
+    await PreviewChecks.RunAsync();
     return 0;
 }
 if (args.Contains("--tools"))

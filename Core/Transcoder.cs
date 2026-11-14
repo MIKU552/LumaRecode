@@ -182,14 +182,16 @@ public sealed partial class Transcoder
     }
     /// <summary>Builds a shell-free command, resolved options and expected output color tags.</summary>
     /// <param name="seconds">Optional positive duration in seconds, measured from the start of the input.</param>
+    /// <param name="previewSize">Zero for delivery; a positive viewport limit scales before expensive color rendering.</param>
     public EncodingPlan Plan(MediaTools tools, MediaInfo media, EncodeOptions requestedOptions, string destination, double? seconds = null,
-        FrameWindow? window = null, bool motionPhoto = false, string motionSize = "source")
-        => BuildPlan(tools, media, requestedOptions, destination, seconds, forceQsvTimingCompatibility: false, window: window, motionPhoto: motionPhoto, motionSize: motionSize);
+        FrameWindow? window = null, bool motionPhoto = false, string motionSize = "source", int previewSize = 0)
+        => BuildPlan(tools, media, requestedOptions, destination, seconds, forceQsvTimingCompatibility: false, window: window, motionPhoto: motionPhoto, motionSize: motionSize, previewSize: previewSize);
 
     private EncodingPlan BuildPlan(MediaTools tools, MediaInfo media, EncodeOptions requestedOptions, string destination, double? seconds,
-        bool forceQsvTimingCompatibility, bool autoLowPower = false, FrameWindow? window = null, bool motionPhoto = false, string motionSize = "source")
+        bool forceQsvTimingCompatibility, bool autoLowPower = false, FrameWindow? window = null, bool motionPhoto = false, string motionSize = "source", int previewSize = 0)
     {
         Require(seconds is null || double.IsFinite(seconds.Value) && seconds.Value > 0, "--duration 必须为有限正数。");
+        ArgumentOutOfRangeException.ThrowIfNegative(previewSize);
         Require(!motionPhoto || motionSize is "source" or "1080" or "720", "请选择有效的动态视频分辨率。");
         var kind = Validate(requestedOptions, media);
         var options = ResolveFormat(FrameOptions(media, requestedOptions, window is not null, motionPhoto), media);
@@ -232,9 +234,9 @@ public sealed partial class Transcoder
         var colors = options.Output == "sdr" ? Rec709() : kind is "log" or "raw" ? Hlg() : new JsonObject();
         if (colors.Count == 0)
         {
-            foreach (var p in colorFlags)
+            foreach (var (key, _) in colorFlags)
             {
-                colors[p.Key] = video[p.Key]?.DeepClone();
+                colors[key] = video[key]?.DeepClone();
             }
         }
 
@@ -297,13 +299,19 @@ public sealed partial class Transcoder
         {
             filters.Add($"trim=start_frame={window.Start - window.SeekFrame}:end_frame={window.End - window.SeekFrame}");
         }
+        // Viewport previews reduce the working set before expensive LUT/tone
+        // mapping. Delivery paths leave previewSize at zero and render in full.
+        if (previewSize > 0 && !developRaw)
+        {
+            filters.Add(FramePreview.ScaleFilter(previewSize));
+        }
         if (motionPhoto && !developRaw)
         {
             filters.Add("pad=ceil(iw/2)*2:ceil(ih/2)*2");
         }
         if (developRaw)
         {
-            filters.Add(RawDevelopment.Filter(media.Raw!, "raw-calibration.cmd"));
+            filters.Add(RawDevelopment.Filter(media.Raw!, "raw-calibration.cmd", previewSize));
             filters.AddRange(RawDevelopment.Orientation(media));
             if (options.Sampling is "420" or "422")
             {
@@ -591,13 +599,21 @@ public sealed partial class Transcoder
                 height = raw.Integer("height") - crop[2] - crop[3];
             }
             if (swap)
+            {
                 (width, height) = (height, width);
+            }
+
             if (source.Raw is not null)
             {
                 if (options.Sampling is "420" or "422")
+                {
                     width += width % 2;
+                }
+
                 if (options.Sampling == "420")
+                {
                     height += height % 2;
+                }
             }
             if (motionPhoto && source.Raw is null)
             {

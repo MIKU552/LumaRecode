@@ -11,7 +11,7 @@ public sealed class CliReporter(bool json, bool verbose, Func<string, string> tr
     public JsonObject Context { get; set; } = new();
     public Stopwatch Clock { get; } = Stopwatch.StartNew();
     private StreamWriter? log;
-    private readonly object gate = new();
+    private readonly Lock gate = new();
     public void OpenLog(string path)
     {
         try

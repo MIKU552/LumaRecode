@@ -37,7 +37,8 @@ public static class MotionPhoto
             {
                 throw Invalid();
             }
-            int start = position++;
+
+            position++;
             while (position < data.Length && data[position] == 255)
             {
                 position++;
@@ -47,7 +48,7 @@ public static class MotionPhoto
                 throw Invalid();
             }
             byte marker = data[position++];
-            start = position - 2;
+            int start = position - 2;
             if (marker == 217)
             {
                 return new(position, segments);

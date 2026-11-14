@@ -117,12 +117,18 @@ public static class RawDevelopment
     {
         var side = media.SideData.FirstOrDefault(s => s.Text("side_data_type") == "Display Matrix");
         if (side is null)
+        {
             return [];
+        }
+
         var values = Regex.Matches(side.Text("displaymatrix"), @"(?m)^\s*[0-9a-fA-F]+:\s*(-?\d+)\s+(-?\d+)\s+(-?\d+)")
             .SelectMany(m => new[] { m.Groups[1].Value, m.Groups[2].Value, m.Groups[3].Value })
             .Select(v => long.Parse(v, CultureInfo.InvariantCulture)).ToArray();
         if (values.Length != 9)
+        {
             throw new InvalidDataException("无法读取 RAW 素材的画面方向。");
+        }
+
         return (Math.Sign(values[0]), Math.Sign(values[1]), Math.Sign(values[3]), Math.Sign(values[4])) switch
         {
             (1, 0, 0, 1) => [],
@@ -150,11 +156,21 @@ public static class RawDevelopment
     }
 
     /// <summary>Builds a float filter chain, applying crop only after the Bayer mosaic has been demosaiced.</summary>
-    public static string Filter(JsonObject raw, string commands)
+    public static string Filter(JsonObject raw, string commands, int previewSize = 0)
     {
-        var filters = new List<string> { "format=gbrapf32le", "sendcmd=f=" + commands,
-            "colorchannelmixer@raw=" + string.Join(':', Coefficients(raw)), "format=gbrpf32le" };
-        string Render(int channel)
+        var crop = raw["crop"]!.AsArray().Select(v => v!.GetValue<int>()).ToArray();
+        string cropFilter = $"crop={raw.Integer("width") - crop[0] - crop[1]}:{raw.Integer("height") - crop[2] - crop[3]}:{crop[0]}:{crop[2]}:exact=1";
+        var filters = new List<string> { "format=gbrapf32le" };
+        if (previewSize > 0)
+        {
+            // Demosaic first: cropping the Bayer mosaic would change its phase.
+            // Calibration and highlight rendering then operate on the viewport.
+            filters.Add(cropFilter);
+            filters.Add(FramePreview.ScaleFilter(previewSize));
+        }
+        filters.AddRange(["sendcmd=f=" + commands,
+            "colorchannelmixer@raw=" + string.Join(':', Coefficients(raw)), "format=gbrpf32le"]);
+        static string Render(int channel)
         {
             // Work in scene-linear BT.2020. Compress negative channels toward
             // neutral at constant luminance, then roll highlights into HLG.
@@ -170,8 +186,10 @@ public static class RawDevelopment
             return "'" + common + "if(lte(ld(5),1/12),sqrt(3*ld(5)),0.17883277*log(12*ld(5)-0.28466892)+0.55991073)'";
         }
         filters.Add("geq=r=" + Render(0) + ":g=" + Render(1) + ":b=" + Render(2));
-        var crop = raw["crop"]!.AsArray().Select(v => v!.GetValue<int>()).ToArray();
-        filters.Add($"crop={raw.Integer("width") - crop[0] - crop[1]}:{raw.Integer("height") - crop[2] - crop[3]}:{crop[0]}:{crop[2]}:exact=1");
+        if (previewSize == 0)
+        {
+            filters.Add(cropFilter);
+        }
         filters.Add("setparams=range=full:color_primaries=bt2020:color_trc=arib-std-b67:colorspace=gbr");
         filters.Add("zscale=matrix=bt2020nc:range=limited,format=yuv444p16le");
         return string.Join(',', filters);
@@ -191,9 +209,10 @@ public static class RawDevelopment
         }
         args.Add(media.Path);
         using var process = new Process { StartInfo = ProcessRunner.StartInfo(tools.Ffprobe, args) };
+        cancellation.ThrowIfCancellationRequested();
         process.Start();
         using var registration = cancellation.Register(() => ProcessRunner.Stop(process));
-        var errors = process.StandardError.ReadToEndAsync();
+        var errors = ProcessRunner.ReadTailAsync(process.StandardError, 8192);
         using var file = File.OpenRead(media.Path);
         await using var writer = new StreamWriter(destination, false, new UTF8Encoding(false));
         var initial = media.Video["_raw"]!.AsObject();
@@ -229,6 +248,6 @@ public static class RawDevelopment
                 throw new InvalidDataException("无法读取 ProRes RAW 帧参数：" + await errors);
             }
         }
-        finally { ProcessRunner.Stop(process); await process.WaitForExitAsync(); }
+        finally { ProcessRunner.Stop(process); await process.WaitForExitAsync(); await errors; }
     }
 }

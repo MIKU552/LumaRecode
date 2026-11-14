@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Globalization;
-using System.Text;
 
 namespace VideoConverter.Core;
 
@@ -65,7 +64,9 @@ public sealed class FrameTimeline
         {
             throw new InvalidDataException("无法建立视频帧时间轴。");
         }
-        Frames = frames;
+        // Own the index: callers cannot mutate timestamps after a seek window
+        // has been validated. The compact array also releases List capacity.
+        Frames = Array.AsReadOnly(frames.ToArray());
         TimeBaseNumerator = numerator;
         TimeBaseDenominator = denominator;
         PacketIndexed = packetIndexed;
@@ -159,7 +160,7 @@ public sealed class FrameTimeline
         cancellation.ThrowIfCancellationRequested();
         process.Start();
         using var registration = cancellation.Register(() => ProcessRunner.Stop(process));
-        var errors = ReadErrorAsync(process.StandardError);
+        var errors = ProcessRunner.ReadTailAsync(process.StandardError, 4096);
         var result = new List<FramePoint>();
         bool complete = true;
         try
@@ -170,27 +171,17 @@ public sealed class FrameTimeline
                 {
                     continue;
                 }
-                var fields = new Dictionary<string, string>();
-                foreach (var part in line.Split('|').Skip(1))
-                {
-                    int equals = part.IndexOf('=');
-                    if (equals > 0)
-                    {
-                        fields[part[..equals]] = part[(equals + 1)..];
-                    }
-                }
-                string flags = fields.GetValueOrDefault("flags", "");
-                if (packets && flags.Contains('D'))
+                bool valid = TryReadPoint(line, packets, out var point, out bool discarded);
+                if (discarded)
                 {
                     continue;
                 }
-                if (!long.TryParse(fields.GetValueOrDefault(packets ? "pts" : "best_effort_timestamp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var pts))
+                if (!valid)
                 {
                     complete = false;
                     continue;
                 }
-                long.TryParse(fields.GetValueOrDefault("duration"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var duration);
-                result.Add(new(pts, duration, packets ? flags.Contains('K') : fields.GetValueOrDefault("key_frame") == "1"));
+                result.Add(point);
             }
             await process.WaitForExitAsync(cancellation).ConfigureAwait(false);
             if (process.ExitCode != 0)
@@ -207,19 +198,41 @@ public sealed class FrameTimeline
         }
     }
 
-    private static async Task<string> ReadErrorAsync(TextReader reader)
+    /// <summary>Reads the few index fields without allocating a dictionary per frame.</summary>
+    internal static bool TryReadPoint(ReadOnlySpan<char> line, bool packets, out FramePoint point, out bool discarded)
     {
-        var buffer = new char[2048];
-        var tail = new StringBuilder();
-        int read;
-        while ((read = await reader.ReadAsync(buffer).ConfigureAwait(false)) > 0)
+        long pts = 0, duration = 0;
+        bool timestamp = false, key = false;
+        discarded = false;
+        foreach (var range in line.Split('|'))
         {
-            tail.Append(buffer, 0, read);
-            if (tail.Length > 4096)
+            var field = line[range];
+            int equals = field.IndexOf('=');
+            if (equals <= 0)
             {
-                tail.Remove(0, tail.Length - 4096);
+                continue;
+            }
+            var name = field[..equals];
+            var value = field[(equals + 1)..];
+            if (name.SequenceEqual(packets ? "pts" : "best_effort_timestamp"))
+            {
+                timestamp = long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out pts);
+            }
+            else if (name.SequenceEqual("duration"))
+            {
+                long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out duration);
+            }
+            else if (packets && name.SequenceEqual("flags"))
+            {
+                discarded = value.Contains('D');
+                key = value.Contains('K');
+            }
+            else if (!packets && name.SequenceEqual("key_frame"))
+            {
+                key = value.SequenceEqual("1");
             }
         }
-        return tail.ToString().Trim();
+        point = new(pts, duration, key);
+        return timestamp;
     }
 }

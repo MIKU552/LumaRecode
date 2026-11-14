@@ -53,6 +53,28 @@ if (args.FirstOrDefault() == "--server")
                 var (kind, profile, evidence) = MediaProbe.Classify(request["video"]!.AsObject(), request["tags"]!.AsObject(), dji);
                 answer = new JsonArray(JsonValue.Create(kind), JsonValue.Create(profile), JsonValue.Create(evidence));
             }
+            else if (action == "preview-benchmark")
+            {
+                var media = await MediaProbe.InspectAsync(tools, request.Text("path"));
+                var timeline = await FrameTimeline.LoadAsync(tools, media);
+                var exporter = new FrameExporter(engine);
+                var samples = new JsonArray();
+                foreach (var frame in request["frames"]!.AsArray())
+                {
+                    var options = new ImageExportOptions(frame!.GetValue<int>(), "png", request.Text("source_kind", "auto"), request["profile"]?.ToString());
+                    long allocated = GC.GetTotalAllocatedBytes();
+                    var timer = System.Diagnostics.Stopwatch.StartNew();
+                    var bytes = await exporter.PreviewAsync(tools, media, timeline, options);
+                    samples.Add(new JsonObject
+                    {
+                        ["frame"] = options.Frame,
+                        ["milliseconds"] = timer.Elapsed.TotalMilliseconds,
+                        ["bytes"] = bytes.Length,
+                        ["managed_allocated_bytes"] = GC.GetTotalAllocatedBytes() - allocated
+                    });
+                }
+                answer = samples;
+            }
             else if (action is "image-export" or "image-preview")
             {
                 var media = await MediaProbe.InspectAsync(tools, request.Text("path"));
@@ -92,8 +114,13 @@ if (args.FirstOrDefault() == "--server")
             {
                 var info = await MediaProbe.InspectAsync(tools, request.Text("path"));
                 var timeline = await FrameTimeline.LoadAsync(tools, info);
-                answer = new JsonObject { ["count"] = timeline.Count, ["packet_indexed"] = timeline.PacketIndexed, ["duration"] = timeline.Duration,
-                    ["pts"] = new JsonArray(timeline.Frames.Select(f => (JsonNode?)JsonValue.Create(f.Pts)).ToArray()) };
+                answer = new JsonObject
+                {
+                    ["count"] = timeline.Count,
+                    ["packet_indexed"] = timeline.PacketIndexed,
+                    ["duration"] = timeline.Duration,
+                    ["pts"] = new JsonArray(timeline.Frames.Select(f => (JsonNode?)JsonValue.Create(f.Pts)).ToArray())
+                };
             }
             else if (action == "hdr10plus-export")
             {

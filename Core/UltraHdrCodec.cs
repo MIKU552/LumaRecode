@@ -1,5 +1,5 @@
-using System.Runtime.InteropServices;
 using System.IO.MemoryMappedFiles;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace VideoConverter.Core;

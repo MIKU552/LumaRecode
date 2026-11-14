@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -212,19 +211,6 @@ public static class Hdr10PlusMetadata
         await writer.FlushAsync(cancellation);
     }
 
-    internal static async Task<string> ReadErrorTailAsync(TextReader reader)
-    {
-        var tail = new StringBuilder();
-        var buffer = new char[2048];
-        int read;
-        while ((read = await reader.ReadAsync(buffer)) != 0)
-        {
-            tail.Append(buffer, 0, read);
-            if (tail.Length > 4096)
-            {
-                tail.Remove(0, tail.Length - 4096);
-            }
-        }
-        return tail.ToString().Trim();
-    }
+    internal static Task<string> ReadErrorTailAsync(TextReader reader)
+        => ProcessRunner.ReadTailAsync(reader, 4096);
 }

@@ -104,19 +104,19 @@ internal static class Hdr10PlusBitstream
                 bool updated = false;
                 if (present && records.Current.Pts == pts)
                 {
-                    var record = records.Current;
-                    if (record.Size is <= 0 or > 1048576)
+                    var (_, size) = records.Current;
+                    if (size is <= 0 or > 1048576)
                     {
                         throw Invalid();
                     }
-                    var data = new byte[record.Size];
+                    var data = new byte[size];
                     payloads.ReadExactly(data);
                     if (ParsePacket(data) is not null)
                     {
-                        latest = new(pts, offset, record.Size);
+                        latest = new(pts, offset, size);
                         updated = true;
                     }
-                    offset = checked(offset + record.Size);
+                    offset = checked(offset + size);
                     present = records.MoveNext();
                 }
                 // HEVC's HDR10+ SEI state persists in decode order. x265's
@@ -358,7 +358,7 @@ internal static class Hdr10PlusBitstream
         private readonly ReadOnlySpan<byte> bytes;
         private int position;
         public Bits(ReadOnlySpan<byte> value) => bytes = value;
-        public int Remaining => bytes.Length * 8 - position;
+        public readonly int Remaining => bytes.Length * 8 - position;
         public int Read(int count)
         {
             if (count > Remaining)

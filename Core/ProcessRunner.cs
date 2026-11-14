@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -7,10 +8,96 @@ namespace VideoConverter.Core;
 
 /// <summary>Complete output of a short-lived tool invocation; stderr remains separate from machine-readable stdout.</summary>
 public sealed record ProcessResult(int ExitCode, string Output, string Error);
+public sealed record BinaryProcessResult(int ExitCode, byte[] Output, string Error);
 
 /// <summary>Starts external tools, drains their pipes and owns cancellation and file-identity checks.</summary>
 public static class ProcessRunner
 {
+    /// <summary>Captures a bounded binary frame, drains stderr and joins the child on every exit path.</summary>
+    public static async Task<BinaryProcessResult> CaptureBinaryAsync(string executable, IEnumerable<string> arguments,
+        CancellationToken cancellation = default, int maximumBytes = 8 * 1024 * 1024, string? directory = null)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumBytes);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellation, timeout.Token);
+        using var process = new Process { StartInfo = StartInfo(executable, arguments, directory) };
+        cancellation.ThrowIfCancellationRequested();
+        process.Start();
+        using var registration = lifetime.Token.Register(() => Stop(process));
+        var error = ReadTailAsync(process.StandardError, 8192);
+        try
+        {
+            byte[] storage = ArrayPool<byte>.Shared.Rent(Math.Min(262144, maximumBytes));
+            byte[] bytes;
+            int length = 0;
+            try
+            {
+                while (true)
+                {
+                    if (length == maximumBytes)
+                    {
+                        byte[] extra = new byte[1];
+                        if (await process.StandardOutput.BaseStream.ReadAsync(extra, lifetime.Token).ConfigureAwait(false) != 0)
+                        {
+                            throw new InvalidDataException("Preview output exceeds its buffer limit.");
+                        }
+                        break;
+                    }
+                    if (length == storage.Length)
+                    {
+                        byte[] larger = ArrayPool<byte>.Shared.Rent((int)Math.Min((long)storage.Length * 2, maximumBytes));
+                        storage.AsSpan(0, length).CopyTo(larger);
+                        ArrayPool<byte>.Shared.Return(storage);
+                        storage = larger;
+                    }
+                    int count = await process.StandardOutput.BaseStream.ReadAsync(storage.AsMemory(length,
+                        Math.Min(storage.Length, maximumBytes) - length), lifetime.Token).ConfigureAwait(false);
+                    if (count == 0)
+                    {
+                        break;
+                    }
+                    length += count;
+                }
+                bytes = storage.AsSpan(0, length).ToArray();
+            }
+            finally { ArrayPool<byte>.Shared.Return(storage); }
+            await process.WaitForExitAsync().ConfigureAwait(false);
+            cancellation.ThrowIfCancellationRequested();
+            if (timeout.IsCancellationRequested)
+            {
+                throw new TimeoutException("External tool timed out.");
+            }
+            return new(process.ExitCode, bytes, await error.ConfigureAwait(false));
+        }
+        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested && timeout.IsCancellationRequested)
+        {
+            throw new TimeoutException("External tool timed out.");
+        }
+        finally
+        {
+            Stop(process);
+            await process.WaitForExitAsync().ConfigureAwait(false);
+            await error.ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Retains recent diagnostics while consuming the full pipe to prevent a blocked child.</summary>
+    internal static async Task<string> ReadTailAsync(TextReader reader, int capacity)
+    {
+        char[] buffer = new char[Math.Min(capacity, 4096)];
+        var tail = new StringBuilder();
+        int read;
+        while ((read = await reader.ReadAsync(buffer).ConfigureAwait(false)) > 0)
+        {
+            tail.Append(buffer, 0, read);
+            if (tail.Length > capacity)
+            {
+                tail.Remove(0, tail.Length - capacity);
+            }
+        }
+        return tail.ToString().Trim();
+    }
+
     /// <summary>Creates a hidden, shell-free invocation with UTF-8 output and one ArgumentList entry per argument.</summary>
     public static ProcessStartInfo StartInfo(string executable, IEnumerable<string> arguments, string? directory = null)
     {
@@ -63,7 +150,7 @@ public static class ProcessRunner
         process.Start();
         using var registration = linked.Token.Register(() => Stop(process));
         var stdout = process.StandardOutput.ReadToEndAsync();
-        var stderr = process.StandardError.ReadToEndAsync();
+        var stderr = ReadTailAsync(process.StandardError, 8192);
         await process.WaitForExitAsync();
         var output = await stdout;
         var error = await stderr;

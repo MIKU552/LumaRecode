@@ -1,7 +1,7 @@
 using System.Globalization;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 using VideoConverter.Core;
 using Windows.Storage.Streams;
@@ -14,8 +14,11 @@ public sealed partial class MainWindow
     // A source change cancels both operations before clearing their UI state.
     private FrameTimeline? frameTimeline;
     private Task<FrameTimeline>? timelineTask;
-    private CancellationTokenSource? timelineCancellation, previewCancellation;
-    private readonly SemaphoreSlim previewGate = new(1, 1);
+    private CancellationTokenSource? timelineCancellation;
+    private FramePreviewSession? previewSession;
+    private Task previewTeardown = Task.CompletedTask;
+    private (string Kind, string? Profile, MediaTools Tools)? previewIdentity;
+    private int displayedFrame = -1;
     private bool frameUiUpdating, motionRangeEdited;
     private string previewError = "";
     private double jobDuration;
@@ -49,7 +52,7 @@ public sealed partial class MainWindow
             }
             else if (Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").IsChecked != true)
             {
-                previewCancellation?.Cancel();
+                CancelFramePreview();
                 Control<Image>("FramePreview").Source = null;
             }
         };
@@ -62,7 +65,7 @@ public sealed partial class MainWindow
             }
             else
             {
-                previewCancellation?.Cancel();
+                CancelFramePreview();
                 Control<Image>("FramePreview").Source = null;
             }
         };
@@ -113,11 +116,11 @@ public sealed partial class MainWindow
     private void ResetFrameSource()
     {
         timelineCancellation?.Cancel();
-        previewCancellation?.Cancel();
+        CancelFramePreview();
         timelineCancellation = null;
-        previewCancellation = null;
         timelineTask = null;
         frameTimeline = null;
+        displayedFrame = -1;
         previewError = "";
         motionRangeEdited = false;
         frameUiUpdating = true;
@@ -184,6 +187,7 @@ public sealed partial class MainWindow
         {
             return;
         }
+        var expectedSource = sourceMedia;
         try
         {
             await EnsureTimelineAsync();
@@ -192,8 +196,11 @@ public sealed partial class MainWindow
         catch (OperationCanceledException) { }
         catch (Exception error)
         {
-            previewError = error.Message;
-            Control<TextBlock>("PreviewStatus").Text = L.T(error.Message);
+            if (!closing && ReferenceEquals(sourceMedia, expectedSource))
+            {
+                previewError = error.Message;
+                Control<TextBlock>("PreviewStatus").Text = L.T(error.Message);
+            }
         }
     }
 
@@ -204,6 +211,12 @@ public sealed partial class MainWindow
             return;
         }
         frame = Math.Clamp(frame, 0, frameTimeline.Count - 1);
+        // ValueChanged fires after the originating control has changed. Compare
+        // both controls so direct NumberBox edits still update the slider.
+        if (frame == SelectedFrame && frame == (int)Control<Slider>("FrameSeek").Value - 1)
+        {
+            return;
+        }
         frameUiUpdating = true;
         Control<NumberBox>("FrameNumber").Value = frame + 1;
         Control<Slider>("FrameSeek").Value = frame + 1;
@@ -212,7 +225,8 @@ public sealed partial class MainWindow
             SetDefaultMotionRange();
         }
         frameUiUpdating = false;
-        Refresh();
+        UpdateFrameSelection();
+        UpdateFrameOutput();
         UpdateTransferStats();
         QueueFramePreview();
     }
@@ -228,54 +242,127 @@ public sealed partial class MainWindow
         Control<NumberBox>("MotionEnd").Value = selection.End ?? frameTimeline.Count;
     }
 
-    // Each scrub cancels the preceding request; the gate prevents overlapping
-    // FFmpeg decoders from allocating multiple full-resolution frame buffers.
-    private async void QueueFramePreview()
+    /// <summary>Queues one viewport request without rebuilding encoding controls or the page layout.</summary>
+    private void QueueFramePreview()
     {
-        previewCancellation?.Cancel();
         if (sourceMedia is not { } source || frameTimeline is not { } timeline || activeJob is not null ||
             (!PhotoMode && Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").IsChecked != true))
         {
             return;
         }
-        using var cancellation = new CancellationTokenSource();
-        previewCancellation = cancellation;
         var options = SelectedImageOptions();
         var tools = ToolsObject();
-        try
+        var identity = (options.SourceKind, options.Profile, tools);
+        if (previewSession is null || previewIdentity != identity)
         {
-            await Task.Delay(150, cancellation.Token);
-            await previewGate.WaitAsync(cancellation.Token);
+            CancelFramePreview();
+            var exporter = new FramePreview(ConversionClient.Engine);
+            FramePreviewSession? session = null;
+            session = new FramePreviewSession(
+                (request, cancellation) => exporter.RenderAsync(tools, source, timeline,
+                    options with
+                    {
+                        Frame = request.Frame,
+                        SourceKind = request.SourceKind,
+                        Profile = request.Profile
+                    }, cancellation),
+                (request, bytes, cancellation) => OnPreviewUiAsync(async () =>
+                {
+                    if (!ReferenceEquals(previewSession, session))
+                    {
+                        return;
+                    }
+                    using var stream = new InMemoryRandomAccessStream();
+                    using (var writer = new DataWriter(stream.GetOutputStreamAt(0)))
+                    {
+                        writer.WriteBytes(bytes);
+                        await writer.StoreAsync();
+                    }
+                    stream.Seek(0);
+                    var bitmap = new BitmapImage();
+                    await bitmap.SetSourceAsync(stream);
+                    cancellation.ThrowIfCancellationRequested();
+                    Control<Image>("FramePreview").Source = bitmap;
+                    displayedFrame = request.Frame;
+                    previewError = "";
+                    Control<ProgressRing>("PreviewBusy").IsActive = displayedFrame != SelectedFrame;
+                    UpdateFrameSelection();
+                }, cancellation),
+                (error, cancellation) => OnPreviewUiAsync(() =>
+                {
+                    if (ReferenceEquals(previewSession, session))
+                    {
+                        previewError = error.Message;
+                        Control<ProgressRing>("PreviewBusy").IsActive = false;
+                        UpdateFrameSelection();
+                    }
+                    return Task.CompletedTask;
+                }, cancellation));
+            previewSession = session;
+            previewIdentity = identity;
+        }
+        Control<ProgressRing>("PreviewBusy").IsActive = displayedFrame != SelectedFrame;
+        previewSession.Request(new(SelectedFrame, options.SourceKind, options.Profile));
+    }
+
+    /// <summary>Posts WinRT bitmap work explicitly; cancellation also releases a dispatcher callback during shutdown.</summary>
+    private async Task OnPreviewUiAsync(Func<Task> action, CancellationToken cancellation)
+    {
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var registration = cancellation.Register(() => completion.TrySetCanceled(cancellation));
+        if (!DispatcherQueue.TryEnqueue(async () =>
+        {
             try
             {
-                Control<ProgressRing>("PreviewBusy").IsActive = true;
-                var pixels = await Task.Run(() => new FrameExporter(ConversionClient.Engine).PreviewAsync(tools, source, timeline, options, cancellation.Token), cancellation.Token);
-                cancellation.Token.ThrowIfCancellationRequested();
-                using var stream = new InMemoryRandomAccessStream();
-                using (var writer = new DataWriter(stream.GetOutputStreamAt(0)))
+                if (!closing && !cancellation.IsCancellationRequested)
                 {
-                    writer.WriteBytes(pixels);
-                    await writer.StoreAsync();
+                    await action();
                 }
-                stream.Seek(0);
-                var bitmap = new BitmapImage();
-                await bitmap.SetSourceAsync(stream);
-                cancellation.Token.ThrowIfCancellationRequested();
-                Control<Image>("FramePreview").Source = bitmap;
-                previewError = "";
+                completion.TrySetResult();
             }
-            finally { previewGate.Release(); }
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception error) { if (!cancellation.IsCancellationRequested) { previewError = error.Message; } }
-        finally
+            catch (OperationCanceledException) { completion.TrySetCanceled(cancellation); }
+            catch (Exception error) { completion.TrySetException(error); }
+        }))
         {
-            if (ReferenceEquals(previewCancellation, cancellation))
+            completion.TrySetResult();
+        }
+        await completion.Task.ConfigureAwait(false);
+    }
+
+    private void CancelFramePreview()
+    {
+        var previous = previewSession;
+        previewSession = null;
+        previewIdentity = null;
+        displayedFrame = -1;
+        if (previous is not null)
+        {
+            var teardown = previous.DisposeAsync().AsTask();
+            previewTeardown = previewTeardown.IsCompletedSuccessfully ? teardown : Task.WhenAll(previewTeardown, teardown);
+        }
+        Control<ProgressRing>("PreviewBusy").IsActive = false;
+    }
+
+    /// <summary>Joins preview/index children before the last window releases the application lifetime.</summary>
+    private async Task StopFrameWorkAsync()
+    {
+        var index = timelineTask;
+        timelineCancellation?.Cancel();
+        CancelFramePreview();
+        try
+        {
+            await previewTeardown;
+        }
+        catch (Exception error) { conversionLog.Append(error.Message); }
+        if (index is not null)
+        {
+            try
             {
-                previewCancellation = null;
-                Control<ProgressRing>("PreviewBusy").IsActive = false;
-                UpdateFramePresentation();
+                await index;
             }
+            catch (OperationCanceledException) { }
+            // The index owner reports read failures; teardown only joins it.
+            catch (Exception error) { conversionLog.Append(error.Message); }
         }
     }
 
@@ -348,6 +435,19 @@ public sealed partial class MainWindow
             "png" => "sRGB · 无损 PNG",
             _ => "sRGB · JPEG"
         });
+        UpdateFrameSelection();
+        if (root.ActualWidth > 0)
+        {
+            Reflow(root.ActualWidth);
+        }
+    }
+
+    /// <summary>Updates only frame text, range validation and start availability during scrubbing.</summary>
+    private void UpdateFrameSelection()
+    {
+        bool photo = PhotoMode;
+        bool enabled = sourceMedia is not null && activeJob is null && !probing;
+        bool indexed = frameTimeline is not null;
         string warning = "";
         if (Kind == "unknown")
         {
@@ -407,10 +507,6 @@ public sealed partial class MainWindow
         else if (TrimVideo && warning != "")
         {
             Control<Button>("Start").IsEnabled = false;
-        }
-        if (root.ActualWidth > 0)
-        {
-            Reflow(root.ActualWidth);
         }
     }
 

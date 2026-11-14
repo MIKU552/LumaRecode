@@ -19,6 +19,18 @@ internal static class CodeChecks
             }
         }
 
+        Check(FrameTimeline.TryReadPoint("packet|pts=-1001|duration=1001|flags=K_", true, out var point, out var discarded)
+            && point == new FramePoint(-1001, 1001, true) && !discarded, "packet index tick parsing");
+        Check(FrameTimeline.TryReadPoint("frame|key_frame=1|best_effort_timestamp=9223372036854775806|duration=N/A", false, out point, out discarded)
+            && point == new FramePoint(long.MaxValue - 1, 0, true), "frame index optional duration and 64-bit timestamp");
+        Check(!FrameTimeline.TryReadPoint("packet|pts=N/A|flags=_D", true, out _, out discarded) && discarded, "discarded preroll has no required PTS");
+        Check(!FrameTimeline.TryReadPoint("packet|dts=30|duration=1|other=pts=30", true, out _, out _), "missing PTS forces decoded index fallback");
+        Check(!FrameTimeline.TryReadPoint("packet|pts=9223372036854775808", true, out _, out _), "overflowing frame timestamp is rejected");
+        FramePoint[] original = [new(0, 1, true), new(1, 1, false)];
+        var immutable = new FrameTimeline(original, 1, 30, true);
+        original[0] = new(90, 1, true);
+        Check(immutable.Seconds(0) == 0, "timeline owns its timestamp snapshot");
+
         Check(JsonFields.Number("30000/1001") == 30000d / 1001, "rational frame rate");
         foreach (var text in new[] { "NaN", "Infinity", "1/0", "bad/2", "1e308/1e-308", "1/2/3" })
         {
