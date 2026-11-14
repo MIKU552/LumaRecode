@@ -77,7 +77,7 @@ internal static class Hdr10PlusBitstream
     private sealed class PacketReader : TextReader
     {
         private readonly FileStream bytes;
-        private readonly List<Packet> packets = [];
+        private readonly BoundedMediaIndex<Packet> packets = new();
         private int current;
 
         public PacketReader(string directory, string timeBase, CancellationToken cancellation)

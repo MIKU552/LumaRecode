@@ -219,9 +219,10 @@ public static class RawDevelopment
         var timeBase = media.Video.Text("time_base").Split('/');
         long numerator = long.Parse(timeBase[0], CultureInfo.InvariantCulture), denominator = long.Parse(timeBase[1], CultureInfo.InvariantCulture);
         string previous = "";
+        var lines = new BoundedLineReader(process.StandardOutput);
         try
         {
-            while (await process.StandardOutput.ReadLineAsync(cancellation) is { } line)
+            while (await lines.ReadLineAsync(cancellation) is { } line)
             {
                 var fields = line.Split('|').Select(p => p.Split('=', 2)).Where(p => p.Length == 2).ToDictionary(p => p[0], p => p[1]);
                 var raw = ReadHeader(file, long.Parse(fields["pos"], CultureInfo.InvariantCulture), long.Parse(fields["size"], CultureInfo.InvariantCulture));

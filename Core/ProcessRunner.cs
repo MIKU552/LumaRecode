@@ -138,29 +138,78 @@ public static class ProcessRunner
         catch (System.ComponentModel.Win32Exception) when (process.HasExited) { }
     }
 
-    /// <summary>Captures a bounded-duration probe while draining both pipes concurrently.</summary>
+    /// <summary>Captures a probe with independent elapsed-time and UTF-8 byte limits.</summary>
     /// <remarks>Cancellation kills the child tree and waits for EOF, so a cancelled probe cannot outlive its task.</remarks>
     public static async Task<ProcessResult> CaptureAsync(string executable, IEnumerable<string> arguments,
-        CancellationToken cancellation = default, int timeoutSeconds = 25, string? directory = null)
+        CancellationToken cancellation = default, int timeoutSeconds = 25, string? directory = null,
+        int maximumBytes = MediaResourceLimits.TextOutputBytes)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumBytes);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, timeout.Token);
         using var process = new Process { StartInfo = StartInfo(executable, arguments, directory) };
         cancellation.ThrowIfCancellationRequested();
         process.Start();
         using var registration = linked.Token.Register(() => Stop(process));
-        var stdout = process.StandardOutput.ReadToEndAsync();
+        var stdout = ReadTextAsync(process.StandardOutput.BaseStream, maximumBytes, linked.Token);
         var stderr = ReadTailAsync(process.StandardError, 8192);
-        await process.WaitForExitAsync();
-        var output = await stdout;
-        var error = await stderr;
-        cancellation.ThrowIfCancellationRequested();
-        if (timeout.IsCancellationRequested)
+        try
+        {
+            // Observe reader failure before awaiting process exit: a tool may
+            // otherwise block forever on the pipe after its output is rejected.
+            var output = await stdout.ConfigureAwait(false);
+            await process.WaitForExitAsync().ConfigureAwait(false);
+            cancellation.ThrowIfCancellationRequested();
+            if (timeout.IsCancellationRequested)
+            {
+                throw new TimeoutException("External tool timed out.");
+            }
+            return new(process.ExitCode, output, await stderr.ConfigureAwait(false));
+        }
+        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested && timeout.IsCancellationRequested)
         {
             throw new TimeoutException("External tool timed out.");
         }
+        finally
+        {
+            Stop(process);
+            await process.WaitForExitAsync().ConfigureAwait(false);
+            await stderr.ConfigureAwait(false);
+        }
+    }
 
-        return new(process.ExitCode, output, error);
+    /// <summary>Decodes UTF-8 incrementally; byte limits also apply to multibyte text and unterminated output.</summary>
+    private static async Task<string> ReadTextAsync(Stream stream, int maximumBytes, CancellationToken cancellation)
+    {
+        byte[] buffer = new byte[8192];
+        char[] characters = new char[Encoding.UTF8.GetMaxCharCount(buffer.Length)];
+        var decoder = Encoding.UTF8.GetDecoder();
+        var text = new StringBuilder();
+        int total = 0;
+        bool started = false;
+        while (true)
+        {
+            // Read at most one byte beyond the limit, including at exact EOF.
+            int count = await stream.ReadAsync(buffer.AsMemory(0,
+                (int)Math.Min(buffer.Length, (long)maximumBytes - total + 1)), cancellation).ConfigureAwait(false);
+            if (count > maximumBytes - total)
+            {
+                throw new InvalidDataException($"外部工具的文本输出超过 {maximumBytes} 字节，已停止读取。");
+            }
+            total += count;
+            int decoded = decoder.GetChars(buffer.AsSpan(0, count), characters, flush: count == 0);
+            int start = 0;
+            if (!started && decoded > 0)
+            {
+                started = true;
+                start = characters[0] == '\uFEFF' ? 1 : 0;
+            }
+            text.Append(characters, start, decoded - start);
+            if (count == 0)
+            {
+                return text.ToString();
+            }
+        }
     }
 
     /// <summary>Uses an existing saved path first, then searches PATH for a bare executable name.</summary>

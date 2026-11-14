@@ -436,5 +436,8 @@
   "动态照片视频请选择 HEVC 或 AVC。": "Select HEVC or AVC for Motion Photo video.",
   "图片提取失败：{0}": "Image extraction failed: {0}",
   "无法建立视频帧时间轴：{0}": "Cannot build the video frame timeline: {0}",
-  "Ultra HDR 编码组件：{0}": "Ultra HDR codec: {0}"
+  "Ultra HDR 编码组件：{0}": "Ultra HDR codec: {0}",
+  "逐帧索引超过 {0} MiB 的内存预算，已停止读取。": "The frame index exceeded its {0} MiB memory budget; reading has stopped.",
+  "外部工具的文本输出超过 {0} 字节，已停止读取。": "External tool text output exceeded {0} bytes; reading has stopped.",
+  "外部工具的单行输出超过 {0} 个字符，已停止读取。": "A line of external tool output exceeded {0} characters; reading has stopped."
 }

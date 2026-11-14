@@ -846,9 +846,10 @@ public sealed partial class Transcoder
         }
         async Task ReadErrors()
         {
+            var lines = new BoundedLineReader(process.StandardError);
             try
             {
-                while (await process.StandardError.ReadLineAsync() is { } line)
+                while (await lines.ReadLineAsync(cancellation) is { } line)
                 {
                     if (line.Trim() is { Length: > 0 } text)
                     {
@@ -884,10 +885,11 @@ public sealed partial class Transcoder
         }
         async Task ReadProgress()
         {
+            var lines = new BoundedLineReader(process.StandardOutput);
             try
             {
                 var progress = new JsonObject();
-                while (await process.StandardOutput.ReadLineAsync() is { } line)
+                while (await lines.ReadLineAsync(cancellation) is { } line)
                 {
                     var pair = line.Trim().Split('=', 2);
                     if (pair.Length == 2 && pair[0] is "frame" or "out_time_us" or "speed" or "fps")

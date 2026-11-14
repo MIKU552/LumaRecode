@@ -59,14 +59,17 @@ public sealed class FrameTimeline
     }
 
     public FrameTimeline(IReadOnlyList<FramePoint> frames, long numerator, long denominator, bool packetIndexed)
+        : this(numerator, denominator, packetIndexed, BoundedMediaIndex<FramePoint>.CopySnapshot(frames)) { }
+
+    private FrameTimeline(long numerator, long denominator, bool packetIndexed, FramePoint[] frames)
     {
-        if (frames.Count == 0 || numerator <= 0 || denominator <= 0)
+        if (frames.Length == 0 || numerator <= 0 || denominator <= 0)
         {
             throw new InvalidDataException("无法建立视频帧时间轴。");
         }
-        // Own the index: callers cannot mutate timestamps after a seek window
-        // has been validated. The compact array also releases List capacity.
-        Frames = Array.AsReadOnly(frames.ToArray());
+        // Public inputs are copied once; the loader already owns its bounded
+        // snapshot. Avoid another full movie-sized array during publication.
+        Frames = Array.AsReadOnly(frames);
         TimeBaseNumerator = numerator;
         TimeBaseDenominator = denominator;
         PacketIndexed = packetIndexed;
@@ -141,17 +144,29 @@ public sealed class FrameTimeline
             if (packets is not null && packets.Count > 0)
             {
                 packets.Sort((a, b) => a.Pts.CompareTo(b.Pts));
-                if (!packets.Zip(packets.Skip(1)).Any(pair => pair.First.Pts == pair.Second.Pts))
+                bool unique = true;
+                for (int i = 1; i < packets.Count; i++)
                 {
-                    return Capture(new(packets, numerator, denominator, packetIndexed: true), media.Path);
+                    if (packets[i - 1].Pts == packets[i].Pts)
+                    {
+                        unique = false;
+                        break;
+                    }
+                }
+                cancellation.ThrowIfCancellationRequested();
+                if (unique)
+                {
+                    return Capture(new(numerator, denominator, true, packets.Snapshot()), media.Path);
                 }
             }
         }
         var frames = await ReadAsync(tools, media, packets: false, cancellation).ConfigureAwait(false);
-        return Capture(new(frames ?? throw new InvalidDataException("无法读取逐帧显示时间。"), numerator, denominator, packetIndexed: false), media.Path);
+        cancellation.ThrowIfCancellationRequested();
+        return Capture(new(numerator, denominator, false,
+            (frames ?? throw new InvalidDataException("无法读取逐帧显示时间。")).Snapshot()), media.Path);
     }
 
-    private static async Task<List<FramePoint>?> ReadAsync(MediaTools tools, MediaInfo media, bool packets, CancellationToken cancellation)
+    private static async Task<BoundedMediaIndex<FramePoint>?> ReadAsync(MediaTools tools, MediaInfo media, bool packets, CancellationToken cancellation)
     {
         var arguments = new[] { "-v", "error", "-threads", "2", "-select_streams", media.Video.Text("index"), packets ? "-show_packets" : "-show_frames",
             "-show_entries", packets ? "packet=pts,duration,flags:packet_side_data=" : "frame=best_effort_timestamp,duration,key_frame:frame_side_data=",
@@ -161,11 +176,11 @@ public sealed class FrameTimeline
         process.Start();
         using var registration = cancellation.Register(() => ProcessRunner.Stop(process));
         var errors = ProcessRunner.ReadTailAsync(process.StandardError, 4096);
-        var result = new List<FramePoint>();
-        bool complete = true;
+        var result = new BoundedMediaIndex<FramePoint>();
+        var lines = new BoundedLineReader(process.StandardOutput);
         try
         {
-            while (await process.StandardOutput.ReadLineAsync(cancellation).ConfigureAwait(false) is { } line)
+            while (await lines.ReadLineAsync(cancellation).ConfigureAwait(false) is { } line)
             {
                 if (!line.StartsWith(packets ? "packet|" : "frame|", StringComparison.Ordinal))
                 {
@@ -178,8 +193,9 @@ public sealed class FrameTimeline
                 }
                 if (!valid)
                 {
-                    complete = false;
-                    continue;
+                    // One missing timestamp already makes this index unusable.
+                    // Stop this pass before starting decoded-frame fallback.
+                    return null;
                 }
                 result.Add(point);
             }
@@ -188,7 +204,7 @@ public sealed class FrameTimeline
             {
                 throw new InvalidDataException("无法建立视频帧时间轴：" + await errors.ConfigureAwait(false));
             }
-            return complete ? result : null;
+            return result;
         }
         finally
         {

@@ -27,6 +27,20 @@ LumaRecode 的 GUI 前端使用 WinUI 3 和 Native AOT，转换核心使用 C# /
 | 帧索引 | Span 解析压缩包字段，保留紧凑、只读的时间戳数组 |
 | 单文件入口 | 提取依赖并启动 AOT 主程序；GUI 启动后入口退出 |
 
+### 元数据与长片索引
+
+短任务的文本输出与长片的逐行元数据分别设置预算：
+
+| 数据 | 默认预算 |
+| --- | --- |
+| 探测与工具查询的文本捕获 | 64 MiB UTF-8 输出 |
+| 流式元数据、进度与诊断的单行 | 65,536 个 UTF-16 代码单元 |
+| 每个时间轴或 HDR10+ 索引的数组 | 512 MiB，包含扩容或快照时的第二份数组 |
+
+索引按记录数和结构大小增长，分辨率、码率与压缩文件大小不参与预算计算。HDR10+ JSON 逐帧写入磁盘，长片元数据流按单行检查。超限会停止当前任务、回收子进程并显示原因。
+
+长片检查使用 12 小时、60 fps 的 2,592,000 条时间戳记录，最终快照为 62,208,000 字节；另读取 1,000,000 行、共 100,000,000 字符的模拟元数据流。复现命令见 [QA 指南](../qa/README.md)。
+
 ### 逐帧预览
 
 2026-11-14，Core Ultra X7 358H / Arc B390、FFmpeg 9.0.2、.NET 11 Release。三条 Pocket 3 素材均为 3840×2160、29.97 fps 的静态屏幕图案。依次请求第 0、30、60、90 帧；旧实现运行一轮，新实现运行三轮。
@@ -129,6 +143,20 @@ The WinUI 3 frontend uses Native AOT. A C# / .NET conversion core manages FFmpeg
 | Layout updates | Scrubbing updates frame-related controls; structural layout changes follow page changes |
 | Frame indexing | Parse packet fields with spans; retain compact, read-only timestamp arrays |
 | Single-file entry | Extract dependencies, start the AOT application and exit after GUI startup |
+
+### Metadata and long-recording indexes
+
+Captured text from short tasks and streamed metadata from long recordings use separate budgets:
+
+| Data | Default budget |
+| --- | --- |
+| Captured probe and capability-query text | 64 MiB of UTF-8 output |
+| One streamed metadata, progress or diagnostic line | 65,536 UTF-16 code units |
+| Arrays for each timeline or HDR10+ index | 512 MiB, including the second array during growth or snapshot creation |
+
+Indexes grow with record count and structure size; resolution, bitrate and compressed file size do not enter the calculation. HDR10+ JSON is written to disk per frame, with metadata streams checked one line at a time. Exceeding a budget stops the job, joins its child processes and reports the reason.
+
+The long-recording check indexes 2,592,000 timestamp records representing 12 hours at 60 fps, producing a 62,208,000-byte snapshot. A separate check reads 1,000,000 simulated metadata lines totaling 100,000,000 characters. Commands are in the [QA guide](../qa/README.md#english).
 
 ### Frame preview
 

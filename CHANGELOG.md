@@ -4,6 +4,13 @@
 
 ## 简体中文
 
+### 4.4.2
+
+- 为 FFmpeg / ffprobe 文本捕获和逐行元数据读取加入资源上限，超限后停止并回收子进程。
+- 时间轴与 HDR10+ 索引采用内存预算，计入数组扩容和快照副本，保留长片流式元数据处理。
+- 时间轴加载只生成一次最终快照；遇到缺失时间戳时提前切换到解码索引。
+- 添加 UTF-8、管道回收、索引边界，以及长片索引和大体量元数据流的回归检查。
+
 ### 4.4.1
 
 - Native 自动选择本机的 x64、APX 或 ARM64 目标，并启用本机指令集优化。
@@ -256,6 +263,13 @@
 - 支持素材自动识别与三组色彩转换。
 
 ## English
+
+### 4.4.2
+
+- Bound FFmpeg / ffprobe text capture and streaming metadata lines, stopping and joining child processes when a limit is exceeded.
+- Apply memory budgets to timeline and HDR10+ indexes, including array growth and snapshots, while retaining streamed metadata processing for long recordings.
+- Create one final timeline snapshot and switch to decoded indexing early when packet timestamps are missing.
+- Add regressions for UTF-8, pipe cleanup, index boundaries, long-recording indexes and large metadata streams.
 
 ### 4.4.1
 

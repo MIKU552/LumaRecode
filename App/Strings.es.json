@@ -436,5 +436,8 @@
   "动态照片视频请选择 HEVC 或 AVC。": "Selecciona HEVC o AVC para el vídeo de la foto en movimiento.",
   "图片提取失败：{0}": "Error al extraer la imagen: {0}",
   "无法建立视频帧时间轴：{0}": "No se puede crear la línea de tiempo por fotogramas: {0}",
-  "Ultra HDR 编码组件：{0}": "Códec Ultra HDR: {0}"
+  "Ultra HDR 编码组件：{0}": "Códec Ultra HDR: {0}",
+  "逐帧索引超过 {0} MiB 的内存预算，已停止读取。": "El índice de fotogramas superó su límite de memoria de {0} MiB; se ha detenido la lectura.",
+  "外部工具的文本输出超过 {0} 字节，已停止读取。": "La salida de texto de la herramienta externa superó {0} bytes; se ha detenido la lectura.",
+  "外部工具的单行输出超过 {0} 个字符，已停止读取。": "Una línea de salida de la herramienta externa superó {0} caracteres; se ha detenido la lectura."
 }

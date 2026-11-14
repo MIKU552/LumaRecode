@@ -36,7 +36,15 @@ python tools/Update-ViewText.py --check
 python tools/generate_hlg_luts.py --check
 ```
 
-核心边界检查还覆盖数值解析、选项值缺失、工具查找、日志错误与通配符匹配。
+核心边界检查还覆盖数值解析、选项值缺失、工具查找、日志错误、通配符匹配、UTF-8 输出字节上限、单行长度、索引预算，以及超限、取消和超时后的子进程回收。
+
+长片索引与流式读取检查：
+
+```powershell
+dotnet run --project qa/BackendChecks/BackendChecks.csproj -c Release -- --resource-stress
+```
+
+此检查生成 12 小时、60 fps 的时间戳索引，并流式读取 1 亿字符的模拟元数据。
 
 这些检查覆盖四种语言的选择、翻译资源与格式占位符、XAML 映射、设置格式、命令行 JSON 格式和生成的 LUT。可给 `check_cli_languages.py` 传入 `--exe dist/SelfContained/LumaRecode.exe`，检查打包后的 CLI 语言资源。
 
@@ -165,7 +173,15 @@ python tools/Update-ViewText.py --check
 python tools/generate_hlg_luts.py --check
 ```
 
-Core boundary checks also cover numeric parsing, missing option values, tool resolution, log errors and wildcard matching.
+Core boundary checks also cover numeric parsing, missing option values, tool resolution, log errors, wildcard matching, UTF-8 output byte limits, line lengths, index budgets, and child-process cleanup after overflow, cancellation or timeout.
+
+Check long-recording indexes and streaming reads:
+
+```powershell
+dotnet run --project qa/BackendChecks/BackendChecks.csproj -c Release -- --resource-stress
+```
+
+This check generates a timestamp index for 12 hours at 60 fps and streams 100 million characters of simulated metadata.
 
 These checks cover language selection for all four languages, translation resources and format placeholders, XAML mappings, settings formats, CLI JSON contracts and generated LUTs. Pass `--exe dist/SelfContained/LumaRecode.exe` to `check_cli_languages.py` to check packaged CLI language resources.
 

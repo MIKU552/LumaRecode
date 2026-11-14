@@ -89,7 +89,7 @@ public static class DynamicHdr
         try
         {
             await using var output = File.Create(destination);
-            await Hdr10PlusMetadata.ExportAsync(probe.StandardOutput, output, cancellation, selection);
+            await Hdr10PlusMetadata.ExportAsync(new BoundedLineReader(probe.StandardOutput), output, cancellation, selection);
             await probe.WaitForExitAsync(cancellation);
             if (probe.ExitCode != 0)
             {

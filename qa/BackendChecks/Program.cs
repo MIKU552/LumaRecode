@@ -6,13 +6,27 @@ using VideoConverter;
 using VideoConverter.Core;
 
 Console.InputEncoding = Console.OutputEncoding = new UTF8Encoding(false);
+if (args.FirstOrDefault() == "--resource-tool")
+{
+    return await ResourceChecks.RunToolAsync(args);
+}
+if (args.FirstOrDefault() == "--resource-stress")
+{
+    await ResourceChecks.CheckLongRecordingAsync();
+    return 0;
+}
 if (await FfmpegStub.TryRunAsync(args) is { } stubResult)
 {
     return stubResult;
 }
 if (args.FirstOrDefault() == "--check")
 {
-    return CodeChecks.Run();
+    int result = CodeChecks.Run();
+    if (result == 0)
+    {
+        await ResourceChecks.RunAsync();
+    }
+    return result;
 }
 
 var root = Directory.GetCurrentDirectory();
