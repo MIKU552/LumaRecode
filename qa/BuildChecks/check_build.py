@@ -5,6 +5,7 @@ import ctypes
 import hashlib
 import json
 import mmap
+import re
 import struct
 import subprocess
 import xml.etree.ElementTree as ET
@@ -179,6 +180,10 @@ def bundled_bytes(path, record):
 
 def check_jit_bundle(path, architecture, version):
     entries = bundle_entries(path)
+    for name in ("LumaRecode.dll", "LumaRecode.Core.dll"):
+        assert not re.search(
+            rb"[A-Za-z]:[\\/]+Users[\\/]", bundled_bytes(path, entries[name])
+        ), f"Developer home path in {name}"
     assert {
         "LumaRecode.dll",
         "LumaRecode.Core.dll",

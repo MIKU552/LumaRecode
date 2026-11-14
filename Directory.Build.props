@@ -3,6 +3,9 @@
     <LumaRecodeArchitecture Condition="'$(RuntimeIdentifier)' == 'win-arm64' or '$(Platform)' == 'ARM64'">arm64</LumaRecodeArchitecture>
     <LumaRecodeArchitecture Condition="'$(LumaRecodeArchitecture)' == ''">x64</LumaRecodeArchitecture>
     <LumaCompilation Condition="'$(LumaCompilation)' == ''">Jit</LumaCompilation>
+    <!-- Published symbols use a stable source root instead of a developer's home directory. -->
+    <ContinuousIntegrationBuild Condition="'$(Configuration)' == 'Release'">true</ContinuousIntegrationBuild>
+    <PathMap Condition="'$(Configuration)' == 'Release' and '$(PathMap)' == ''">$(MSBuildThisFileDirectory)=/_/src/</PathMap>
     <!-- Each publication owns its restore graph, generated code and native objects. -->
     <BaseIntermediateOutputPath Condition="'$(LumaBuildTarget)' != ''">obj/$(LumaCompilation)/$(LumaBuildTarget)/</BaseIntermediateOutputPath>
     <BaseOutputPath Condition="'$(LumaBuildTarget)' != ''">bin/$(LumaCompilation)/$(LumaBuildTarget)/</BaseOutputPath>

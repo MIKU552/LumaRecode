@@ -38,6 +38,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CsWinRTAotWarningLevel>2</CsWinRTAotWarningLevel>
   </PropertyGroup>
+  <ItemGroup Condition="'$(PublishAot)' == 'true'">
+    <LinkerArg Include="/PDBALTPATH:LumaRecode.pdb" />
+  </ItemGroup>
   <ItemGroup>
     <!-- WinUI's content glob must not ship the other architecture's codec. -->
     <Content Remove="Native/**" />
