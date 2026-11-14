@@ -1,5 +1,14 @@
 # 更新记录
 
+## 4.3.0
+
+- 添加“图片与动态照片”页面、逐帧预览、拖动时间轴与封面帧选择。
+- 添加视频开始 / 结束帧裁剪，并保持可变帧率时间轴与音频边界。
+- 添加 HDR AVIF、Ultra HDR JPEG、SDR JPEG / PNG，以及 Google 格式的 Android 动态照片。
+- 内置 libultrahdr 编码组件；动态视频可选择 CPU 或 Intel 编码。
+- 命令行添加 `frames`、`image` 与帧 / 时间范围参数。
+- 软件解码勾选框同步必需解码路径和运行时兼容回退。
+
 ## 4.2.0
 
 - 添加 Apple Log 与 Apple Log 2 的 HLG / SDR 转换，Log 列表按 DJI、三星、小米、Apple 排列。

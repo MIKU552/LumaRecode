@@ -87,6 +87,37 @@ HDR/Log-to-SDR needs FFmpeg libplacebo and Vulkan. A JSON config accepts the enc
 
 Precedence: GUI-equivalent defaults → chosen preset → config fields → explicit CLI fields. CLI `--preset` selects the preset in preference to the config's preset; other config fields still apply. Config keys use underscores, such as `color_range`. `range` describes dynamic range; file destinations use `--output`.
 
+## Frame ranges and images
+
+`frames INPUT` reports frame count, duration and time base. CLI indices start at 0 and exclude the end frame.
+
+```powershell
+./LumaRecode.exe frames clip.mp4 --json | ConvertFrom-Json
+./LumaRecode.exe convert clip.mp4 --start-frame 30 --end-frame 90 --audio aac | Out-Host
+./LumaRecode.exe convert clip.mp4 --start-time 1.5 --end-time 4 --audio aac | Out-Host
+./LumaRecode.exe image hdr.mp4 --frame 60 --image-format ultrahdr -o photo.jpg | Out-Host
+./LumaRecode.exe image hdr.mp4 --frame 60 --image-format ultrahdr --motion --motion-start-frame 30 --motion-end-frame 90 -o photo_MP.jpg | Out-Host
+```
+
+Frame and time ranges are mutually exclusive and cannot be combined with `--duration`. Times use seconds and snap to the first frame at or after the requested position. Trimming re-encodes audio. Default archive audio selects FLAC or AAC; explicit `--audio copy` must be changed to AAC, Opus or eligible FLAC.
+
+`image` accepts one source:
+
+| Option | Meaning |
+| --- | --- |
+| `--frame N` | Selected frame, default 0 |
+| `--image-format auto\|hdr\|ultrahdr\|sdr\|png` | HDR AVIF, Ultra HDR JPEG, SDR JPEG or SDR PNG; auto selects Ultra HDR for HDR and JPEG for SDR |
+| `--quality 1..100` | Image quality, default 95; PNG is lossless |
+| `--motion` | Add Android Motion Photo video to JPEG or Ultra HDR |
+| `--motion-start-frame N --motion-end-frame N` | Video range containing the cover; default is about three seconds around it |
+| `--motion-size source\|1080\|720` | Video resolution; source resolution by default |
+| `--purpose archive\|share` | CPU / Intel motion-video encoding, default `archive` |
+| `--input-kind`, `--profile` | Same source interpretation and camera profiles as video conversion |
+| `-o PATH`, `--overwrite`, `--skip-existing` | Destination and existing-file policy |
+| `--dry-run` | Report image selection and video range |
+
+Motion Photos use one `MP.jpg` file. HDR stills require HDR, Log or RAW footage. See [Preview, trimming and images](../README.en.md#preview-trimming-and-images) for formats and Google specifications.
+
 ## Batch and destination policy
 
 ```powershell

@@ -24,7 +24,10 @@ internal static class JobNotificationContent
         if (result is not null)
         {
             rows.Add(Text(Label("大小：{0}", Size(result.Bytes))));
-            rows.Add(Text(Label("时长：{0}", Duration(result.Duration))));
+            if (result.Duration > 0)
+            {
+                rows.Add(Text(Label("时长：{0}", Duration(result.Duration))));
+            }
             rows.Add(Text(Label("格式：{0}", result.Format)));
         }
         else

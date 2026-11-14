@@ -26,6 +26,7 @@ public sealed partial class MainWindow
     }
     private void ClearMedia()
     {
+        ResetFrameSource();
         media = null;
         sourceMedia = null;
         softwareDecodeFallback = false;
@@ -166,9 +167,11 @@ public sealed partial class MainWindow
 
     private void ApplyMedia(JsonObject data)
     {
+        ResetFrameSource();
         updating = true;
         media = data;
         ResetSourceOptions();
+        Select(Control<ComboBox>("ImageFormat"), Kind is "hlg" or "pq" or "log" or "raw" ? "ultrahdr" : "sdr");
         Output.Text = "";
         automaticOutput = "";
         completed = false;
@@ -183,6 +186,10 @@ public sealed partial class MainWindow
         updating = false;
         Refresh();
         UiTypography.Refresh(root);
+        if (PhotoMode || Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").IsChecked == true)
+        {
+            _ = PreparePreviewAsync();
+        }
     }
     private void UpdateMediaPresentation()
     {

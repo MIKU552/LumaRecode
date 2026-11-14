@@ -69,3 +69,16 @@ The WinUI frontend uses lazy appearance controls, compiled XAML, generated local
 Two isolated startup runs per version measured a mean private working set of 122.3 MiB for 3.6.3 and 116.6 MiB for 3.6.4. Samples were collected from the idle main window at least 30 seconds after launch. The table records private working set, private commit, and total working set. CLI sampling includes the entry process and task processes.
 
 The 4.0.5 microbenchmarks measure managed allocation and execution time separately from GUI working set. Translation catalog construction uses 60% less allocation, and the in-process progress bridge reads detached snapshots directly. Batch jobs reuse successful FFmpeg capability reports; the table and linked JSON contain the measured workloads and results.
+
+## 动态照片导出
+
+Core Ultra X7 358H / Arc B390、FFmpeg 9.0.2。素材为 Pocket 3 的 4K 29.97 fps HLG 静态屏幕图案，选取 90 帧（3.003 秒）动态视频，并生成 4K Ultra HDR 封面。每种组合运行两次，交换 CPU / Intel 顺序。耗时包含图片生成、视频编码、封装与校验。
+
+| 动态视频分辨率 | CPU：x265 fast / CRF23 | Intel：HEVC TU6 / ICQ24 |
+| --- | --- | --- |
+| 原始 3840×2160 | 6.49–6.91 秒 | 5.36–5.73 秒 |
+| 1920×1080 | 4.80–4.85 秒 | 5.39–5.41 秒 |
+
+原始数据、输出格式与参数见 [motion-photo-timings.json](benchmarks/data/motion-photo-timings.json)。
+
+Motion Photo exports were measured on a Core Ultra X7 358H / Arc B390 with FFmpeg 9.0.2, using a static Pocket 3 HLG screen chart. Each export includes a 4K Ultra HDR cover and 90 video frames (3.003 seconds). The table reports two runs per configuration with reversed CPU/Intel order. Wall time includes still encoding, video encoding, packaging and verification.

@@ -15,7 +15,10 @@ public sealed partial class ConversionClient : IDisposable
     {
         get; private set;
     }
-    public MediaInfo? SourceMedia { get; private set; }
+    public MediaInfo? SourceMedia
+    {
+        get; private set;
+    }
     public bool Running
     {
         get
@@ -50,7 +53,7 @@ public sealed partial class ConversionClient : IDisposable
         {
             await ConversionEventPump.RunAsync(async (emit, token) =>
             {
-                if (request.Action is not ("probe" or "convert"))
+                if (request.Action is not ("probe" or "convert" or "image"))
                 {
                     throw new InvalidOperationException("Unknown job action.");
                 }
@@ -62,8 +65,17 @@ public sealed partial class ConversionClient : IDisposable
                     return new ConversionEvent("media", MediaProbe.Describe(media));
                 }
 
+                if (request.Action == "image")
+                {
+                    var image = await new FrameExporter(Engine).ExportAsync(request.Tools, media,
+                        request.Image ?? throw new InvalidOperationException("Missing image options."), request.Output!, emit,
+                        request.Overwrite, token, request.Timeline);
+                    CompletedResult = new(image.Path, image.Bytes, image.MotionDuration, image.Format);
+                    return new ConversionEvent("done", JsonValue.Create(request.Output));
+                }
+
                 var options = request.Options ?? throw new InvalidOperationException("Missing encoding options.");
-                var result = await Engine.RunAsync(request.Tools, media, options, request.Output!, emit, token, overwrite: request.Overwrite);
+                var result = await Engine.RunAsync(request.Tools, media, options, request.Output!, emit, token, overwrite: request.Overwrite, selection: request.Frames, cachedTimeline: request.Timeline);
                 CompletedResult = ConversionResult.FromMedia(request.Output!, result);
                 return new ConversionEvent("done", JsonValue.Create(request.Output));
             }, receive, lifetime);

@@ -87,6 +87,37 @@ HDR / Log a SDR requiere libplacebo de FFmpeg y Vulkan. Un archivo JSON admite l
 
 Prioridad: valores iniciales equivalentes a la interfaz → preajuste → campos del archivo de configuración → campos explícitos de la CLI. `--preset` de la CLI tiene prioridad sobre el preajuste del archivo; el resto de sus campos sigue aplicándose. Las claves usan guiones bajos, como `color_range`. `range` indica el rango dinámico; la ruta de salida se especifica con `--output`.
 
+## Intervalos e imágenes
+
+`frames INPUT` devuelve el número de fotogramas, la duración y la base de tiempo. Los índices de la CLI empiezan en 0 y excluyen el fotograma final.
+
+```powershell
+./LumaRecode.exe frames clip.mp4 --json | ConvertFrom-Json
+./LumaRecode.exe convert clip.mp4 --start-frame 30 --end-frame 90 --audio aac | Out-Host
+./LumaRecode.exe convert clip.mp4 --start-time 1.5 --end-time 4 --audio aac | Out-Host
+./LumaRecode.exe image hdr.mp4 --frame 60 --image-format ultrahdr -o photo.jpg | Out-Host
+./LumaRecode.exe image hdr.mp4 --frame 60 --image-format ultrahdr --motion --motion-start-frame 30 --motion-end-frame 90 -o photo_MP.jpg | Out-Host
+```
+
+Los intervalos por fotogramas, por segundos y `--duration` son excluyentes. Los segundos se ajustan al primer fotograma situado en esa posición o después. El recorte recodifica el audio. El audio predeterminado de Archivo elige FLAC o AAC; un `--audio copy` explícito debe cambiarse por AAC, Opus o FLAC compatible.
+
+`image` acepta una entrada:
+
+| Opción | Significado |
+| --- | --- |
+| `--frame N` | Fotograma elegido, predeterminado 0 |
+| `--image-format auto\|hdr\|ultrahdr\|sdr\|png` | HDR AVIF, Ultra HDR JPEG, JPEG SDR o PNG SDR; auto elige Ultra HDR para HDR y JPEG para SDR |
+| `--quality 1..100` | Calidad, predeterminada 95; PNG usa compresión sin pérdida |
+| `--motion` | Añadir vídeo de foto en movimiento de Android a JPEG o Ultra HDR |
+| `--motion-start-frame N --motion-end-frame N` | Intervalo que incluye la portada; unos tres segundos alrededor de ella de forma predeterminada |
+| `--motion-size source\|1080\|720` | Resolución del vídeo; original de forma predeterminada |
+| `--purpose archive\|share` | Codificación CPU / Intel del vídeo, predeterminada `archive` |
+| `--input-kind`, `--profile` | La misma interpretación de entrada y perfiles de cámara que para vídeo |
+| `-o PATH`, `--overwrite`, `--skip-existing` | Destino y gestión de archivos existentes |
+| `--dry-run` | Mostrar la selección de imagen y el intervalo de vídeo |
+
+Las fotos en movimiento usan un único `MP.jpg`. Las imágenes HDR requieren vídeo HDR, Log o RAW. Consulta los formatos y las especificaciones de Google en el [README](../README.es.md).
+
 ## Lotes y rutas de salida
 
 ```powershell

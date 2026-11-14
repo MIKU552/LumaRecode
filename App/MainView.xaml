@@ -49,9 +49,13 @@
           <Button x:Name="AboutButton" Width="40" Height="36" Padding="0" ToolTipService.ToolTip="关于" AutomationProperties.Name="关于"><FontIcon Glyph="" FontSize="18" /></Button>
         </StackPanel>
       </Grid>
+      <SelectorBar x:Name="WorkPage">
+        <SelectorBarItem x:Name="VideoPage" Text="视频转换" IsSelected="True" />
+        <SelectorBarItem x:Name="PhotoPage" Text="图片与动态照片" />
+      </SelectorBar>
       <Grid x:Name="SettingsGrid" ColumnSpacing="24" RowSpacing="24">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*" MinWidth="380" /><ColumnDefinition Width="*" MinWidth="300" /></Grid.ColumnDefinitions>
-        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
         <Border Grid.ColumnSpan="2" Style="{StaticResource Card}" AllowDrop="True" x:Name="SourceCard">
           <StackPanel Spacing="20">
             <Grid><TextBlock Text="视频素材" Style="{StaticResource Section}" VerticalAlignment="Center" x:Name="LocalizedElement10" /><Border HorizontalAlignment="Right" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="4" Padding="10,4"><TextBlock x:Name="SourceBadge" Text="等待添加" Style="{StaticResource Secondary}" FontSize="12" VerticalAlignment="Center" /></Border></Grid>
@@ -75,11 +79,64 @@
                 <TextBlock x:Name="SourceAudio" Visibility="Collapsed" Style="{StaticResource Secondary}" />
                 <TextBlock x:Name="SourceEvidence" Text="识别相机 Log、HDR 与常规 SDR。" Style="{StaticResource Secondary}" />
               </StackPanel>
-              <ComboBox x:Name="InputKind" Grid.Column="2" Header="输入解释" HorizontalAlignment="Stretch" AutomationProperties.Name="输入解释" />
+              <StackPanel x:Name="SourceInterpretation" Grid.Column="2" Spacing="12">
+                <ComboBox x:Name="InputKind" Header="输入解释" HorizontalAlignment="Stretch" AutomationProperties.Name="输入解释" />
+                <ComboBox x:Name="Profile" Header="相机曲线" HorizontalAlignment="Stretch" AutomationProperties.Name="相机曲线" />
+              </StackPanel>
+            </Grid>
+            <ToggleButton x:Name="ShowPreview" Content="预览与逐帧裁剪" HorizontalAlignment="Left" />
+          </StackPanel>
+        </Border>
+        <Border x:Name="PreviewCard" Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource Card}" Visibility="Collapsed">
+          <StackPanel Spacing="16">
+            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+              <TextBlock x:Name="PreviewHeading" Text="逐帧预览" Style="{StaticResource Section}" />
+              <TextBlock x:Name="PreviewModeNote" Grid.Column="1" Text="SDR 预览" Style="{StaticResource Secondary}" VerticalAlignment="Center" />
+            </Grid>
+            <Border Background="Black" CornerRadius="8" Height="280">
+              <Grid>
+                <Image x:Name="FramePreview" Stretch="Uniform" />
+                <ProgressRing x:Name="PreviewBusy" Width="36" Height="36" IsActive="False" />
+              </Grid>
+            </Border>
+            <TextBlock x:Name="PreviewStatus" Style="{StaticResource Secondary}" TextWrapping="Wrap" />
+            <Slider x:Name="FrameSeek" Minimum="1" Maximum="2" Value="1" StepFrequency="1" SnapsTo="StepValues" IsEnabled="False" AutomationProperties.Name="预览帧" />
+            <Grid x:Name="FrameNavigation" ColumnSpacing="12" RowSpacing="12">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="PreviousFrame" Content="上一帧" />
+              <Button x:Name="NextFrame" Grid.Column="1" Content="下一帧" />
+              <NumberBox x:Name="FrameNumber" Grid.Column="2" Header="帧" Minimum="1" Maximum="2" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" HorizontalAlignment="Right" MinWidth="160" />
+            </Grid>
+            <CheckBox x:Name="TrimEnabled" Content="裁剪视频" />
+            <Grid x:Name="VideoTrimFields" ColumnSpacing="16" RowSpacing="12" Visibility="Collapsed">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <StackPanel Spacing="8"><NumberBox x:Name="TrimStart" Header="开始帧" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" /><TextBlock x:Name="TrimStartTime" Style="{StaticResource Secondary}" /><Button x:Name="SetTrimStart" Content="将当前帧设为开始" HorizontalAlignment="Stretch" /></StackPanel>
+              <StackPanel x:Name="TrimEndFields" Grid.Column="1" Spacing="8"><NumberBox x:Name="TrimEnd" Header="结束帧（包含）" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" /><TextBlock x:Name="TrimEndTime" Style="{StaticResource Secondary}" /><Button x:Name="SetTrimEnd" Content="将当前帧设为结束" HorizontalAlignment="Stretch" /></StackPanel>
             </Grid>
           </StackPanel>
         </Border>
-        <Border x:Name="OutputCard" Grid.Row="1" Style="{StaticResource Card}">
+        <Border x:Name="PhotoSettings" Grid.Row="2" Grid.ColumnSpan="2" Style="{StaticResource Card}" Visibility="Collapsed">
+          <StackPanel Spacing="16">
+            <TextBlock x:Name="PhotoHeading" Text="图片导出" Style="{StaticResource Section}" />
+            <ComboBox x:Name="ImageFormat" Header="图片格式" HorizontalAlignment="Stretch" />
+            <TextBlock x:Name="ImageFormatNote" Style="{StaticResource Secondary}" />
+            <Slider x:Name="ImageQuality" Header="图片质量" Minimum="1" Maximum="100" Value="95" StepFrequency="1" SnapsTo="StepValues" />
+            <CheckBox x:Name="IncludeMotion" Content="包含动态照片视频" />
+            <ComboBox x:Name="MotionEncoder" Header="动态视频编码" HorizontalAlignment="Stretch" Visibility="Collapsed" />
+            <ComboBox x:Name="MotionResolution" Header="视频分辨率" HorizontalAlignment="Stretch" Visibility="Collapsed" />
+            <TextBlock x:Name="MotionEncoderDetail" Style="{StaticResource Secondary}" Visibility="Collapsed" />
+            <Grid x:Name="MotionFields" ColumnSpacing="16" RowSpacing="12" Visibility="Collapsed">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <StackPanel Spacing="8"><NumberBox x:Name="MotionStart" Header="视频开始帧" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" /><TextBlock x:Name="MotionStartTime" Style="{StaticResource Secondary}" /><Button x:Name="SetMotionStart" Content="将当前帧设为开始" HorizontalAlignment="Stretch" /></StackPanel>
+              <StackPanel x:Name="MotionEndFields" Grid.Column="1" Spacing="8"><NumberBox x:Name="MotionEnd" Header="视频结束帧（包含）" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" /><TextBlock x:Name="MotionEndTime" Style="{StaticResource Secondary}" /><Button x:Name="SetMotionEnd" Content="将当前帧设为结束" HorizontalAlignment="Stretch" /></StackPanel>
+            </Grid>
+            <TextBlock x:Name="PhotoWarning" Style="{StaticResource Secondary}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+        <Border x:Name="OutputCard" Grid.Row="2" Style="{StaticResource Card}">
           <StackPanel Spacing="20">
             <StackPanel Orientation="Horizontal" Spacing="12"><Border Width="32" Height="32" CornerRadius="8" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><SymbolIcon Symbol="Save" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" /></Border><TextBlock Text="输出与压缩" Style="{StaticResource Section}" VerticalAlignment="Center" x:Name="LocalizedElement19" /></StackPanel>
             <RadioButtons x:Name="OutputRange" Header="动态范围" MaxColumns="2" SelectedIndex="0" AutomationProperties.Name="动态范围"><RadioButton x:Name="SdrChoice" Content="SDR · 通用播放" /><RadioButton x:Name="HdrChoice" Content="HDR · 保留高光" /></RadioButtons>
@@ -92,11 +149,10 @@
             <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="8" Padding="16,14"><StackPanel Spacing="6"><TextBlock x:Name="PresetName" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock x:Name="PresetDetail" Style="{StaticResource Secondary}" /></StackPanel></Border>
           </StackPanel>
         </Border>
-        <Border x:Name="ColorSettings" Grid.Row="1" Grid.Column="1" Style="{StaticResource Card}">
+        <Border x:Name="ColorSettings" Grid.Row="2" Grid.Column="1" Style="{StaticResource Card}">
           <StackPanel Spacing="16">
             <StackPanel Orientation="Horizontal" Spacing="12"><Border Width="32" Height="32" CornerRadius="8" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><SymbolIcon Symbol="Switch" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" /></Border><TextBlock Text="色彩转换" Style="{StaticResource Section}" VerticalAlignment="Center" x:Name="LocalizedElement32" /></StackPanel>
             <ComboBox x:Name="Transform" Header="LUT / 色调映射" HorizontalAlignment="Stretch" AutomationProperties.Name="色彩转换" />
-            <ComboBox x:Name="Profile" Header="相机曲线" HorizontalAlignment="Stretch" AutomationProperties.Name="相机曲线" />
             <ComboBox x:Name="DynamicMetadata" Header="动态 HDR" HorizontalAlignment="Stretch" AutomationProperties.Name="动态 HDR" />
             <TextBlock x:Name="DynamicNote" Style="{StaticResource Secondary}" />
             <TextBlock x:Name="TransformNote" Style="{StaticResource Secondary}" />
@@ -107,7 +163,7 @@
             <InfoBar x:Name="Notice" IsOpen="False" IsClosable="False" Severity="Warning" />
           </StackPanel>
         </Border>
-        <Border x:Name="FormatCard" Grid.Row="2" Grid.ColumnSpan="2" Style="{StaticResource Card}">
+        <Border x:Name="FormatCard" Grid.Row="3" Grid.ColumnSpan="2" Style="{StaticResource Card}">
           <StackPanel Spacing="20">
             <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
               <StackPanel Orientation="Horizontal" Spacing="12"><Border Width="32" Height="32" CornerRadius="8" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><SymbolIcon Symbol="List" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" /></Border><TextBlock Text="格式与音频" Style="{StaticResource Section}" VerticalAlignment="Center" x:Name="LocalizedElement38" /></StackPanel>

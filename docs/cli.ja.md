@@ -87,6 +87,37 @@ HDR / Log から SDR への変換には FFmpeg の libplacebo と Vulkan が必�
 
 優先順位は、GUI 相当の初期値 → プリセット → 設定ファイル → 明示した CLI オプションです。CLI の `--preset` は設定ファイルの `preset` より優先され、他の設定項目は引き続き適用されます。設定キーには `color_range` のようにアンダースコアを使用します。`range` はダイナミックレンジで、保存先は `--output` で指定します。
 
+## フレーム範囲と画像
+
+`frames INPUT` はフレーム数、長さ、タイムベースを返します。CLI のフレーム番号は 0 始まりで、終了フレームは含まれません。
+
+```powershell
+./LumaRecode.exe frames clip.mp4 --json | ConvertFrom-Json
+./LumaRecode.exe convert clip.mp4 --start-frame 30 --end-frame 90 --audio aac | Out-Host
+./LumaRecode.exe convert clip.mp4 --start-time 1.5 --end-time 4 --audio aac | Out-Host
+./LumaRecode.exe image hdr.mp4 --frame 60 --image-format ultrahdr -o photo.jpg | Out-Host
+./LumaRecode.exe image hdr.mp4 --frame 60 --image-format ultrahdr --motion --motion-start-frame 30 --motion-end-frame 90 -o photo_MP.jpg | Out-Host
+```
+
+フレーム範囲と秒数範囲、および `--duration` は併用できません。秒数は指定位置以降の最初のフレームに合わせます。トリミングでは音声を再エンコードします。アーカイブの初期設定では FLAC または AAC を選択し、明示的な `--audio copy` は AAC、Opus、対応する FLAC に変更する必要があります。
+
+`image` は入力を 1 つ指定します。
+
+| オプション | 内容 |
+| --- | --- |
+| `--frame N` | 書き出すフレーム。初期値 0 |
+| `--image-format auto\|hdr\|ultrahdr\|sdr\|png` | HDR AVIF、Ultra HDR JPEG、SDR JPEG、SDR PNG。auto は HDR に Ultra HDR、SDR に JPEG を使用 |
+| `--quality 1..100` | 画質。初期値 95。PNG は可逆圧縮 |
+| `--motion` | JPEG / Ultra HDR に Android モーションフォト動画を追加 |
+| `--motion-start-frame N --motion-end-frame N` | カバーを含む動画範囲。初期設定はカバー前後の約 3 秒 |
+| `--motion-size source\|1080\|720` | 動画の解像度。初期値は元の解像度 |
+| `--purpose archive\|share` | 動画の CPU / Intel エンコード。初期値 `archive` |
+| `--input-kind`、`--profile` | 動画変換と同じ入力解釈とカメラカーブ |
+| `-o PATH`、`--overwrite`、`--skip-existing` | 保存先と既存ファイルの処理 |
+| `--dry-run` | フレームと動画範囲の情報を表示 |
+
+モーションフォトは単一の `MP.jpg` に保存します。HDR 画像には HDR、Log または RAW 素材が必要です。形式と Google 仕様は [README](../README.ja.md) を参照してください。
+
 ## 一括処理と保存先
 
 ```powershell

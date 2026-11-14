@@ -11,6 +11,7 @@ Herramienta de transcodificación de vídeo y conversión de color para Windows 
 
 ## Funciones
 
+- Vista previa y recorte por fotogramas, imágenes HDR / SDR y fotos en movimiento de Android con portada seleccionada.
 - Preajustes de Compartir rápido y Archivo por software para HEVC, AV1 y H.264, con salida MP4 / MKV.
 - Conversión de DJI D-Log M, Samsung Log, Mi-Log, Apple Log y Apple Log 2 a HLG HDR o Rec.709 SDR; conversión de HLG / PQ a SDR.
 - Revelado de ProRes RAW, detección y conversión de Dolby Vision / HDR10+ y conservación de metadatos dinámicos con codificación por software.
@@ -31,6 +32,18 @@ Herramienta de transcodificación de vídeo y conversión de color para Windows 
 Compartir rápido usa Intel QSV. Archivo por software usa la CPU.
 
 Las fuentes Dolby Vision / HDR10+ usan HEVC por software para conservar los metadatos dinámicos de forma predeterminada. Elige HDR estándar para compartir con codificación por hardware. ProRes RAW comprueba la compatibilidad de FFmpeg y se revela con el balance de blancos, la matriz de color y la ganancia de cámara. Consulta los formatos compatibles en [Conversión de color](docs/color-conversion.md).
+
+## Vista previa, recorte e imágenes
+
+Abre **Vista previa y recorte por fotogramas** en la página de vídeo para desplazarte por la línea de tiempo, avanzar fotograma a fotograma y elegir el inicio y el final. Se convierte todo el vídeo de forma predeterminada. La interfaz cuenta desde 1 e incluye el último fotograma elegido.
+
+La página **Imágenes y fotos en movimiento** exporta el fotograma seleccionado como HDR AVIF (BT.2020 / PQ, 10 o 12 bits), Ultra HDR JPEG, JPEG sRGB o PNG sRGB sin pérdida (8 bits o contenedor de 16 bits).
+
+JPEG y Ultra HDR JPEG pueden incluir vídeo de foto en movimiento de Android. La portada y el intervalo de vídeo se eligen por separado; el intervalo inicial es de unos tres segundos alrededor de la portada. Un único archivo `MP.jpg` sigue [Google Motion Photo 1.0](https://developer.android.com/media/platform/motion-photo-format). La codificación Ultra HDR utiliza [libultrahdr](https://github.com/google/libultrahdr) de Google. El vídeo usa la CPU de forma predeterminada y también permite codificación rápida de Intel.
+
+La vista previa se muestra en SDR. La imagen se exporta en el formato elegido. El recorte por fotogramas recodifica el audio como AAC, Opus o FLAC compatible.
+
+El vídeo conserva la resolución original de forma predeterminada, con límites opcionales de 1080p y 720p. Los preajustes independientes para clips cortos usan x264 fast / CRF20, x265 fast / CRF23 o Intel TU6. El audio es AAC-LC a 48 kHz; conserva mono o usa estéreo. Consulta [motion-photo-presets.json](Assets/motion-photo-presets.json).
 
 ## Codificación y color
 

@@ -11,6 +11,7 @@
 
 ## 功能
 
+- 逐帧预览与裁剪，支持自选封面帧、HDR / SDR 图片和 Android 动态照片。
 - 按快速分享与软件归档选择预设，支持 HEVC、AV1、H.264 和 MP4 / MKV。
 - 支持 DJI D-Log M、Samsung Log、Mi-Log、Apple Log 和 Apple Log 2 转换为 HLG HDR 或 Rec.709 SDR，以及 HLG / PQ 转 SDR。
 - 支持 ProRes RAW 显影、Dolby Vision / HDR10+ 识别与转换，以及软件编码保留动态元数据。
@@ -31,6 +32,25 @@
 “快速分享”使用 Intel QSV；“软件归档”使用 CPU 编码。
 
 Dolby Vision / HDR10+ 素材默认使用软件 HEVC 保留动态元数据；“标准 HDR”可用于硬件快速分享。Dolby Vision 支持单层 Profile 5、8.1、8.4、10.1 和 10.4。ProRes RAW 在确认 FFmpeg 解码兼容性后，根据相机白平衡、色彩矩阵和增益显影，默认输出 HLG。格式与处理流程见[色彩转换](docs/color-conversion.md)。
+
+## 预览、裁剪与图片
+
+“视频转换”中的“预览与逐帧裁剪”提供时间轴、上一帧 / 下一帧和开始 / 结束帧设置，默认转换整段视频。界面帧编号从 1 开始，结束帧包含在输出中。
+
+切换到“图片与动态照片”，选择预览帧和图片格式：
+
+| 格式 | 输出 |
+| --- | --- |
+| HDR AVIF | BT.2020 / PQ，10 或 12 位 |
+| Ultra HDR JPEG | SDR 主图、HDR 增益图与增益图元数据 |
+| SDR JPEG | sRGB 图片 |
+| SDR PNG | sRGB 无损图片，8 位或 16 位容器 |
+
+JPEG 和 Ultra HDR JPEG 可加入 Android 动态照片视频。封面帧与视频范围分别设置，默认取封面附近约 3 秒。动态照片使用单个 `MP.jpg` 文件，按 [Google Motion Photo 1.0](https://developer.android.com/media/platform/motion-photo-format) 封装；Ultra HDR 使用 Google [libultrahdr](https://github.com/google/libultrahdr) 编码。动态视频默认使用 CPU，可改选 Intel 快速编码。
+
+预览以 SDR 显示，图片按所选格式导出。逐帧裁剪会重新编码音轨，可选 AAC、Opus 或符合条件的 FLAC。
+
+动态视频默认保留原分辨率，也可选择最高 1080p 或 720p。独立的短片预设使用 x264 fast / CRF20、x265 fast / CRF23，或 Intel TU6；音频使用 AAC-LC、48 kHz，保留单声道或输出双声道。参数见 [motion-photo-presets.json](Assets/motion-photo-presets.json)。
 
 ## 编码与色彩
 

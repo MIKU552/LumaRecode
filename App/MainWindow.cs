@@ -66,7 +66,13 @@ public sealed partial class MainWindow : Window
     private string Kind => Value(InputKind) == "auto" ? MediaText("kind", "unknown") : Value(InputKind);
     private bool Hdr => Range.SelectedIndex == 1;
     private string previousSuffix = ".mp4";
-    private string Suffix => Value(Container) switch { "mp4" => ".mp4", "mkv" => ".mkv", _ => Value(Purpose) == "archive" || Value(Audio) == "flac" ? ".mkv" : ".mp4" };
+    private string Suffix => PhotoMode ? ImageFormat == "hdr" ? ".avif" : ImageFormat == "png" ? ".png" : ".jpg"
+        : Value(Container) switch
+        {
+            "mp4" => ".mp4",
+            "mkv" => ".mkv",
+            _ => Value(Purpose) == "archive" || Value(Audio) == "flac" ? ".mkv" : ".mp4"
+        };
     private int Depth => int.TryParse(Value(BitDepth), out var depth) ? depth : 8;
     private int SourceDepth => media.Integer("source_depth", 8);
 
@@ -114,6 +120,7 @@ public sealed partial class MainWindow : Window
             notifications.TryRegister(out _);
         }
         WireEvents();
+        InitializeFrameControls();
         ResolveTools();
         Refresh();
         root.Loaded += async (_, _) =>
@@ -275,6 +282,7 @@ public sealed partial class MainWindow : Window
             }
             finally { updating = false; }
             Refresh();
+            QueueFramePreview();
         };
         Transform.SelectionChanged += (_, _) => Refresh();
         Control<CheckBox>("CpuDecode").Click += (_, _) =>
@@ -309,7 +317,9 @@ public sealed partial class MainWindow : Window
     {
         var narrow = width < 960;
         var grid = Control<Grid>("SettingsGrid");
-        var rows = narrow ? 4 : 3;
+        bool preview = sourceMedia is not null && (PhotoMode || Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").IsChecked == true);
+        int settingsRow = preview ? 2 : 1;
+        var rows = PhotoMode ? settingsRow + 1 : settingsRow + (narrow ? 3 : 2);
         while (grid.RowDefinitions.Count < rows)
         {
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -326,14 +336,32 @@ public sealed partial class MainWindow : Window
         grid.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         grid.ColumnSpacing = narrow ? 0 : 24;
         Grid.SetColumnSpan(Control<Border>("SourceCard"), narrow ? 1 : 2);
+        Grid.SetColumnSpan(Control<Border>("PreviewCard"), narrow ? 1 : 2);
+        Grid.SetColumnSpan(Control<Border>("PhotoSettings"), narrow ? 1 : 2);
+        Grid.SetRow(Control<Border>("PhotoSettings"), settingsRow);
+        Grid.SetRow(Control<Border>("OutputCard"), settingsRow);
         var color = Control<Border>("ColorSettings");
         Grid.SetColumn(color, narrow ? 0 : 1);
-        Grid.SetRow(color, narrow ? 2 : 1);
+        Grid.SetRow(color, settingsRow + (narrow ? 1 : 0));
         var format = Control<Border>("FormatCard");
-        Grid.SetRow(format, narrow ? 3 : 2);
+        Grid.SetRow(format, settingsRow + (narrow ? 2 : 1));
         Grid.SetColumnSpan(format, narrow ? 1 : 2);
 
         var compact = width < 760;
+        var frameNumber = Control<NumberBox>("FrameNumber");
+        Grid.SetColumn(frameNumber, compact ? 0 : 2);
+        Grid.SetRow(frameNumber, compact ? 1 : 0);
+        Grid.SetColumnSpan(frameNumber, compact ? 3 : 1);
+        frameNumber.HorizontalAlignment = compact ? HorizontalAlignment.Stretch : HorizontalAlignment.Right;
+        foreach (var (gridName, fieldsName) in new[] { ("VideoTrimFields", "TrimEndFields"), ("MotionFields", "MotionEndFields") })
+        {
+            var rangeGrid = Control<Grid>(gridName);
+            rangeGrid.ColumnDefinitions[1].Width = compact ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+            rangeGrid.ColumnSpacing = compact ? 0 : 16;
+            var last = Control<StackPanel>(fieldsName);
+            Grid.SetColumn(last, compact ? 0 : 1);
+            Grid.SetRow(last, compact ? 1 : 0);
+        }
         var fields = Control<Grid>("FormatFields");
         var fieldRows = compact ? 4 : 2;
         while (fields.RowDefinitions.Count < fieldRows)
@@ -357,9 +385,10 @@ public sealed partial class MainWindow : Window
         details.ColumnDefinitions[2].Width = new GridLength(compact ? 0 : 240);
         details.RowSpacing = compact ? 16 : 0;
         Grid.SetColumnSpan(Control<StackPanel>("SourceInfo"), compact ? 2 : 1);
-        Grid.SetColumn(InputKind, compact ? 1 : 2);
-        Grid.SetRow(InputKind, compact ? 1 : 0);
-        Grid.SetColumnSpan(InputKind, compact ? 2 : 1);
+        var interpretation = Control<StackPanel>("SourceInterpretation");
+        Grid.SetColumn(interpretation, compact ? 1 : 2);
+        Grid.SetRow(interpretation, compact ? 1 : 0);
+        Grid.SetColumnSpan(interpretation, compact ? 2 : 1);
 
         var buttons = Control<StackPanel>("ActionButtons");
         Grid.SetColumn(buttons, compact ? 0 : 1);

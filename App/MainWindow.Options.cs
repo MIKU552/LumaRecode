@@ -359,17 +359,19 @@ public sealed partial class MainWindow
             Control<Button>("Start").IsEnabled = media is not null && !probing && activeJob is null && warning == "";
             // Regenerate only a name still owned by the application. A user
             // path survives option changes, except for a changed container suffix.
-            if (media is not null && (Output.Text == "" || Output.Text == automaticOutput))
+            if (!PhotoMode && media is not null && (Output.Text == "" || Output.Text == automaticOutput))
             {
                 var source = MediaText("path");
                 automaticOutput = Path.Combine(Path.GetDirectoryName(source)!, $"{Path.GetFileNameWithoutExtension(source)}_{(Hdr ? "HDR" : "SDR")}_{Value(Codec)}_{Value(Purpose)}{Suffix}");
                 Output.Text = automaticOutput;
             }
-            else if (media is not null && previousSuffix != Suffix && new[] { ".mp4", ".mkv" }.Contains(Path.GetExtension(Output.Text).ToLowerInvariant()))
+            else if (media is not null && previousSuffix != Suffix && new[] { ".mp4", ".mkv", ".jpg", ".avif", ".png" }.Contains(Path.GetExtension(Output.Text).ToLowerInvariant()) && Output.Text != automaticOutput)
             {
                 Output.Text = Path.ChangeExtension(Output.Text, Suffix);
             }
 
+            UpdateFramePresentation();
+            UpdateFrameOutput();
             previousSuffix = Suffix;
             UpdateEditingEnabled(media is not null && !probing && activeJob is null);
             Input.IsEnabled = activeJob is null && !probing;

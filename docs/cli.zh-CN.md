@@ -102,6 +102,37 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 
 配置字段为上表编码选项和 `preset`，例如 `color_range` 对应 `--color-range`。优先级为：GUI 等价默认值 → 预设 → 配置字段 → 显式命令行字段。若命令指定 `--preset`，其预设选择覆盖配置中的 `preset`，其他配置字段仍生效。
 
+## 裁剪与图片
+
+`frames INPUT` 返回帧数、总时长和时间基。命令行帧编号从 0 开始，结束帧不包含在输出中。
+
+```powershell
+./LumaRecode.exe frames clip.mp4 --json | ConvertFrom-Json
+./LumaRecode.exe convert clip.mp4 --start-frame 30 --end-frame 90 --audio aac | Out-Host
+./LumaRecode.exe convert clip.mp4 --start-time 1.5 --end-time 4 --audio aac | Out-Host
+./LumaRecode.exe image hdr.mp4 --frame 60 --image-format ultrahdr -o photo.jpg | Out-Host
+./LumaRecode.exe image hdr.mp4 --frame 60 --image-format ultrahdr --motion --motion-start-frame 30 --motion-end-frame 90 -o photo_MP.jpg | Out-Host
+```
+
+帧范围与时间范围不能混用，也不能同时指定 `--duration`。时间以秒为单位，吸附到不早于所选时间的第一帧。逐帧裁剪重新编码音轨；归档默认音轨会自动选取 FLAC 或 AAC，手动指定的 `--audio copy` 需要改为 AAC、Opus 或符合条件的 FLAC。
+
+`image` 接受单个输入，支持以下选项：
+
+| 选项 | 说明 |
+| --- | --- |
+| `--frame N` | 所选帧，默认 0 |
+| `--image-format auto\|hdr\|ultrahdr\|sdr\|png` | HDR AVIF、Ultra HDR JPEG、SDR JPEG 或 SDR PNG；自动按 HDR / SDR 选择 Ultra HDR / JPEG |
+| `--quality 1..100` | 图片质量，默认 95；PNG 使用无损编码 |
+| `--motion` | 为 JPEG 或 Ultra HDR 添加 Android 动态照片视频 |
+| `--motion-start-frame N --motion-end-frame N` | 动态视频范围，默认封面附近约 3 秒，须包含封面帧 |
+| `--motion-size source\|1080\|720` | 视频分辨率，默认保留原分辨率 |
+| `--purpose archive\|share` | 动态视频的 CPU / Intel 编码，默认 `archive` |
+| `--input-kind`、`--profile` | 与视频转换相同的输入解释和相机曲线 |
+| `-o PATH`、`--overwrite`、`--skip-existing` | 输出路径、确认覆盖或跳过已有文件 |
+| `--dry-run` | 输出图片和视频范围信息 |
+
+动态照片保存为单个 `MP.jpg` 文件。HDR 图片要求 HDR、Log 或 RAW 素材；输出格式与 Google 规范见 [README](../README.md#预览裁剪与图片)。
+
 ## 批量、输出与覆盖
 
 ```powershell

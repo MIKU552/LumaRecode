@@ -1,0 +1,292 @@
+{
+  "measured_on": "2026-11-14",
+  "processor": "Intel Core Ultra X7 358H",
+  "gpu": "Intel Arc B390",
+  "ffmpeg": "9.0.2 full_build-www.gyan.dev",
+  "source": {
+    "camera": "DJI Osmo Pocket 3",
+    "scene": "Static screen test chart",
+    "width": 3840,
+    "height": 2160,
+    "frame_rate": "30000/1001",
+    "transfer": "HLG",
+    "sha256": "927d93110cd17c05b23fc447fa15b0cc1592ed644f1c6b84df95d0a19e537a64"
+  },
+  "selection": {
+    "start_frame": 15,
+    "end_frame_exclusive": 105,
+    "cover_frame": 60,
+    "seconds": 3.003,
+    "cover_format": "Ultra HDR JPEG at source resolution"
+  },
+  "presets": {
+    "archive": {
+      "avc": {
+        "encoder": "libx264",
+        "preset": "fast",
+        "quality": 20
+      },
+      "hevc": {
+        "encoder": "libx265",
+        "preset": "fast",
+        "quality": 23
+      }
+    },
+    "share": {
+      "avc": {
+        "encoder": "h264_qsv",
+        "preset": "6",
+        "quality": 22,
+        "async_depth": 4
+      },
+      "hevc": {
+        "encoder": "hevc_qsv",
+        "preset": "6",
+        "quality": 24,
+        "async_depth": 4
+      }
+    },
+    "audio": {
+      "encoder": "aac",
+      "profile": "aac_low",
+      "sample_rate": 48000,
+      "stereo_bitrate_kbps": 160,
+      "mono_bitrate_kbps": 80
+    }
+  },
+  "measurement": "Wall-clock image export through the native backend, including source inspection, 4K still encoding, video encoding, packaging and verification. Alternating CPU/Intel order.",
+  "samples": [
+    {
+      "purpose": "archive",
+      "motion_size": "source",
+      "seconds": 6.907,
+      "width": 3840,
+      "height": 2160,
+      "bytes": 2194204,
+      "format": "JPEG \u00b7 Ultra HDR",
+      "motion_duration": 3.003,
+      "video": {
+        "codec_name": "hevc",
+        "profile": "Main 10",
+        "width": 3840,
+        "height": 2160,
+        "color_transfer": "arib-std-b67",
+        "color_primaries": "bt2020",
+        "pix_fmt": "yuv420p10le",
+        "r_frame_rate": "30000/1001"
+      },
+      "audio": [
+        {
+          "codec_name": "aac",
+          "profile": "LC",
+          "sample_rate": "48000",
+          "channels": 2,
+          "bit_rate": "158839"
+        }
+      ]
+    },
+    {
+      "purpose": "share",
+      "motion_size": "source",
+      "seconds": 5.734,
+      "width": 3840,
+      "height": 2160,
+      "bytes": 2157715,
+      "format": "JPEG \u00b7 Ultra HDR",
+      "motion_duration": 3.003,
+      "video": {
+        "codec_name": "hevc",
+        "profile": "Main 10",
+        "width": 3840,
+        "height": 2160,
+        "color_transfer": "arib-std-b67",
+        "color_primaries": "bt2020",
+        "pix_fmt": "yuv420p10le",
+        "r_frame_rate": "30000/1001"
+      },
+      "audio": [
+        {
+          "codec_name": "aac",
+          "profile": "LC",
+          "sample_rate": "48000",
+          "channels": 2,
+          "bit_rate": "158839"
+        }
+      ]
+    },
+    {
+      "purpose": "share",
+      "motion_size": "source",
+      "seconds": 5.359,
+      "width": 3840,
+      "height": 2160,
+      "bytes": 2157715,
+      "format": "JPEG \u00b7 Ultra HDR",
+      "motion_duration": 3.003,
+      "video": {
+        "codec_name": "hevc",
+        "profile": "Main 10",
+        "width": 3840,
+        "height": 2160,
+        "color_transfer": "arib-std-b67",
+        "color_primaries": "bt2020",
+        "pix_fmt": "yuv420p10le",
+        "r_frame_rate": "30000/1001"
+      },
+      "audio": [
+        {
+          "codec_name": "aac",
+          "profile": "LC",
+          "sample_rate": "48000",
+          "channels": 2,
+          "bit_rate": "158839"
+        }
+      ]
+    },
+    {
+      "purpose": "archive",
+      "motion_size": "source",
+      "seconds": 6.49,
+      "width": 3840,
+      "height": 2160,
+      "bytes": 2194204,
+      "format": "JPEG \u00b7 Ultra HDR",
+      "motion_duration": 3.003,
+      "video": {
+        "codec_name": "hevc",
+        "profile": "Main 10",
+        "width": 3840,
+        "height": 2160,
+        "color_transfer": "arib-std-b67",
+        "color_primaries": "bt2020",
+        "pix_fmt": "yuv420p10le",
+        "r_frame_rate": "30000/1001"
+      },
+      "audio": [
+        {
+          "codec_name": "aac",
+          "profile": "LC",
+          "sample_rate": "48000",
+          "channels": 2,
+          "bit_rate": "158839"
+        }
+      ]
+    },
+    {
+      "purpose": "archive",
+      "motion_size": "1080",
+      "seconds": 4.802,
+      "width": 3840,
+      "height": 2160,
+      "bytes": 1902738,
+      "format": "JPEG \u00b7 Ultra HDR",
+      "motion_duration": 3.003,
+      "video": {
+        "codec_name": "hevc",
+        "profile": "Main 10",
+        "width": 1920,
+        "height": 1080,
+        "color_transfer": "arib-std-b67",
+        "color_primaries": "bt2020",
+        "pix_fmt": "yuv420p10le",
+        "r_frame_rate": "30000/1001"
+      },
+      "audio": [
+        {
+          "codec_name": "aac",
+          "profile": "LC",
+          "sample_rate": "48000",
+          "channels": 2,
+          "bit_rate": "158839"
+        }
+      ]
+    },
+    {
+      "purpose": "share",
+      "motion_size": "1080",
+      "seconds": 5.411,
+      "width": 3840,
+      "height": 2160,
+      "bytes": 1912723,
+      "format": "JPEG \u00b7 Ultra HDR",
+      "motion_duration": 3.003,
+      "video": {
+        "codec_name": "hevc",
+        "profile": "Main 10",
+        "width": 1920,
+        "height": 1080,
+        "color_transfer": "arib-std-b67",
+        "color_primaries": "bt2020",
+        "pix_fmt": "yuv420p10le",
+        "r_frame_rate": "30000/1001"
+      },
+      "audio": [
+        {
+          "codec_name": "aac",
+          "profile": "LC",
+          "sample_rate": "48000",
+          "channels": 2,
+          "bit_rate": "158839"
+        }
+      ]
+    },
+    {
+      "purpose": "share",
+      "motion_size": "1080",
+      "seconds": 5.387,
+      "width": 3840,
+      "height": 2160,
+      "bytes": 1912723,
+      "format": "JPEG \u00b7 Ultra HDR",
+      "motion_duration": 3.003,
+      "video": {
+        "codec_name": "hevc",
+        "profile": "Main 10",
+        "width": 1920,
+        "height": 1080,
+        "color_transfer": "arib-std-b67",
+        "color_primaries": "bt2020",
+        "pix_fmt": "yuv420p10le",
+        "r_frame_rate": "30000/1001"
+      },
+      "audio": [
+        {
+          "codec_name": "aac",
+          "profile": "LC",
+          "sample_rate": "48000",
+          "channels": 2,
+          "bit_rate": "158839"
+        }
+      ]
+    },
+    {
+      "purpose": "archive",
+      "motion_size": "1080",
+      "seconds": 4.853,
+      "width": 3840,
+      "height": 2160,
+      "bytes": 1902738,
+      "format": "JPEG \u00b7 Ultra HDR",
+      "motion_duration": 3.003,
+      "video": {
+        "codec_name": "hevc",
+        "profile": "Main 10",
+        "width": 1920,
+        "height": 1080,
+        "color_transfer": "arib-std-b67",
+        "color_primaries": "bt2020",
+        "pix_fmt": "yuv420p10le",
+        "r_frame_rate": "30000/1001"
+      },
+      "audio": [
+        {
+          "codec_name": "aac",
+          "profile": "LC",
+          "sample_rate": "48000",
+          "channels": 2,
+          "bit_rate": "158839"
+        }
+      ]
+    }
+  ]
+}

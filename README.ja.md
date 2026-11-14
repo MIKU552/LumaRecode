@@ -11,6 +11,7 @@ C# / .NET で開発した Windows 11 向けの動画変換・色変換ツール�
 
 ## 主な機能
 
+- フレームプレビューとトリミング、HDR / SDR 画像、カバーフレームを指定した Android モーションフォト。
 - クイック共有・アーカイブ用プリセット。HEVC、AV1、H.264 と MP4 / MKV に対応。
 - DJI D-Log M、Samsung Log、Mi-Log、Apple Log、Apple Log 2 から HLG HDR / Rec.709 SDR への変換、HLG / PQ から SDR への変換。
 - ProRes RAW の現像、Dolby Vision / HDR10+ の識別と変換、ソフトウェアエンコードによる動的メタデータの保持。
@@ -31,6 +32,18 @@ C# / .NET で開発した Windows 11 向けの動画変換・色変換ツール�
 クイック共有は Intel QSV、アーカイブは CPU エンコードを使用します。
 
 Dolby Vision / HDR10+ は、ソフトウェア HEVC で動的メタデータを保持する設定が初期値です。共有用にハードウェアで出力する場合は「標準 HDR」を選択します。ProRes RAW は FFmpeg の対応状況を確認し、カメラのホワイトバランス、色変換行列、ゲインで現像します。対応形式は[色変換](docs/color-conversion.md)を参照してください。
+
+## プレビュー・トリミング・画像
+
+動画ページの「プレビューとフレーム単位のトリミング」で、タイムラインの移動、コマ送り、開始・終了フレームの指定ができます。初期設定では動画全体を変換します。画面上のフレーム番号は 1 始まりで、終了フレームも含まれます。
+
+「画像・モーションフォト」ページでは、選択したフレームを HDR AVIF（BT.2020 / PQ、10 または 12 ビット）、Ultra HDR JPEG、sRGB JPEG、可逆圧縮の sRGB PNG（8 ビットまたは 16 ビットコンテナー）で書き出せます。
+
+JPEG と Ultra HDR JPEG には Android モーションフォト動画を追加できます。カバーフレームと動画範囲を個別に指定でき、初期範囲はカバー前後の約 3 秒です。[Google Motion Photo 1.0](https://developer.android.com/media/platform/motion-photo-format) に従い、単一の `MP.jpg` ファイルに保存します。Ultra HDR のエンコードには Google の [libultrahdr](https://github.com/google/libultrahdr) を使用します。動画は CPU エンコードが初期設定で、Intel による高速エンコードも選択できます。
+
+プレビューは SDR 表示です。画像は選択した形式で書き出します。フレーム単位のトリミングでは、音声を AAC、Opus または条件に合う FLAC に再エンコードします。
+
+動画の解像度は元のままが初期設定で、最大 1080p または 720p も選べます。短い動画用の専用プリセットは x264 fast / CRF20、x265 fast / CRF23、または Intel TU6 を使用します。音声は AAC-LC、48 kHz で、モノラルを保持し、それ以外はステレオにします。設定は [motion-photo-presets.json](Assets/motion-photo-presets.json) を参照してください。
 
 ## エンコードと色変換
 

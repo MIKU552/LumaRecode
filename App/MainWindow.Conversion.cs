@@ -10,7 +10,7 @@ public sealed partial class MainWindow
 {
     private EncodeOptions SelectedOptions() => new(Purpose: Value(Purpose), Codec: Value(Codec), Output: Hdr ? "hdr" : "sdr",
         Transform: Value(Transform), Profile: Value(Profile) == "" ? null : Value(Profile),
-        Sampling: Value(Sampling), Variant: Value(Variant), Audio: Value(Audio),
+        Sampling: Value(Sampling), Variant: Value(Variant), Audio: TrimVideo && audioUsesDefault ? "auto" : Value(Audio),
         Container: Value(Container), SourceKind: Value(InputKind), CpuDecode: preferSoftwareDecode || softwareDecodeFallback,
         ColorRange: Value(ColorRange), BitDepth: Value(BitDepth), DynamicHdr: Value(DynamicMetadata));
     private EncodeOptions DecodeSelectionKey() => SelectedOptions() with { CpuDecode = false, Audio = "auto", Container = "auto", Variant = "standard" };
@@ -49,8 +49,20 @@ public sealed partial class MainWindow
                 return;
             }
         }
-        var request = new ConversionRequest("convert", ToolsObject(), MediaText("path"), output,
-            SelectedOptions(), Overwrite: overwrite);
+        if (PhotoMode || TrimVideo)
+        {
+            try
+            {
+                await EnsureTimelineAsync();
+            }
+            catch (Exception error) { await MessageAsync(L.T("读取失败"), error.Message); return; }
+        }
+        previewCancellation?.Cancel();
+        var request = new ConversionRequest(PhotoMode ? "image" : "convert", ToolsObject(), MediaText("path"), output,
+            SelectedOptions(), Overwrite: overwrite, Frames: TrimVideo ? VideoFrames : null,
+            Image: PhotoMode ? SelectedImageOptions() : null, Timeline: frameTimeline);
+        jobDuration = PhotoMode ? MotionImage ? frameTimeline!.Resolve(MotionFrames).Duration : 0
+            : TrimVideo ? frameTimeline!.Resolve(VideoFrames).Duration : JsonFields.Number(media.Text("duration"));
 
         using var client = new ConversionClient();
         activeJob = client;
@@ -150,7 +162,7 @@ public sealed partial class MainWindow
             completed = true;
             completedOutput = data?.ToString() ?? "";
             Control<ProgressBar>("Progress").Value = 1000;
-            SetStatus("转换完成 · 已核对色彩与采样格式");
+            SetStatus(PhotoMode ? "导出完成" : "转换完成 · 已核对色彩与采样格式");
             if (activeJob?.CompletedResult is { } result)
             {
                 NotifyJobFinished(result, null);
@@ -254,7 +266,23 @@ public sealed partial class MainWindow
     /// <remarks>FFmpeg speed is media-seconds per wall-second. Keep progress below 100% until output verification succeeds.</remarks>
     private void UpdateTransferStats()
     {
-        var duration = JsonFields.Number(media.Text("duration"));
+        double duration = activeJob is not null || completed ? jobDuration : JsonFields.Number(media.Text("duration"));
+        if (activeJob is null && !completed && TrimVideo && frameTimeline is not null)
+        {
+            try
+            {
+                duration = frameTimeline.Resolve(VideoFrames).Duration;
+            }
+            catch (InvalidDataException) { duration = 0; }
+        }
+        if (PhotoMode && activeJob is null && !completed)
+        {
+            try
+            {
+                duration = MotionImage && frameTimeline is not null ? frameTimeline.Resolve(MotionFrames).Duration : 0;
+            }
+            catch (InvalidDataException) { duration = 0; }
+        }
         var percent = completed ? 100 : duration > 0 ? Math.Clamp(100 * encodedSeconds / duration, 0, 99.5) : 0;
         var position = completed ? duration : duration > 0 ? Math.Min(encodedSeconds, duration) : encodedSeconds;
         Control<TextBlock>("ProgressPercent").Text = percent.ToString("0.0", CultureInfo.InvariantCulture) + "% · " + DisplayTime(position) + " / " + (duration > 0 ? DisplayTime(duration) : "—");
@@ -298,6 +326,7 @@ public sealed partial class MainWindow
         UpdateSoftwareDecodeSelection(enabled);
         Output.IsEnabled = enabled;
         Control<Button>("ChooseOutput").IsEnabled = enabled;
+        UpdateFramePresentation();
     }
 
     private void UpdateSoftwareDecodeSelection(bool enabled)
@@ -308,7 +337,7 @@ public sealed partial class MainWindow
             softwareDecodeFallback = false;
             fallbackDecodeOptions = null;
         }
-        bool required = false;
+        bool required = PhotoMode || TrimVideo;
         if (sourceMedia is not null)
         {
             try
@@ -316,14 +345,14 @@ public sealed partial class MainWindow
                 // Planning is process-free. Use the encoder's actual decision,
                 // including pixel formats, range changes, orientation and VFR.
                 var preview = Path.Combine(Path.GetTempPath(), "LumaRecode-preview" + Suffix);
-                required = ConversionClient.Engine.Plan(ToolsObject(), sourceMedia, options, preview).UsesSoftwareDecoding;
+                required |= ConversionClient.Engine.Plan(ToolsObject(), sourceMedia, options, preview).UsesSoftwareDecoding;
             }
             catch (InvalidDataException)
             {
                 // Some choices are incomplete while the user is editing. The
                 // notice already explains the validation error; these workflows
                 // require software frames regardless of the missing selection.
-                required = options.Purpose == "archive" || options.Transform != "none" || sourceMedia.DynamicHdr || sourceMedia.Raw is not null;
+                required |= options.Purpose == "archive" || options.Transform != "none" || sourceMedia.DynamicHdr || sourceMedia.Raw is not null;
             }
         }
         var checkbox = Control<CheckBox>("CpuDecode");

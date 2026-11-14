@@ -80,11 +80,20 @@ public sealed class ViewLocalization
                     case ("Text", TextBlock text):
                         text.Text = translated;
                         break;
+                    case ("Text", SelectorBarItem page):
+                        page.Text = translated;
+                        break;
                     case ("Content", ContentControl content):
                         content.Content = translated;
                         break;
                     case ("Header", ComboBox combo):
                         combo.Header = translated;
+                        break;
+                    case ("Header", NumberBox number):
+                        number.Header = translated;
+                        break;
+                    case ("Header", Slider slider):
+                        slider.Header = translated;
                         break;
                     case ("Header", RadioButtons choices):
                         choices.Header = translated;
