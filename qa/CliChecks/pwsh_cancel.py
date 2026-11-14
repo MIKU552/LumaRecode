@@ -36,7 +36,10 @@ def exercise(exe, source, output):
         check=True,
         timeout=30,
     )
-    quote = lambda value: "'" + str(value).replace("'", "''") + "'"
+
+    def quote(value):
+        return "'" + str(value).replace("'", "''") + "'"
+
     script = (
         "[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); "
         f"& {quote(exe)} convert {quote(source)} -o {quote(output)} "
@@ -77,7 +80,10 @@ def exercise(exe, source, output):
                 signalled = True
         process.wait(timeout=20)
         deadline = time.monotonic() + 20
-        while list(output.parent.glob(".video-converter-*")) and time.monotonic() < deadline:
+        while (
+            list(output.parent.glob(".video-converter-*"))
+            and time.monotonic() < deadline
+        ):
             time.sleep(0.1)
         assert signalled and process.returncode != 0, (
             signalled,
@@ -134,7 +140,15 @@ def main():
         startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startup.wShowWindow = 0
         subprocess.run(
-            [sys.executable, __file__, "--exe", str(exe), "--child", str(source), str(output)],
+            [
+                sys.executable,
+                __file__,
+                "--exe",
+                str(exe),
+                "--child",
+                str(source),
+                str(output),
+            ],
             creationflags=subprocess.CREATE_NEW_CONSOLE,
             startupinfo=startup,
             check=True,

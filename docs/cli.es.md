@@ -31,7 +31,9 @@ Las fuentes HDR dinámicas usan HEVC por software para conservar metadatos. Usa 
 | --- | --- |
 | `probe INPUT` | Formatos de vídeo y audio, profundidad, identificación de color y Log, flujos, etiquetas y datos adicionales del primer fotograma |
 | `presets` | Preajustes de codificación y parámetros de los codificadores |
-| `profiles` | Perfiles y LUT incluidos de Mi-Log, Pocket 3 D-Log M y Samsung Log |
+| `profiles` | Perfiles y LUT incluidos de DJI, Samsung, Xiaomi y Apple Log |
+| `frames INPUT` | Número de fotogramas, duración y base de tiempo |
+| `image INPUT` | Exportar una imagen HDR / SDR o Motion Photo |
 | `doctor` | Versiones de herramientas y listas de codificadores y filtros; los modos de hardware dependen de la GPU y del controlador |
 | `license [--text]` | Licencia MIT, condiciones de los componentes, directorio de avisos y manifiesto |
 | `plan INPUT...` | Vista previa de las opciones, argumentos de FFmpeg, directorio de trabajo y color de salida |

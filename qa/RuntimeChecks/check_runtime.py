@@ -79,10 +79,23 @@ def main():
         )
         for profile in ["pocket3", "samsung", "milog", "applelog", "applelog2"]:
             hlg = folder / (profile + "-hlg.mp4")
-            events = call("convert", source, "--input-kind", "log", "--profile", profile, "-o", hlg)
+            events = call(
+                "convert",
+                source,
+                "--input-kind",
+                "log",
+                "--profile",
+                profile,
+                "-o",
+                hlg,
+            )
             assert any(e["event"] == "progress" for e in events)
             v = probe(hlg)
-            assert v["kind"] == "hlg" and v["video"]["pix_fmt"] == "yuv420p10le" and v["audio"]
+            assert (
+                v["kind"] == "hlg"
+                and v["video"]["pix_fmt"] == "yuv420p10le"
+                and v["audio"]
+            )
             sdr = folder / (profile + "-sdr.mp4")
             call(
                 "convert",
@@ -98,7 +111,12 @@ def main():
             )
             v = probe(sdr)
             assert v["kind"] == "sdr" and v["video"]["pix_fmt"] == "yuv420p"
-            print("PASS native CLI", profile, "to HLG/SDR with audio and progress", flush=True)
+            print(
+                "PASS native CLI",
+                profile,
+                "to HLG/SDR with audio and progress",
+                flush=True,
+            )
         sdr = folder / "tone-mapped.mp4"
         call("convert", hlg, "--range", "sdr", "-o", sdr)
         assert probe(sdr)["video"]["color_transfer"] == "bt709"
@@ -138,7 +156,9 @@ def main():
             call("convert", pq, "--preset", preset, "-o", output)
             result = probe(output)
             side = result["video"].get("side_data_list", []) + [
-                item for frame in result["first_frames"] for item in frame.get("side_data_list", [])
+                item
+                for frame in result["first_frames"]
+                for item in frame.get("side_data_list", [])
             ]
             assert {"Mastering display metadata", "Content light level metadata"} <= {
                 item["side_data_type"] for item in side
@@ -152,7 +172,13 @@ def main():
             ("convert", source, "--log", alias),
         ]:
             p = subprocess.run(
-                [str(exe), *map(str, words), "--no-settings", "--accept-terms", "--json"],
+                [
+                    str(exe),
+                    *map(str, words),
+                    "--no-settings",
+                    "--accept-terms",
+                    "--json",
+                ],
                 capture_output=True,
                 text=True,
                 encoding="utf-8",

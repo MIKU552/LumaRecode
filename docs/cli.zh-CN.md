@@ -33,7 +33,9 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | --- | --- |
 | `probe INPUT` | 音视频格式、位深、色彩与 Log 识别信息、流标签及首帧侧数据 |
 | `presets` | 编码预设与编码器参数 |
-| `profiles` | 内置 Mi-Log、Pocket 3 D-Log M、Samsung Log 曲线与 LUT |
+| `profiles` | 内置 DJI、Samsung、Xiaomi 和 Apple Log 曲线与 LUT |
+| `frames INPUT` | 显示帧数、时长与时间基 |
+| `image INPUT` | 导出所选帧的 HDR / SDR 图片或动态照片 |
 | `doctor` | 工具版本及编码器、滤镜列表；硬件模式由显卡与驱动决定 |
 | `license [--text]` | 项目许可、第三方条款、完整许可目录与清单 |
 | `plan INPUT...` | 预览转换选项、FFmpeg 参数、工作目录和输出色彩 |
@@ -52,7 +54,7 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | `--codec` | `hevc` / `av1` / `avc`；默认 `hevc` |
 | `--range` / `--dynamic-range` | `auto` / `sdr` / `hdr`；默认按素材动态范围选择 |
 | `--transform` | `auto` / `none` / `log-hdr` / `log-sdr` / `hdr-sdr` |
-| `--profile` | `auto` / `milog` / `pocket3` / `samsung` |
+| `--profile` | `auto` / `pocket3` / `samsung` / `milog` / `applelog` / `applelog2` |
 | `--dynamic-hdr` | `preserve` / `standard` |
 | `--input-kind` | `auto` / `sdr` / `hlg` / `pq` / `log`；用于人工纠正原片标签 |
 | `--sampling` | `auto` / `source` / `420` / `422` / `444` / `gray`；默认 `auto`：软件 HEVC / AVC 归档保持原采样，RGB 使用 4:4:4；AV1 和分享使用 4:2:0；422 / 444 / gray 需要软件 HEVC / AVC |

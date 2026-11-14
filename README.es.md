@@ -7,7 +7,7 @@
 
 Herramienta de transcodificación de vídeo y conversión de color para Windows 11, desarrollada con C# y .NET. LumaRecode ofrece una interfaz nativa WinUI 3 y una línea de comandos para FFmpeg, con compresión de vídeo, conversión de Log de cámara a HDR / SDR y de HDR a SDR.
 
-[Descargar](https://github.com/MIKU552/LumaRecode/releases/latest) · [Línea de comandos](docs/cli.es.md) · [Historial de cambios](CHANGELOG.md)
+[Descargar](https://github.com/MIKU552/LumaRecode/releases/latest) · [Documentación](docs/README.md) · [Línea de comandos](docs/cli.es.md) · [Historial de cambios](CHANGELOG.md)
 
 ## Funciones
 

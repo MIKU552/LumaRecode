@@ -31,7 +31,9 @@
 | --- | --- |
 | `probe INPUT` | 動画・音声形式、ビット深度、色・Log の識別、ストリーム、タグ、先頭フレームの付加データ |
 | `presets` | エンコードプリセットとエンコーダー設定 |
-| `profiles` | 内蔵の Mi-Log、Pocket 3 D-Log M、Samsung Log プロファイルと LUT |
+| `profiles` | DJI、Samsung、Xiaomi、Apple Log の内蔵プロファイルと LUT |
+| `frames INPUT` | フレーム数、長さ、タイムベース |
+| `image INPUT` | HDR / SDR 静止画またはモーションフォトを書き出す |
 | `doctor` | ツールのバージョン、エンコーダーとフィルターの一覧。ハードウェア処理は GPU とドライバーに依存 |
 | `license [--text]` | MIT ライセンス、コンポーネントの利用条件、通知ディレクトリとマニフェスト |
 | `plan INPUT...` | 変換設定、FFmpeg の引数、作業ディレクトリ、出力の色設定をプレビュー |

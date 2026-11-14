@@ -7,7 +7,7 @@
 
 基于 C# / .NET 的 Windows 11 视频转码与色彩转换工具，提供原生 WinUI 3 界面和命令行，使用 FFmpeg 完成视频压缩、相机 Log 转 HDR / SDR，以及 HDR 转 SDR。
 
-[下载](https://github.com/MIKU552/LumaRecode/releases/latest) · [命令行文档](docs/cli.zh-CN.md) · [更新记录](CHANGELOG.md)
+[下载](https://github.com/MIKU552/LumaRecode/releases/latest) · [文档](docs/README.md) · [命令行文档](docs/cli.zh-CN.md) · [更新记录](CHANGELOG.md)
 
 ## 功能
 

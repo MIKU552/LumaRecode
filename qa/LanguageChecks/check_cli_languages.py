@@ -23,7 +23,7 @@ def main():
         ("es", "argumentos posicionales", "No se encontró"),
     ]:
 
-        def invoke(*words):
+        def invoke(*words, code=code):
             result = subprocess.run(
                 [str(args.exe.resolve()), "--lang", code, *words, "--no-settings"],
                 capture_output=True,

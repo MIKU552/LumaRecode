@@ -37,6 +37,8 @@ NuGet 依赖分别锁定在 `App/packages.aot.lock.json`、`App/packages.lock.js
 
 主视图位于 `App/MainView.xaml`。修改翻译文字后运行 `python tools/Update-ViewText.py`，更新 `App/ViewText.g.cs`；构建会检查映射是否一致。检查命令见 [QA 指南](../qa/README.md)，品牌资源生成见 [Brand/README.md](../Brand/README.md)。
 
+使用 `LumaRecode.slnx` 浏览项目，模块职责与生命周期见[代码结构](architecture.md)。提交前运行 `./tools/Check-Source.ps1`。Python 工具的格式与静态规则位于 `pyproject.toml`，可使用 Ruff 执行 `ruff check qa tools Brand` 和 `ruff format --check qa tools Brand`。
+
 ## 字体
 
 界面使用 Source Sans 3、思源黑体中文与日文字体，日志使用 Source Code Pro，并回退到对应的思源黑体。字体随应用提供，无需安装。

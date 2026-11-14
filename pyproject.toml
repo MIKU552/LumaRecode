@@ -1,0 +1,11 @@
+# Python is used by development checks and resource generators.
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Standalone integration scripts add the shared backend adapter to sys.path.
+"qa/**/*.py" = ["E402"]

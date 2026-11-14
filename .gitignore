@@ -13,6 +13,8 @@
 !/CHANGELOG.md
 !/build.ps1
 !/global.json
+!/LumaRecode.slnx
+!/pyproject.toml
 !/tools/
 !/licenses/
 !/App/
@@ -35,6 +37,7 @@
 !/qa/TimingChecks/
 !/qa/HdrChecks/
 !/qa/FrameChecks/
+!/qa/DocumentationChecks/
 **/bin/
 **/obj/
 **/__pycache__/

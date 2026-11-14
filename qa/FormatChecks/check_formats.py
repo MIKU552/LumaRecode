@@ -46,12 +46,16 @@ def bounds(path):
     """Read decoded edge luma samples, verifying range conversion beyond tags."""
     media = inspect_media(tools, path)
     depth = media.pixel["components"][0]["bit_depth"]
-    raw = run(["-i", path, "-vf", "extractplanes=y", "-frames:v", "1", "-f", "rawvideo", "-"])
+    raw = run(
+        ["-i", path, "-vf", "extractplanes=y", "-frames:v", "1", "-f", "rawvideo", "-"]
+    )
     step = 1 if depth == 8 else 2
     width, height = media.video["width"], media.video["height"]
     y = height // 2
     values = [
-        int.from_bytes(raw[(y * width + x) * step : (y * width + x + 1) * step], "little")
+        int.from_bytes(
+            raw[(y * width + x) * step : (y * width + x + 1) * step], "little"
+        )
         for x in (0, width - 1)
     ]
     return depth, values
@@ -90,19 +94,39 @@ with tempfile.TemporaryDirectory(prefix="lumarecode-formats-") as temporary:
         logs = []
         try:
             result = Job().run(
-                tools, media, options, path, emit=lambda event, data: logs.append((event, data))
+                tools,
+                media,
+                options,
+                path,
+                emit=lambda event, data: logs.append((event, data)),
             )
         except Exception:
             print("\n".join(str(v) for e, v in logs), flush=True)
             raise
         counter += 1
-        print("PASS", name, result.video["pix_fmt"], result.video.get("color_range"), flush=True)
+        print(
+            "PASS",
+            name,
+            result.video["pix_fmt"],
+            result.video.get("color_range"),
+            flush=True,
+        )
         return path, result
 
     source = inspect_media(tools, base)
-    reject(source, Options(output="sdr", source_kind="sdr", transform="log-sdr", profile="milog"))
-    reject(source, Options(output="sdr", source_kind="hlg", transform="log-sdr", profile="milog"))
-    for transfer, kind in [("bt709", "sdr"), ("arib-std-b67", "hlg"), ("smpte2084", "pq")]:
+    reject(
+        source,
+        Options(output="sdr", source_kind="sdr", transform="log-sdr", profile="milog"),
+    )
+    reject(
+        source,
+        Options(output="sdr", source_kind="hlg", transform="log-sdr", profile="milog"),
+    )
+    for transfer, kind in [
+        ("bt709", "sdr"),
+        ("arib-std-b67", "hlg"),
+        ("smpte2084", "pq"),
+    ]:
         fixture = folder / (kind + ".mkv")
         run(
             [
@@ -129,15 +153,23 @@ with tempfile.TemporaryDirectory(prefix="lumarecode-formats-") as temporary:
             output = "sdr" if kind == "sdr" else "hdr"
             options = Options(purpose=purpose, output=output, color_range=color_range)
             path, result = encode(media, options, f"{kind}-{purpose}-{color_range}")
-            limited = purpose == "share" and color_range == "auto" or color_range == "limited"
+            limited = (
+                purpose == "share" and color_range == "auto" or color_range == "limited"
+            )
             assert result.video["color_range"] == ("tv" if limited else "pc")
             assert (
                 result.video["pix_fmt"].replace("yuvj", "yuv")
                 == resolve_format(options, media).pixel_format
             )
             depth, actual = bounds(path)
-            expected = [16 << (depth - 8), 235 << (depth - 8)] if limited else [0, (1 << depth) - 1]
-            assert max(abs(a - b) for a, b in zip(actual, expected)) <= (4 << (depth - 8)), (
+            expected = (
+                [16 << (depth - 8), 235 << (depth - 8)]
+                if limited
+                else [0, (1 << depth) - 1]
+            )
+            assert max(abs(a - b) for a, b in zip(actual, expected, strict=False)) <= (
+                4 << (depth - 8)
+            ), (
                 kind,
                 purpose,
                 actual,
@@ -175,26 +207,35 @@ with tempfile.TemporaryDirectory(prefix="lumarecode-formats-") as temporary:
             ("share", "full"),
         ]:
             options = Options(
-                purpose=purpose, output="sdr" if kind == "sdr" else "hdr", color_range=color_range
+                purpose=purpose,
+                output="sdr" if kind == "sdr" else "hdr",
+                color_range=color_range,
             )
             if purpose == "share" and color_range == "auto":
-                command, _ = build_command(tools, media, options, folder / "preview.mp4")
+                command, _ = build_command(
+                    tools, media, options, folder / "preview.mp4"
+                )
                 assert "-hwaccel" in command, "QSV decode/VPP path was not exercised"
-            path, result = encode(media, options, f"limited-{kind}-{purpose}-{color_range}")
+            path, result = encode(
+                media, options, f"limited-{kind}-{purpose}-{color_range}"
+            )
             depth, actual = bounds(path)
             expected = (
                 [0, (1 << depth) - 1]
                 if color_range == "full"
                 else [16 << (depth - 8), 235 << (depth - 8)]
             )
-            assert max(abs(a - b) for a, b in zip(actual, expected)) <= (4 << (depth - 8)), (
+            assert max(abs(a - b) for a, b in zip(actual, expected, strict=False)) <= (
+                4 << (depth - 8)
+            ), (
                 kind,
                 purpose,
                 actual,
                 expected,
             )
     print(
-        "PASS range conversion: decoded black/white samples, SDR/HLG/PQ, archive/share", flush=True
+        "PASS range conversion: decoded black/white samples, SDR/HLG/PQ, archive/share",
+        flush=True,
     )
 
     for pixel in ("yuv420p10le", "yuv422p10le", "yuv444p10le", "gbrp10le", "gray10le"):
@@ -226,14 +267,18 @@ with tempfile.TemporaryDirectory(prefix="lumarecode-formats-") as temporary:
         )
         desired = "yuv444p10le" if pixel.startswith("gbr") else pixel
         assert result.video["pix_fmt"] == desired
-        _, result = encode(media, Options(purpose="archive", codec="avc"), "avc-" + pixel)
+        _, result = encode(
+            media, Options(purpose="archive", codec="avc"), "avc-" + pixel
+        )
         assert result.video["pix_fmt"].replace("yuvj", "yuv") == desired or (
             pixel == "gray10le" and result.video["_monochrome"]
         )
         if pixel != "yuv420p10le":
             reject(media, Options(purpose="archive", codec="av1", sampling="source"))
         _, result = encode(
-            media, Options(purpose="archive", codec="av1", variant="fast"), "av1-" + pixel
+            media,
+            Options(purpose="archive", codec="av1", variant="fast"),
+            "av1-" + pixel,
         )
         assert result.video["pix_fmt"] == "yuv420p10le"
 
@@ -257,7 +302,9 @@ with tempfile.TemporaryDirectory(prefix="lumarecode-formats-") as temporary:
         media = inspect_media(tools, fixture)
         reject(media, Options(purpose="archive", sampling="source"))
         _, converted = encode(media, Options(purpose="archive"), "default-" + pixel)
-        assert converted.video["pix_fmt"] == ("yuv420p" if pixel == "yuv440p" else "yuv444p10le")
+        assert converted.video["pix_fmt"] == (
+            "yuv420p" if pixel == "yuv440p" else "yuv444p10le"
+        )
         encode(media, Options(purpose="archive", sampling="420"), "explicit-" + pixel)
 
     for profile in ("milog", "pocket3", "samsung"):
@@ -299,7 +346,9 @@ with tempfile.TemporaryDirectory(prefix="lumarecode-formats-") as temporary:
                 wanted_depth = min(depth, 12 if codec == "hevc" else 10)
                 wanted_sampling = "420" if codec == "av1" else sampling
                 options = Options(
-                    purpose="archive", codec=codec, variant="fast" if codec == "av1" else "standard"
+                    purpose="archive",
+                    codec=codec,
+                    variant="fast" if codec == "av1" else "standard",
                 )
                 _, result = encode(media, options, f"limits-{depth}-{sampling}-{codec}")
                 wanted_pixel = f"yuv{wanted_sampling}p" + (
@@ -386,12 +435,27 @@ with tempfile.TemporaryDirectory(prefix="lumarecode-formats-") as temporary:
     # matching container/codec labels alone would not establish losslessness.
     def pcm_hash(file, index=0):
         return hashlib.sha256(
-            run(["-i", file, "-map", f"0:a:{index}", "-c:a", "pcm_s32le", "-f", "s32le", "-"])
+            run(
+                [
+                    "-i",
+                    file,
+                    "-map",
+                    f"0:a:{index}",
+                    "-c:a",
+                    "pcm_s32le",
+                    "-f",
+                    "s32le",
+                    "-",
+                ]
+            )
         ).digest()
 
     for index in range(3):
         assert pcm_hash(pcm, index) == pcm_hash(path, index), index
-    reject(inspect_media(tools, path), Options(purpose="archive", audio="flac", container="mp4"))
+    reject(
+        inspect_media(tools, path),
+        Options(purpose="archive", audio="flac", container="mp4"),
+    )
     for codec in ("aac", "pcm_f32le", "pcm_s32le"):
         fixture = folder / (codec + ".mkv")
         if codec == "pcm_s32le":
@@ -415,7 +479,21 @@ with tempfile.TemporaryDirectory(prefix="lumarecode-formats-") as temporary:
                 ]
             )
         else:
-            run(["-i", pcm, "-map", "0:v", "-map", "0:a:0", "-c:v", "copy", "-c:a", codec, fixture])
+            run(
+                [
+                    "-i",
+                    pcm,
+                    "-map",
+                    "0:v",
+                    "-map",
+                    "0:a:0",
+                    "-c:v",
+                    "copy",
+                    "-c:a",
+                    codec,
+                    fixture,
+                ]
+            )
         media = inspect_media(tools, fixture)
         if codec == "pcm_s32le":
             path, _ = encode(media, Options(purpose="archive", audio="flac"), "flac-32")
@@ -424,7 +502,9 @@ with tempfile.TemporaryDirectory(prefix="lumarecode-formats-") as temporary:
             assert not flac_eligibility(media)[0]
             reject(media, Options(purpose="archive", audio="flac"))
     mixed = folder / "mixed.mkv"
-    run(["-i", pcm, "-map", "0", "-c:v", "copy", "-c:a", "copy", "-c:a:1", "aac", mixed])
+    run(
+        ["-i", pcm, "-map", "0", "-c:v", "copy", "-c:a", "copy", "-c:a:1", "aac", mixed]
+    )
     reject(inspect_media(tools, mixed), Options(purpose="archive", audio="flac"))
     reject(source, Options(purpose="archive", audio="flac"))
     print(
@@ -432,4 +512,6 @@ with tempfile.TemporaryDirectory(prefix="lumarecode-formats-") as temporary:
         flush=True,
     )
     assert not list(folder.glob(".video-converter-*"))
-    print(f"Passed {counter} real encodes and format/audio rejection checks.", flush=True)
+    print(
+        f"Passed {counter} real encodes and format/audio rejection checks.", flush=True
+    )

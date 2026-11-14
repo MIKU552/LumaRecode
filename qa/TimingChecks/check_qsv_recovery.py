@@ -223,9 +223,9 @@ def main():
                     )
                     actual = first_frame(tools, output)
                     assert len(actual) == len(expected)
-                    error = sum((a - b) ** 2 for a, b in zip(actual, expected)) / len(
-                        actual
-                    )
+                    error = sum(
+                        (a - b) ** 2 for a, b in zip(actual, expected, strict=False)
+                    ) / len(actual)
                     assert error < 150, (label, codec, error)
                     check_timing(rotated, output)
                     count += 1

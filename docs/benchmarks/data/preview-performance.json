@@ -1,0 +1,463 @@
+{
+  "measured_on": "2026-11-14",
+  "processor": "Intel Core Ultra X7 358H",
+  "gpu": "Intel Arc B390",
+  "runtime": ".NET 11 Release",
+  "ffmpeg": "ffmpeg version 9.0.2-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+  "method": {
+    "frames": [
+      0,
+      30,
+      60,
+      90
+    ],
+    "before_rounds": 1,
+    "after_rounds": 3,
+    "timed_work": "Single-frame SDR PNG preview, including FFmpeg startup, decode, color rendering and PNG transfer. Source probe and timeline indexing precede the timer.",
+    "allocation_scope": "Managed backend allocations only; native child working set is sampled separately."
+  },
+  "sources": {
+    "sdr": {
+      "file": "DJI_20261111213109_0131_D.MP4",
+      "sha256": "3b9a224569b2ea12b4e395d2dab2ca7fc4bb1edee89a9723e4d5e06ef1c1d1d9",
+      "width": 3840,
+      "height": 2160,
+      "frame_rate": "30000/1001",
+      "before": [
+        {
+          "frame": 0,
+          "milliseconds": 720.1929,
+          "bytes": 281188,
+          "managed_allocated_bytes": 508704
+        },
+        {
+          "frame": 30,
+          "milliseconds": 829.1891,
+          "bytes": 405055,
+          "managed_allocated_bytes": 592096
+        },
+        {
+          "frame": 60,
+          "milliseconds": 875.1122,
+          "bytes": 410618,
+          "managed_allocated_bytes": 598112
+        },
+        {
+          "frame": 90,
+          "milliseconds": 931.0561,
+          "bytes": 409851,
+          "managed_allocated_bytes": 595368
+        }
+      ],
+      "after": [
+        {
+          "trial": 1,
+          "frame": 0,
+          "milliseconds": 199.3897,
+          "bytes": 366262,
+          "managed_allocated_bytes": 972664
+        },
+        {
+          "trial": 1,
+          "frame": 30,
+          "milliseconds": 304.4384,
+          "bytes": 448622,
+          "managed_allocated_bytes": 1054424
+        },
+        {
+          "trial": 1,
+          "frame": 60,
+          "milliseconds": 366.7185,
+          "bytes": 452774,
+          "managed_allocated_bytes": 539344
+        },
+        {
+          "trial": 1,
+          "frame": 90,
+          "milliseconds": 372.0189,
+          "bytes": 451967,
+          "managed_allocated_bytes": 485824
+        },
+        {
+          "trial": 2,
+          "frame": 0,
+          "milliseconds": 171.1952,
+          "bytes": 366263,
+          "managed_allocated_bytes": 448352
+        },
+        {
+          "trial": 2,
+          "frame": 30,
+          "milliseconds": 301.9129,
+          "bytes": 448623,
+          "managed_allocated_bytes": 524008
+        },
+        {
+          "trial": 2,
+          "frame": 60,
+          "milliseconds": 359.311,
+          "bytes": 452774,
+          "managed_allocated_bytes": 1321304
+        },
+        {
+          "trial": 2,
+          "frame": 90,
+          "milliseconds": 359.1917,
+          "bytes": 451967,
+          "managed_allocated_bytes": 534056
+        },
+        {
+          "trial": 3,
+          "frame": 0,
+          "milliseconds": 166.8872,
+          "bytes": 366263,
+          "managed_allocated_bytes": 954528
+        },
+        {
+          "trial": 3,
+          "frame": 30,
+          "milliseconds": 313.8032,
+          "bytes": 448623,
+          "managed_allocated_bytes": 547568
+        },
+        {
+          "trial": 3,
+          "frame": 60,
+          "milliseconds": 344.0551,
+          "bytes": 452773,
+          "managed_allocated_bytes": 526800
+        },
+        {
+          "trial": 3,
+          "frame": 90,
+          "milliseconds": 357.554,
+          "bytes": 451966,
+          "managed_allocated_bytes": 524032
+        }
+      ]
+    },
+    "hlg": {
+      "file": "DJI_20261111213122_0132_D.MP4",
+      "sha256": "927d93110cd17c05b23fc447fa15b0cc1592ed644f1c6b84df95d0a19e537a64",
+      "width": 3840,
+      "height": 2160,
+      "frame_rate": "30000/1001",
+      "before": [
+        {
+          "frame": 0,
+          "milliseconds": 1019.5444,
+          "bytes": 399181,
+          "managed_allocated_bytes": 602408
+        },
+        {
+          "frame": 30,
+          "milliseconds": 1080.5847,
+          "bytes": 523975,
+          "managed_allocated_bytes": 711880
+        },
+        {
+          "frame": 60,
+          "milliseconds": 1069.5144,
+          "bytes": 532228,
+          "managed_allocated_bytes": 690088
+        },
+        {
+          "frame": 90,
+          "milliseconds": 1101.0854,
+          "bytes": 532396,
+          "managed_allocated_bytes": 736024
+        }
+      ],
+      "after": [
+        {
+          "trial": 1,
+          "frame": 0,
+          "milliseconds": 422.0501,
+          "bytes": 461818,
+          "managed_allocated_bytes": 543672
+        },
+        {
+          "trial": 1,
+          "frame": 30,
+          "milliseconds": 569.8961,
+          "bytes": 552498,
+          "managed_allocated_bytes": 1681936
+        },
+        {
+          "trial": 1,
+          "frame": 60,
+          "milliseconds": 566.2259,
+          "bytes": 558676,
+          "managed_allocated_bytes": 626168
+        },
+        {
+          "trial": 1,
+          "frame": 90,
+          "milliseconds": 638.0309,
+          "bytes": 557994,
+          "managed_allocated_bytes": 1719152
+        },
+        {
+          "trial": 2,
+          "frame": 0,
+          "milliseconds": 419.7478,
+          "bytes": 461818,
+          "managed_allocated_bytes": 539528
+        },
+        {
+          "trial": 2,
+          "frame": 30,
+          "milliseconds": 556.6146,
+          "bytes": 552497,
+          "managed_allocated_bytes": 638264
+        },
+        {
+          "trial": 2,
+          "frame": 60,
+          "milliseconds": 561.0616,
+          "bytes": 558675,
+          "managed_allocated_bytes": 643152
+        },
+        {
+          "trial": 2,
+          "frame": 90,
+          "milliseconds": 613.9338,
+          "bytes": 557993,
+          "managed_allocated_bytes": 631888
+        },
+        {
+          "trial": 3,
+          "frame": 0,
+          "milliseconds": 421.3018,
+          "bytes": 461818,
+          "managed_allocated_bytes": 543872
+        },
+        {
+          "trial": 3,
+          "frame": 30,
+          "milliseconds": 562.5223,
+          "bytes": 552498,
+          "managed_allocated_bytes": 634560
+        },
+        {
+          "trial": 3,
+          "frame": 60,
+          "milliseconds": 558.6262,
+          "bytes": 558675,
+          "managed_allocated_bytes": 1661640
+        },
+        {
+          "trial": 3,
+          "frame": 90,
+          "milliseconds": 559.4479,
+          "bytes": 557993,
+          "managed_allocated_bytes": 656856
+        }
+      ]
+    },
+    "log": {
+      "file": "DJI_20261111213133_0133_D.MP4",
+      "sha256": "11277be50e17cd1f9340a500ebdb5e30f20cdfbd13a34b77c3470daa99113d3d",
+      "width": 3840,
+      "height": 2160,
+      "frame_rate": "30000/1001",
+      "before": [
+        {
+          "frame": 0,
+          "milliseconds": 1124.2348,
+          "bytes": 254456,
+          "managed_allocated_bytes": 437240
+        },
+        {
+          "frame": 30,
+          "milliseconds": 1085.1053,
+          "bytes": 314592,
+          "managed_allocated_bytes": 520752
+        },
+        {
+          "frame": 60,
+          "milliseconds": 1021.9789,
+          "bytes": 314535,
+          "managed_allocated_bytes": 506968
+        },
+        {
+          "frame": 90,
+          "milliseconds": 1039.1263,
+          "bytes": 314700,
+          "managed_allocated_bytes": 504312
+        }
+      ],
+      "after": [
+        {
+          "trial": 1,
+          "frame": 0,
+          "milliseconds": 567.8687,
+          "bytes": 285402,
+          "managed_allocated_bytes": 359296
+        },
+        {
+          "trial": 1,
+          "frame": 30,
+          "milliseconds": 613.7966,
+          "bytes": 334844,
+          "managed_allocated_bytes": 411024
+        },
+        {
+          "trial": 1,
+          "frame": 60,
+          "milliseconds": 603.3632,
+          "bytes": 335997,
+          "managed_allocated_bytes": 410048
+        },
+        {
+          "trial": 1,
+          "frame": 90,
+          "milliseconds": 626.9147,
+          "bytes": 335748,
+          "managed_allocated_bytes": 417000
+        },
+        {
+          "trial": 2,
+          "frame": 0,
+          "milliseconds": 558.6265,
+          "bytes": 285402,
+          "managed_allocated_bytes": 363160
+        },
+        {
+          "trial": 2,
+          "frame": 30,
+          "milliseconds": 613.2782,
+          "bytes": 334843,
+          "managed_allocated_bytes": 408736
+        },
+        {
+          "trial": 2,
+          "frame": 60,
+          "milliseconds": 604.0188,
+          "bytes": 335995,
+          "managed_allocated_bytes": 409840
+        },
+        {
+          "trial": 2,
+          "frame": 90,
+          "milliseconds": 623.4022,
+          "bytes": 335748,
+          "managed_allocated_bytes": 417808
+        },
+        {
+          "trial": 3,
+          "frame": 0,
+          "milliseconds": 561.7713,
+          "bytes": 285402,
+          "managed_allocated_bytes": 367392
+        },
+        {
+          "trial": 3,
+          "frame": 30,
+          "milliseconds": 607.8714,
+          "bytes": 334843,
+          "managed_allocated_bytes": 408736
+        },
+        {
+          "trial": 3,
+          "frame": 60,
+          "milliseconds": 605.7778,
+          "bytes": 335995,
+          "managed_allocated_bytes": 409864
+        },
+        {
+          "trial": 3,
+          "frame": 90,
+          "milliseconds": 611.6467,
+          "bytes": 335747,
+          "managed_allocated_bytes": 417792
+        }
+      ]
+    }
+  },
+  "gui_memory": [
+    {
+      "label": "4.3.0-startup",
+      "target_age_seconds": 30,
+      "samples": [
+        {
+          "process_age_seconds": 36.819,
+          "private_working_set_mib": 127.91,
+          "private_commit_mib": 155.445,
+          "total_working_set_mib": 239.371,
+          "cpu_seconds": 2.859,
+          "handles": 1378,
+          "threads": 37
+        },
+        {
+          "process_age_seconds": 38.001,
+          "private_working_set_mib": 127.91,
+          "private_commit_mib": 155.445,
+          "total_working_set_mib": 239.371,
+          "cpu_seconds": 2.906,
+          "handles": 1378,
+          "threads": 37
+        },
+        {
+          "process_age_seconds": 39.161,
+          "private_working_set_mib": 127.91,
+          "private_commit_mib": 155.445,
+          "total_working_set_mib": 239.371,
+          "cpu_seconds": 2.922,
+          "handles": 1378,
+          "threads": 37
+        }
+      ]
+    },
+    {
+      "label": "4.3.0-preview-tree",
+      "duration_seconds": 25,
+      "ffmpeg_peak_working_set_bytes": {
+        "16872": 1308078080,
+        "33588": 9334784
+      }
+    },
+    {
+      "label": "4.3.1-startup",
+      "target_age_seconds": 30,
+      "samples": [
+        {
+          "process_age_seconds": 34.421,
+          "private_working_set_mib": 126.465,
+          "private_commit_mib": 154.68,
+          "total_working_set_mib": 232.645,
+          "cpu_seconds": 2.672,
+          "handles": 1317,
+          "threads": 37
+        },
+        {
+          "process_age_seconds": 35.608,
+          "private_working_set_mib": 126.465,
+          "private_commit_mib": 154.68,
+          "total_working_set_mib": 232.645,
+          "cpu_seconds": 2.672,
+          "handles": 1317,
+          "threads": 37
+        },
+        {
+          "process_age_seconds": 36.785,
+          "private_working_set_mib": 126.465,
+          "private_commit_mib": 154.68,
+          "total_working_set_mib": 232.645,
+          "cpu_seconds": 2.688,
+          "handles": 1317,
+          "threads": 37
+        }
+      ]
+    },
+    {
+      "label": "4.3.1-preview-frame150",
+      "duration_seconds": 25,
+      "ffmpeg_peak_working_set_bytes": {
+        "39036": 9330688,
+        "40860": 205660160
+      }
+    }
+  ],
+  "gui_memory_method": "One startup run per version, three counters after at least 30 seconds, HDR dark Mica, equal window size. Decoder peak: same 4K HLG source, GUI frame 150, include PATH shim descendants; per-process OS peak working set, excluding GPU memory."
+}

@@ -32,6 +32,8 @@ Dynamic HDR sources default to software HEVC with metadata preservation. Use `--
 | `probe INPUT` | Video/audio format, bit depth, color/Log identification, streams, tags, and first-frame side data |
 | `presets` | Encoding presets and encoder settings |
 | `profiles` | Built-in DJI, Samsung, Xiaomi and Apple Log profiles/LUTs |
+| `frames INPUT` | Display-frame count, duration and time base |
+| `image INPUT` | Export an HDR / SDR still or Motion Photo |
 | `doctor` | Tool versions and encoder/filter lists; hardware modes depend on the GPU and driver |
 | `license [--text]` | MIT project license, component terms, full notice directory and manifest |
 | `plan INPUT...` | Preview conversion options, FFmpeg arguments, working directory, and output colors |

@@ -2,6 +2,14 @@
 
 在仓库根目录运行以下命令。.NET SDK 版本由 `global.json` 指定，Python 检查需要本机安装 Python 3.14 或更新版本。
 
+## 源码检查
+
+```powershell
+./tools/Check-Source.ps1
+```
+
+依次检查 C# 格式、资源、序列化、核心边界、预览调度、进程管道与文档链接。此命令使用独立的测试子进程，无需样片或 GPU。
+
 ## 资源与序列化
 
 ```powershell
@@ -45,7 +53,7 @@ QSV 恢复检查覆盖 AV1 HDR、旋转和镜像、240 fps GOP，以及解码、
 python qa/FormatChecks/check_formats.py
 ```
 
-`qa/BackendChecks/` 提供 C# 核心的测试入口，格式检查通过它执行原生代码。可运行 `python qa/BackendChecks/check_migration.py` 对照 3.8.0 的格式规则与 FFmpeg 参数，使用 `--sample PATH` 增加相机原片识别检查。
+`qa/BackendChecks/` 提供 C# 核心的测试入口，格式检查通过它执行原生代码。
 
 检查 SDR / HLG / PQ 编码后的黑白像素值、8 / 10 / 12 位与 4:2:0 / 4:2:2 / 4:4:4 / RGB / 灰度输入、源格式上限，以及 FLAC 多音轨的解码样本哈希。需要 Intel QSV 和 Vulkan / libplacebo。
 
@@ -57,7 +65,16 @@ dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release
 dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release -- --tools
 ```
 
-检查通知的四种语言、成功／失败字段、XML 转义与长度边界，以及有界事件队列、接收线程上下文、取消与异常退出、日志容量和 Unicode 边界，以及能力查询的成功复用、失败重试和超时。微基准输出五轮测量的中位数；`--tools` 需要 PATH 中的 FFmpeg。
+检查通知、事件顺序、接收线程上下文、取消、日志容量、Unicode 边界和能力查询缓存。预览检查覆盖请求合并、LRU 淘汰、取消后的回调、源切换释放、错误恢复，以及二进制管道的字节边界与子进程回收。微基准输出五轮测量的中位数；`--tools` 需要 PATH 中的 FFmpeg。
+
+预览渲染测速先读取素材和逐帧索引，再测量每个请求的渲染耗时、PNG 大小与托管分配量：
+
+```powershell
+dotnet build qa/BackendChecks/BackendChecks.csproj -c Release
+python qa/PerformanceChecks/benchmark_preview.py --sdr D:/MediaTests/sdr.mp4 --hlg D:/MediaTests/hlg.mp4 --log D:/MediaTests/dlog.mp4 --profile pocket3 --output D:/MediaTests/preview.json
+```
+
+可分别指定任一素材。`--frames 0,30,60,90` 设置帧序号，`--repeat 3` 设置轮数。
 
 ## 内存采样
 
@@ -70,6 +87,14 @@ dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release --
 脚本等待进程年龄至少 30 秒后采样三次，记录私有工作集、私有提交、总工作集和累计 CPU 时间。菜单操作后可用 `-AgeSeconds 0 -Label panels` 单独记录。
 
 AOT 单文件版的实际 GUI 位于 `.net/LumaRecode/<bundle-id>/Application/LumaRecode.exe`。GUI 按主程序采样；CLI 按入口、主程序和任务子进程的合计占用采样。
+
+预览解码器可单独采样。先读取实际 GUI 的进程 ID，再运行以下脚本并操作预览时间轴：
+
+```powershell
+./qa/MemoryChecks/Measure-ChildProcesses.ps1 -RootProcessId 12345 -Label preview -DurationSeconds 60 -OutputFile D:/MediaTests/preview-memory.jsonl
+```
+
+脚本追踪 GUI 启动的 FFmpeg 及 PATH 垫片下的解码进程，记录每个进程的峰值工作集。
 
 优化设计与结果见[性能优化](../docs/performance.md)。
 

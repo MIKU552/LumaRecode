@@ -62,7 +62,9 @@ def ctrl_break_case(exe, source, output):
             child.stderr.read(),
         )
         assert any(e["event"] == "cancelled" for e in events), events
-        assert not output.exists() and not list(output.parent.glob(".video-converter-*"))
+        assert not output.exists() and not list(
+            output.parent.glob(".video-converter-*")
+        )
     finally:
         if child.poll() is None:
             child.kill()
@@ -98,7 +100,9 @@ def main():
         return result if raw else json.loads(result.stdout)
 
     def events(*words, status=0):
-        result = call(*words, "--no-settings", "--accept-terms", "--json", status=status, raw=True)
+        result = call(
+            *words, "--no-settings", "--accept-terms", "--json", status=status, raw=True
+        )
         assert not result.stderr, result.stderr
         return [json.loads(line) for line in result.stdout.splitlines()]
 
@@ -110,11 +114,16 @@ def main():
     assert "同一个 EXE" in call("--lang", "zh", "--help", raw=True).stdout
     assert len(call("--json", "presets")["presets"]) == 7
     assert [p["id"] for p in call("profiles", "--json")["profiles"]] == [
-        "pocket3", "samsung", "milog", "applelog", "applelog2"
+        "pocket3",
+        "samsung",
+        "milog",
+        "applelog",
+        "applelog2",
     ]
     assert call("license", "--json", "--no-settings")["project_license"] == "MIT"
     assert (
-        call("doctor", "--no-settings", "--json", status=6)["data"]["code"] == "terms_not_accepted"
+        call("doctor", "--no-settings", "--json", status=6)["data"]["code"]
+        == "terms_not_accepted"
     )
     assert call("unknown", "--json", status=2)["data"]["code"] == "invalid_arguments"
     assert (
@@ -129,11 +138,16 @@ def main():
         )["data"]["code"]
         == "tool_unavailable"
     )
-    assert call("doctor", "--no-settings", "--accept-terms", "--json")["encoders"]["hevc_qsv"]
-    assert call("doctor", "--ffmpeg", "ffmpeg.exe", "--no-settings", "--accept-terms", "--json")[
-        "encoders"
-    ]["hevc_qsv"]
-    assert call("doctor", "--ffmpeg", "--json", status=2)["data"]["code"] == "invalid_arguments"
+    assert call("doctor", "--no-settings", "--accept-terms", "--json")["encoders"][
+        "hevc_qsv"
+    ]
+    assert call(
+        "doctor", "--ffmpeg", "ffmpeg.exe", "--no-settings", "--accept-terms", "--json"
+    )["encoders"]["hevc_qsv"]
+    assert (
+        call("doctor", "--ffmpeg", "--json", status=2)["data"]["code"]
+        == "invalid_arguments"
+    )
     with tempfile.TemporaryDirectory(prefix="LumaRecode-CLI-") as temporary:
         folder = Path(temporary)
         source = folder / "中文 & source.mp4"
@@ -168,7 +182,10 @@ def main():
         bracketed = folder / "clip[1].mp4"
         shutil.copyfile(source, bracketed)
         assert (
-            call("probe", bracketed, "--no-settings", "--accept-terms", "--json")["kind"] == "sdr"
+            call("probe", bracketed, "--no-settings", "--accept-terms", "--json")[
+                "kind"
+            ]
+            == "sdr"
         )
         planned = events("plan", bracketed)
         assert planned[0]["data"]["input"]["path"] == str(bracketed)
@@ -182,13 +199,28 @@ def main():
         )
         source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
         media = call("probe", source, "--no-settings", "--accept-terms", "--json")
-        assert media["kind"] == "sdr" and media["component_depths"] == [10] * 3 and media["audio"]
+        assert (
+            media["kind"] == "sdr"
+            and media["component_depths"] == [10] * 3
+            and media["audio"]
+        )
         plan = events("plan", source, "--preset", "archive-hevc", "--sampling", "420")
         assert plan[0]["data"]["pixel_format"] == "yuv420p10le"
-        events("plan", source, "--preset", "archive-hevc", "--sampling", "422", status=2)
-        events("plan", source, "--preset", "archive-hevc", "--sampling", "444", status=2)
+        events(
+            "plan", source, "--preset", "archive-hevc", "--sampling", "422", status=2
+        )
+        events(
+            "plan", source, "--preset", "archive-hevc", "--sampling", "444", status=2
+        )
         plan = events(
-            "plan", source, "--preset", "archive-hevc", "--color-range", "full", "--sampling", "420"
+            "plan",
+            source,
+            "--preset",
+            "archive-hevc",
+            "--color-range",
+            "full",
+            "--sampling",
+            "420",
         )
         assert plan[0]["data"]["pixel_format"] == "yuv420p10le"
         assert plan[0]["data"]["expected_colors"]["color_range"] == "pc"
@@ -223,7 +255,9 @@ def main():
             plan[0]["data"]["pixel_format"] == "yuv420p"
             and plan[0]["data"]["options"]["bit_depth"] == "8"
         )
-        events("plan", source8, "--preset", "archive-hevc", "--bit-depth", "10", status=2)
+        events(
+            "plan", source8, "--preset", "archive-hevc", "--bit-depth", "10", status=2
+        )
         events("plan", source, "--audio", "flac", status=2)
         events(
             "plan",
@@ -291,7 +325,14 @@ def main():
         config = folder / "config.json"
         config.write_text(json.dumps({"preset": "archive-hevc", "sampling": "422"}))
         plan = events(
-            "plan", source, "--config", config, "--preset", "share-hevc", "--sampling", "420"
+            "plan",
+            source,
+            "--config",
+            config,
+            "--preset",
+            "share-hevc",
+            "--sampling",
+            "420",
         )
         assert plan[0]["data"]["options"]["purpose"] == "share"
         config.write_text(json.dumps({"preset": "archive-hevc", "bit_depth": 8}))
@@ -299,8 +340,14 @@ def main():
         assert plan[0]["data"]["pixel_format"] == "yuv420p"
         output = folder / "share output.mp4"
         log = folder / "events.jsonl"
-        result = events("convert", source, "-o", output, "--log", log, "--duration", "30")
-        assert all(e["data"]["duration_seconds"] <= 3.1 for e in result if e["event"] == "progress")
+        result = events(
+            "convert", source, "-o", output, "--log", log, "--duration", "30"
+        )
+        assert all(
+            e["data"]["duration_seconds"] <= 3.1
+            for e in result
+            if e["event"] == "progress"
+        )
         assert output.is_file() and any(
             e["event"] == "progress" and "fps" in e["data"] for e in result
         )
@@ -316,14 +363,18 @@ def main():
         old_hash = hashlib.sha256(output.read_bytes()).hexdigest()
         bad = folder / "bad-ffmpeg.cmd"
         bad.write_text("@exit /b 1\n")
-        events("convert", source, "-o", output, "--overwrite", "--ffmpeg", bad, status=1)
+        events(
+            "convert", source, "-o", output, "--overwrite", "--ffmpeg", bad, status=1
+        )
         assert hashlib.sha256(output.read_bytes()).hexdigest() == old_hash
         assert not list(folder.glob(".video-converter-*"))
         tree = folder / "input"
         (tree / "nested").mkdir(parents=True)
         shutil.copyfile(source, tree / "a.mp4")
         shutil.copyfile(source, tree / "nested/b.mp4")
-        result = events("convert", tree, "--recursive", "--output-dir", folder / "batch")
+        result = events(
+            "convert", tree, "--recursive", "--output-dir", folder / "batch"
+        )
         assert (
             result[-1]["data"]["completed"] == 2
             and (folder / "batch/nested/b_SDR_hevc_share.mp4").is_file()
@@ -357,7 +408,9 @@ def main():
             encoding="utf-8",
             timeout=30,
         )
-        assert quoted.returncode == 0 and json.loads(quoted.stdout)["kind"] == "sdr", quoted.stderr
+        assert quoted.returncode == 0 and json.loads(quoted.stdout)["kind"] == "sdr", (
+            quoted.stderr
+        )
         subprocess.run(
             [
                 shutil.which("pwsh"),
@@ -392,7 +445,12 @@ def main():
             timeout=70,
         )
         subprocess.run(
-            [sys.executable, str(Path(__file__).with_name("pwsh_cancel.py")), "--exe", str(exe)],
+            [
+                sys.executable,
+                str(Path(__file__).with_name("pwsh_cancel.py")),
+                "--exe",
+                str(exe),
+            ],
             check=True,
             timeout=100,
         )

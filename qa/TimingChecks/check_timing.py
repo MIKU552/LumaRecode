@@ -48,7 +48,9 @@ def check_timing(source, output):
     assert len(after) == len(before), (len(before), len(after))
     # QSV timestamps use 90 kHz internally. Compare the whole presentation
     # timeline, including frame-rate transitions, within one hardware tick.
-    assert all(abs(a - b) <= Fraction(1, 90000) for a, b in zip(before, after))
+    assert all(
+        abs(a - b) <= Fraction(1, 90000) for a, b in zip(before, after, strict=False)
+    )
     assert all(b > a for a, b in pairwise(dts))
 
 

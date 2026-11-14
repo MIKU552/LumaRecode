@@ -8,6 +8,7 @@
 
 | 文件 / File | 内容 / Contents |
 | --- | --- |
+| [preview-performance.json](preview-performance.json) | 预览延迟、托管分配、GUI 与解码进程内存 / Preview latency, managed allocation, GUI and decoder memory |
 | [motion-photo-timings.json](motion-photo-timings.json) | 4K Ultra HDR 封面与 3 秒动态视频导出耗时 / 4K Ultra HDR cover and three-second Motion Photo export timings |
 | [runtime-performance.json](runtime-performance.json) | 本地化、进度快照及能力查询开销 / Localization, progress snapshots and capability-query overhead |
 | [environment.json](environment.json) | 设备、版本、素材及方法 / Hardware, versions, sources, methodology |

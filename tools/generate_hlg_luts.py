@@ -72,13 +72,15 @@ def invert3(matrix):
 
 
 def multiply(matrix, vector):
-    return tuple(sum(a * b for a, b in zip(row, vector)) for row in matrix)
+    return tuple(
+        sum(a * b for a, b in zip(row, vector, strict=False)) for row in matrix
+    )
 
 
 def rgb_to_xyz(primaries):
     """Derive an RGB-to-XYZ matrix from xy primaries and a D65 white."""
     columns = [(x / y, 1, (1 - x - y) / y) for x, y in primaries]
-    matrix = list(zip(*columns))
+    matrix = list(zip(*columns, strict=False))
     scale = multiply(
         invert3(matrix), (0.3127 / 0.3290, 1, (1 - 0.3127 - 0.3290) / 0.3290)
     )
@@ -91,7 +93,9 @@ def apple_wide_to_bt2020(rgb):
     converted = multiply(XYZ_TO_BT2020, xyz)
     # Both spaces use D65. Blend toward equal-energy RGB at constant BT.2020
     # luminance when the wider source lies outside the target gamut.
-    luminance = max(0, sum(a * b for a, b in zip(converted, (0.2627, 0.6780, 0.0593))))
+    luminance = max(
+        0, sum(a * b for a, b in zip(converted, (0.2627, 0.6780, 0.0593), strict=False))
+    )
     minimum = min(converted)
     saturation = (
         luminance / (luminance - minimum) if minimum < 0 and luminance > 0 else 1
