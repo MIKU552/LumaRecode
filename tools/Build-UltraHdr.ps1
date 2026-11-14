@@ -2,10 +2,14 @@
 .SYNOPSIS
 Builds the pinned Ultra HDR codec with XMP and ISO gain-map metadata.
 .DESCRIPTION
-Run in an x64 MSVC developer shell with CMake, Ninja and NASM on PATH.
+Run in an MSVC developer shell for the selected target with CMake and Ninja.
+The x64 SIMD build additionally requires NASM.
 Only uhdr.dll is distributed; upstream command-line examples are not built.
 #>
-param([string]$WorkDirectory = (Join-Path $PSScriptRoot '../build-cache/ultrahdr'))
+param(
+    [ValidateSet('x64','arm64')][string]$Architecture = 'x64',
+    [string]$WorkDirectory = (Join-Path $PSScriptRoot '../build-cache/ultrahdr')
+)
 $ErrorActionPreference = 'Stop'
 $taskRepo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $taskWork = [IO.Path]::GetFullPath($WorkDirectory).Replace('\','/')
@@ -24,16 +28,29 @@ function Invoke-CMake([string[]]$Arguments) {
     & cmake @Arguments
     if ($LASTEXITCODE -ne 0) { throw 'Native codec build failed.' }
 }
-Invoke-CMake -Arguments @('-S',"$taskWork/libjpeg-turbo-3.2.1",'-B',"$taskWork/jpeg-build",'-G','Ninja','-DCMAKE_BUILD_TYPE=Release','-DCMAKE_C_COMPILER=cl','-DCMAKE_CXX_COMPILER=cl',"-DCMAKE_INSTALL_PREFIX=$taskWork/jpeg-install",'-DENABLE_SHARED=OFF','-DENABLE_STATIC=ON','-DWITH_TURBOJPEG=OFF','-DWITH_SIMD=ON')
-Invoke-CMake -Arguments @('--build',"$taskWork/jpeg-build",'--parallel')
-Invoke-CMake -Arguments @('--install',"$taskWork/jpeg-build")
-Invoke-CMake -Arguments @('-S',"$taskWork/libultrahdr-2.0.2",'-B',"$taskWork/uhdr-build",'-G','Ninja','-DCMAKE_BUILD_TYPE=Release','-DCMAKE_C_COMPILER=cl','-DCMAKE_CXX_COMPILER=cl','-DBUILD_SHARED_LIBS=ON','-DUHDR_BUILD_DEPS=OFF','-DUHDR_BUILD_EXAMPLES=OFF','-DUHDR_BUILD_TESTS=OFF','-DUHDR_ENABLE_HEIF=OFF','-DUHDR_ENABLE_INSTALL=OFF','-DUHDR_WRITE_XMP=ON','-DUHDR_WRITE_ISO=ON',"-DJPEG_LIBRARY=$taskWork/jpeg-install/lib/jpeg-static.lib", "-DJPEG_INCLUDE_DIR=$taskWork/jpeg-install/include")
-Invoke-CMake -Arguments @('--build',"$taskWork/uhdr-build",'--parallel')
-$taskNative = Join-Path $taskRepo 'App/Native'
-Copy-Item -LiteralPath "$taskWork/uhdr-build/uhdr.dll" -Destination (Join-Path $taskNative 'uhdr.dll') -Force
-$taskManifestPath = Join-Path $taskNative 'manifest.json'
+$taskJpegBuild = "$taskWork/jpeg-build-$Architecture"
+$taskJpegInstall = "$taskWork/jpeg-install-$Architecture"
+$taskUhdrBuild = "$taskWork/uhdr-build-$Architecture"
+$taskCross = @('-DCMAKE_TRY_COMPILE_CONFIGURATION=Release','-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL')
+if ($Architecture -eq 'arm64') { $taskCross += @('-DCMAKE_SYSTEM_NAME=Windows','-DCMAKE_SYSTEM_PROCESSOR=ARM64') }
+Invoke-CMake -Arguments (@('-S',"$taskWork/libjpeg-turbo-3.2.1",'-B',$taskJpegBuild,'-G','Ninja','-DCMAKE_BUILD_TYPE=Release','-DCMAKE_C_COMPILER=cl','-DCMAKE_CXX_COMPILER=cl',"-DCMAKE_INSTALL_PREFIX=$taskJpegInstall",'-DENABLE_SHARED=OFF','-DENABLE_STATIC=ON','-DWITH_TURBOJPEG=OFF','-DWITH_SIMD=ON') + $taskCross)
+Invoke-CMake -Arguments @('--build',$taskJpegBuild,'--parallel','8')
+Invoke-CMake -Arguments @('--install',$taskJpegBuild)
+Invoke-CMake -Arguments (@('-S',"$taskWork/libultrahdr-2.0.2",'-B',$taskUhdrBuild,'-G','Ninja','-DCMAKE_BUILD_TYPE=Release','-DCMAKE_C_COMPILER=cl','-DCMAKE_CXX_COMPILER=cl','-DBUILD_SHARED_LIBS=ON','-DUHDR_BUILD_DEPS=OFF','-DUHDR_BUILD_EXAMPLES=OFF','-DUHDR_BUILD_TESTS=OFF','-DUHDR_ENABLE_HEIF=OFF','-DUHDR_ENABLE_INSTALL=OFF','-DUHDR_WRITE_XMP=ON','-DUHDR_WRITE_ISO=ON',"-DJPEG_LIBRARY=$taskJpegInstall/lib/jpeg-static.lib", "-DJPEG_INCLUDE_DIR=$taskJpegInstall/include") + $taskCross)
+Invoke-CMake -Arguments @('--build',$taskUhdrBuild,'--parallel','8')
+$taskNative = Join-Path $taskRepo "App/Native/$Architecture"
+New-Item -ItemType Directory -Path $taskNative -Force | Out-Null
+Copy-Item -LiteralPath "$taskUhdrBuild/uhdr.dll" -Destination (Join-Path $taskNative 'uhdr.dll') -Force
+$taskManifestPath = Join-Path $taskRepo 'App/Native/manifest.json'
 $taskManifest = Get-Content -LiteralPath $taskManifestPath -Raw | ConvertFrom-Json -AsHashtable
-$taskManifest.binary.sha256 = (Get-FileHash -LiteralPath (Join-Path $taskNative 'uhdr.dll') -Algorithm SHA256).Hash.ToLowerInvariant()
-$taskManifest.binary.bytes = (Get-Item -LiteralPath (Join-Path $taskNative 'uhdr.dll')).Length
+$taskManifest.binaries[$Architecture] = @{
+    file="$Architecture/uhdr.dll";architecture="windows-$Architecture"
+    sha256=(Get-FileHash -LiteralPath (Join-Path $taskNative 'uhdr.dll') -Algorithm SHA256).Hash.ToLowerInvariant()
+    bytes=(Get-Item -LiteralPath (Join-Path $taskNative 'uhdr.dll')).Length
+}
+$taskManifest.builds[$Architecture] = @{
+    compiler="MSVC $Architecture";configuration='Release /MD';jpeg='static, SIMD, no TurboJPEG API'
+    metadata=@('XMP','ISO 21496-1');examples=$false;heif=$false;script='tools/Build-UltraHdr.ps1'
+}
 $taskManifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $taskManifestPath -Encoding utf8
-Write-Output "Built App/Native/uhdr.dll. Review the updated binary hash before committing."
+Write-Output "Built App/Native/$Architecture/uhdr.dll."

@@ -24,12 +24,20 @@ C# / .NET で開発した Windows 11 向けの動画変換・色変換ツール�
 
 ## 使い始める
 
-1. [Releases](https://github.com/MIKU552/LumaRecode/releases) から **LumaRecode.exe** をダウンロードします。必要なランタイムは同梱されています。
+1. [Releases](https://github.com/MIKU552/LumaRecode/releases) から、お使いのデバイスに合う EXE をダウンロードします。各版の要件は次の表を参照してください。必要なランタイムは同梱されています。
 2. `ffmpeg.exe` と `ffprobe.exe` を含む Windows 版 [FFmpeg](https://ffmpeg.org/download.html) を用意します。初回起動時に `PATH` を検索します。右上の歯車からパスを指定することもできます。
 3. 動画をドロップするか「動画を選択」を押し、出力のダイナミックレンジ、プリセット、色変換を確認します。
 4. 保存先を指定し、「変換を開始」を押します。
 
 クイック共有は Intel QSV、アーカイブは CPU エンコードを使用します。
+
+| ファイル | プラットフォームと要件 |
+| --- | --- |
+| `LumaRecode.exe` | Native x64。ビルド環境の CPU に最適化。必要な命令セットはリリースノートに記載 |
+| `LumaRecode-APX.exe` | x64。CPU と Windows の両方で Intel APX のサポートが必要 |
+| `LumaRecode-ARM64.exe` | Windows ARM64。アプリと画像コーデックは ARM64 ネイティブ |
+
+ARM64 の初期設定はアーカイブです。エンコード速度は外部 FFmpeg、ハードウェア、プリセットによって変わります。
 
 Dolby Vision / HDR10+ は、ソフトウェア HEVC で動的メタデータを保持する設定が初期値です。共有用にハードウェアで出力する場合は「標準 HDR」を選択します。ProRes RAW は FFmpeg の対応状況を確認し、カメラのホワイトバランス、色変換行列、ゲインで現像します。対応形式は[色変換](docs/color-conversion.md)を参照してください。
 
@@ -64,7 +72,7 @@ SDR 素材は SDR 出力、HLG / PQ 素材は HDR 出力が初期値です。曲
 
 ## 動作要件
 
-- Windows 11 x64。
+- Windows 11 x64 または ARM64。選択した版の命令セット要件を満たすこと。
 - 必要なエンコーダーとフィルターを含む FFmpeg / ffprobe。
 - クイック共有には対応する Intel QSV 環境。
 - Log 変換には `zscale` と `lut3d`。HDR / Log から SDR への変換には `libplacebo` と Vulkan。
@@ -91,21 +99,26 @@ PowerShell 7 で出力をパイプに接続して実行します。
 
 ## ソースからビルド
 
-.NET SDK 11.0.100、PowerShell 7、Native AOT に対応する Visual Studio C++ ツールが必要です。
+.NET SDK 11.0.100、PowerShell 7、Visual Studio C++ x64 / ARM64 ビルドツールが必要です。
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
 ./build.ps1
+./build.ps1 -Target Apx
+./build.ps1 -Target Arm64
 ```
 
-生成物は `dist/SelfContained/LumaRecode.exe` です。ビルド方法と依存関係は[開発・配布ドキュメント](docs/dependencies.md)、チェックコマンドは [QA ガイド](qa/README.md)を参照してください。
+標準の Native x64 版は `dist/SelfContained/LumaRecode.exe` に生成されます。APX と ARM64 の出力先は `dist/SelfContained-Apx/` と `dist/SelfContained-Arm64/` です。
+
+Visual Studio 2026 18.12 以降で `LumaRecode.sln` を開き、`App` をスタートアッププロジェクトに設定します。Debug でデバッグでき、`Release | x64`、`Release-APX | x64`、`Release | ARM64` のビルドでは `Packaging` が対応する単一 EXE を生成します。設定は[開発・配布ドキュメント](docs/dependencies.md)、チェックは [QA ガイド](qa/README.md)を参照してください。
 
 ## ディレクトリ構成
 
 ```text
 App/       WinUI 3 UI、外観、ローカライズ、ジョブ操作
 Bundle/    単一ファイルへのパッケージ化
+Packaging/ Visual Studio のビルド・配布処理
 Core/      素材解析、形式の規則、FFmpeg の実行、CLI
 Assets/    LUT、エンコードプリセット、配布元の記録
 Brand/     アイコンのソースと生成ツール

@@ -24,12 +24,20 @@ Video transcoding and color conversion for Windows 11, built with C# and .NET. L
 
 ## Quick start
 
-1. Download **LumaRecode.exe** from [Releases](https://github.com/MIKU552/LumaRecode/releases). Required runtimes are included.
+1. Download the EXE for your device from [Releases](https://github.com/MIKU552/LumaRecode/releases). See the variants below. Required runtimes are included.
 2. Obtain a Windows build of [FFmpeg](https://ffmpeg.org/download.html) containing `ffmpeg.exe` and `ffprobe.exe`. LumaRecode checks `PATH` on first use; paths can also be selected with the gear button.
 3. Drop a video or choose **Choose video**, then confirm the output range, preset, and color conversion.
 4. Choose the output path and select **Start conversion**.
 
 Quick share uses Intel QSV. Software archive uses CPU encoding.
+
+| Download | Platform and requirements |
+| --- | --- |
+| `LumaRecode.exe` | Native x64, optimized for the build computer's CPU; required instructions are listed in the release notes |
+| `LumaRecode-APX.exe` | x64 with Intel APX support in both the CPU and Windows |
+| `LumaRecode-ARM64.exe` | Windows ARM64, with a native ARM64 app and image codec |
+
+ARM64 defaults to Software archive. Encoding speed depends on the external FFmpeg build, hardware and selected preset.
 
 Dolby Vision / HDR10+ sources default to software HEVC with dynamic metadata preservation. Select Standard HDR for hardware quick sharing. Supported Dolby Vision profiles are single-layer 5, 8.1, 8.4, 10.1 and 10.4. ProRes RAW checks FFmpeg decoder compatibility, then develops with camera white balance, color matrix and gain, with HLG output by default. See [Color conversion](docs/color-conversion.md) for formats and processing paths.
 
@@ -64,7 +72,7 @@ Video is re-encoded with the selected preset; audio can be copied or transcoded.
 
 ## Requirements
 
-- Windows 11 x64.
+- Windows 11 x64 or ARM64, with the instructions required by the selected variant.
 - User-provided FFmpeg / ffprobe with the required encoders and filters.
 - Intel QSV support for Quick share.
 - `zscale` and `lut3d` for Log conversion; `libplacebo` and Vulkan for HDR / Log to SDR.
@@ -91,21 +99,26 @@ For first-time unattended use, read the component terms with `license --text`, t
 
 ## Build from source
 
-Requires .NET SDK 11.0.100, PowerShell 7, and Visual Studio C++ tools supported by Native AOT.
+Requires .NET SDK 11.0.100, PowerShell 7, and Visual Studio C++ x64 / ARM64 build tools.
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
 ./build.ps1
+./build.ps1 -Target Apx
+./build.ps1 -Target Arm64
 ```
 
-The output is `dist/SelfContained/LumaRecode.exe`. See [development and distribution](docs/dependencies.md) for build options and dependency versions, and the [QA guide](qa/README.md) for checks.
+The default Native x64 build produces `dist/SelfContained/LumaRecode.exe`. APX and ARM64 use `dist/SelfContained-Apx/` and `dist/SelfContained-Arm64/`.
+
+Open `LumaRecode.sln` in Visual Studio 2026 18.12 or later. Set `App` as the startup project and use Debug for debugging. Building `Release | x64`, `Release-APX | x64` or `Release | ARM64` runs the `Packaging` project and creates the corresponding single EXE. See [development and distribution](docs/dependencies.md) for setup and the [QA guide](qa/README.md) for checks.
 
 ## Project structure
 
 ```text
 App/       WinUI 3 UI, appearance, localization, and job interaction
 Bundle/    Single-file packaging entry
+Packaging/ Visual Studio build and distribution entry
 Core/      Source inspection, format policies, FFmpeg execution, and CLI
 Assets/    LUTs, encoding presets, and source records
 Brand/     Icon sources and generation tools

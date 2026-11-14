@@ -4,6 +4,6 @@
     <ProjectReference Include="../../Core/LumaRecode.Core.csproj" />
     <Compile Include="../../App/TranslationCatalog.cs" Link="TranslationCatalog.cs" />
     <Compile Include="../../App/LanguagePolicy.cs" Link="LanguagePolicy.cs" />
-    <Content Include="../../App/Native/uhdr.dll" Link="uhdr.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../App/Native/$(LumaRecodeArchitecture)/uhdr.dll" Link="uhdr.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

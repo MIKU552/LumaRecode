@@ -103,6 +103,10 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
         {
             fields["purpose"] = "archive";
         }
+        if (!fields.ContainsKey("purpose"))
+        {
+            fields["purpose"] = PlatformDefaults.Purpose;
+        }
         fields["output"] = target;
         fields["source_kind"] = kind;
         fields["transform"] = transform;

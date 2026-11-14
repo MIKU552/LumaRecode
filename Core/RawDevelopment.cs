@@ -106,7 +106,7 @@ public static class RawDevelopment
         }
         // Decoder presence alone does not establish support for a camera's
         // Bayer layout. In particular, FFmpeg 9.0.2 rejects iPhone pattern 3.
-        var trial = await ProcessRunner.CaptureAsync(tools.Ffmpeg, ["-hide_banner", "-nostdin", "-v", "error", "-xerror", "-threads:v", "2", "-cpuflags", "-avx2",
+        var trial = await ProcessRunner.CaptureAsync(tools.Ffmpeg, ["-hide_banner", "-nostdin", "-v", "error", "-xerror", "-threads:v", "2", .. PlatformDefaults.RawCpuArguments,
             "-i", path, "-map", "0:" + stream, "-frames:v", "1", "-an", "-sn", "-dn", "-f", "null", "-"], cancellation, 30);
         raw["decoder_supported"] = trial.ExitCode == 0;
         return raw;

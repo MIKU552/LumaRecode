@@ -3,8 +3,9 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net11.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifier>win-$(LumaRecodeArchitecture)</RuntimeIdentifier>
+    <PlatformTarget>$(LumaRecodeArchitecture)</PlatformTarget>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>
@@ -25,11 +26,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <Version>4.3.1</Version>
+    <Version>4.4.0</Version>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <NuGetLockFilePath Condition="'$(LumaRecodeArchitecture)' == 'arm64'">packages.arm64.lock.json</NuGetLockFilePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">
     <NuGetLockFilePath>packages.aot.lock.json</NuGetLockFilePath>
+    <NuGetLockFilePath Condition="'$(LumaRecodeArchitecture)' == 'arm64'">packages.arm64.aot.lock.json</NuGetLockFilePath>
     <PublishSingleFile>false</PublishSingleFile>
     <PublishTrimmed>true</PublishTrimmed>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -43,13 +46,13 @@
     <Content Include="LumaRecode.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../Brand/LumaRecode.png" Link="Assets/LumaRecode.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets/Fonts/*.ttf" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Native/uhdr.dll" Link="uhdr.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Native/$(LumaRecodeArchitecture)/uhdr.dll" Link="uhdr.dll" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="Strings.en.json" LogicalName="LumaRecode.Strings.en.json" WithCulture="false" />
     <EmbeddedResource Include="Strings.ja.json" LogicalName="LumaRecode.Strings.ja.json" WithCulture="false" />
     <EmbeddedResource Include="Strings.es.json" LogicalName="LumaRecode.Strings.es.json" WithCulture="false" />
     <EmbeddedResource Include="../Assets/recommended-presets.json" LogicalName="VideoConverter.EncodingPresets.json" />
     <!-- Files read by path are deployment files, not MRT-qualified UI resources. -->
     <None Include="../Assets/**" Link="Assets/Media/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../licenses/**" Link="licenses/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(LumaLicenseDirectory)/**" Link="licenses/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

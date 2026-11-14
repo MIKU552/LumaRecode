@@ -1,5 +1,13 @@
 # 更新记录
 
+## 4.4.0
+
+- 添加 Native、Intel APX 与 ARM64 构建目标，默认使用本机指令集的 Native AOT。
+- 添加 Visual Studio 解决方案、GUI 启动配置和 Packaging 项目，Release 构建可直接生成单文件发行包。
+- 按目标隔离依赖还原、编译缓存、许可清单和输出目录，并提供 ARM64 锁文件。
+- 内置 ARM64 Ultra HDR 编解码库，使用 ARM64 NEON；ARM64 默认软件编码，并按架构选择 RAW 解码参数。
+- APX 启动入口在加载应用前检查 CPU 与 Windows 支持，提供兼容性提示。
+
 ## 4.3.1
 
 - 预览改为后台单解码器调度，合并拖动请求，并缓存最近访问的帧。

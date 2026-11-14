@@ -1,14 +1,66 @@
 <Solution>
   <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <BuildType Name="Release-APX" />
     <Platform Name="x64" />
+    <Platform Name="ARM64" />
   </Configurations>
-  <Project Path="App/VideoConverter.WinUI.csproj" />
-  <Project Path="Core/LumaRecode.Core.csproj" />
-  <Project Path="Bundle/LumaRecode.Bundle.csproj" />
-  <Folder Name="/qa/">
-    <Project Path="qa/BackendChecks/BackendChecks.csproj" />
-    <Project Path="qa/LanguageChecks/LanguageChecks.csproj" />
-    <Project Path="qa/SerializationChecks/SerializationChecks.csproj" />
-    <Project Path="qa/PerformanceChecks/PerformanceChecks.csproj" />
-  </Folder>
+  <Project Path="App/VideoConverter.WinUI.csproj">
+    <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|x64" Project="Release" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="Debug|ARM64" Project="ARM64" />
+    <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Platform Solution="Release|ARM64" Project="ARM64" />
+    <Build Solution="Release-APX|ARM64" Project="false" />
+  </Project>
+  <Project Path="Bundle/LumaRecode.Bundle.csproj">
+    <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|x64" Project="Release" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="Debug|ARM64" Project="ARM64" />
+    <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Platform Solution="Release|ARM64" Project="ARM64" />
+    <Build Project="false" />
+  </Project>
+  <Project Path="Core/LumaRecode.Core.csproj">
+    <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|x64" Project="Release" />
+    <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Build Solution="Release-APX|ARM64" Project="false" />
+  </Project>
+  <Project Path="Packaging/LumaRecode.Packaging.csproj">
+    <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="Debug|ARM64" Project="ARM64" />
+    <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Platform Solution="Release|ARM64" Project="ARM64" />
+    <Build Solution="Debug|*" Project="false" />
+    <Build Solution="Release-APX|ARM64" Project="false" />
+  </Project>
+  <Project Path="qa/BackendChecks/BackendChecks.csproj">
+    <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|x64" Project="Release" />
+    <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Build Project="false" />
+  </Project>
+  <Project Path="qa/LanguageChecks/LanguageChecks.csproj">
+    <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|x64" Project="Release" />
+    <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Build Project="false" />
+  </Project>
+  <Project Path="qa/PerformanceChecks/PerformanceChecks.csproj">
+    <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|x64" Project="Release" />
+    <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Build Project="false" />
+  </Project>
+  <Project Path="qa/SerializationChecks/SerializationChecks.csproj">
+    <BuildType Solution="Release-APX|ARM64" Project="?" />
+    <BuildType Solution="Release-APX|x64" Project="Release" />
+    <Platform Solution="Release-APX|ARM64" Project="?" />
+    <Build Project="false" />
+  </Project>
 </Solution>

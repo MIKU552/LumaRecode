@@ -1,11 +1,5 @@
 {
-  "schema_version": 1,
-  "binary": {
-    "file": "uhdr.dll",
-    "sha256": "1cdab3db0d7bae28e98ebc056f5e542b373dc6e7c4709b602aefc742e4d39528",
-    "bytes": 1088000,
-    "architecture": "windows-x64"
-  },
+  "schema_version": 2,
   "components": [
     {
       "name": "libultrahdr",
@@ -22,18 +16,6 @@
       "license": "IJG AND BSD-3-Clause"
     }
   ],
-  "build": {
-    "compiler": "MSVC 14.44 x64",
-    "configuration": "Release /MD",
-    "jpeg": "static, SIMD, no TurboJPEG API",
-    "metadata": [
-      "XMP",
-      "ISO 21496-1"
-    ],
-    "examples": false,
-    "heif": false,
-    "script": "tools/Build-UltraHdr.ps1"
-  },
   "licenses": [
     {
       "file": "Adobe-NOTICE.txt",
@@ -75,5 +57,45 @@
   "notices": [
     "This product includes Gain Map technology under license by Adobe.",
     "This software is based in part on the work of the Independent JPEG Group."
-  ]
+  ],
+  "binaries": {
+    "x64": {
+      "file": "x64/uhdr.dll",
+      "sha256": "1cdab3db0d7bae28e98ebc056f5e542b373dc6e7c4709b602aefc742e4d39528",
+      "bytes": 1088000,
+      "architecture": "windows-x64"
+    },
+    "arm64": {
+      "bytes": 787968,
+      "sha256": "8b29860014afc1821b228b284efbcf0bd7fb1c17fb5873829448046deb22903e",
+      "architecture": "windows-arm64",
+      "file": "arm64/uhdr.dll"
+    }
+  },
+  "builds": {
+    "x64": {
+      "compiler": "MSVC 14.44 x64",
+      "configuration": "Release /MD",
+      "jpeg": "static, SIMD, no TurboJPEG API",
+      "metadata": [
+        "XMP",
+        "ISO 21496-1"
+      ],
+      "examples": false,
+      "heif": false,
+      "script": "tools/Build-UltraHdr.ps1"
+    },
+    "arm64": {
+      "heif": false,
+      "script": "tools/Build-UltraHdr.ps1",
+      "jpeg": "static, SIMD, no TurboJPEG API",
+      "compiler": "MSVC arm64",
+      "metadata": [
+        "XMP",
+        "ISO 21496-1"
+      ],
+      "configuration": "Release /MD",
+      "examples": false
+    }
+  }
 }

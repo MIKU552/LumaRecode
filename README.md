@@ -24,12 +24,20 @@
 
 ## 快速开始
 
-1. 从 [Releases](https://github.com/MIKU552/LumaRecode/releases) 下载 **LumaRecode.exe**。程序内置所需运行时，可直接运行。
+1. 从 [Releases](https://github.com/MIKU552/LumaRecode/releases) 下载适合设备的 EXE，版本说明见下表。程序内置所需运行时。
 2. 准备 Windows 版 [FFmpeg](https://ffmpeg.org/download.html)，包含 `ffmpeg.exe` 和 `ffprobe.exe`。首次运行会从 `PATH` 查找，也可在右上角齿轮中指定路径。
 3. 拖入视频或点击“选择视频”，确认输出动态范围、编码预设和色彩转换。
 4. 选择保存位置，点击“开始转换”。
 
 “快速分享”使用 Intel QSV；“软件归档”使用 CPU 编码。
+
+| 下载文件 | 平台与要求 |
+| --- | --- |
+| `LumaRecode.exe` | Native x64，按构建电脑的 CPU 指令集优化；所需指令集见对应发布说明 |
+| `LumaRecode-APX.exe` | x64，CPU 与 Windows 均需支持 Intel APX |
+| `LumaRecode-ARM64.exe` | Windows ARM64，原生 ARM64 应用与图片编解码库 |
+
+ARM64 默认使用软件归档。FFmpeg 的编码速度由外部 FFmpeg、硬件与所选预设决定。
 
 Dolby Vision / HDR10+ 素材默认使用软件 HEVC 保留动态元数据；“标准 HDR”可用于硬件快速分享。Dolby Vision 支持单层 Profile 5、8.1、8.4、10.1 和 10.4。ProRes RAW 在确认 FFmpeg 解码兼容性后，根据相机白平衡、色彩矩阵和增益显影，默认输出 HLG。格式与处理流程见[色彩转换](docs/color-conversion.md)。
 
@@ -71,7 +79,7 @@ SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线�
 
 ## 运行要求
 
-- Windows 11 x64。
+- Windows 11 x64 或 ARM64，满足所选版本的指令集要求。
 - 用户提供的 FFmpeg / ffprobe，包含任务所需的编码器和滤镜。
 - 快速分享需要相应 Intel QSV 支持。
 - Log 转换需要 `zscale`、`lut3d`；HDR / Log 转 SDR 还需要 `libplacebo` 和 Vulkan。
@@ -98,21 +106,26 @@ SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线�
 
 ## 从源码构建
 
-需要 .NET SDK 11.0.100、PowerShell 7，以及支持 Native AOT 的 Visual Studio C++ 工具链。
+需要 .NET SDK 11.0.100、PowerShell 7，以及 Visual Studio C++ x64 / ARM64 构建工具。
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
 ./build.ps1
+./build.ps1 -Target Apx
+./build.ps1 -Target Arm64
 ```
 
-产物为 `dist/SelfContained/LumaRecode.exe`。构建方式与依赖版本见[开发文档](docs/dependencies.md)，检查命令见 [QA 指南](qa/README.md)。
+默认构建 Native x64，产物为 `dist/SelfContained/LumaRecode.exe`。APX 与 ARM64 分别输出到 `dist/SelfContained-Apx/` 和 `dist/SelfContained-Arm64/`。
+
+使用 Visual Studio 2026 18.12 或更新版本打开 `LumaRecode.sln`。以 `App` 为启动项目，Debug 配置可直接调试；构建 `Release | x64`、`Release-APX | x64` 或 `Release | ARM64` 时，`Packaging` 项目会自动生成对应的单文件 EXE。安装与配置见[开发文档](docs/dependencies.md)，检查命令见 [QA 指南](qa/README.md)。
 
 ## 项目结构
 
 ```text
 App/       WinUI 3 界面、主题、本地化和任务交互
 Bundle/    单文件打包入口
+Packaging/ Visual Studio 构建与发布入口
 Core/      素材探测、格式规则、FFmpeg 调用与命令行
 Assets/    LUT、编码预设与资源来源记录
 Brand/     图标源文件与生成工具

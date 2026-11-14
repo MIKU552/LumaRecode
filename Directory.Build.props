@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <LumaRecodeArchitecture Condition="'$(RuntimeIdentifier)' == 'win-arm64' or '$(Platform)' == 'ARM64'">arm64</LumaRecodeArchitecture>
+    <LumaRecodeArchitecture Condition="'$(LumaRecodeArchitecture)' == ''">x64</LumaRecodeArchitecture>
+    <!-- Each publication owns its restore graph, generated code and native objects. -->
+    <BaseIntermediateOutputPath Condition="'$(LumaBuildTarget)' != ''">obj/$(LumaBuildTarget)/</BaseIntermediateOutputPath>
+    <BaseOutputPath Condition="'$(LumaBuildTarget)' != ''">bin/$(LumaBuildTarget)/</BaseOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/obj/**;**/bin/**</DefaultItemExcludes>
+    <LumaLicenseDirectory Condition="'$(LumaLicenseDirectory)' == ''">$(MSBuildThisFileDirectory)licenses</LumaLicenseDirectory>
+    <LumaPayloadDirectory Condition="'$(LumaPayloadDirectory)' == ''">$(MSBuildThisFileDirectory)dist/NativeAot/Native</LumaPayloadDirectory>
+  </PropertyGroup>
+</Project>

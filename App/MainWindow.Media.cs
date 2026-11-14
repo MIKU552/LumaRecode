@@ -152,12 +152,12 @@ public sealed partial class MainWindow
             }
         }
     }
-    // A new source starts from share defaults; subsequent user selections are
+    // A new source starts from platform defaults; subsequent user selections are
     // retained by Refresh as long as the source and encoder can support them.
     private void ResetSourceOptions()
     {
         Select(InputKind, "auto");
-        Select(Purpose, MediaFlag("dynamic_hdr") ? "archive" : "share");
+        Select(Purpose, MediaFlag("dynamic_hdr") ? "archive" : PlatformDefaults.Purpose);
         Select(DynamicMetadata, "preserve");
         Select(Codec, "hevc");
         Select(Variant, "standard");

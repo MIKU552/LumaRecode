@@ -24,12 +24,20 @@ Herramienta de transcodificación de vídeo y conversión de color para Windows 
 
 ## Inicio rápido
 
-1. Descarga **LumaRecode.exe** desde [Releases](https://github.com/MIKU552/LumaRecode/releases). Los entornos de ejecución necesarios están incluidos.
+1. Descarga el EXE para tu equipo desde [Releases](https://github.com/MIKU552/LumaRecode/releases). Consulta las variantes en la tabla siguiente. Los entornos de ejecución necesarios están incluidos.
 2. Prepara una compilación de [FFmpeg para Windows](https://ffmpeg.org/download.html) con `ffmpeg.exe` y `ffprobe.exe`. LumaRecode busca en `PATH` al iniciarse; también puedes indicar las rutas con el botón de engranaje.
 3. Arrastra un vídeo o pulsa **Elegir vídeo** y comprueba el rango dinámico, el preajuste y la conversión de color.
 4. Elige la ruta de salida y pulsa **Iniciar conversión**.
 
 Compartir rápido usa Intel QSV. Archivo por software usa la CPU.
+
+| Archivo | Plataforma y requisitos |
+| --- | --- |
+| `LumaRecode.exe` | Native x64, optimizado para la CPU del equipo de compilación; las instrucciones necesarias figuran en las notas de la versión |
+| `LumaRecode-APX.exe` | x64 con compatibilidad Intel APX tanto en la CPU como en Windows |
+| `LumaRecode-ARM64.exe` | Windows ARM64, con aplicación y códec de imagen nativos ARM64 |
+
+ARM64 usa Archivo por software de forma predeterminada. La velocidad de codificación depende del FFmpeg externo, del hardware y del preajuste.
 
 Las fuentes Dolby Vision / HDR10+ usan HEVC por software para conservar los metadatos dinámicos de forma predeterminada. Elige HDR estándar para compartir con codificación por hardware. ProRes RAW comprueba la compatibilidad de FFmpeg y se revela con el balance de blancos, la matriz de color y la ganancia de cámara. Consulta los formatos compatibles en [Conversión de color](docs/color-conversion.md).
 
@@ -64,7 +72,7 @@ El vídeo se vuelve a codificar con el preajuste elegido; el audio puede copiars
 
 ## Requisitos
 
-- Windows 11 x64.
+- Windows 11 x64 o ARM64, con las instrucciones requeridas por la variante elegida.
 - FFmpeg / ffprobe con los codificadores y filtros necesarios, aportados por el usuario.
 - Compatibilidad con Intel QSV para Compartir rápido.
 - `zscale` y `lut3d` para la conversión de Log; `libplacebo` y Vulkan para HDR / Log a SDR.
@@ -91,21 +99,26 @@ Antes del primer uso desatendido, consulta las condiciones de los componentes co
 
 ## Compilar desde el código fuente
 
-Se necesitan .NET SDK 11.0.100, PowerShell 7 y las herramientas de Visual Studio C++ compatibles con Native AOT.
+Se necesitan .NET SDK 11.0.100, PowerShell 7 y las herramientas de compilación Visual Studio C++ x64 / ARM64.
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
 ./build.ps1
+./build.ps1 -Target Apx
+./build.ps1 -Target Arm64
 ```
 
-El resultado es `dist/SelfContained/LumaRecode.exe`. Consulta las opciones de compilación y versiones de dependencias en la [documentación de desarrollo y distribución](docs/dependencies.md), y los comandos de comprobación en la [guía de QA](qa/README.md).
+La compilación Native x64 predeterminada genera `dist/SelfContained/LumaRecode.exe`. APX y ARM64 usan `dist/SelfContained-Apx/` y `dist/SelfContained-Arm64/`.
+
+Abre `LumaRecode.sln` con Visual Studio 2026 18.12 o posterior. Selecciona `App` como proyecto de inicio y Debug para depurar. Al compilar `Release | x64`, `Release-APX | x64` o `Release | ARM64`, el proyecto `Packaging` genera el EXE correspondiente. Consulta la [configuración de desarrollo](docs/dependencies.md) y la [guía de QA](qa/README.md).
 
 ## Estructura del proyecto
 
 ```text
 App/       Interfaz WinUI 3, apariencia, idiomas y gestión de tareas
 Bundle/    Empaquetado en un único archivo
+Packaging/ Compilación y distribución desde Visual Studio
 Core/      Análisis del material, reglas de formato, FFmpeg y CLI
 Assets/    LUT, preajustes de codificación y registros de origen
 Brand/     Archivos originales del icono y herramientas de generación

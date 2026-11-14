@@ -24,6 +24,7 @@ public sealed partial class MainWindow
         Choices(BitDepth, ("8", L.T("8 位")), ("10", L.T("10 位")), ("12", L.T("12 位")));
         Choices(ColorRange, ("source", L.T("保持原范围")), ("limited", L.T("Limited · 有限范围")), ("full", L.T("Full · 全范围")));
         Choices(Audio, ("copy", L.T("复制原音轨")), ("aac", "AAC · 256 kbps"), ("opus", "Opus · 192 kbps"), ("flac", L.T("FLAC · 无损")));
+        Select(Purpose, PlatformDefaults.Purpose);
         ApplyPurposeDefaults();
     }
     private void ApplyDefaultAudio()

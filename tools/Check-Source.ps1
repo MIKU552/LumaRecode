@@ -24,4 +24,5 @@ try {
     Invoke-Check python @('tools/Update-ViewText.py','--check')
     Invoke-Check python @('tools/generate_hlg_luts.py','--check')
     Invoke-Check python @('qa/DocumentationChecks/check_docs.py')
+    Invoke-Check python @('qa/BuildChecks/check_build.py')
 } finally { Pop-Location }

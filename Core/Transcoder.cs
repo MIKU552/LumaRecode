@@ -287,7 +287,7 @@ public sealed partial class Transcoder
         {
             // FFmpeg's shared ProRes AVX2 coefficient permutation is incompatible
             // with the RAW Bayer C IDCT on affected builds (upstream #25461).
-            args.AddRange(["-threads:v", "2", "-filter_threads", "2", "-cpuflags", "-avx2", "-apply_cropping", "0", "-noautorotate"]);
+            args.AddRange(["-threads:v", "2", "-filter_threads", "2", .. PlatformDefaults.RawCpuArguments, "-apply_cropping", "0", "-noautorotate"]);
         }
         if (window is { SeekFrame: > 0 })
         {

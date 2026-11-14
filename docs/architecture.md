@@ -2,13 +2,14 @@
 
 ## 模块
 
-`LumaRecode.slnx` 包含应用、核心、单文件入口与 C# 检查项目。发布使用仓库根目录的 `build.ps1`。
+`LumaRecode.sln` 与 `LumaRecode.slnx` 包含应用、核心、单文件入口、打包入口与 C# 检查项目。Visual Studio 的发布配置通过 `Packaging` 调用仓库根目录的 `build.ps1`。
 
 | 目录 | 职责 |
 | --- | --- |
 | `App/` | WinUI 视图、设置、本地化、通知及 GUI / CLI 启动选择 |
 | `Core/` | 素材探测、输出规则、命令规划、视频与图片导出、CLI |
 | `Bundle/` | 提取并启动 AOT 应用，传递标准句柄与退出码 |
+| `Packaging/` | 将 Visual Studio 配置映射到完整的单文件构建流程 |
 | `Assets/` | LUT、视频与动态照片预设、资源来源清单 |
 | `qa/` | C# 边界检查、Python 集成检查、PowerShell 采样 |
 | `tools/` | 构建辅助、许可收集、资源生成与源代码检查 |
@@ -31,6 +32,12 @@ MediaProbe → OutputPolicy / Transcoder.Plan → 要求检查 → FFmpeg
 编码写入输出目录下独立的任务临时目录。完成后检查像素格式、色彩标签、音轨及动态 HDR；逐帧任务还检查时间轴。只有校验通过才替换目标文件。取消或失败会先停止并等待子进程，再清理临时目录。
 
 动态 HDR 保留、标准色彩转换和 RAW 显影由各自的规则决定处理路径。`Hdr10PlusBitstream` 优先读取 HEVC 压缩包中的 SEI，时间轴存在歧义时交由解码帧元数据处理。`RawDevelopment` 将逐帧相机参数写入 FFmpeg 校准命令。
+
+`PlatformDefaults` 统一 GUI 与 CLI 的架构默认值：ARM64 默认软件归档，并省去 x86 专用 RAW 解码参数。Ultra HDR 的 P/Invoke 接口在各架构保持一致，发布过程选择对应的原生 DLL。
+
+## 构建与打包
+
+`build.ps1 -Target` 选择 Native、Apx 或 Arm64。`Directory.Build.props` 按目标隔离中间文件，App 和 Bundle 按架构选择 NuGet 锁文件。App 先发布 AOT 载荷，Bundle 随后将其打包为单个 EXE；APX 入口在运行载荷前检查 Windows 报告的 APX 能力。发布选项与 Visual Studio 配置见[开发与分发](dependencies.md)。
 
 ## 线程与生命周期
 
@@ -65,4 +72,6 @@ The WinUI frontend and CLI share the C# conversion core. `MediaProbe` captures s
 
 GUI events pass through a bounded, ordered channel and return to the caller's synchronization context. Source generations reject stale probe results. The preview scheduler runs one renderer and replaces pending work with the newest frame. Its LRU holds at most 12 PNGs and 8 MiB; source changes and hidden previews release the cache. Viewport rendering uses a 1024-pixel SDR pipe, while exports retain full-resolution processing.
 
-Use `LumaRecode.slnx` for navigation, `build.ps1` for publishing, and `tools/Check-Source.ps1` for source checks. Follow `.editorconfig`, keep media numbers culture-independent, document ownership and format contracts, and update provenance when changing shipped resources. Build outputs and test footage stay outside tracked source.
+Open `LumaRecode.sln` in Visual Studio. Its `Packaging` project invokes `build.ps1` for Native, APX or ARM64, with isolated intermediate files, payloads, licenses and architecture-specific lock files. The APX launcher checks OS capability before loading the AOT payload. ARM64 defaults to software encoding and uses an ARM64 Ultra HDR library.
+
+Run `tools/Check-Source.ps1` for source checks. Follow `.editorconfig`, keep media numbers culture-independent, document ownership and format contracts, and update provenance when changing shipped resources. Build outputs and test footage stay outside tracked source.

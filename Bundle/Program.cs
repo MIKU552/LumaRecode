@@ -13,6 +13,14 @@ internal static class Program
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int MessageBoxW(IntPtr owner, string message, string title, uint type);
 
+#if LUMARECODE_APX
+    // Windows reports CPU support together with OS enablement. The generic
+    // launcher checks this before loading any APX-compiled application code.
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsProcessorFeaturePresent(uint feature);
+#endif
+
     [STAThread]
     public static int Main(string[] args)
     {
@@ -24,6 +32,13 @@ internal static class Program
 
         try
         {
+#if LUMARECODE_APX
+            const uint apxFeature = 90; // PF_APX_F_INSTRUCTIONS_AVAILABLE, Windows SDK winnt.h.
+            if (!IsProcessorFeaturePresent(apxFeature))
+            {
+                throw new InvalidOperationException("This APX build requires an APX-capable CPU and Windows with APX enabled. Use the Native build on this PC.\nAPX 版本需要支持并启用 APX 的 CPU 和 Windows，请使用适合本机的 Native 版本。");
+            }
+#endif
             var executable = Path.Combine(AppContext.BaseDirectory, "Application", "LumaRecode.exe");
             if (!File.Exists(executable))
             {

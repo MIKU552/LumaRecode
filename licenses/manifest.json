@@ -1,5 +1,6 @@
 {
-  "app_version": "4.3.1",
+  "app_version": "4.4.0",
+  "architecture": "x64",
   "backend": "native-dotnet",
   "distribution_basis": [
     "Windows App SDK production package terms, section 3, for files placed with the application by NuGet",
@@ -116,7 +117,8 @@
       "architecture": "windows-x64",
       "bytes": 1088000,
       "file": "uhdr.dll",
-      "sha256": "1cdab3db0d7bae28e98ebc056f5e542b373dc6e7c4709b602aefc742e4d39528"
+      "sha256": "1cdab3db0d7bae28e98ebc056f5e542b373dc6e7c4709b602aefc742e4d39528",
+      "source_file": "App/Native/x64/uhdr.dll"
     },
     "build": {
       "compiler": "MSVC 14.44 x64",
@@ -187,8 +189,7 @@
     "notices": [
       "This product includes Gain Map technology under license by Adobe.",
       "This software is based in part on the work of the Independent JPEG Group."
-    ],
-    "schema_version": 1
+    ]
   },
   "packages": [
     {

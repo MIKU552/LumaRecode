@@ -8,7 +8,18 @@
 ./tools/Check-Source.ps1
 ```
 
-依次检查 C# 格式、资源、序列化、核心边界、预览调度、进程管道与文档链接。此命令使用独立的测试子进程，无需样片或 GPU。
+依次检查 C# 格式、资源、序列化、核心边界、预览调度、进程管道、文档链接与构建目标。此命令使用独立的测试子进程，无需样片或 GPU。
+
+## 构建与架构
+
+```powershell
+python qa/BuildChecks/check_build.py
+python qa/BuildChecks/check_build.py --artifacts
+```
+
+基础检查验证 MSBuild 的目标映射、中间目录隔离、锁文件选择及两种架构的原生库哈希。`--artifacts` 在三个版本构建后运行，另检查 AOT 指令集、EXE / DLL 的 PE 架构、分发许可清单、Native CLI 与 APX 启动检查。在支持 APX 的设备上，该检查会运行 APX CLI；不支持时验证明确的错误响应。
+
+ARM64 完整运行检查需要 ARM64 Windows 设备。APX 转码检查需要支持 APX 的 CPU 与 Windows。
 
 ## 资源与序列化
 

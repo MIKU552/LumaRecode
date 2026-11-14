@@ -2,7 +2,8 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net11.0-windows10.0.26100.0</TargetFramework>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifier>win-$(LumaRecodeArchitecture)</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
@@ -12,20 +13,22 @@
     <AssemblyName>LumaRecode</AssemblyName>
     <Product>映码 · LumaRecode</Product>
     <Title>映码 · LumaRecode</Title>
-    <Version>4.3.1</Version>
+    <Version>4.4.0</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <NuGetLockFilePath Condition="'$(LumaRecodeArchitecture)' == 'arm64'">packages.arm64.lock.json</NuGetLockFilePath>
+    <DefineConstants Condition="'$(LumaBuildTarget)' == 'Apx'">$(DefineConstants);LUMARECODE_APX</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../App/StartupMode.cs" Link="StartupMode.cs" />
     <Compile Include="../App/ConsoleConnection.cs" Link="ConsoleConnection.cs" />
     <Compile Include="../App/CliError.cs" Link="CliError.cs" />
-    <Content Include="../dist/NativeAot/**/*" Exclude="../dist/NativeAot/**/*.pdb"
+    <Content Include="$(LumaPayloadDirectory)/**/*" Exclude="$(LumaPayloadDirectory)/**/*.pdb"
              Link="Application/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <!-- IDE and formatting workspaces can load a fresh checkout before publishing. -->
   <Target Name="RequireNativePayload" BeforeTargets="PrepareForBuild" Condition="'$(DesignTimeBuild)' != 'true'">
-    <Error Condition="!Exists('../dist/NativeAot/LumaRecode.exe')" Text="Build the Native AOT application before bundling. Use build.ps1." />
+    <Error Condition="!Exists('$(LumaPayloadDirectory)/LumaRecode.exe')" Text="Build the Native AOT application before bundling. Use build.ps1 or the Packaging project." />
   </Target>
 </Project>
