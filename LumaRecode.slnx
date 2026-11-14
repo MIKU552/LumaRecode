@@ -2,6 +2,7 @@
   <Configurations>
     <BuildType Name="Debug" />
     <BuildType Name="Release" />
+    <BuildType Name="Release-AOT" />
     <BuildType Name="Release-APX" />
     <Platform Name="x64" />
     <Platform Name="ARM64" />
@@ -21,6 +22,15 @@
     <Platform Solution="Release|Native" Project="x64" />
     <Build Solution="*|Native" Project="false" />
     <Build Solution="Release-APX|ARM64" Project="false" />
+    <BuildType Solution="Release-AOT|Native" Project="Release" />
+    <Platform Solution="Release-AOT|Native" Project="x64" />
+    <Build Solution="Release-AOT|Native" Project="false" />
+    <BuildType Solution="Release-AOT|x64" Project="Release" />
+    <Platform Solution="Release-AOT|x64" Project="x64" />
+    <Build Solution="Release-AOT|x64" Project="false" />
+    <BuildType Solution="Release-AOT|ARM64" Project="Release" />
+    <Platform Solution="Release-AOT|ARM64" Project="ARM64" />
+    <Build Solution="Release-AOT|ARM64" Project="false" />
   </Project>
   <Project Path="Bundle/LumaRecode.Bundle.csproj">
     <BuildType Solution="Debug|Native" Project="?" />
@@ -35,6 +45,15 @@
     <Platform Solution="Release|ARM64" Project="ARM64" />
     <Platform Solution="Release|Native" Project="x64" />
     <Build Project="false" />
+    <BuildType Solution="Release-AOT|Native" Project="Release" />
+    <Platform Solution="Release-AOT|Native" Project="x64" />
+    <Build Solution="Release-AOT|Native" Project="false" />
+    <BuildType Solution="Release-AOT|x64" Project="Release" />
+    <Platform Solution="Release-AOT|x64" Project="x64" />
+    <Build Solution="Release-AOT|x64" Project="false" />
+    <BuildType Solution="Release-AOT|ARM64" Project="Release" />
+    <Platform Solution="Release-AOT|ARM64" Project="ARM64" />
+    <Build Solution="Release-AOT|ARM64" Project="false" />
   </Project>
   <Project Path="Core/LumaRecode.Core.csproj">
     <BuildType Solution="Debug|Native" Project="?" />
@@ -46,6 +65,12 @@
     <Platform Solution="Release-APX|Native" Project="?" />
     <Build Solution="*|Native" Project="false" />
     <Build Solution="Release-APX|ARM64" Project="false" />
+    <BuildType Solution="Release-AOT|Native" Project="Release" />
+    <Build Solution="Release-AOT|Native" Project="false" />
+    <BuildType Solution="Release-AOT|x64" Project="Release" />
+    <Build Solution="Release-AOT|x64" Project="false" />
+    <BuildType Solution="Release-AOT|ARM64" Project="Release" />
+    <Build Solution="Release-AOT|ARM64" Project="false" />
   </Project>
   <Project Path="Packaging/LumaRecode.Packaging.csproj">
     <BuildType Solution="Debug|Native" Project="?" />
@@ -61,6 +86,12 @@
     <Build Solution="Debug|*" Project="false" />
     <Build Solution="Release-APX|ARM64" Project="false" />
     <Build Solution="Release-APX|Native" Project="false" />
+    <BuildType Solution="Release-AOT|Native" Project="Release-AOT" />
+    <Platform Solution="Release-AOT|Native" Project="Native" />
+    <BuildType Solution="Release-AOT|x64" Project="Release-AOT" />
+    <Platform Solution="Release-AOT|x64" Project="x64" />
+    <BuildType Solution="Release-AOT|ARM64" Project="Release-AOT" />
+    <Platform Solution="Release-AOT|ARM64" Project="ARM64" />
   </Project>
   <Project Path="qa/BackendChecks/BackendChecks.csproj">
     <BuildType Solution="Debug|Native" Project="?" />
@@ -71,6 +102,12 @@
     <Platform Solution="Release-APX|ARM64" Project="?" />
     <Platform Solution="Release-APX|Native" Project="?" />
     <Build Project="false" />
+    <BuildType Solution="Release-AOT|Native" Project="Release" />
+    <Build Solution="Release-AOT|Native" Project="false" />
+    <BuildType Solution="Release-AOT|x64" Project="Release" />
+    <Build Solution="Release-AOT|x64" Project="false" />
+    <BuildType Solution="Release-AOT|ARM64" Project="Release" />
+    <Build Solution="Release-AOT|ARM64" Project="false" />
   </Project>
   <Project Path="qa/LanguageChecks/LanguageChecks.csproj">
     <BuildType Solution="Debug|Native" Project="?" />
@@ -81,6 +118,12 @@
     <Platform Solution="Release-APX|ARM64" Project="?" />
     <Platform Solution="Release-APX|Native" Project="?" />
     <Build Project="false" />
+    <BuildType Solution="Release-AOT|Native" Project="Release" />
+    <Build Solution="Release-AOT|Native" Project="false" />
+    <BuildType Solution="Release-AOT|x64" Project="Release" />
+    <Build Solution="Release-AOT|x64" Project="false" />
+    <BuildType Solution="Release-AOT|ARM64" Project="Release" />
+    <Build Solution="Release-AOT|ARM64" Project="false" />
   </Project>
   <Project Path="qa/PerformanceChecks/PerformanceChecks.csproj">
     <BuildType Solution="Debug|Native" Project="?" />
@@ -91,6 +134,12 @@
     <Platform Solution="Release-APX|ARM64" Project="?" />
     <Platform Solution="Release-APX|Native" Project="?" />
     <Build Project="false" />
+    <BuildType Solution="Release-AOT|Native" Project="Release" />
+    <Build Solution="Release-AOT|Native" Project="false" />
+    <BuildType Solution="Release-AOT|x64" Project="Release" />
+    <Build Solution="Release-AOT|x64" Project="false" />
+    <BuildType Solution="Release-AOT|ARM64" Project="Release" />
+    <Build Solution="Release-AOT|ARM64" Project="false" />
   </Project>
   <Project Path="qa/SerializationChecks/SerializationChecks.csproj">
     <BuildType Solution="Debug|Native" Project="?" />
@@ -101,6 +150,12 @@
     <Platform Solution="Release-APX|ARM64" Project="?" />
     <Platform Solution="Release-APX|Native" Project="?" />
     <Build Project="false" />
+    <BuildType Solution="Release-AOT|Native" Project="Release" />
+    <Build Solution="Release-AOT|Native" Project="false" />
+    <BuildType Solution="Release-AOT|x64" Project="Release" />
+    <Build Solution="Release-AOT|x64" Project="false" />
+    <BuildType Solution="Release-AOT|ARM64" Project="Release" />
+    <Build Solution="Release-AOT|ARM64" Project="false" />
   </Project>
   <Properties Name="Visual Studio">
     <Property Name="MinimumVersion" Value="18.12.0.0" />

@@ -7,5 +7,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../App/StartupMode.cs" Link="StartupMode.cs" />
+    <Compile Include="../../App/JitProcessHost.cs" Link="JitProcessHost.cs" />
+    <Compile Include="../../App/ConsoleConnection.cs" Link="ConsoleConnection.cs" />
   </ItemGroup>
 </Project>

@@ -1,10 +1,29 @@
 // Verify persisted settings and public startup-error JSON using the actual
 // source-generated contexts. All migration writes stay in an isolated temp root.
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using VideoConverter;
 
 int count = 0;
 void Check(bool condition, string message) { if (!condition) { throw new Exception(message); } count++; }
+Check(JitProcessHost.NeedsApxRestart(Architecture.X64, true, null, null), "Capable x64 needs an APX opt-in before CLR startup");
+Check(!JitProcessHost.NeedsApxRestart(Architecture.X64, false, null, null), "Unsupported x64 must not restart");
+Check(!JitProcessHost.NeedsApxRestart(Architecture.Arm64, true, null, null), "ARM64 must use its own runtime ISA selection");
+foreach (var value in new[] { "0", "1", "", "invalid" })
+{
+    Check(!JitProcessHost.NeedsApxRestart(Architecture.X64, true, value, null), "Respect explicit DOTNET APX settings and prevent restart loops");
+    Check(!JitProcessHost.NeedsApxRestart(Architecture.X64, true, null, value), "Respect legacy COMPlus APX settings");
+}
+var apxStart = JitProcessHost.StartInfo("C:/Program Files/LumaRecode.exe", "", ["probe", "C:/视频 & clips/test.mp4", "--json"], true, true);
+Check(apxStart.ArgumentList.SequenceEqual(new[] { "probe", "C:/视频 & clips/test.mp4", "--json" }), "APX startup must preserve argument boundaries");
+Check(!apxStart.UseShellExecute && apxStart.Environment["DOTNET_EnableAPX"] == "1", "APX opt-in belongs to the child environment");
+var managedStart = JitProcessHost.StartInfo("C:/dotnet/dotnet.exe", "C:/app/LumaRecode.dll", ["--version"], false, true);
+Check(managedStart.ArgumentList.SequenceEqual(new[] { "C:/app/LumaRecode.dll", "--version" }), "Managed DLL startup must preserve its entry assembly");
+Check(apxStart.Environment["LUMARECODE_CLI_WORKER"] == "1", "CLI child must not launch another worker");
+Check(JitProcessHost.NeedsLaunch(true, false, false), "JIT CLI needs a worker to preserve cancellation cleanup");
+Check(!JitProcessHost.NeedsLaunch(true, true, false), "CLI worker must run the command directly");
+Check(!JitProcessHost.NeedsLaunch(false, false, false), "Normal GUI must run directly");
+Check(JitProcessHost.NeedsLaunch(false, false, true), "APX GUI requires a configured CLR startup");
 const string oldSettings = """
 {"Theme":"dark","Language":"zh","Backdrop":"mica","SystemAccent":false,"CustomColor":"#107C10","Ffmpeg":"C:\\视频 & tools\\ffmpeg.exe","Ffprobe":"D:\\ffprobe.exe","Python":"","AcceptedThirdPartyTerms":"windows-runtime-terms-2026-11-12-mit"}
 """;

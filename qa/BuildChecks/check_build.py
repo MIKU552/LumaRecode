@@ -1,12 +1,14 @@
-"""Check MSBuild target isolation, native codec provenance and published architectures."""
+"""Check compilation modes, native provenance and the contents of single-file releases."""
 
 import argparse
 import ctypes
 import hashlib
 import json
+import mmap
 import struct
 import subprocess
 import xml.etree.ElementTree as ET
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -18,16 +20,16 @@ TARGETS = {
 
 
 def check_selection():
-    # Exercise the real PowerShell resolver for each host/target combination,
-    # including an ARM host that reports an unrelated x86 feature flag.
     script = r"""
     . ./tools/BuildTarget.ps1
-    $cases = foreach ($architecture in @('X64','Arm64')) {
-        foreach ($apx in @($false,$true)) {
-            foreach ($target in @('Native','X64','Apx','Arm64')) {
-                [pscustomobject]@{
-                    HostArchitecture=$architecture;ApxAvailable=$apx
-                    Plan=(Resolve-LumaBuildTarget -Target $target -SystemArchitecture $architecture -ApxAvailable $apx)
+    $cases = foreach ($compilation in @('Jit','Aot')) {
+        foreach ($architecture in @('X64','Arm64')) {
+            foreach ($apx in @($false,$true)) {
+                foreach ($target in @('Native','X64','Apx','Arm64')) {
+                    $plan = $null; $errorText = $null
+                    try { $plan = Resolve-LumaBuildTarget -Target $target -Compilation $compilation -SystemArchitecture $architecture -ApxAvailable $apx }
+                    catch { $errorText = $_.Exception.Message }
+                    [pscustomobject]@{Compilation=$compilation;HostArchitecture=$architecture;ApxAvailable=$apx;Target=$target;Plan=$plan;Error=$errorText}
                 }
             }
         }
@@ -44,8 +46,7 @@ def check_selection():
         timeout=30,
     )
     data = json.loads(result.stdout)
-    native_machine = ctypes.c_ushort()
-    process_machine = ctypes.c_ushort()
+    native_machine, process_machine = ctypes.c_ushort(), ctypes.c_ushort()
     wow64 = ctypes.windll.kernel32.IsWow64Process2
     wow64.argtypes = [
         ctypes.c_void_p,
@@ -59,17 +60,29 @@ def check_selection():
     apx_available = bool(ctypes.windll.kernel32.IsProcessorFeaturePresent(90))
     assert data["Host"] == {"Architecture": architecture, "ApxAvailable": apx_available}
     for case in data["Cases"]:
-        plan = case["Plan"]
-        host = case["HostArchitecture"]
+        jit, requested = case["Compilation"] == "Jit", case["Target"]
+        if jit and requested == "Apx":
+            assert case["Plan"] is None and "-Compilation Aot" in case["Error"]
+            continue
+        assert case["Error"] is None
+        plan, host = case["Plan"], case["HostArchitecture"]
         automatic = (
-            "Arm64" if host == "Arm64" else "Apx" if case["ApxAvailable"] else "X64"
+            "Arm64"
+            if host == "Arm64"
+            else "Apx"
+            if not jit and case["ApxAvailable"]
+            else "X64"
         )
-        requested = plan["RequestedTarget"]
         expected = automatic if requested == "Native" else requested
         assert plan["ResolvedTarget"] == expected
         assert plan["Architecture"] == ("arm64" if expected == "Arm64" else "x64")
-        isa = "native" if requested == "Native" else TARGETS[expected][2]
-        assert plan["InstructionSet"] == isa
+        assert plan["InstructionSet"] == (
+            "jit"
+            if jit
+            else "native"
+            if requested == "Native"
+            else TARGETS[expected][2]
+        )
     return architecture, len(data["Cases"]) + 1
 
 
@@ -92,14 +105,16 @@ def evaluate(project, properties, names):
     return json.loads(result.stdout)["Properties"]
 
 
+def pe_machine(data):
+    assert data[:2] == b"MZ"
+    offset = struct.unpack_from("<I", data, 0x3C)[0]
+    assert data[offset : offset + 4] == b"PE\x00\x00"
+    return struct.unpack_from("<H", data, offset + 4)[0]
+
+
 def machine(path):
     with path.open("rb") as stream:
-        assert stream.read(2) == b"MZ", path
-        stream.seek(0x3C)
-        offset = struct.unpack("<I", stream.read(4))[0]
-        stream.seek(offset)
-        assert stream.read(4) == b"PE\x00\x00", path
-        return struct.unpack("<H", stream.read(2))[0]
+        return pe_machine(stream.read(65536))
 
 
 def digest(path):
@@ -107,8 +122,108 @@ def digest(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def check(artifacts):
+def read_string(stream):
+    length, shift = 0, 0
+    while True:
+        value = stream.read(1)[0]
+        length |= (value & 127) << shift
+        if value < 128:
+            break
+        shift += 7
+        assert shift <= 28
+    assert length <= 4096
+    return stream.read(length).decode("utf-8")
+
+
+def bundle_entries(path):
+    # The SDK's v6 bundle manifest records offsets and optional raw-deflate sizes.
+    # Inspect both architectures without executing an ARM64 binary on x64 Windows.
+    signature = bytes.fromhex(
+        "8b1202b96a612038727b930214d7a03213f5b9e6efae3318ee3b2dce24b36aae"
+    )
+    with path.open("rb") as stream:
+        with mmap.mmap(stream.fileno(), 0, access=mmap.ACCESS_READ) as mapped:
+            index = mapped.find(signature)
+            assert index >= 8
+            header = struct.unpack_from("<q", mapped, index - 8)[0]
+        stream.seek(header)
+        major, minor, count = struct.unpack("<IIi", stream.read(12))
+        assert major == 6 and minor == 0 and 0 < count < 10000
+        read_string(stream)
+        deps_offset, deps_size, config_offset, config_size, flags = struct.unpack(
+            "<qqqqQ", stream.read(40)
+        )
+        assert (
+            deps_offset > 0 and deps_size > 0 and config_offset > 0 and config_size > 0
+        )
+        assert flags & 1  # Disk resources required by WinUI remain extracted.
+        entries = {}
+        for _ in range(count):
+            offset, size, compressed, kind = struct.unpack("<qqqB", stream.read(25))
+            name = read_string(stream)
+            assert name not in entries and 0 <= offset < path.stat().st_size
+            entries[name] = (offset, size, compressed, kind)
+        return entries
+
+
+def bundled_bytes(path, record):
+    offset, size, compressed, _ = record
+    with path.open("rb") as stream:
+        stream.seek(offset)
+        data = stream.read(compressed or size)
+    if compressed:
+        data = zlib.decompress(data, -15)
+    assert len(data) == size
+    return data
+
+
+def check_jit_bundle(path, architecture, version):
+    entries = bundle_entries(path)
+    assert {
+        "LumaRecode.dll",
+        "LumaRecode.Core.dll",
+        "System.Private.CoreLib.dll",
+        "LumaRecode.runtimeconfig.json",
+        "uhdr.dll",
+        "licenses/manifest.json",
+    } <= entries.keys()
+    assert not any(name.startswith("Application/") for name in entries)
+    assert not any(name.startswith("Native/") for name in entries)
+    expected_machine = 0xAA64 if architecture == "arm64" else 0x8664
+    count = 2
+    for name, record in entries.items():
+        if record[3] == 2 and name.endswith((".dll", ".exe")):
+            assert pe_machine(bundled_bytes(path, record)) == expected_machine, name
+            count += 1
+    manifest = json.loads(bundled_bytes(path, entries["licenses/manifest.json"]))
+    assert (
+        manifest["architecture"] == architecture and manifest["app_version"] == version
+    )
+    assert (
+        hashlib.sha256(bundled_bytes(path, entries["uhdr.dll"])).hexdigest()
+        == manifest["native_codecs"]["binary"]["sha256"]
+    )
+    assert manifest["native_codecs"]["binary"]["file"] == "uhdr.dll"
+    assert any(name.startswith("Assets/Fonts/") for name in entries)
+    assert any(
+        name.startswith("Assets/Media/") and name.endswith(".cube") for name in entries
+    )
+    return count + 5
+
+
+def check(artifacts, aot_artifacts):
     host_architecture, count = check_selection()
+    mappings = [
+        line.strip().split(" = ")[0]
+        for line in (ROOT / "LumaRecode.sln").read_text().splitlines()
+        if ".ActiveCfg = " in line or ".Build.0 = " in line
+    ]
+    assert len(mappings) == len(set(mappings)), (
+        "Duplicate solution configuration mappings"
+    )
+    solution = ET.parse(ROOT / "LumaRecode.slnx").getroot()
+    assert len(solution.findall("Configurations/BuildType[@Name='Release-AOT']")) == 1
+    count += 2
     targets = {
         "Native": (
             host_architecture.lower(),
@@ -118,6 +233,9 @@ def check(artifacts):
         ),
         **TARGETS,
     }
+    version = ET.parse(ROOT / "App/VideoConverter.WinUI.csproj").findtext(
+        "PropertyGroup/Version"
+    )
     manifests = json.loads(
         (ROOT / "App/Native/manifest.json").read_text(encoding="utf-8-sig")
     )
@@ -129,67 +247,93 @@ def check(artifacts):
         )
         assert machine(binary) == (0xAA64 if architecture == "arm64" else 0x8664)
         count += 2
-    for target, (architecture, platform, isa, output) in targets.items():
-        props = {"LumaBuildTarget": target, "Platform": platform, "PublishAot": "true"}
-        data = evaluate(
-            "App/VideoConverter.WinUI.csproj",
-            props,
-            [
-                "RuntimeIdentifier",
-                "PlatformTarget",
-                "BaseIntermediateOutputPath",
-                "NuGetLockFilePath",
-            ],
-        )
-        assert data["RuntimeIdentifier"] == "win-" + architecture
-        assert data["PlatformTarget"].lower() == architecture
-        assert data["BaseIntermediateOutputPath"].replace("\\", "/") == f"obj/{target}/"
-        expected = (
-            "packages.arm64.aot.lock.json"
-            if architecture == "arm64"
-            else "packages.aot.lock.json"
-        )
-        assert Path(data["NuGetLockFilePath"]).name == expected
-        count += 4
-        if not artifacts:
-            continue
-        payload = ROOT / "dist/NativeAot" / target
-        expected_machine = 0xAA64 if architecture == "arm64" else 0x8664
-        assert machine(payload / "LumaRecode.exe") == expected_machine
-        assert machine(ROOT / "dist" / output / "LumaRecode.exe") == expected_machine
-        for binary in payload.glob("*.dll"):
-            assert machine(binary) == expected_machine, binary
-            count += 1
-        license_data = json.loads(
-            (payload / "licenses/manifest.json").read_text(encoding="utf-8-sig")
-        )
-        assert license_data["architecture"] == architecture
-        assert (
-            digest(payload / "uhdr.dll")
-            == license_data["native_codecs"]["binary"]["sha256"]
-        )
-        assert license_data["native_codecs"]["binary"]["file"] == "uhdr.dll"
-        response = next((ROOT / "App/obj" / target).rglob("LumaRecode.ilc.rsp"))
-        assert (
-            f"--instruction-set:{isa}"
-            in response.read_text(encoding="utf-8-sig").splitlines()
-        )
-        count += 6
-    for config, platform, target in [
-        ("Release", "Native", "Native"),
-        ("Release", "x64", "X64"),
-        ("Release-APX", "x64", "Apx"),
-        ("Release", "ARM64", "Arm64"),
+    for mode in ("Jit", "Aot"):
+        for target, (architecture, platform, isa, output) in targets.items():
+            if mode == "Jit" and target == "Apx":
+                continue
+            data = evaluate(
+                "App/VideoConverter.WinUI.csproj",
+                {
+                    "LumaBuildTarget": target,
+                    "Platform": platform,
+                    "LumaCompilation": mode,
+                    "PublishAot": str(mode == "Aot").lower(),
+                },
+                [
+                    "RuntimeIdentifier",
+                    "PlatformTarget",
+                    "BaseIntermediateOutputPath",
+                    "NuGetLockFilePath",
+                    "PublishTrimmed",
+                ],
+            )
+            assert data["RuntimeIdentifier"] == "win-" + architecture
+            assert data["PlatformTarget"].lower() == architecture
+            assert (
+                data["BaseIntermediateOutputPath"].replace("\\", "/")
+                == f"obj/{mode}/{target}/"
+            )
+            expected_lock = (
+                "packages"
+                + (".arm64" if architecture == "arm64" else "")
+                + (".aot" if mode == "Aot" else "")
+                + ".lock.json"
+            )
+            assert (
+                Path(data["NuGetLockFilePath"] or "packages.lock.json").name
+                == expected_lock
+            )
+            assert data["PublishTrimmed"] == str(mode == "Aot").lower()
+            count += 5
+            if mode == "Jit" and artifacts:
+                executable = ROOT / "dist" / output / "LumaRecode.exe"
+                assert machine(executable) == (
+                    0xAA64 if architecture == "arm64" else 0x8664
+                )
+                count += check_jit_bundle(executable, architecture, version) + 1
+            if mode == "Aot" and aot_artifacts:
+                payload = ROOT / "dist/NativeAot" / target
+                expected_machine = 0xAA64 if architecture == "arm64" else 0x8664
+                assert machine(payload / "LumaRecode.exe") == expected_machine
+                assert (
+                    machine(ROOT / "dist" / ("Aot-" + output) / "LumaRecode.exe")
+                    == expected_machine
+                )
+                license_data = json.loads(
+                    (payload / "licenses/manifest.json").read_text(encoding="utf-8-sig")
+                )
+                assert (
+                    license_data["architecture"] == architecture
+                    and license_data["app_version"] == version
+                )
+                assert (
+                    digest(payload / "uhdr.dll")
+                    == license_data["native_codecs"]["binary"]["sha256"]
+                )
+                response = next(
+                    (ROOT / "App/obj/Aot" / target).rglob("LumaRecode.ilc.rsp")
+                )
+                assert (
+                    f"--instruction-set:{isa}"
+                    in response.read_text(encoding="utf-8-sig").splitlines()
+                )
+                count += 5
+    for config, platform, target, mode in [
+        ("Release", "Native", "Native", "Jit"),
+        ("Release", "x64", "X64", "Jit"),
+        ("Release", "ARM64", "Arm64", "Jit"),
+        ("Release-AOT", "Native", "Native", "Aot"),
+        ("Release-AOT", "x64", "X64", "Aot"),
+        ("Release-AOT", "ARM64", "Arm64", "Aot"),
+        ("Release-APX", "x64", "Apx", "Aot"),
     ]:
         data = evaluate(
             "Packaging/LumaRecode.Packaging.csproj",
             {"Configuration": config, "Platform": platform},
-            ["LumaRecodeTarget", "DisableFastUpToDateCheck"],
+            ["LumaRecodeTarget", "LumaCompilation", "DisableFastUpToDateCheck"],
         )
-        assert (
-            data["LumaRecodeTarget"] == target
-            and data["DisableFastUpToDateCheck"] == "true"
-        )
+        assert data["LumaRecodeTarget"] == target and data["LumaCompilation"] == mode
+        assert data["DisableFastUpToDateCheck"] == "true"
         count += 1
     for requested, resolved, has_guard in [
         ("Native", "Apx", True),
@@ -204,12 +348,8 @@ def check(artifacts):
         assert ("LUMARECODE_APX" in data["DefineConstants"].split(";")) == has_guard
         count += 1
     if artifacts:
-        version = ET.parse(ROOT / "App/VideoConverter.WinUI.csproj").findtext(
-            "PropertyGroup/Version"
-        )
-        native = ROOT / "dist/SelfContained/LumaRecode.exe"
         result = subprocess.run(
-            [str(native), "--version"],
+            [str(ROOT / "dist/SelfContained/LumaRecode.exe"), "--version"],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -217,13 +357,17 @@ def check(artifacts):
             timeout=30,
         )
         assert result.stdout.strip() == "LumaRecode " + version
-        apx = ROOT / "dist/SelfContained-Apx/LumaRecode.exe"
+        count += 1
+    if aot_artifacts:
         result = subprocess.run(
-            [str(apx), "--version", "--json"],
+            [
+                str(ROOT / "dist/Aot-SelfContained-Apx/LumaRecode.exe"),
+                "--version",
+                "--json",
+            ],
             capture_output=True,
             text=True,
             encoding="utf-8",
-            check=False,
             timeout=30,
         )
         if ctypes.windll.kernel32.IsProcessorFeaturePresent(90):
@@ -235,7 +379,7 @@ def check(artifacts):
                 and error["data"]["code"] == "runtime_unavailable"
             )
             assert "APX" in error["data"]["message"]
-        count += 2
+        count += 1
     print(f"Build target and provenance checks passed: {count}")
 
 
@@ -244,6 +388,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--artifacts",
         action="store_true",
-        help="Also inspect Native and all three explicit targets",
+        help="Inspect Native, X64 and ARM64 JIT single EXEs",
     )
-    check(parser.parse_args().artifacts)
+    parser.add_argument(
+        "--aot-artifacts",
+        action="store_true",
+        help="Inspect all four optional AOT targets",
+    )
+    args = parser.parse_args()
+    check(args.artifacts, args.aot_artifacts)

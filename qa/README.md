@@ -19,9 +19,10 @@
 ```powershell
 python qa/BuildChecks/check_build.py
 python qa/BuildChecks/check_build.py --artifacts
+python qa/BuildChecks/check_build.py --aot-artifacts
 ```
 
-基础检查覆盖 Native 自动选择、三个显式目标、APX 开关与 ARM64 主机的组合，以及实际系统架构、MSBuild 映射、中间目录隔离、锁文件和原生库哈希。`--artifacts` 在 Native 和三个显式目标构建后运行，另检查 AOT 指令集、EXE / DLL 的 PE 架构、分发许可清单、Native CLI 与 APX 启动检查。在支持 APX 的设备上，该检查会运行 APX CLI；不支持时验证明确的错误响应。
+基础检查覆盖 JIT / AOT 的目标选择、APX 与 ARM64 主机组合、MSBuild 映射、中间目录隔离、锁文件和原生库哈希。`--artifacts` 检查 Native、X64、ARM64 的 JIT 单文件、打包内容与分发许可；`--aot-artifacts` 在四种 AOT 目标全部构建后检查载荷、指令集和 APX 启动保护。
 
 ARM64 完整运行检查需要 ARM64 Windows 设备。APX 转码检查需要支持 APX 的 CPU 与 Windows。
 
@@ -156,9 +157,10 @@ Runs C# formatting, resources, serialization, core boundaries, preview schedulin
 ```powershell
 python qa/BuildChecks/check_build.py
 python qa/BuildChecks/check_build.py --artifacts
+python qa/BuildChecks/check_build.py --aot-artifacts
 ```
 
-Basic checks cover Native selection, all three explicit targets, APX availability and ARM64 host combinations. They also check the actual system architecture, MSBuild mappings, isolated intermediate directories, lock files and native-library hashes. After building Native and all three explicit targets, `--artifacts` checks AOT instruction sets, EXE / DLL PE architectures, distribution license manifests, the Native CLI and APX startup handling. On supported hardware it runs the APX CLI; otherwise it checks the unsupported-hardware response.
+Basic checks cover JIT/AOT target selection, APX and ARM64 host combinations, MSBuild mappings, isolated intermediate files, lock files and native-library hashes. `--artifacts` checks Native, X64 and ARM64 JIT single EXEs, bundled content and distribution licenses. After all four AOT targets have been built, `--aot-artifacts` checks payloads, instruction sets and APX startup protection.
 
 Full ARM64 runtime checks require an ARM64 Windows device. APX hardware conversion checks require an APX-capable CPU and Windows support.
 

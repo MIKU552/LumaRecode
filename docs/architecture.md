@@ -12,7 +12,7 @@
 | --- | --- |
 | `App/` | WinUI 视图、设置、本地化、通知及 GUI / CLI 启动选择 |
 | `Core/` | 素材探测、输出规则、命令规划、视频与图片导出、CLI |
-| `Bundle/` | 提取并启动 AOT 应用，传递标准句柄与退出码 |
+| `Bundle/` | 可选 AOT 的单文件入口，传递标准句柄与退出码 |
 | `Packaging/` | 将 Visual Studio 配置映射到完整的单文件构建流程 |
 | `Assets/` | LUT、视频与动态照片预设、资源来源清单 |
 | `qa/` | C# 边界检查、Python 集成检查、PowerShell 采样 |
@@ -41,9 +41,9 @@ MediaProbe → OutputPolicy / Transcoder.Plan → 要求检查 → FFmpeg
 
 ### 构建与打包
 
-`build.ps1 -Target` 支持 Native、X64、Apx 和 Arm64。`tools/BuildTarget.ps1` 将 Native 解析为实际系统目标并选择本机指令集优化；显式目标使用各自的固定指令集。`IsWow64Process2` 读取实际系统架构，`IsProcessorFeaturePresent` 判断 APX 是否可执行。
+`build.ps1` 默认生成自包含 JIT 单文件。Native 按实际 Windows 架构选择 X64 或 ARM64，JIT 在运行设备上选择指令集。支持 APX 的 x64 设备在显式配置缺省时，以进程环境启用 APX 后重新进入应用；CLI 使用同一 EXE 的工作子进程，保留取消清理、句柄、参数、工作目录与退出码。
 
-`Directory.Build.props` 按请求的目标隔离中间文件，App 和 Bundle 按架构选择 NuGet 锁文件。App 先发布 AOT 载荷，Bundle 随后将其打包为单个 EXE；解析后的 APX 目标会在入口启用运行前检查。Visual Studio 的 Release / Native 配置直接调用自动构建流程。发布选项见[开发与分发](dependencies.md)。
+`-Compilation Aot` 使用固定目标或构建 CPU 的指令集。`Directory.Build.props` 按编译方式与目标隔离中间文件；App 生成 AOT 载荷，Bundle 打包为单个 EXE。Visual Studio 的 Release 使用 JIT，Release-AOT 和 Release-APX 使用 AOT。构建与输出路径见[开发与分发](dependencies.md)。
 
 ### 线程与生命周期
 
@@ -82,7 +82,7 @@ GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在�
 | --- | --- |
 | `App/` | WinUI views, settings, localization, notifications and GUI / CLI startup selection |
 | `Core/` | Source inspection, output policies, command planning, video/image export and CLI |
-| `Bundle/` | Extract and launch the AOT application; preserve standard handles and exit codes |
+| `Bundle/` | Optional AOT single-file entry; preserve standard handles and exit codes |
 | `Packaging/` | Map Visual Studio configurations to the complete single-file build pipeline |
 | `Assets/` | LUTs, video and Motion Photo presets, resource provenance |
 | `qa/` | C# boundary checks, Python integration checks and PowerShell sampling |
@@ -111,9 +111,9 @@ Dynamic HDR preservation, standard color conversion and RAW development each sel
 
 ### Building and packaging
 
-`build.ps1 -Target` supports Native, X64, Apx and Arm64. `tools/BuildTarget.ps1` resolves Native to the actual system target and selects build-CPU instruction optimization. Explicit targets use fixed instruction profiles. `IsWow64Process2` reads the real OS architecture; `IsProcessorFeaturePresent` checks whether APX is available.
+`build.ps1` produces a self-contained JIT single EXE by default. Native selects X64 or ARM64 from the real Windows architecture; the JIT selects instructions on the running device. On APX-capable x64 devices without an explicit override, startup restarts the application with a process-scoped APX setting. The CLI uses a worker launched through the same EXE to preserve cancellation cleanup, handles, arguments, working directory and exit code.
 
-`Directory.Build.props` isolates intermediate files by the requested target. App and Bundle select architecture-specific NuGet lock files. App publishes the AOT payload first, then Bundle packages it into a single EXE. A resolved APX target enables the launch-time compatibility check. Visual Studio's Release / Native configuration invokes the automatic build pipeline. See [Development and distribution](dependencies.md#english) for publishing options.
+`-Compilation Aot` uses a fixed target or the build CPU's instructions. `Directory.Build.props` isolates intermediate files by compilation mode and target. App produces the AOT payload; Bundle packages it into one EXE. Visual Studio Release uses JIT; Release-AOT and Release-APX use AOT. See [Development and distribution](dependencies.md#english) for commands and output paths.
 
 ### Threads and lifetimes
 

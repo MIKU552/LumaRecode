@@ -48,13 +48,15 @@ namespace LumaRecode {
 function Resolve-LumaBuildTarget {
     param(
         [ValidateSet('Native','X64','Apx','Arm64')][string]$Target = 'Native',
+        [ValidateSet('Jit','Aot')][string]$Compilation = 'Jit',
         [Parameter(Mandatory=$true)][ValidateSet('X64','Arm64')][string]$SystemArchitecture,
         [Parameter(Mandatory=$true)][bool]$ApxAvailable
     )
     $taskRequested = @{native='Native';x64='X64';apx='Apx';arm64='Arm64'}[$Target.ToLowerInvariant()]
+    if ($taskRequested -eq 'Apx' -and $Compilation -ne 'Aot') { throw 'The APX target requires -Compilation Aot. X64 JIT uses runtime CPU detection.' }
     $taskResolved = if ($taskRequested -ne 'Native') { $taskRequested }
         elseif ($SystemArchitecture -eq 'Arm64') { 'Arm64' }
-        elseif ($ApxAvailable) { 'Apx' }
+        elseif ($Compilation -eq 'Aot' -and $ApxAvailable) { 'Apx' }
         else { 'X64' }
     $taskArchitecture = if ($taskResolved -eq 'Arm64') { 'arm64' } else { 'x64' }
     [pscustomobject]@{
@@ -63,7 +65,8 @@ function Resolve-LumaBuildTarget {
         Architecture = $taskArchitecture
         Platform = if ($taskArchitecture -eq 'arm64') { 'ARM64' } else { 'x64' }
         RuntimeIdentifier = "win-$taskArchitecture"
-        InstructionSet = if ($taskRequested -eq 'Native') { 'native' }
+        InstructionSet = if ($Compilation -eq 'Jit') { 'jit' }
+            elseif ($taskRequested -eq 'Native') { 'native' }
             else { @{X64='x86-64-v2';Apx='apx';Arm64='armv8-a'}[$taskResolved] }
     }
 }

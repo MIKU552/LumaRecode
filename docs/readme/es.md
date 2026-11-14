@@ -34,7 +34,6 @@ Compartir rápido usa Intel QSV. Archivo por software usa la CPU.
 | Archivo | Plataforma y requisitos |
 | --- | --- |
 | `LumaRecode.exe` | X64, con un perfil de instrucciones x64 común |
-| `LumaRecode-APX.exe` | x64 con compatibilidad Intel APX tanto en la CPU como en Windows |
 | `LumaRecode-ARM64.exe` | Windows ARM64, con aplicación y códec de imagen nativos ARM64 |
 
 ARM64 usa Archivo por software de forma predeterminada. La velocidad de codificación depende del FFmpeg externo, del hardware y del preajuste.
@@ -106,22 +105,22 @@ Antes del primer uso desatendido, consulta las condiciones de los componentes co
 
 ## Compilar desde el código fuente
 
-Se necesitan .NET SDK 11.0.100, PowerShell 7 y las herramientas de compilación Visual Studio C++ x64 / ARM64.
+Requiere .NET SDK 11.0.100 y PowerShell 7. Las compilaciones AOT opcionales también necesitan las herramientas C++ de Visual Studio.
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
 ./build.ps1
 ./build.ps1 -Target X64
-./build.ps1 -Target Apx
+./build.ps1 -Target X64 -Compilation Aot
 ./build.ps1 -Target Arm64
 ```
 
-Native es el modo automático predeterminado: elige ARM64 en Windows ARM64, APX en Windows x64 con soporte APX y X64 en los demás equipos x64. Optimiza para la CPU de compilación y genera `dist/SelfContained/LumaRecode.exe`.
+JIT es el modo predeterminado. Native selecciona X64 o ARM64 según la arquitectura de Windows y genera `dist/SelfContained/LumaRecode.exe`. Releases ofrece EXE únicos y autocontenidos para X64 y ARM64.
 
-Los destinos explícitos X64, Apx y Arm64 compilan para sus respectivos conjuntos de instrucciones y usan `dist/SelfContained-X64/`, `dist/SelfContained-Apx/` y `dist/SelfContained-Arm64/`. Releases ofrece estos tres EXE de destino fijo.
+El JIT selecciona las instrucciones compatibles en el equipo de ejecución. En equipos x64 donde la CPU y Windows admiten APX, el inicio habilita APX y respeta la configuración explícita del usuario. La opción `-Compilation Aot` compila al publicar y genera `dist/Aot-SelfContained[-Target]/`. El destino APX fijo utiliza `-Target Apx -Compilation Aot`.
 
-Abre `LumaRecode.sln` con Visual Studio 2026 18.12 o posterior. Selecciona `LumaRecode.App` como proyecto de inicio y Debug para depurar. `Release | Native` selecciona y optimiza para el equipo de compilación; `Release | x64`, `Release-APX | x64` y `Release | ARM64` seleccionan destinos fijos. El proyecto `Packaging` genera el EXE. Consulta la [configuración de desarrollo (chino e inglés)](../dependencies.md#english) y la [guía de QA (chino e inglés)](../../qa/README.md#english).
+Abre `LumaRecode.sln` con Visual Studio 2026 18.12 o posterior. Usa `LumaRecode.App` como proyecto de inicio y Debug para depurar. `Release | Native`, `Release | x64` y `Release | ARM64` generan JIT; `Release-AOT` genera los destinos AOT correspondientes y `Release-APX | x64` genera APX AOT. `Packaging` crea el EXE único. Consulta [desarrollo y distribución (chino e inglés)](../dependencies.md#english) y la [guía de QA (chino e inglés)](../../qa/README.md#english).
 
 ## Estructura del proyecto
 

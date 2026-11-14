@@ -1,5 +1,5 @@
 {
-  "app_version": "4.4.2",
+  "app_version": "4.4.3",
   "architecture": "x64",
   "backend": "native-dotnet",
   "distribution_basis": [

@@ -9,6 +9,10 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        if (JitProcessHost.RestartIfNeeded(args) is { } exitCode)
+        {
+            return exitCode;
+        }
         if (StartupMode.IsCommandLine(args))
         {
             return CommandLineHost.RunAsync(args[0] == "--cli" ? args[1..] : args).GetAwaiter().GetResult();

@@ -3,22 +3,23 @@
 Builds an automatic Native, explicit x64, APX or ARM64 GUI/CLI application.
 .DESCRIPTION
 Each target has isolated restore, payload, license and publish directories.
-Native selects the OS architecture/APX capability and optimizes for the build CPU.
-Explicit targets use their own instruction sets and support cross-compilation.
-ARM64 cross-compilation requires the Visual Studio C++ ARM64 toolchain.
+JIT is the default. Native selects the OS architecture; the JIT selects CPU instructions.
+Optional AOT builds optimize for the build CPU or an explicit instruction profile.
+ARM64 AOT cross-compilation requires the Visual Studio C++ ARM64 toolchain.
 #>
 param(
     [ValidateSet('Native','X64','Apx','Arm64')][string]$Target = 'Native',
     [ValidateSet('SelfContained','FrameworkDependent')][string]$Deployment = 'SelfContained',
-    [ValidateSet('Aot','Jit')][string]$Compilation = 'Aot',
+    [ValidateSet('Jit','Aot')][string]$Compilation = 'Jit',
     [switch]$UseEnvironmentalNativeTools
 )
 $ErrorActionPreference = 'Stop'
 Push-Location -LiteralPath $PSScriptRoot
 try {
     . (Join-Path $PSScriptRoot 'tools/BuildTarget.ps1')
+    if ($Compilation -eq 'Aot' -and $Deployment -ne 'SelfContained') { throw 'Native AOT requires -Deployment SelfContained.' }
     $taskHost = Get-LumaBuildHost
-    $taskPlan = Resolve-LumaBuildTarget -Target $Target -SystemArchitecture $taskHost.Architecture -ApxAvailable $taskHost.ApxAvailable
+    $taskPlan = Resolve-LumaBuildTarget -Target $Target -Compilation $Compilation -SystemArchitecture $taskHost.Architecture -ApxAvailable $taskHost.ApxAvailable
     $Target = $taskPlan.RequestedTarget
     $taskArchitecture = $taskPlan.Architecture
     $taskPlatform = $taskPlan.Platform
@@ -36,13 +37,14 @@ try {
             throw "Native CPU optimization requires the $taskRid .NET SDK. Use that SDK or select -Target $($taskPlan.ResolvedTarget) for cross-compilation."
         }
     }
-    Write-Output "Target: $Target -> $($taskPlan.ResolvedTarget) ($taskRid), AOT instruction set: $taskIsa"
+    Write-Output "Target: $Target -> $($taskPlan.ResolvedTarget) ($taskRid), compilation: $Compilation, instruction set: $taskIsa"
     $taskRoot = [IO.Path]::GetFullPath($PSScriptRoot).TrimEnd([IO.Path]::DirectorySeparatorChar)
     $taskOutputRelative = if ($Target -eq 'Native') { "dist/$Deployment" } else { "dist/$Deployment-$Target" }
+    if ($taskAot) { $taskOutputRelative = $taskOutputRelative.Replace('dist/','dist/Aot-') }
     $taskPayloadRelative = "dist/NativeAot/$Target"
     $taskOutput = Join-Path $taskRoot $taskOutputRelative
     $taskPayload = Join-Path $taskRoot $taskPayloadRelative
-    $taskLegal = Join-Path $taskRoot "build-cache/licenses/$Target"
+    $taskLegal = Join-Path $taskRoot "build-cache/licenses/$Compilation/$Target"
 
     function Invoke-DotNet([string[]]$Arguments) {
         & dotnet @Arguments
@@ -60,15 +62,15 @@ try {
     }
 
     Invoke-DotNet @('run','--project','qa/LanguageChecks/LanguageChecks.csproj','-c','Release')
-    $taskCommon = @('-r',$taskRid,"-p:Platform=$taskPlatform","-p:LumaBuildTarget=$Target","-p:LumaResolvedTarget=$($taskPlan.ResolvedTarget)")
+    $taskCommon = @('-r',$taskRid,"-p:Platform=$taskPlatform","-p:LumaBuildTarget=$Target","-p:LumaResolvedTarget=$($taskPlan.ResolvedTarget)","-p:LumaCompilation=$Compilation")
     Invoke-DotNet (@('restore','App/VideoConverter.WinUI.csproj','--locked-mode',"-p:PublishAot=$($taskAot.ToString().ToLowerInvariant())") + $taskCommon)
     $taskLicenseArgs = @{
         ProjectRoot=$taskRoot;Architecture=$taskArchitecture;OutputDirectory=$taskLegal
-        AssetsFile=(Join-Path $taskRoot "App/obj/$Target/project.assets.json")
+        AssetsFile=(Join-Path $taskRoot "App/obj/$Compilation/$Target/project.assets.json")
     }
     if ($taskAot) {
         Invoke-DotNet (@('restore','Bundle/LumaRecode.Bundle.csproj','--locked-mode') + $taskCommon)
-        $taskLicenseArgs.Add('AdditionalAssetsFile',(Join-Path $taskRoot "Bundle/obj/$Target/project.assets.json"))
+        $taskLicenseArgs.Add('AdditionalAssetsFile',(Join-Path $taskRoot "Bundle/obj/$Compilation/$Target/project.assets.json"))
     }
     & (Join-Path $taskRoot 'tools/Collect-Licenses.ps1') @taskLicenseArgs
     Reset-GeneratedDirectory $taskOutputRelative

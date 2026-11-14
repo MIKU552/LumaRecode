@@ -34,7 +34,6 @@ C# / .NET で開発した Windows 11 向けの動画変換・色変換ツール�
 | ファイル | プラットフォームと要件 |
 | --- | --- |
 | `LumaRecode.exe` | X64。汎用 x64 命令セット構成 |
-| `LumaRecode-APX.exe` | x64。CPU と Windows の両方で Intel APX のサポートが必要 |
 | `LumaRecode-ARM64.exe` | Windows ARM64。アプリと画像コーデックは ARM64 ネイティブ |
 
 ARM64 の初期設定はアーカイブです。エンコード速度は外部 FFmpeg、ハードウェア、プリセットによって変わります。
@@ -106,22 +105,22 @@ PowerShell 7 で出力をパイプに接続して実行します。
 
 ## ソースからビルド
 
-.NET SDK 11.0.100、PowerShell 7、Visual Studio C++ x64 / ARM64 ビルドツールが必要です。
+.NET SDK 11.0.100 と PowerShell 7 が必要です。オプションの AOT ビルドには Visual Studio C++ ツールチェーンも必要です。
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
 ./build.ps1
 ./build.ps1 -Target X64
-./build.ps1 -Target Apx
+./build.ps1 -Target X64 -Compilation Aot
 ./build.ps1 -Target Arm64
 ```
 
-既定の Native はビルド環境に合わせて自動選択します。ARM64 Windows では ARM64、APX 対応の x64 Windows では APX、それ以外の x64 Windows では X64 を選び、ビルド CPU の命令セットに最適化します。出力先は `dist/SelfContained/LumaRecode.exe` です。
+既定は JIT です。Native は Windows のシステムアーキテクチャに応じて X64 または ARM64 を選択し、`dist/SelfContained/LumaRecode.exe` を生成します。Releases では X64 と ARM64 の自己完結型単一 EXE を配布します。
 
-X64、Apx、Arm64 を明示すると、そのターゲットの命令セットでコンパイルします。出力先は `dist/SelfContained-X64/`、`dist/SelfContained-Apx/`、`dist/SelfContained-Arm64/` です。Releases では、この 3 種類の EXE を配布します。
+JIT は実行環境で利用できる命令セットを選択します。CPU と Windows が APX に対応する x64 環境では、明示的なユーザー設定を維持しながら起動時に APX を有効にします。`-Compilation Aot` は公開時にコンパイルし、`dist/Aot-SelfContained[-Target]/` に出力します。APX 固定ターゲットには `-Target Apx -Compilation Aot` を指定します。
 
-Visual Studio 2026 18.12 以降で `LumaRecode.sln` を開き、`LumaRecode.App` をスタートアッププロジェクトに設定します。Debug でデバッグできます。`Release | Native` は環境に合わせて自動選択・最適化し、`Release | x64`、`Release-APX | x64`、`Release | ARM64` は固定ターゲットを選択します。`Packaging` が単一 EXE を生成します。設定は[開発・配布ドキュメント（中国語・英語）](../dependencies.md#english)、チェックは [QA ガイド（中国語・英語）](../../qa/README.md#english)を参照してください。
+Visual Studio 2026 18.12 以降で `LumaRecode.sln` を開き、`LumaRecode.App` をスタートアッププロジェクトに設定します。Debug はデバッグ用です。`Release | Native`、`Release | x64`、`Release | ARM64` は JIT、`Release-AOT` は対応する AOT、`Release-APX | x64` は APX AOT を生成します。`Packaging` が単一 EXE を作成します。[開発・配布（中国語・英語）](../dependencies.md#english)と [QA ガイド（中国語・英語）](../../qa/README.md#english)を参照してください。
 
 ## ディレクトリ構成
 

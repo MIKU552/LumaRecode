@@ -92,7 +92,12 @@ def exercise(exe, source, output):
             process.stderr.read(),
         )
         assert hashlib.sha256(output.read_bytes()).hexdigest() == old_hash
-        assert not list(output.parent.glob(".video-converter-*"))
+        assert not list(output.parent.glob(".video-converter-*")), (
+            process.returncode,
+            events[-4:],
+            process.stderr.read(),
+            [str(p) for p in output.parent.glob(".video-converter-*")],
+        )
         print(
             "PASS PowerShell 7 Ctrl+C: stopped pipeline, cleaned temporary files, preserved existing output."
         )
@@ -139,7 +144,7 @@ def main():
         startup = subprocess.STARTUPINFO()
         startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startup.wShowWindow = 0
-        subprocess.run(
+        result = subprocess.run(
             [
                 sys.executable,
                 __file__,
@@ -151,9 +156,15 @@ def main():
             ],
             creationflags=subprocess.CREATE_NEW_CONSOLE,
             startupinfo=startup,
-            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
             timeout=90,
         )
+        print(result.stdout, end="")
+        if result.returncode:
+            print(result.stderr, file=sys.stderr, end="")
+        result.check_returncode()
 
 
 if __name__ == "__main__":

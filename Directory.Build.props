@@ -2,9 +2,10 @@
   <PropertyGroup>
     <LumaRecodeArchitecture Condition="'$(RuntimeIdentifier)' == 'win-arm64' or '$(Platform)' == 'ARM64'">arm64</LumaRecodeArchitecture>
     <LumaRecodeArchitecture Condition="'$(LumaRecodeArchitecture)' == ''">x64</LumaRecodeArchitecture>
+    <LumaCompilation Condition="'$(LumaCompilation)' == ''">Jit</LumaCompilation>
     <!-- Each publication owns its restore graph, generated code and native objects. -->
-    <BaseIntermediateOutputPath Condition="'$(LumaBuildTarget)' != ''">obj/$(LumaBuildTarget)/</BaseIntermediateOutputPath>
-    <BaseOutputPath Condition="'$(LumaBuildTarget)' != ''">bin/$(LumaBuildTarget)/</BaseOutputPath>
+    <BaseIntermediateOutputPath Condition="'$(LumaBuildTarget)' != ''">obj/$(LumaCompilation)/$(LumaBuildTarget)/</BaseIntermediateOutputPath>
+    <BaseOutputPath Condition="'$(LumaBuildTarget)' != ''">bin/$(LumaCompilation)/$(LumaBuildTarget)/</BaseOutputPath>
     <DefaultItemExcludes>$(DefaultItemExcludes);**/obj/**;**/bin/**</DefaultItemExcludes>
     <LumaLicenseDirectory Condition="'$(LumaLicenseDirectory)' == ''">$(MSBuildThisFileDirectory)licenses</LumaLicenseDirectory>
     <LumaPayloadDirectory Condition="'$(LumaPayloadDirectory)' == ''">$(MSBuildThisFileDirectory)dist/NativeAot/Native</LumaPayloadDirectory>

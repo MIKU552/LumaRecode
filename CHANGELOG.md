@@ -4,6 +4,14 @@
 
 ## 简体中文
 
+### 4.4.3
+
+- 默认构建与正式发布改用自包含 JIT 单文件，提供 X64 和 ARM64 两种 EXE。
+- 保留 Native AOT 可选构建及 APX 固定目标；按编译方式隔离缓存、许可清单和输出。
+- 在支持 APX 的 x64 设备上按启动条件启用 APX，尊重用户显式配置。
+- JIT 命令行使用同一 EXE 的工作子进程，保留 PowerShell 管道取消后的任务清理。
+- 添加 Visual Studio Release-AOT 配置，更新四语 README 与中英文开发文档。
+
 ### 4.4.2
 
 - 为 FFmpeg / ffprobe 文本捕获和逐行元数据读取加入资源上限，超限后停止并回收子进程。
@@ -263,6 +271,14 @@
 - 支持素材自动识别与三组色彩转换。
 
 ## English
+
+### 4.4.3
+
+- Switch default builds and releases to self-contained JIT single EXEs for X64 and ARM64.
+- Retain optional Native AOT and the fixed APX target; isolate caches, license records and outputs by compilation mode.
+- Opt supported x64 devices into APX during startup while respecting explicit user settings.
+- Run JIT commands in a worker launched through the same EXE to preserve cleanup after PowerShell pipeline cancellation.
+- Add Visual Studio Release-AOT configurations and update all four READMEs and Chinese/English development guides.
 
 ### 4.4.2
 

@@ -34,7 +34,6 @@ Quick share uses Intel QSV. Software archive uses CPU encoding.
 | Download | Platform and requirements |
 | --- | --- |
 | `LumaRecode.exe` | X64, using the common x64 instruction-set profile |
-| `LumaRecode-APX.exe` | x64 with Intel APX support in both the CPU and Windows |
 | `LumaRecode-ARM64.exe` | Windows ARM64, with a native ARM64 app and image codec |
 
 ARM64 defaults to Software archive. Encoding speed depends on the external FFmpeg build, hardware and selected preset.
@@ -106,22 +105,22 @@ For first-time unattended use, read the component terms with `license --text`, t
 
 ## Build from source
 
-Requires .NET SDK 11.0.100, PowerShell 7, and Visual Studio C++ x64 / ARM64 build tools.
+Requires .NET SDK 11.0.100 and PowerShell 7. Optional AOT builds also require the Visual Studio C++ toolchain.
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
 ./build.ps1
 ./build.ps1 -Target X64
-./build.ps1 -Target Apx
+./build.ps1 -Target X64 -Compilation Aot
 ./build.ps1 -Target Arm64
 ```
 
-Native is the default automatic mode: ARM64 on ARM64 Windows, APX on x64 Windows with APX support, and X64 otherwise. It optimizes for the build CPU and produces `dist/SelfContained/LumaRecode.exe`.
+JIT is the default. Native selects X64 or ARM64 from the Windows system architecture and writes `dist/SelfContained/LumaRecode.exe`. Releases provide self-contained single EXEs for X64 and ARM64.
 
-Explicit X64, Apx and Arm64 targets compile for their respective instruction sets and write to `dist/SelfContained-X64/`, `dist/SelfContained-Apx/` and `dist/SelfContained-Arm64/`. Releases contain these three fixed-target EXEs.
+The JIT selects supported instructions on the running device. On x64 devices where both the CPU and Windows support APX, startup opts into APX while preserving explicit user settings. Optional `-Compilation Aot` compiles at publish time and writes to `dist/Aot-SelfContained[-Target]/`. The fixed APX target uses `-Target Apx -Compilation Aot`.
 
-Open `LumaRecode.sln` in Visual Studio 2026 18.12 or later. Set `LumaRecode.App` as the startup project and use Debug for debugging. `Release | Native` selects and optimizes for the build machine; `Release | x64`, `Release-APX | x64` and `Release | ARM64` select fixed targets. The `Packaging` project creates the single EXE. See [development and distribution](../dependencies.md#english) for setup and the [QA guide](../../qa/README.md#english) for checks.
+Open `LumaRecode.sln` in Visual Studio 2026 18.12 or later. Set `LumaRecode.App` as the startup project and use Debug for debugging. `Release | Native`, `Release | x64` and `Release | ARM64` produce JIT builds. `Release-AOT` provides corresponding AOT builds; `Release-APX | x64` produces APX AOT. `Packaging` creates the single EXE. See [development and distribution](../dependencies.md#english) and the [QA guide](../../qa/README.md#english).
 
 ## Project structure
 

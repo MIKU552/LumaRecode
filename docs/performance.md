@@ -4,7 +4,7 @@
 
 ## 简体中文
 
-LumaRecode 的 GUI 前端使用 WinUI 3 和 Native AOT，转换核心使用 C# / .NET，直接管理 FFmpeg 任务。
+LumaRecode 使用 WinUI 3 和 C# / .NET，默认以 JIT 发布，保留 Native AOT 可选构建。转换核心直接管理 FFmpeg 任务。
 
 ### 实现
 
@@ -14,7 +14,7 @@ LumaRecode 的 GUI 前端使用 WinUI 3 和 Native AOT，转换核心使用 C# /
 | 编译视图 | XAML 编译为 XBF，本地化使用生成的控件映射 |
 | 源生成序列化 | 为设置、翻译资源和命令行 JSON 生成序列化代码 |
 | 控件缓存 | 复用主视图控件引用，路径与日志禁用拼写检查和文字预测 |
-| Native AOT | 发布时将界面与转换核心编译为本机代码 |
+| 编译方式 | 默认 JIT 与动态 PGO；可选 Native AOT 在发布时生成本机代码 |
 | 进程内转换核心 | GUI 与 CLI 直接调用同一 C# 核心，按需启动 FFmpeg / ffprobe |
 | 进度事件 | 直接传递 JSON 节点快照，最多排队 128 个事件 |
 | 日志刷新 | 有界文本缓冲，合并界面刷新；CLI 按需生成 JSON |
@@ -25,7 +25,7 @@ LumaRecode 的 GUI 前端使用 WinUI 3 和 Native AOT，转换核心使用 C# /
 | 预览渲染 | 色彩处理前缩小至 1024 像素，双线程解码、有界 PNG 管道与池化缓冲 |
 | 布局刷新 | 拖动只更新帧相关控件；页面结构变化时才调整布局 |
 | 帧索引 | Span 解析压缩包字段，保留紧凑、只读的时间戳数组 |
-| 单文件入口 | 提取依赖并启动 AOT 主程序；GUI 启动后入口退出 |
+| 单文件入口 | JIT GUI 直接运行，CLI 使用同一 EXE 的工作子进程；AOT 使用打包入口 |
 
 ### 元数据与长片索引
 
@@ -104,7 +104,7 @@ dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release --
 
 ### 复测
 
-[内存采样脚本](../qa/MemoryChecks/Measure-Process.ps1)记录实际 GUI 进程的计数器。AOT 单文件版的 GUI 位于缓存内的 `Application/LumaRecode.exe`。CLI 按入口、主程序和任务进程的合计占用采样。
+[内存采样脚本](../qa/MemoryChecks/Measure-Process.ps1)记录实际 GUI 进程的计数器。默认 JIT 版按主程序采样。可选 AOT 单文件版的 GUI 位于缓存内的 `Application/LumaRecode.exe`。CLI 按入口、主程序和任务进程的合计占用采样。
 
 命令见 [QA 指南](../qa/README.md)，构建方式见[开发文档](dependencies.md)。
 
@@ -121,7 +121,7 @@ Core Ultra X7 358H / Arc B390、FFmpeg 9.0.2。素材为 Pocket 3 的 4K 29.97 f
 
 ## English
 
-The WinUI 3 frontend uses Native AOT. A C# / .NET conversion core manages FFmpeg jobs directly.
+LumaRecode uses WinUI 3 and C# / .NET. JIT is the default publication mode; Native AOT remains optional. The conversion core manages FFmpeg jobs directly.
 
 ### Implementation
 
@@ -131,7 +131,7 @@ The WinUI 3 frontend uses Native AOT. A C# / .NET conversion core manages FFmpeg
 | Compiled views | Compile XAML to XBF; use generated control mappings for localization |
 | Generated serialization | Generate serializers for settings, translation resources and CLI JSON |
 | Control caching | Reuse main-view references; disable spell checking and text prediction for paths and logs |
-| Native AOT | Compile the interface and conversion core to native code at publish time |
+| Compilation | JIT with dynamic PGO by default; optional Native AOT compiles at publish time |
 | In-process core | GUI and CLI call the same C# core and start FFmpeg / ffprobe on demand |
 | Progress events | Pass JSON-node snapshots directly; queue at most 128 events |
 | Log updates | Bound the text buffer and coalesce UI refreshes; generate CLI JSON on demand |
@@ -142,7 +142,7 @@ The WinUI 3 frontend uses Native AOT. A C# / .NET conversion core manages FFmpeg
 | Preview rendering | Scale to 1024 pixels before color processing; two decoder threads, bounded PNG pipes and pooled buffers |
 | Layout updates | Scrubbing updates frame-related controls; structural layout changes follow page changes |
 | Frame indexing | Parse packet fields with spans; retain compact, read-only timestamp arrays |
-| Single-file entry | Extract dependencies, start the AOT application and exit after GUI startup |
+| Single-file entry | JIT GUI runs directly; CLI launches a worker through the same EXE; AOT uses a bundle entry |
 
 ### Metadata and long-recording indexes
 
@@ -221,7 +221,7 @@ The default command measures localization and progress snapshots. `--tools` meas
 
 ### Reproducing measurements
 
-The [memory-sampling script](../qa/MemoryChecks/Measure-Process.ps1) records counters for the actual GUI process. The AOT single-file application's GUI is cached at `Application/LumaRecode.exe`. CLI measurements include the entry, main application and task processes.
+The [memory-sampling script](../qa/MemoryChecks/Measure-Process.ps1) records counters for the actual GUI process. The default JIT application is sampled directly. The optional AOT application's GUI is cached at `Application/LumaRecode.exe`. CLI measurements include the entry, main application and task processes.
 
 Commands are in the [QA guide](../qa/README.md#english); build options are in [Development and distribution](dependencies.md#english).
 

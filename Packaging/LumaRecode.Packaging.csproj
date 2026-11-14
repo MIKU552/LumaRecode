@@ -4,7 +4,8 @@
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <Platforms>Native;x64;ARM64</Platforms>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <Configurations>Debug;Release;Release-APX</Configurations>
+    <Configurations>Debug;Release;Release-AOT;Release-APX</Configurations>
+    <LumaCompilation Condition="'$(Configuration)' == 'Release-AOT' or '$(Configuration)' == 'Release-APX'">Aot</LumaCompilation>
     <IsPackable>false</IsPackable>
     <EnableDefaultItems>false</EnableDefaultItems>
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
@@ -16,12 +17,12 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Order the solution build before publication without shipping this assembly. -->
-    <ProjectReference Include="../App/VideoConverter.WinUI.csproj" ReferenceOutputAssembly="false" Condition="'$(LumaRecodeTarget)' != 'Native'" />
+    <ProjectReference Include="../App/VideoConverter.WinUI.csproj" ReferenceOutputAssembly="false" Condition="'$(LumaRecodeTarget)' != 'Native' and '$(LumaCompilation)' != 'Aot'" />
   </ItemGroup>
   <Target Name="BuildDistribution" AfterTargets="Build"
-          Condition="'$(DesignTimeBuild)' != 'true' and ('$(Configuration)' == 'Release' or '$(Configuration)' == 'Release-APX')">
+          Condition="'$(DesignTimeBuild)' != 'true' and ('$(Configuration)' == 'Release' or '$(Configuration)' == 'Release-AOT' or '$(Configuration)' == 'Release-APX')">
     <Exec WorkingDirectory="$(MSBuildThisFileDirectory).."
           StdOutEncoding="utf-8" StdErrEncoding="utf-8" UseUtf8Encoding="Always"
-          Command="pwsh -NoProfile -File &quot;$(MSBuildThisFileDirectory)../build.ps1&quot; -Target &quot;$(LumaRecodeTarget)&quot; $(LumaNativeToolsSwitch)" />
+          Command="pwsh -NoProfile -File &quot;$(MSBuildThisFileDirectory)../build.ps1&quot; -Target &quot;$(LumaRecodeTarget)&quot; -Compilation &quot;$(LumaCompilation)&quot; $(LumaNativeToolsSwitch)" />
   </Target>
 </Project>

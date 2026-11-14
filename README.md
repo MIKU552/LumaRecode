@@ -34,7 +34,6 @@
 | 下载文件 | 平台与要求 |
 | --- | --- |
 | `LumaRecode.exe` | X64，通用 x64 指令集配置 |
-| `LumaRecode-APX.exe` | x64，CPU 与 Windows 均需支持 Intel APX |
 | `LumaRecode-ARM64.exe` | Windows ARM64，原生 ARM64 应用与图片编解码库 |
 
 ARM64 默认使用软件归档。FFmpeg 的编码速度由外部 FFmpeg、硬件与所选预设决定。
@@ -106,22 +105,22 @@ SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线�
 
 ## 从源码构建
 
-需要 .NET SDK 11.0.100、PowerShell 7，以及 Visual Studio C++ x64 / ARM64 构建工具。
+需要 .NET SDK 11.0.100 和 PowerShell 7；可选 AOT 构建还需要 Visual Studio C++ 工具链。
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
 ./build.ps1
 ./build.ps1 -Target X64
-./build.ps1 -Target Apx
+./build.ps1 -Target X64 -Compilation Aot
 ./build.ps1 -Target Arm64
 ```
 
-默认的 Native 模式自动选择本机目标：ARM64 系统使用 ARM64；x64 系统支持 APX 时使用 APX，否则使用 X64，并按构建 CPU 的指令集优化。产物为 `dist/SelfContained/LumaRecode.exe`。
+默认使用 JIT。Native 模式按 Windows 系统架构选择 X64 或 ARM64，产物为 `dist/SelfContained/LumaRecode.exe`。Releases 提供 X64 和 ARM64 两种自包含单文件 EXE。
 
-显式指定 X64、Apx 或 Arm64 时，按对应目标的指令集编译，输出到 `dist/SelfContained-X64/`、`dist/SelfContained-Apx/` 或 `dist/SelfContained-Arm64/`。Releases 提供这三种固定目标的 EXE。
+JIT 在运行设备上选择支持的指令集；x64 设备同时满足 CPU 与 Windows 的 APX 支持条件时，程序在启动阶段启用 APX，并保留用户显式设置。可选 `-Compilation Aot` 使用发布时编译，输出到 `dist/Aot-SelfContained[-Target]/`；APX 固定目标使用 `-Target Apx -Compilation Aot`。
 
-使用 Visual Studio 2026 18.12 或更新版本打开 `LumaRecode.sln`。以 `LumaRecode.App` 为启动项目，Debug 配置可直接调试。`Release | Native` 自动选择本机目标并优化；`Release | x64`、`Release-APX | x64` 和 `Release | ARM64` 构建固定目标。`Packaging` 项目会生成对应的单文件 EXE。安装与配置见[开发文档](docs/dependencies.md)，检查命令见 [QA 指南](qa/README.md)。
+使用 Visual Studio 2026 18.12 或更新版本打开 `LumaRecode.sln`。以 `LumaRecode.App` 为启动项目，Debug 配置用于调试。`Release | Native`、`Release | x64` 和 `Release | ARM64` 生成 JIT 版本；`Release-AOT` 提供对应的 AOT 构建，`Release-APX | x64` 生成 APX AOT 版本。`Packaging` 项目完成单文件打包。安装与配置见[开发文档](docs/dependencies.md)，检查命令见 [QA 指南](qa/README.md)。
 
 ## 项目结构
 
