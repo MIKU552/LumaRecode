@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="Brand/LumaRecode.svg" width="104" height="104" alt="LumaRecode icon" />
+  <img src="../../Brand/LumaRecode.svg" width="104" height="104" alt="LumaRecode icon" />
 </p>
 <h1 align="center">映码 · LumaRecode</h1>
 
-[简体中文](README.md) | English | [日本語](README.ja.md) | [Español](README.es.md)
+[简体中文](../../README.md) | English | [日本語](ja.md) | [Español](es.md)
 
 Video transcoding and color conversion for Windows 11, built with C# and .NET. LumaRecode provides a native WinUI 3 interface and a command line for FFmpeg, with video compression, camera Log to HDR / SDR, and HDR to SDR workflows.
 
-[Download](https://github.com/MIKU552/LumaRecode/releases/latest) · [Documentation](docs/README.md) · [Command line](docs/cli.en.md) · [Changelog](CHANGELOG.md)
+[Download](https://github.com/MIKU552/LumaRecode/releases/latest) · [Documentation](../README.md#english) · [Command line](../cli/en.md) · [Changelog](../../CHANGELOG.md#english)
 
 ## Features
 
@@ -39,19 +39,26 @@ Quick share uses Intel QSV. Software archive uses CPU encoding.
 
 ARM64 defaults to Software archive. Encoding speed depends on the external FFmpeg build, hardware and selected preset.
 
-Dolby Vision / HDR10+ sources default to software HEVC with dynamic metadata preservation. Select Standard HDR for hardware quick sharing. Supported Dolby Vision profiles are single-layer 5, 8.1, 8.4, 10.1 and 10.4. ProRes RAW checks FFmpeg decoder compatibility, then develops with camera white balance, color matrix and gain, with HLG output by default. See [Color conversion](docs/color-conversion.md) for formats and processing paths.
+Dolby Vision / HDR10+ sources default to software HEVC with dynamic metadata preservation. Select Standard HDR for hardware quick sharing. Supported Dolby Vision profiles are single-layer 5, 8.1, 8.4, 10.1 and 10.4. ProRes RAW checks FFmpeg decoder compatibility, then develops with camera white balance, color matrix and gain, with HLG output by default. See [Color conversion](../color-conversion.md#english) for formats and processing paths.
 
 ## Preview, trimming and images
 
 Open **Preview & frame trimming** on the video page to scrub, step through frames and set the first and last frames. The default is the whole video. GUI frame numbers start at 1 and include the selected last frame.
 
-The **Images & Motion Photos** page exports the selected frame as HDR AVIF (BT.2020 / PQ, 10 or 12 bits), Ultra HDR JPEG, sRGB JPEG, or lossless sRGB PNG (8-bit or a 16-bit container).
+The **Images & Motion Photos** page exports the selected frame:
+
+| Format | Output |
+| --- | --- |
+| HDR AVIF | BT.2020 / PQ, 10 or 12 bits |
+| Ultra HDR JPEG | SDR base image, HDR gain map and gain-map metadata |
+| SDR JPEG | sRGB image |
+| SDR PNG | Lossless sRGB image, 8-bit or a 16-bit container |
 
 JPEG and Ultra HDR JPEG can include Android Motion Photo video. Choose the cover and video range independently; the default is about three seconds around the cover. A single `MP.jpg` file follows [Google Motion Photo 1.0](https://developer.android.com/media/platform/motion-photo-format). Ultra HDR encoding uses Google's [libultrahdr](https://github.com/google/libultrahdr). Motion video defaults to CPU encoding, with Intel quick encoding available.
 
 The frame preview is SDR. Export uses the selected image format. Frame-accurate video cuts re-encode audio as AAC, Opus or eligible FLAC.
 
-Motion video keeps the source resolution by default, with optional 1080p and 720p limits. Dedicated short-clip presets use x264 fast / CRF20, x265 fast / CRF23, or Intel TU6. Audio is AAC-LC at 48 kHz, preserving mono or using stereo. See [motion-photo-presets.json](Assets/motion-photo-presets.json).
+Motion video keeps the source resolution by default, with optional 1080p and 720p limits. Dedicated short-clip presets use x264 fast / CRF20, x265 fast / CRF23, or Intel TU6. Audio is AAC-LC at 48 kHz, preserving mono or using stereo. See [motion-photo-presets.json](../../Assets/motion-photo-presets.json).
 
 ## Encoding and color
 
@@ -68,7 +75,7 @@ FLAC accepts confirmed lossless integer audio, including integer PCM, and preser
 
 SDR sources default to SDR output, HLG / PQ sources retain HDR, and recognized Log profiles convert to HLG. Input interpretation and Camera profile let you select the source type manually.
 
-Video is re-encoded with the selected preset; audio can be copied or transcoded. See [recommended-presets.json](Assets/recommended-presets.json) for the settings and the [encoding benchmark](docs/benchmarks/encoding-benchmark.en.md) for measurements.
+Video is re-encoded with the selected preset; audio can be copied or transcoded. See [recommended-presets.json](../../Assets/recommended-presets.json) for the settings and the [encoding benchmark](../benchmarks/encoding-benchmark.md#english) for measurements.
 
 ## Requirements
 
@@ -95,7 +102,7 @@ Run commands through an output pipeline in PowerShell 7:
 ./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
 ```
 
-For first-time unattended use, read the component terms with `license --text`, then run `license --accept-terms`. See the [CLI guide](docs/cli.en.md) for commands, batch processing, and exit codes.
+For first-time unattended use, read the component terms with `license --text`, then run `license --accept-terms`. See the [CLI guide](../cli/en.md) for commands, batch processing, and exit codes.
 
 ## Build from source
 
@@ -114,7 +121,7 @@ Native is the default automatic mode: ARM64 on ARM64 Windows, APX on x64 Windows
 
 Explicit X64, Apx and Arm64 targets compile for their respective instruction sets and write to `dist/SelfContained-X64/`, `dist/SelfContained-Apx/` and `dist/SelfContained-Arm64/`. Releases contain these three fixed-target EXEs.
 
-Open `LumaRecode.sln` in Visual Studio 2026 18.12 or later. Set `App` as the startup project and use Debug for debugging. `Release | Native` selects and optimizes for the build machine; `Release | x64`, `Release-APX | x64` and `Release | ARM64` select fixed targets. The `Packaging` project creates the single EXE. See [development and distribution](docs/dependencies.md) for setup and the [QA guide](qa/README.md) for checks.
+Open `LumaRecode.sln` in Visual Studio 2026 18.12 or later. Set `LumaRecode.App` as the startup project and use Debug for debugging. `Release | Native` selects and optimizes for the build machine; `Release | x64`, `Release-APX | x64` and `Release | ARM64` select fixed targets. The `Packaging` project creates the single EXE. See [development and distribution](../dependencies.md#english) for setup and the [QA guide](../../qa/README.md#english) for checks.
 
 ## Project structure
 
@@ -135,12 +142,12 @@ licenses/  Third-party licenses, notices, and provenance
 
 Original project code was developed with **Codex for Windows**, using **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** with **Extra high (`xhigh`)** reasoning. **[MIKU552](https://github.com/MIKU552)** defines requirements, supplies hardware and footage, and verifies the application.
 
-Original code, documentation, graphics, and generated camera Log LUTs use the **[MIT License](LICENSE)**. Licenses and sources for third-party LUTs, fonts, and runtimes are listed in [NOTICE](NOTICE) and [third-party components](Assets/THIRD_PARTY.md).
+Original code, documentation, graphics, and generated camera Log LUTs use the **[MIT License](../../LICENSE)**. Licenses and sources for third-party LUTs, fonts, and runtimes are listed in [NOTICE](../../NOTICE) and [third-party components](../../Assets/THIRD_PARTY.md#english).
 
 ## Documentation
 
-- [Command line](docs/cli.en.md)
-- [Development and distribution](docs/dependencies.md)
-- [Performance](docs/performance.md)
-- [Encoding benchmark](docs/benchmarks/encoding-benchmark.en.md)
-- [Changelog](CHANGELOG.md)
+- [Command line](../cli/en.md)
+- [Development and distribution](../dependencies.md#english)
+- [Performance](../performance.md#english)
+- [Encoding benchmark](../benchmarks/encoding-benchmark.md#english)
+- [Changelog](../../CHANGELOG.md#english)

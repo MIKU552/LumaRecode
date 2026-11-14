@@ -1,14 +1,12 @@
 # 命令行
 
-简体中文 · [English](cli.en.md) · [日本語](cli.ja.md) · [Español](cli.es.md) · [README](../README.md)
+简体中文 · [English](en.md) · [日本語](ja.md) · [Español](es.md) · [README](../../README.md)
 
 在 **PowerShell 7** 中运行 `LumaRecode.exe`。无参数时打开 GUI，带 `probe`、`convert` 等子命令时运行 CLI。
 
 程序使用 Windows GUI 子系统。终端调用时，**文本输出接 `| Out-Host`，JSON 输出接 `| ConvertFrom-Json`**，通过管道等待命令结束并读取 `$LASTEXITCODE`。其他程序可使用进程 API 等待退出。
 
 输出编码为 UTF-8。下面的命令设置当前 PowerShell 会话的输出编码，并显示帮助、工具信息和转换示例。
-
-动态 HDR 素材默认使用软件 HEVC 保留元数据。`--dynamic-hdr standard --purpose share` 输出标准 HDR；`--range sdr` 转为 SDR。ProRes RAW 自动显影为 HLG，可用 `--range sdr` 输出 SDR。支持格式见[色彩转换](color-conversion.md)。
 
 ## 开始使用
 
@@ -25,7 +23,9 @@
 
 GUI 和 CLI 共用组件条款的接受记录。首次批处理可使用 `license --text` 阅读条款，再运行 `license --accept-terms`；也可在任务命令中添加 `--accept-terms`。
 
-FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可用 `--ffmpeg PATH --ffprobe PATH` 覆盖。`--no-settings` 使用独立配置，忽略 GUI 设置并禁用设置写入；使用此模式时添加 `--accept-terms`。
+FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可用 `--ffmpeg PATH --ffprobe PATH` 覆盖。`--no-settings` 使用独立配置，忽略 GUI 设置并禁用设置写入；使用此模式时添加 `--accept-terms`。`--lang system|zh|en|ja|es` 控制输出语言。
+
+动态 HDR 素材默认使用软件 HEVC 保留元数据。`--dynamic-hdr standard --purpose share` 输出标准 HDR；`--range sdr` 转为 SDR。ProRes RAW 自动显影为 HLG，可用 `--range sdr` 输出 SDR。支持格式见[色彩转换](../color-conversion.md)。
 
 ## 命令
 
@@ -41,7 +41,7 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | `plan INPUT...` | 预览转换选项、FFmpeg 参数、工作目录和输出色彩 |
 | `convert INPUT...` | 单文件或顺序批量转换，完成后校验输出 |
 
-各命令均可使用 `--help`。`--lang system|zh|en|ja|es` 控制输出语言。`presets`、`profiles`、`probe`、`doctor`、`license` 返回 JSON；转换的文本进度写入 stderr，结果写入 stdout。
+各命令均可使用 `--help`。`presets`、`profiles`、`probe`、`doctor`、`license` 返回 JSON；转换的文本进度写入 stderr，结果写入 stdout。
 
 ## 编码与色彩选项
 
@@ -50,13 +50,13 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | 选项 | 值 / 默认行为 |
 | --- | --- |
 | `--preset` | `share-avc`、`share-hevc`、`share-av1`、`archive-avc`、`archive-hevc`、`archive-av1`、`archive-av1-fast` |
-| `--purpose` | `share` / `archive`；默认 `share`，即 Intel QSV 快速分享 |
+| `--purpose` | `share` / `archive`；x64 默认 Intel QSV 快速分享，ARM64 默认软件归档；动态 HDR 素材默认归档 |
 | `--codec` | `hevc` / `av1` / `avc`；默认 `hevc` |
 | `--range` / `--dynamic-range` | `auto` / `sdr` / `hdr`；默认按素材动态范围选择 |
 | `--transform` | `auto` / `none` / `log-hdr` / `log-sdr` / `hdr-sdr` |
 | `--profile` | `auto` / `pocket3` / `samsung` / `milog` / `applelog` / `applelog2` |
 | `--dynamic-hdr` | `preserve` / `standard` |
-| `--input-kind` | `auto` / `sdr` / `hlg` / `pq` / `log`；用于人工纠正原片标签 |
+| `--input-kind` | `auto` / `sdr` / `hlg` / `pq` / `log` / `raw`；用于人工纠正原片标签 |
 | `--sampling` | `auto` / `source` / `420` / `422` / `444` / `gray`；默认 `auto`：软件 HEVC / AVC 归档保持原采样，RGB 使用 4:4:4；AV1 和分享使用 4:2:0；422 / 444 / gray 需要软件 HEVC / AVC |
 | `--color-range` | `auto` / `source` / `limited` / `full`；默认 `auto`：归档保持原范围，分享转换为 Limited |
 | `--bit-depth` | `auto` / `8` / `10` / `12`；归档按原片位深和编码器上限选择，分享默认 SDR 8 位、HDR 10 位 |
@@ -133,7 +133,7 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | `-o PATH`、`--overwrite`、`--skip-existing` | 输出路径、确认覆盖或跳过已有文件 |
 | `--dry-run` | 输出图片和视频范围信息 |
 
-动态照片保存为单个 `MP.jpg` 文件。HDR 图片要求 HDR、Log 或 RAW 素材；输出格式与 Google 规范见 [README](../README.md#预览裁剪与图片)。
+动态照片保存为单个 `MP.jpg` 文件。HDR 图片要求 HDR、Log 或 RAW 素材；输出格式与 Google 规范见 [README](../../README.md#预览裁剪与图片)。
 
 ## 批量、输出与覆盖
 

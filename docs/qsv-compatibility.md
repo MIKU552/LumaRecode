@@ -1,10 +1,14 @@
 # QSV 兼容性 / QSV compatibility
 
+[简体中文](#简体中文) · [English](#english)
+
+## 简体中文
+
 快速分享使用 Intel QSV 的 H.264、HEVC 和 AV1 编码器。滤镜和解码路径按输入格式选择，编码后的文件通过格式与色彩校验后才写入最终位置。
 
 复现环境：Windows 11、Intel Arc B390、驱动 32.0.101.9150、FFmpeg 9.0.2（Gyan）。
 
-## 路径选择
+### 路径选择
 
 | 输入或操作 | 处理方式 |
 | --- | --- |
@@ -15,7 +19,7 @@
 
 常见可变帧率素材通过标称帧率与平均帧率的差异识别。未提前识别的 DTS 冲突由运行时兼容重试处理。
 
-## 错误恢复
+### 错误恢复
 
 以下恢复只用于快速分享，并保留编码器、质量值、preset、输出位深、色彩和音轨选择。
 
@@ -30,7 +34,7 @@
 
 快速分享的 GOP 为约两秒，并限制在 240 帧以内，用于避开部分 Arc 驱动的长 GOP 故障。
 
-## 已核对的上游报告
+### 已核对的上游报告
 
 | 报告 | 与本项目的关系 |
 | --- | --- |
@@ -46,7 +50,7 @@
 | [Intel #2043：Linux B580 AV1 超时](https://github.com/intel/media-driver/issues/2043) | 与本次 Windows B390 环境不同。任务保持进程隔离，设备故障不自动循环重试。 |
 | [FFmpeg：编码输入尺寸检查](https://github.com/FFmpeg/FFmpeg/commit/9b99973b2bbecee0b7e1e57035b95498b42f54a6) | 使用 FFmpeg 默认 autoscale。底层尺寸检查修复由外部 FFmpeg 提供。 |
 
-## B 帧与可变帧率
+### B 帧与可变帧率
 
 可变帧率可以使用 B 帧。当前兼容策略针对 QSV 返回的 DTS 冲突。
 
@@ -54,7 +58,7 @@
 
 软件归档可以继续使用 B 帧。保留 QSV B 帧并正确恢复原始时间，需要进一步处理编码器返回的时间戳；固定帧率转换则会改变帧的时间分布。
 
-## 检查
+### 检查
 
 ```powershell
 dotnet build qa/BackendChecks/BackendChecks.csproj -c Release
@@ -67,8 +71,67 @@ python qa/TimingChecks/check_qsv_recovery.py
 
 ## English
 
-Quick share uses QSV H.264, HEVC and AV1. Software filters receive software frames, and display-matrix transforms are applied before hardware encoding. VFR compatibility preserves frame presentation times and uses I/P-only encoding for H.264 and HEVC.
+Quick share uses Intel QSV H.264, HEVC and AV1 encoders. Source format determines decoding and filtering. Encoded files are written to their final destinations after format and color verification.
 
-Runtime recovery handles specific decoder, AV1 HDR side-data, LowPower and DTS failures. Each fallback is applied at most once, with at most three retries. Encoder selection, quality settings and requested output formats remain unchanged. Unclassified device failures terminate the job, and an existing destination is replaced only after successful verification.
+Reproduction environment: Windows 11, Intel Arc B390, driver 32.0.101.9150 and FFmpeg 9.0.2 (Gyan).
 
-The linked upstream reports distinguish confirmed local reproductions from Linux-specific and older-driver issues. The QA commands above exercise timing, HDR metadata, orientation, high-frame-rate GOPs and bounded recovery through actual encodes.
+### Path selection
+
+| Input or operation | Processing path |
+| --- | --- |
+| Supported 4:2:0 sources retaining color and bit depth | QSV decoding and encoding |
+| LUTs, tone mapping, RGB, 4:2:2 / 4:4:4 or Software archive | Software decoding and filters; encoder follows the selected purpose |
+| Rotation or reflection display matrices | Apply orientation in software; Quick share retains QSV encoding |
+| Variable frame rate | Bypass VPP timestamp quantization; use software filters for depth conversion and I/P-only encoding for H.264 / HEVC |
+
+Common VFR sources are identified by the difference between nominal and average frame rates. DTS conflicts that were not identified in advance use runtime recovery.
+
+### Error recovery
+
+Recovery applies to Quick share and preserves the selected encoder, quality value, preset, output depth, color and audio.
+
+| Error | Recovery |
+| --- | --- |
+| QSV decoder initialization, packet submission or hardware-frame format conversion fails | Switch to software decoding and retain QSV encoding |
+| Hardware-decoded AV1 with HDR static metadata reports `File exists` in filtering | Switch to software decoding and retain HDR static metadata |
+| `Low power mode is unsupported` | Change LowPower from `1` to automatic selection, `-1` |
+| Timestamp conflicts such as `Non-monotonic DTS` or `Non-monotonous DTS` | Use the VFR compatibility path |
+
+Each recovery is applied at most once, with at most three retries per job. Unmatched errors terminate the job. Cancellation stops the current child-process tree. Existing output is replaced after encoding and verification succeed.
+
+Quick share uses a GOP of about two seconds, capped at 240 frames to avoid long-GOP failures in some Arc drivers.
+
+### Reviewed upstream reports
+
+| Report | Relevance to this project |
+| --- | --- |
+| [FFmpeg VPP output time base](https://ffmpeg.org/pipermail/ffmpeg-cvslog/2021-June/127945.html), [later frame-rate option changes](https://ffmpeg.org/pipermail/ffmpeg-devel/2023-January/306079.html) | The tested VPP path retimes frames to the nominal interval. The VFR path bypasses VPP to retain presentation times. |
+| [HandBrake #6786: QSV DTS conflicts](https://github.com/HandBrake/HandBrake/issues/6786), [encoder API migration #6446](https://github.com/HandBrake/HandBrake/pull/6446) | Similar symptoms have been reported. HandBrake saves and restores timestamps through changes spanning encoding, rate control and muxing interfaces. |
+| [FFmpeg #24429: duplicate AV1 HDR side data](https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24429) | Reproduced in the recorded environment. Matching input and error conditions trigger software decoding. |
+| [Intel #2017: 8/10-bit hardware-frame format negotiation](https://github.com/intel/media-driver/issues/2017) | Software filters receive software frames. Each job starts a separate FFmpeg process and hardware-frame pool. |
+| [Intel #2066: RGB conversion using BT.601](https://github.com/intel/media-driver/issues/2066) | The report concerns Linux VA-API. This project converts RGB in software and sets the matrix, primaries, transfer and range explicitly. |
+| [Intel Arc long-GOP encoding failure](https://www.intel.com/content/www/us/en/support/articles/000095403.html) | Quick share caps GOP length. Standard two-second GOP values at 30 / 60 / 120 fps remain the same. |
+| [FFmpeg #11426: QSV decoder flush memory growth](https://ffmpeg.org/pipermail/ffmpeg-trac/2025-January/072436.html) | The report concerns some older GPUs. Each job owns a process and decoder session that are released when the job ends. |
+| [Intel cartwheel-ffmpeg #334: initialization in non-interactive Windows sessions](https://github.com/intel/cartwheel-ffmpeg/issues/334) | Hardware initialization diagnostics are retained. Software archive is available when hardware is unavailable. |
+| [Intel #1597: AV1 ICQ on Linux DG2](https://github.com/intel/media-driver/issues/1597) | ICQ works in the recorded Windows environment. Recovery retains the quality mode. |
+| [Intel #2043: AV1 timeout on Linux B580](https://github.com/intel/media-driver/issues/2043) | This differs from the recorded Windows B390 environment. Jobs use separate processes; device failures do not cause repeated automatic retries. |
+| [FFmpeg encoding input dimension checks](https://github.com/FFmpeg/FFmpeg/commit/9b99973b2bbecee0b7e1e57035b95498b42f54a6) | The project uses FFmpeg's default autoscale behavior. Dimension-check fixes come from the external FFmpeg build. |
+
+### B-frames and variable frame rate
+
+VFR can use B-frames. The compatibility policy addresses DTS conflicts returned by QSV.
+
+After bypassing VPP, the actual camera source was tested with one B-frame, two B-frames, disabled B-pyramid/adaptive B-frames, and disabled LowPower. All four configurations still produced DTS regressions. The I/P-only path retained all 1451 frames and their presentation times.
+
+Software archive can continue using B-frames. Retaining QSV B-frames while recovering original timing requires further handling of encoder-returned timestamps. Converting to a fixed frame rate changes frame timing.
+
+### Checks
+
+```powershell
+dotnet build qa/BackendChecks/BackendChecks.csproj -c Release
+python qa/TimingChecks/check_timing.py
+python qa/TimingChecks/check_timing.py --sample D:/MediaTests/camera.mp4
+python qa/TimingChecks/check_qsv_recovery.py
+```
+
+Checks cover per-frame presentation times, DTS ordering, frame counts, 8/10-bit output, SDR/HLG/PQ, AV1 HDR decoding, rotation/reflection, 240 fps GOPs, error classification, retry limits and existing-output protection. Failure injection is compiled into the QA tool; production builds omit it.

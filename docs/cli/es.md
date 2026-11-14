@@ -1,12 +1,14 @@
 # Línea de comandos
 
-[简体中文](cli.zh-CN.md) · [English](cli.en.md) · [日本語](cli.ja.md) · Español · [README](../README.es.md)
+[简体中文](zh-CN.md) · [English](en.md) · [日本語](ja.md) · Español · [README](../readme/es.md)
 
 Ejecuta `LumaRecode.exe` en **PowerShell 7**. Sin argumentos abre la interfaz gráfica; con subcomandos como `probe` y `convert` ejecuta la CLI.
 
 El programa usa el subsistema gráfico de Windows. **Conecta el texto a `Out-Host` o el JSON a `ConvertFrom-Json`** para esperar a que termine y consultar `$LASTEXITCODE`. Otros programas pueden esperar mediante una API de procesos.
 
 La salida usa UTF-8. Estos ejemplos configuran la codificación de la sesión actual de PowerShell.
+
+## Inicio rápido
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
@@ -23,9 +25,9 @@ La interfaz y la CLI comparten la aceptación de las condiciones de los componen
 
 Las herramientas se buscan primero en `PATH` y después en las rutas guardadas por la interfaz. Puedes indicar `--ffmpeg PATH --ffprobe PATH`. `--lang system|en|zh|ja|es` selecciona el idioma de salida.
 
-Las fuentes HDR dinámicas usan HEVC por software para conservar metadatos. Usa `--dynamic-hdr standard --purpose share` para HDR estándar o `--range sdr` para SDR. ProRes RAW se revela automáticamente a HLG; usa `--range sdr` para SDR. Consulta [Conversión de color](color-conversion.md).
+Las fuentes HDR dinámicas usan HEVC por software para conservar metadatos. Usa `--dynamic-hdr standard --purpose share` para HDR estándar o `--range sdr` para SDR. ProRes RAW se revela automáticamente a HLG; usa `--range sdr` para SDR. Consulta [Conversión de color (chino e inglés)](../color-conversion.md#english).
 
-## Comandos y opciones
+## Comandos
 
 | Comando | Función |
 | --- | --- |
@@ -41,12 +43,14 @@ Las fuentes HDR dinámicas usan HEVC por software para conservar metadatos. Usa 
 
 Todos los comandos admiten `--help`. Los resultados de análisis, catálogos, diagnóstico y licencias son JSON. El progreso en texto se escribe en stderr; los resultados, en stdout.
 
+## Opciones de codificación y color
+
 `convert` y `plan` ofrecen los mismos controles de codificación y color que la interfaz:
 
 | Opción | Valores |
 | --- | --- |
 | `--preset` | `share-avc`, `share-hevc`, `share-av1`, `archive-avc`, `archive-hevc`, `archive-av1`, `archive-av1-fast` |
-| `--purpose` | `share` (Intel QSV, predeterminado), `archive` (CPU) |
+| `--purpose` | `share` (Intel QSV), `archive` (CPU); x64 usa compartir, ARM64 usa archivo; las fuentes HDR dinámicas usan archivo por defecto |
 | `--codec` | `hevc` (predeterminado), `av1`, `avc` |
 | `--range` / `--dynamic-range` | `auto` (predeterminado), `sdr`, `hdr` |
 | `--transform` | `auto` (predeterminado), `none`, `log-hdr`, `log-sdr`, `hdr-sdr` |
@@ -118,7 +122,7 @@ Los intervalos por fotogramas, por segundos y `--duration` son excluyentes. Los 
 | `-o PATH`, `--overwrite`, `--skip-existing` | Destino y gestión de archivos existentes |
 | `--dry-run` | Mostrar la selección de imagen y el intervalo de vídeo |
 
-Las fotos en movimiento usan un único `MP.jpg`. Las imágenes HDR requieren vídeo HDR, Log o RAW. Consulta los formatos y las especificaciones de Google en el [README](../README.es.md).
+Las fotos en movimiento usan un único `MP.jpg`. Las imágenes HDR requieren vídeo HDR, Log o RAW. Consulta los formatos y las especificaciones de Google en el [README](../readme/es.md).
 
 ## Lotes y rutas de salida
 

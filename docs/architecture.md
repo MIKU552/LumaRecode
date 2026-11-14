@@ -1,6 +1,10 @@
 # 代码结构 / Architecture
 
-## 模块
+[简体中文](#简体中文) · [English](#english)
+
+## 简体中文
+
+### 模块
 
 `LumaRecode.sln` 与 `LumaRecode.slnx` 包含应用、核心、单文件入口、打包入口与 C# 检查项目。Visual Studio 的发布配置通过 `Packaging` 调用仓库根目录的 `build.ps1`。
 
@@ -17,7 +21,7 @@
 
 `App/MainWindow.*.cs` 按职责拆分：`Media` 负责素材，`Options` 负责约束，`Conversion` 负责任务与进度，`Frames` 负责预览和帧范围，`Dialogs` 与 `Localization` 负责对话框和语言。
 
-## 转换任务
+### 转换任务
 
 GUI 的 `ConversionClient` 和 CLI 的 `NativeCli` 调用同一个转换核心：
 
@@ -35,19 +39,19 @@ MediaProbe → OutputPolicy / Transcoder.Plan → 要求检查 → FFmpeg
 
 `PlatformDefaults` 统一 GUI 与 CLI 的架构默认值：ARM64 默认软件归档，并省去 x86 专用 RAW 解码参数。Ultra HDR 的 P/Invoke 接口在各架构保持一致，发布过程选择对应的原生 DLL。
 
-## 构建与打包
+### 构建与打包
 
 `build.ps1 -Target` 支持 Native、X64、Apx 和 Arm64。`tools/BuildTarget.ps1` 将 Native 解析为实际系统目标并选择本机指令集优化；显式目标使用各自的固定指令集。`IsWow64Process2` 读取实际系统架构，`IsProcessorFeaturePresent` 判断 APX 是否可执行。
 
 `Directory.Build.props` 按请求的目标隔离中间文件，App 和 Bundle 按架构选择 NuGet 锁文件。App 先发布 AOT 载荷，Bundle 随后将其打包为单个 EXE；解析后的 APX 目标会在入口启用运行前检查。Visual Studio 的 Release / Native 配置直接调用自动构建流程。发布选项见[开发与分发](dependencies.md)。
 
-## 线程与生命周期
+### 线程与生命周期
 
 GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在后台执行转换，最多排队 128 个事件，并按顺序回到调用线程。终态单独传递，确保取消时仍能完成收尾。
 
 每个转换客户端拥有自己的取消源；任务返回前等待子进程退出。素材切换通过代次检查丢弃旧探测结果。窗口关闭会取消探测、预览和运行任务，并解除系统事件订阅。
 
-## 逐帧预览
+### 逐帧预览
 
 `FrameTimeline` 保存显示帧的 PTS、时长及关键帧证据。常见逐行编码优先索引压缩包；遇到缺失或重复 PTS、隔行编码等情况使用解码帧索引。内部范围从 0 开始、结束位置不包含在内；GUI 将其转换为从 1 开始的包含结束帧表示。
 
@@ -57,7 +61,7 @@ GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在�
 
 拖动时间轴只更新帧位置、范围提示、输出文件名和预览请求。响应式布局只在宽度断点、工作页面或预览可见性改变时调整结构。
 
-## 编码约定
+### 编码约定
 
 - C# 使用文件范围命名空间、四空格缩进和显式控制流花括号；规则位于 `.editorconfig`。
 - 核心异步代码使用取消令牌并明确资源所有权；GUI 回调保留界面线程上下文。
@@ -70,10 +74,70 @@ GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在�
 
 ## English
 
-The WinUI frontend and CLI share the C# conversion core. `MediaProbe` captures source metadata, `OutputPolicy` resolves source and encoder constraints, and `Transcoder.Plan` produces a shell-free argument vector. Tasks encode into a private directory beside the destination, verify the result, then replace the destination. Cancellation joins child processes before cleanup.
+### Modules
 
-GUI events pass through a bounded, ordered channel and return to the caller's synchronization context. Source generations reject stale probe results. The preview scheduler runs one renderer and replaces pending work with the newest frame. Its LRU holds at most 12 PNGs and 8 MiB; source changes and hidden previews release the cache. Viewport rendering uses a 1024-pixel SDR pipe, while exports retain full-resolution processing.
+`LumaRecode.sln` and `LumaRecode.slnx` contain the application, core, single-file launcher, packaging entry and C# checks. Visual Studio release configurations use `Packaging` to invoke `build.ps1` in the repository root.
 
-Open `LumaRecode.sln` in Visual Studio. Its `Packaging` project invokes `build.ps1` for automatic Native or explicit X64, APX and ARM64. Native resolves the real OS architecture and APX capability, then optimizes for the build CPU. Explicit targets use fixed instruction sets. Each request owns its intermediate files, payload and licenses. The resolved APX target enables the launch check before loading AOT code. ARM64 defaults to software encoding and uses an ARM64 Ultra HDR library.
+| Directory | Responsibility |
+| --- | --- |
+| `App/` | WinUI views, settings, localization, notifications and GUI / CLI startup selection |
+| `Core/` | Source inspection, output policies, command planning, video/image export and CLI |
+| `Bundle/` | Extract and launch the AOT application; preserve standard handles and exit codes |
+| `Packaging/` | Map Visual Studio configurations to the complete single-file build pipeline |
+| `Assets/` | LUTs, video and Motion Photo presets, resource provenance |
+| `qa/` | C# boundary checks, Python integration checks and PowerShell sampling |
+| `tools/` | Build helpers, license collection, resource generation and source checks |
+| `docs/` | User guides, implementation notes and measurements |
 
-Run `tools/Check-Source.ps1` for source checks. Follow `.editorconfig`, keep media numbers culture-independent, document ownership and format contracts, and update provenance when changing shipped resources. Build outputs and test footage stay outside tracked source.
+`App/MainWindow.*.cs` is split by responsibility: `Media` handles sources, `Options` enforces constraints, `Conversion` manages jobs and progress, `Frames` handles previews and frame ranges, and `Dialogs` / `Localization` handle dialogs and language.
+
+### Conversion jobs
+
+The GUI's `ConversionClient` and the CLI's `NativeCli` call the same conversion core:
+
+```text
+MediaProbe → OutputPolicy / Transcoder.Plan → Requirements → FFmpeg
+                                                              ↓
+Destination ← Replace after verification ← Temporary output ← Encoding / metadata
+```
+
+`MediaInfo` is a source-inspection snapshot. `EncodeOptions` stores user selections, and `OutputPolicy` resolves defaults against source bit depth, sampling and encoder capabilities. `Transcoder.Plan` produces an argument array passed through `ProcessStartInfo.ArgumentList`.
+
+Encoding writes into a private job directory beside the destination. Verification checks pixel format, color tags, audio and dynamic HDR; frame-accurate jobs also check the timeline. The destination is replaced after verification succeeds. Cancellation and failure stop and join child processes before removing temporary files.
+
+Dynamic HDR preservation, standard color conversion and RAW development each select their processing path through their own policies. `Hdr10PlusBitstream` reads HEVC SEI from compressed packets first and uses decoded-frame metadata for ambiguous timelines. `RawDevelopment` writes per-frame camera calibration into FFmpeg commands.
+
+`PlatformDefaults` provides common GUI / CLI architecture defaults: ARM64 starts with Software archive and omits the x86-specific RAW decoder workaround. Ultra HDR uses the same P/Invoke interface on each architecture; publishing selects the matching native DLL.
+
+### Building and packaging
+
+`build.ps1 -Target` supports Native, X64, Apx and Arm64. `tools/BuildTarget.ps1` resolves Native to the actual system target and selects build-CPU instruction optimization. Explicit targets use fixed instruction profiles. `IsWow64Process2` reads the real OS architecture; `IsProcessorFeaturePresent` checks whether APX is available.
+
+`Directory.Build.props` isolates intermediate files by the requested target. App and Bundle select architecture-specific NuGet lock files. App publishes the AOT payload first, then Bundle packages it into a single EXE. A resolved APX target enables the launch-time compatibility check. Visual Studio's Release / Native configuration invokes the automatic build pipeline. See [Development and distribution](dependencies.md#english) for publishing options.
+
+### Threads and lifetimes
+
+GUI controls are accessed on their DispatcherQueue thread. `ConversionEventPump` runs conversion work in the background, queues at most 128 events and delivers them in order on the caller's synchronization context. Terminal state is delivered separately so cancellation can finish cleanup.
+
+Each conversion client owns its cancellation source and waits for child processes before returning. Source generations discard stale probe results. Closing a window cancels probing, preview and running jobs, then unsubscribes from system events.
+
+### Frame preview
+
+`FrameTimeline` stores display-frame PTS values, durations and keyframe evidence. Common progressive codecs use compressed-packet indexing first. Missing or duplicate PTS values, interlaced material and similar cases use decoded-frame indexing. Internal ranges are zero-based and end-exclusive; the GUI converts them to one-based ranges with an inclusive end.
+
+`FramePreviewSession` runs one renderer and keeps one replaceable pending request. Scrubbing updates the pending request while completed renders provide feedback. The LRU cache holds at most 12 PNGs and 8 MiB; hiding the preview or changing the source releases it.
+
+`FramePreview` uses one FFmpeg image pipe, limits decoder threads, scales to a maximum dimension of 1024 pixels before color processing and returns SDR PNG. RAW is scaled after demosaicing. Binary buffers are pooled and output size is bounded. Video and image exports use full-resolution processing.
+
+Timeline dragging updates frame position, range hints, output names and preview requests. Responsive layout changes its structure when the width breakpoint, work page or preview visibility changes.
+
+### Coding conventions
+
+- C# uses file-scoped namespaces, four-space indentation and explicit control-flow braces, as defined in `.editorconfig`.
+- Core asynchronous code passes cancellation tokens and defines resource ownership. GUI callbacks retain the UI synchronization context.
+- Numeric arguments and media times use invariant culture. Frame cuts use source time bases and PTS values.
+- Comments describe units, frame ranges, color representations, thread constraints, format fields and upstream compatibility behavior.
+- Changes to presets, fonts, LUTs or native components update provenance and licensing. Generated files are updated with their generating tools.
+- Build outputs, samples, footage and temporary results belong in ignored `dist/`, `build-cache/` or directories outside the repository. Results are collected in the existing guides and data directories.
+
+Run `./tools/Check-Source.ps1` for formatting, resource and core-boundary checks. See the [QA guide](../qa/README.md#english) for conversion and device checks.

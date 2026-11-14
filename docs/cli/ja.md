@@ -1,12 +1,14 @@
 # コマンドライン
 
-[简体中文](cli.zh-CN.md) · [English](cli.en.md) · 日本語 · [Español](cli.es.md) · [README](../README.ja.md)
+[简体中文](zh-CN.md) · [English](en.md) · 日本語 · [Español](es.md) · [README](../readme/ja.md)
 
 **PowerShell 7** から `LumaRecode.exe` を実行します。引数なしでは GUI が開き、`probe` や `convert` などのサブコマンドを指定すると CLI が動作します。
 
 本プログラムは Windows GUI サブシステムを使用します。**テキスト出力は `Out-Host`、JSON 出力は `ConvertFrom-Json` にパイプ接続**すると、終了を待って `$LASTEXITCODE` を取得できます。他のプログラムからはプロセス API で終了を待機できます。
 
 出力は UTF-8 です。以下の例では、現在の PowerShell セッションの出力エンコーディングを設定します。
+
+## 使い始める
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
@@ -23,9 +25,9 @@
 
 ツールは `PATH`、保存済みの GUI パスの順に検索します。`--ffmpeg PATH --ffprobe PATH` で指定できます。`--lang system|en|zh|ja|es` は出力言語を選択します。
 
-動的 HDR 素材はソフトウェア HEVC でメタデータを保持する設定が初期値です。標準 HDR には `--dynamic-hdr standard --purpose share`、SDR には `--range sdr` を使用します。ProRes RAW は自動的に HLG に現像し、`--range sdr` で SDR に出力します。対応形式は[色変換](color-conversion.md)を参照してください。
+動的 HDR 素材はソフトウェア HEVC でメタデータを保持する設定が初期値です。標準 HDR には `--dynamic-hdr standard --purpose share`、SDR には `--range sdr` を使用します。ProRes RAW は自動的に HLG に現像し、`--range sdr` で SDR に出力します。対応形式は[色変換（中国語・英語）](../color-conversion.md#english)を参照してください。
 
-## コマンドとオプション
+## コマンド
 
 | コマンド | 内容 |
 | --- | --- |
@@ -41,12 +43,14 @@
 
 各コマンドは `--help` に対応します。素材情報、プリセット一覧、診断、ライセンス情報の出力は JSON です。テキストの進捗は stderr、結果は stdout に出力します。
 
+## エンコードと色のオプション
+
 `convert` と `plan` では GUI と同じエンコード・色設定を指定できます。
 
 | オプション | 値 |
 | --- | --- |
 | `--preset` | `share-avc`, `share-hevc`, `share-av1`, `archive-avc`, `archive-hevc`, `archive-av1`, `archive-av1-fast` |
-| `--purpose` | `share`（Intel QSV、標準）、`archive`（CPU） |
+| `--purpose` | `share`（Intel QSV）/ `archive`（CPU）。x64 は共有、ARM64 はアーカイブが初期値。動的 HDR 素材はアーカイブを使用 |
 | `--codec` | `hevc`（標準）、`av1`, `avc` |
 | `--range` / `--dynamic-range` | `auto`（標準）、`sdr`, `hdr` |
 | `--transform` | `auto`（標準）、`none`, `log-hdr`, `log-sdr`, `hdr-sdr` |
@@ -118,7 +122,7 @@ HDR / Log から SDR への変換には FFmpeg の libplacebo と Vulkan が必�
 | `-o PATH`、`--overwrite`、`--skip-existing` | 保存先と既存ファイルの処理 |
 | `--dry-run` | フレームと動画範囲の情報を表示 |
 
-モーションフォトは単一の `MP.jpg` に保存します。HDR 画像には HDR、Log または RAW 素材が必要です。形式と Google 仕様は [README](../README.ja.md) を参照してください。
+モーションフォトは単一の `MP.jpg` に保存します。HDR 画像には HDR、Log または RAW 素材が必要です。形式と Google 仕様は [README](../readme/ja.md) を参照してください。
 
 ## 一括処理と保存先
 

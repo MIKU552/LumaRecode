@@ -1,16 +1,20 @@
 # 开发检查 / Development checks
 
+[简体中文](#简体中文) · [English](#english)
+
+## 简体中文
+
 在仓库根目录运行以下命令。.NET SDK 版本由 `global.json` 指定，Python 检查需要本机安装 Python 3.14 或更新版本。
 
-## 源码检查
+### 源码检查
 
 ```powershell
 ./tools/Check-Source.ps1
 ```
 
-依次检查 C# 格式、资源、序列化、核心边界、预览调度、进程管道、文档链接与构建目标。此命令使用独立的测试子进程，无需样片或 GPU。
+依次检查 C# 格式、资源、序列化、核心边界、预览调度、进程管道、文档与构建目标。文档检查覆盖链接、锚点、双语结构和语言回退标注。此命令使用独立的测试子进程，无需样片或 GPU。
 
-## 构建与架构
+### 构建与架构
 
 ```powershell
 python qa/BuildChecks/check_build.py
@@ -21,7 +25,7 @@ python qa/BuildChecks/check_build.py --artifacts
 
 ARM64 完整运行检查需要 ARM64 Windows 设备。APX 转码检查需要支持 APX 的 CPU 与 Windows。
 
-## 资源与序列化
+### 资源与序列化
 
 ```powershell
 dotnet run --project qa/LanguageChecks/LanguageChecks.csproj -c Release
@@ -36,7 +40,7 @@ python tools/generate_hlg_luts.py --check
 
 这些检查覆盖四种语言的选择、翻译资源与格式占位符、XAML 映射、设置格式、命令行 JSON 格式和生成的 LUT。可给 `check_cli_languages.py` 传入 `--exe dist/SelfContained/LumaRecode.exe`，检查打包后的 CLI 语言资源。
 
-## CLI 与转换核心
+### CLI 与转换核心
 
 先运行 `./build.ps1`，再执行集成检查：
 
@@ -54,11 +58,11 @@ python qa/TimingChecks/check_qsv_recovery.py
 
 QSV 恢复检查覆盖 AV1 HDR、旋转和镜像、240 fps GOP，以及解码、LowPower、时间戳故障后的重试上限和输出文件保护。兼容策略与上游报告见 [QSV 兼容性](../docs/qsv-compatibility.md)。
 
-## GUI 启动
+### GUI 启动
 
 发布前直接打开最终的 `LumaRecode.exe`，确认主窗口完成加载，再检查语言切换、配色面板和“关于”窗口。关闭后重新打开，确认语言设置恢复。检查 `%LOCALAPPDATA%\LumaRecode\error.log` 的更新时间及内容。
 
-## 采样、范围与音频
+### 采样、范围与音频
 
 ```powershell
 python qa/FormatChecks/check_formats.py
@@ -68,7 +72,7 @@ python qa/FormatChecks/check_formats.py
 
 检查 SDR / HLG / PQ 编码后的黑白像素值、8 / 10 / 12 位与 4:2:0 / 4:2:2 / 4:4:4 / RGB / 灰度输入、源格式上限，以及 FLAC 多音轨的解码样本哈希。需要 Intel QSV 和 Vulkan / libplacebo。
 
-## 性能与并发
+### 性能与并发
 
 ```powershell
 dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release -- --check
@@ -87,7 +91,7 @@ python qa/PerformanceChecks/benchmark_preview.py --sdr D:/MediaTests/sdr.mp4 --h
 
 可分别指定任一素材。`--frames 0,30,60,90` 设置帧序号，`--repeat 3` 设置轮数。
 
-## 内存采样
+### 内存采样
 
 保持窗口大小、主题、HDR 和输入法一致，每次仅运行一个待测实例，在菜单操作和编码之前采样：
 
@@ -109,11 +113,7 @@ AOT 单文件版的实际 GUI 位于 `.net/LumaRecode/<bundle-id>/Application/Lu
 
 优化设计与结果见[性能优化](../docs/performance.md)。
 
-## English
-
-Run resource and serialization checks before integration tests. CLI and native backend checks perform real conversions and require the configured FFmpeg filters and GPU support. For memory comparisons, use one process at a time and keep the UI state and process age consistent. Sample the extracted AOT GUI, and account for all processes when measuring CLI jobs.
-
-## HDR and RAW
+### HDR 与 RAW
 
 ```powershell
 python qa/HdrChecks/check_hdr.py
@@ -121,12 +121,141 @@ python qa/HdrChecks/check_hdr.py --samples D:/MediaTests/HDR
 python tools/generate_hlg_luts.py --check
 ```
 
-HDR checks cover Apple transfer/gamut math, explicit Log detection, per-frame Dolby Vision metadata, HDR10+ JSON round-tripping and ProRes RAW decoder compatibility. Downloaded sample origins and excerpt commands are listed in [sample-sources.json](HdrChecks/sample-sources.json). The full HDR10+ comparison uses hdr10plus_tool on PATH as a development-only reference. Production uses the C# parser. Keep footage outside the source tree. Use `--metadata-only` for SEI ordering, edit-list, sparse-metadata and export checks.
+HDR 检查覆盖 Apple 传递曲线与色域计算、明确的 Log 标记识别、逐帧 Dolby Vision 元数据、HDR10+ JSON 往返和 ProRes RAW 解码兼容性。下载样片的来源与截取命令见 [sample-sources.json](HdrChecks/sample-sources.json)。完整 HDR10+ 对照使用 PATH 中的 hdr10plus_tool 作为开发参考，生产程序使用 C# 解析器。样片保存在源码目录外。`--metadata-only` 检查 SEI 排序、edit list、稀疏元数据与导出。
 
-## Frame and image exports
+### 帧与图片导出
 
 ```powershell
 python qa/FrameChecks/check_frames.py --reference D:/Dev/libultrahdr/ultrahdr_app.exe
 ```
 
-Checks CFR / VFR frame identity across keyframes, sample-accurate PCM-to-FLAC cuts, HDR / SDR image exports, RGB channel order, Google gain-map decoding, Motion Photo byte ranges and the cover frame timestamp. The optional upstream decoder is a development-only oracle.
+检查覆盖跨关键帧的 CFR / VFR 帧身份、精确到采样的 PCM-to-FLAC 裁剪、HDR / SDR 图片、RGB 通道顺序、Google 增益图解码、动态照片字节范围和封面帧时间戳。可选的上游解码器用于开发对照。
+
+## English
+
+Run these commands from the repository root. `global.json` selects the .NET SDK. Python checks require Python 3.14 or newer.
+
+### Source checks
+
+```powershell
+./tools/Check-Source.ps1
+```
+
+Runs C# formatting, resources, serialization, core boundaries, preview scheduling, process pipes, documentation and build-target checks in order. Documentation checks cover links, anchors, parallel language sections and fallback labels. These checks use isolated test processes and require no footage or GPU.
+
+### Builds and architectures
+
+```powershell
+python qa/BuildChecks/check_build.py
+python qa/BuildChecks/check_build.py --artifacts
+```
+
+Basic checks cover Native selection, all three explicit targets, APX availability and ARM64 host combinations. They also check the actual system architecture, MSBuild mappings, isolated intermediate directories, lock files and native-library hashes. After building Native and all three explicit targets, `--artifacts` checks AOT instruction sets, EXE / DLL PE architectures, distribution license manifests, the Native CLI and APX startup handling. On supported hardware it runs the APX CLI; otherwise it checks the unsupported-hardware response.
+
+Full ARM64 runtime checks require an ARM64 Windows device. APX hardware conversion checks require an APX-capable CPU and Windows support.
+
+### Resources and serialization
+
+```powershell
+dotnet run --project qa/LanguageChecks/LanguageChecks.csproj -c Release
+dotnet run --project qa/SerializationChecks/SerializationChecks.csproj -c Release
+dotnet run --project qa/BackendChecks/BackendChecks.csproj -c Release -- --check
+python qa/LanguageChecks/check_cli_languages.py
+python tools/Update-ViewText.py --check
+python tools/generate_hlg_luts.py --check
+```
+
+Core boundary checks also cover numeric parsing, missing option values, tool resolution, log errors and wildcard matching.
+
+These checks cover language selection for all four languages, translation resources and format placeholders, XAML mappings, settings formats, CLI JSON contracts and generated LUTs. Pass `--exe dist/SelfContained/LumaRecode.exe` to `check_cli_languages.py` to check packaged CLI language resources.
+
+### CLI and conversion core
+
+Run `./build.ps1` first, then execute the integration checks:
+
+```powershell
+python qa/CliChecks/check_cli.py --exe dist/SelfContained/LumaRecode.exe
+python qa/RuntimeChecks/check_runtime.py --exe dist/SelfContained/LumaRecode.exe
+dotnet build qa/BackendChecks/BackendChecks.csproj -c Release
+python qa/TimingChecks/check_timing.py
+python qa/TimingChecks/check_qsv_recovery.py
+```
+
+Integration checks require FFmpeg, ffprobe, working Intel QSV encoders and Vulkan / libplacebo. They run actual encodes, output verification, PowerShell pipelines, cancellation and temporary-file cleanup using temporary directories and synthetic inputs.
+
+Timestamp checks cover VFR QSV encoding, 8/10-bit conversion and SDR/HLG/PQ. They compare frame presentation times and check DTS ordering. Pass `--sample PATH` to `check_timing.py` to exercise a camera original and automatic recovery from timestamp conflicts.
+
+QSV recovery checks cover AV1 HDR, rotation/reflection, 240 fps GOPs, bounded retries after decoder/LowPower/timestamp failures and existing-output protection. Policies and upstream reports are documented in [QSV compatibility](../docs/qsv-compatibility.md#english).
+
+### GUI startup
+
+Before publishing, open the final `LumaRecode.exe` directly and confirm the main window loads. Check language switching, the appearance panel and About. Close and reopen the application to check language restoration. Check the modification time and contents of `%LOCALAPPDATA%\LumaRecode\error.log`.
+
+### Sampling, range and audio
+
+```powershell
+python qa/FormatChecks/check_formats.py
+```
+
+`qa/BackendChecks/` provides the C# core test entry used by format checks.
+
+Checks cover encoded black/white pixel values for SDR / HLG / PQ; 8 / 10 / 12-bit and 4:2:0 / 4:2:2 / 4:4:4 / RGB / grayscale inputs; source-format limits; and decoded sample hashes for multitrack FLAC. Intel QSV and Vulkan / libplacebo are required.
+
+### Performance and concurrency
+
+```powershell
+dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release -- --check
+dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release
+dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release -- --tools
+```
+
+Checks cover notifications, event ordering, receiver synchronization context, cancellation, log capacity, Unicode boundaries and capability-query caching. Preview checks cover request coalescing, LRU eviction, callbacks after cancellation, release on source changes, error recovery, binary pipe boundaries and child-process cleanup. Microbenchmarks report the median of five runs. `--tools` requires FFmpeg on PATH.
+
+The preview benchmark probes footage and builds frame indexes before timing each render request, PNG size and managed allocation:
+
+```powershell
+dotnet build qa/BackendChecks/BackendChecks.csproj -c Release
+python qa/PerformanceChecks/benchmark_preview.py --sdr D:/MediaTests/sdr.mp4 --hlg D:/MediaTests/hlg.mp4 --log D:/MediaTests/dlog.mp4 --profile pocket3 --output D:/MediaTests/preview.json
+```
+
+Each source is optional. `--frames 0,30,60,90` sets frame indices; `--repeat 3` sets repetitions.
+
+### Memory sampling
+
+Keep window size, theme, HDR and input method the same. Run one instance at a time and collect startup samples before opening panels or encoding:
+
+```powershell
+./qa/MemoryChecks/Measure-Process.ps1 -Executable 'D:/Application/LumaRecode.exe' -Label startup -OutputFile samples.jsonl
+```
+
+The script waits until process age is at least 30 seconds, then samples three times. It records private working set, private commit, total working set and cumulative CPU time. After opening panels, use `-AgeSeconds 0 -Label panels` for a separate sample.
+
+The actual AOT GUI is `.net/LumaRecode/<bundle-id>/Application/LumaRecode.exe`. Sample that process for GUI measurements; include the entry, main application and job children for CLI measurements.
+
+To sample preview decoding separately, obtain the GUI PID, run this command and scrub the preview timeline:
+
+```powershell
+./qa/MemoryChecks/Measure-ChildProcesses.ps1 -RootProcessId 12345 -Label preview -DurationSeconds 60 -OutputFile D:/MediaTests/preview-memory.jsonl
+```
+
+The script tracks FFmpeg children started by the GUI, including actual decoder processes behind PATH shims, and records each process's peak working set.
+
+See [Performance](../docs/performance.md#english) for implementation and results.
+
+### HDR and RAW
+
+```powershell
+python qa/HdrChecks/check_hdr.py
+python qa/HdrChecks/check_hdr.py --samples D:/MediaTests/HDR
+python tools/generate_hlg_luts.py --check
+```
+
+HDR checks cover Apple transfer/gamut math, explicit Log detection, per-frame Dolby Vision metadata, HDR10+ JSON round-tripping and ProRes RAW decoder compatibility. Downloaded sample origins and excerpt commands are in [sample-sources.json](HdrChecks/sample-sources.json). The full HDR10+ comparison uses hdr10plus_tool on PATH as a development reference. Production uses the C# parser. Store footage outside the source tree. `--metadata-only` checks SEI ordering, edit lists, sparse metadata and export.
+
+### Frame and image exports
+
+```powershell
+python qa/FrameChecks/check_frames.py --reference D:/Dev/libultrahdr/ultrahdr_app.exe
+```
+
+Checks cover CFR / VFR frame identity across keyframes, sample-accurate PCM-to-FLAC cuts, HDR / SDR image exports, RGB channel order, Google gain-map decoding, Motion Photo byte ranges and cover-frame timestamps. The optional upstream decoder is a development reference.

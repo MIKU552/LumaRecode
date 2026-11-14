@@ -1,13 +1,17 @@
-# 更新记录
+# 更新记录 / Changelog
 
-## 4.4.1
+[简体中文](#简体中文) · [English](#english)
+
+## 简体中文
+
+### 4.4.1
 
 - Native 自动选择本机的 x64、APX 或 ARM64 目标，并启用本机指令集优化。
 - 添加显式 X64 目标，与 APX、ARM64 一起支持固定目标和交叉编译。
 - 添加 Visual Studio Release / Native 配置；自动选择 APX 时保留启动兼容性检查。
 - 在构建前检查 Native 优化所需的 SDK 架构，支持识别仿真环境下的实际系统架构。
 
-## 4.4.0
+### 4.4.0
 
 - 添加 Native、Intel APX 与 ARM64 构建目标，默认使用本机指令集的 Native AOT。
 - 添加 Visual Studio 解决方案、GUI 启动配置和 Packaging 项目，Release 构建可直接生成单文件发行包。
@@ -15,7 +19,7 @@
 - 内置 ARM64 Ultra HDR 编解码库，使用 ARM64 NEON；ARM64 默认软件编码，并按架构选择 RAW 解码参数。
 - APX 启动入口在加载应用前检查 CPU 与 Windows 支持，提供兼容性提示。
 
-## 4.3.1
+### 4.3.1
 
 - 预览改为后台单解码器调度，合并拖动请求，并缓存最近访问的帧。
 - 预览在色彩处理前缩小画面，通过有界 PNG 管道返回；复用缓冲并限制解码线程。
@@ -24,7 +28,7 @@
 - 精简逐帧索引分配，统一诊断尾部缓冲、代码格式与资源生命周期注释。
 - 添加解决方案入口、源码检查命令和代码结构说明，整理四语文档及测试目录。
 
-## 4.3.0
+### 4.3.0
 
 - 添加“图片与动态照片”页面、逐帧预览、拖动时间轴与封面帧选择。
 - 添加视频开始 / 结束帧裁剪，并保持可变帧率时间轴与音频边界。
@@ -33,7 +37,7 @@
 - 命令行添加 `frames`、`image` 与帧 / 时间范围参数。
 - 软件解码勾选框同步必需解码路径和运行时兼容回退。
 
-## 4.2.0
+### 4.2.0
 
 - 添加 Apple Log 与 Apple Log 2 的 HLG / SDR 转换，Log 列表按 DJI、三星、小米、Apple 排列。
 - 添加单层 Dolby Vision 与 HDR10+ 识别、标准 HDR / SDR 转换，以及软件编码保留逐帧动态元数据。
@@ -41,7 +45,7 @@
 - 添加 ProRes RAW 相机参数显影、裁切与方向处理，编码前检查所选 FFmpeg 的相机兼容性。
 - 修复 ffprobe HDR10+ 重复字段导致的素材读取错误。
 
-## 4.1.4
+### 4.1.4
 
 - 修复 QSV 快速分享丢失旋转或镜像方向的问题，并校验方向变换后的输出尺寸。
 - AV1 HDR 的重复元数据、QSV 解码或硬件帧格式错误自动切换软件解码，继续使用硬件编码。
@@ -49,22 +53,22 @@
 - 快速分享 GOP 上限设为 240 帧，规避部分 Arc 驱动的长 GOP 故障。
 - 补充 QSV 兼容策略、上游问题索引和实际编码回归检查。
 
-## 4.1.3
+### 4.1.3
 
 - 修复部分可变帧率素材在 QSV H.264、HEVC 和 AV1 快速分享中的时间戳兼容问题。
 - 绕开硬件滤镜的时间戳量化，保留原片帧数和播放节奏；H.264 和 HEVC 同时关闭 B 帧重排。
 - 遇到未提前识别的时间戳冲突时，自动使用兼容路径重试一次。
 
-## 4.1.2
+### 4.1.2
 
 - 日志区域独立处理滚轮和触控板滚动，到达边界时保持主界面位置。
 - 在“转换日志”标题右侧添加复制按钮，复制当前全部日志并显示复制状态。
 
-## 4.1.1
+### 4.1.1
 
 - 修正“结束后通知”的垂直对齐，移除居中布局中的顶部内边距和整组偏移。
 
-## 4.1.0
+### 4.1.0
 
 - 添加 Windows 任务通知，成功时显示文件名、耗时、输出大小、时长和封装／编码格式，失败时显示文件名、耗时和原因。
 - 在“打开目录”左侧添加默认开启的“结束后通知”开关，并保存选择；失败弹窗继续保留。
@@ -72,30 +76,30 @@
 - 使用 Windows 原生通知与系统提示音设置，点击通知可返回程序。
 - 任务结束时冻结耗时，避免将查看失败弹窗的时间计入转换耗时。
 
-## 4.0.5
+### 4.0.5
 
 - GUI 直接传递进度快照，限制事件队列容量，并合并日志刷新。
 - 本地化模板按需创建匹配器，批量转换复用 FFmpeg 能力查询。
 - 清空素材时重置输入解释和输出默认值，关闭窗口时解除系统事件订阅。
 - 主窗口按职责拆分文件，统一 C# 与开发脚本格式，补充异步事件和缓存检查。
 
-## 4.0.4
+### 4.0.4
 
 - 路径文字、占位提示和相邻按钮共用光学偏移，保持同一行的文字位置一致。
 - 底部操作按钮同步调整，开始按钮的图标和文字一起对齐。
 
-## 4.0.3
+### 4.0.3
 
 - 路径输入框的实际文字和占位文字垂直居中，与相邻按钮统一行高和内边距。
 - 按钮文字上移 1 个逻辑像素，校准字形的视觉中心；输出路径行同步调整。
 - 保留首次选择视频的强调色，选入素材后切换普通按钮样式。
 
-## 4.0.2
+### 4.0.2
 
 - 修复“更换视频”按钮丢失圆角的问题，两种状态均使用 WinUI 按钮模板。
 - 视频选择按钮改用显式文本控件，统一字体回退与常规字重。
 
-## 4.0.1
+### 4.0.1
 
 - 修复带 `.exe` 的工具名称查找、缺失命令行选项值，以及无效配置和日志路径的错误分类。
 - 修复通配符中的方括号匹配，按匹配深度扫描目录，并优先识别包含方括号的现有文件路径。
@@ -103,41 +107,41 @@
 - GUI 与命令行共用编码选项和位深规则，移除旧进程通信格式，补充边界回归检查。
 - 整理代码格式，补充核心流程、界面状态、字体、构建和测试注释。
 
-## 4.0.0
+### 4.0.0
 
 - 转换核心与命令行迁至 C# / .NET，GUI 直接调用核心，发布包移除 Python 运行时。
 - 保留素材识别、Log / HDR 转换、采样与位深限制、音轨策略、批量任务、进度、取消及输出校验。
 - 移除 Python 路径设置和 `--python` 参数；`doctor` 改为报告原生后端。
 - 调整项目目录、构建流程、第三方声明与四种语言的文档。
 
-## 3.8.0
+### 3.8.0
 
 - 项目更名为映码 · LumaRecode，程序与命令行入口统一为 `LumaRecode.exe`。
 - 更新应用图标、四种语言的界面名称与文档。
 - 首次运行自动导入 FrameFlow 的语言、外观、工具路径与许可确认设置。
 - 命令行环境变量使用 `LUMARECODE_` 前缀，同时兼容原有 `FRAMEFLOW_` 前缀。
 
-## 3.7.4
+### 3.7.4
 
 - 界面统一使用 Source Sans 3 和思源黑体，日志使用 Source Code Pro，并提供中日文字体回退。
 - 调整中日文标题字重与说明行距，统一下拉菜单的字体设置。
 - 增加日语、西班牙语 README 和命令行指南，补齐四种语言的文档导航。
 
-## 3.7.3
+### 3.7.3
 
 - 修复字体初始化过早访问应用资源导致的启动崩溃。
 
-## 3.7.2
+### 3.7.2
 
 - 统一 Windows 原生字体与中日文字体回退，修正英语和西班牙语界面中的中文字形。
 - 调整日语界面的标题字重、说明行距和文案长度，语言菜单按各语言显示字形。
 
-## 3.7.1
+### 3.7.1
 
 - 增加日语和西班牙语，覆盖主界面、许可证窗口、提示信息和命令行帮助。
 - 系统语言识别支持日语及各地区西班牙语；四种语言可即时切换。
 
-## 3.7.0
+### 3.7.0
 
 - 增加 Limited / Full 色彩范围控制，归档默认保持原范围，分享默认转换为 Limited。
 - 软件 HEVC / H.264 归档保持原采样，RGB 默认选择 4:4:4，AV1 与快速分享选择 4:2:0；支持手动指定采样。
@@ -146,31 +150,31 @@
 - 修正手动输入类型的默认动态范围与转换选项，添加素材前禁用任务设置。
 - 设置卡片全部展开，并排卡片等宽、等高，色彩转换集中 LUT、采样和范围设置，格式与音频提供封装、音轨与解码设置；窄窗口切换为单列。命令行同步支持新选项。
 
-## 3.6.4
+### 3.6.4
 
 - WinUI 前端改用 Native AOT，单文件入口在图形界面启动后退出。
 - 编译主视图 XAML，生成本地化映射与 JSON 序列化代码，缓存控件引用，禁用路径和日志的拼写检查与文字预测。
 - 本机启动私有工作集均值由 122.3 MiB 降至 116.6 MiB，测量方法和结果见[性能优化](docs/performance.md)。
 - 增加内存采样工具、设置和 JSON 兼容性检查，以及 AOT / JIT 独立锁文件；许可收集合并应用与打包入口的依赖图。
 
-## 3.6.3
+### 3.6.3
 
 - 首次许可窗口的语言入口及辅助功能名称统一为“界面语言 / Language”。
 - 修复配色弹出层的主题资源缓存，切回系统强调色时同步刷新控件颜色。
 
-## 3.6.2
+### 3.6.2
 
 - 移除“工具路径”窗口的完整许可入口，可从“关于”及首次许可窗口查看条款。
 - 配色面板和 ColorPicker 改为首次使用时创建。
 
-## 3.6.1
+### 3.6.1
 
 - 首次许可窗口增加系统 / 简体中文 / English 语言选择，保存选择并同步主界面语言。
 - 组件说明支持中英文，CLI 的 `license --text` 使用所选语言。
 - 右上角新增原生“关于”窗口，显示项目图标、版本、开发与核验说明、GitHub 主页及完整许可入口。
 - 中英文 README 增加项目图标；Release 使用 GitHub 附件自带的 SHA-256 校验值。
 
-## 3.6.0
+### 3.6.0
 
 - 增加完整命令行入口：probe、convert、plan、presets、profiles、doctor、license，支持全部 GUI 编码/色彩选项、自动默认值、配置文件和路径覆盖。
 - 支持多文件、目录、递归通配符、JSON Lines 进度/日志、fps 与剩余时间、批量跳过/继续、稳定退出码，以及 Ctrl+C / Ctrl+Break 取消。
@@ -178,12 +182,12 @@
 - 输出覆盖使用临时文件编码、校验与原子替换，源文件受写入保护；失败或取消时清理临时输出。
 - 增加中英文命令行文档及终端、编码集成检查。
 
-## 3.5.1
+### 3.5.1
 
 - 自主代码、文档、原创图形及项目生成的 Mi-Log / Samsung Log LUT 从 Apache-2.0 改为 MIT。
 - 更新中英文 README、LUT 生成器 SPDX、许可清单与程序内说明。
 
-## 3.5.0
+### 3.5.0
 
 - 开发与发布环境升级到 .NET SDK 11.0.100 / .NET 11.0.0、Windows App SDK 2.6.5、Windows SDK BuildTools 10.0.28000.2957、官方 Python 3.15.2；固定 SDK 和 NuGet 锁文件。
 - 移除未使用的 AI、ML、Search、Widgets 依赖。
@@ -192,61 +196,314 @@
 - 整理第三方许可、来源与哈希，增加首次运行组件条款窗口及全文入口。
 - 增加 worker 集成检查，覆盖 SDR、10 位 HLG、三组 Log LUT、4:2:2、音频、进度与取消清理。
 
-## 3.4.7
+### 3.4.7
 
 - 统一 WinUI 3 按钮和分组图标，调整素材导入及底部操作区布局。
 - 修复工具栏图标裁切，窄窗口下输入解释和操作按钮自动换行。
 - 语言菜单改为向下展开，与选择框等宽、右侧对齐；英文系统选项改为 System。
 
-## 3.4.6
+### 3.4.6
 
 - 修复调整窗口宽度时内容右移、左侧留白及右侧控件裁切的问题。
 - 滚动容器按视口宽度伸展，内层内容在宽屏居中、窄窗口切换为单列。
 
-## 3.4.5
+### 3.4.5
 
 - 配色菜单改用独立原生弹出层与不透明主题底色，修复 HDR 下的亮带和关闭滞后。
 
-## 3.4.4
+### 3.4.4
 
 - 升级 Windows App SDK 2.0.1，HDR 模式使用原生 SystemBackdropElement 显示 Mica。
 
-## 3.4.3
+### 3.4.3
 
 - HDR 模式改用不透明主背景。
 
-## 3.4.2
+### 3.4.2
 
 - 调整弹出面板的阴影绘制方式。
 
-## 3.4.1
+### 3.4.1
 
 - 将跟随系统 / 浅色 / 深色集中到界面配色面板。
 
-## 3.4.0
+### 3.4.0
 
 - 支持中英文即时切换及跟随系统语言，其他系统语言默认使用英文。
 - 增加翻译资源检查。
 
-## 3.3.0
+### 3.3.0
 
 - 更新矢量图标，提供 PNG、SVG 和多尺寸 ICO。
 
-## 3.2.0
+### 3.2.0
 
 - 更名为映流 · FrameFlow，更新窗口、EXE、任务栏与品牌资源。
 
-## 3.1.0
+### 3.1.0
 
 - 支持独立选择 MP4 / MKV，并检查音轨与封装的兼容性。
 - 素材信息增加位深、采样与音轨，编码信息增加编码器额外参数。
 
-## 3.0.0
+### 3.0.0
 
 - 迁移到原生 WinUI 3，加入 Mica、主题与系统强调色。
 - 调整窗口布局，增加编码帧率、进度和剩余时间。
 
-## 2.0.0
+### 2.0.0
 
 - 增加 PySide6 / Qt 界面、分类编码预设、动态范围与采样选项。
 - 支持素材自动识别与三组色彩转换。
+
+## English
+
+### 4.4.1
+
+- Native automatically selects the local X64, APX or ARM64 target and enables build-CPU instruction optimization.
+- Add an explicit X64 target alongside APX and ARM64 for fixed-target builds and cross-compilation.
+- Add the Visual Studio Release / Native configuration and retain the APX launch check when APX is selected automatically.
+- Check the SDK architecture before Native optimization and detect the actual OS architecture under emulation.
+
+### 4.4.0
+
+- Add Native, Intel APX and ARM64 build targets, defaulting to Native AOT with the build CPU's instruction sets.
+- Add a Visual Studio solution, GUI launch profile and Packaging project that produces a single-file distribution from Release builds.
+- Isolate restore graphs, compilation caches, license manifests and output directories by target; add ARM64 lock files.
+- Include an ARM64 NEON Ultra HDR codec; default ARM64 to software encoding and select RAW decoder arguments by architecture.
+- Check CPU and Windows support in the APX launcher before loading the application.
+
+### 4.3.1
+
+- Use one background preview renderer, coalesce pending scrub requests and cache recently visited frames.
+- Scale previews before color processing; return PNG through a bounded pipe with pooled buffers and limited decoder threads.
+- Update frame-related controls while scrubbing and rearrange layout at structural breakpoints.
+- Fix frame-number synchronization, source recognition after changing tools and preview-process cleanup on window close.
+- Reduce frame-index allocations; share diagnostic tail buffers and unify code formatting and lifetime comments.
+- Add solution navigation, source checks and architecture documentation; organize the four-language guides, development notes, measurements and QA directory.
+
+### 4.3.0
+
+- Add Images & Motion Photos, frame preview, timeline scrubbing and cover-frame selection.
+- Add start/end frame trimming while retaining VFR timing and audio boundaries.
+- Add HDR AVIF, Ultra HDR JPEG, SDR JPEG / PNG and Google-format Android Motion Photos.
+- Include libultrahdr; offer CPU or Intel encoding for motion video.
+- Add CLI `frames`, `image`, frame-range and time-range options.
+- Keep the software-decoding checkbox synchronized with required decode paths and runtime fallback.
+
+### 4.2.0
+
+- Add Apple Log and Apple Log 2 to HLG / SDR; order Log profiles as DJI, Samsung, Xiaomi and Apple.
+- Add single-layer Dolby Vision / HDR10+ detection, standard HDR / SDR conversion and per-frame metadata preservation with software encoding.
+- Include a C# HDR10+ parser and x265 JSON export, with HEVC bitstream scanning.
+- Add ProRes RAW camera-calibrated development, cropping and orientation, checking the selected FFmpeg's camera compatibility before encoding.
+- Fix source inspection when ffprobe repeats HDR10+ fields.
+
+### 4.1.4
+
+- Fix rotation/reflection loss in QSV Quick share and verify dimensions after orientation changes.
+- Fall back to software decoding after duplicate AV1 HDR metadata, QSV decoding or hardware-frame errors while retaining hardware encoding.
+- Select encoding mode automatically when LowPower is unsupported; cap compatibility retries at three and preserve quality settings and existing outputs.
+- Cap Quick share GOP length at 240 frames to avoid long-GOP failures on some Arc drivers.
+- Document QSV policies, upstream reports and encoding regression checks.
+
+### 4.1.3
+
+- Fix timestamp compatibility for some VFR sources in QSV H.264, HEVC and AV1 Quick share.
+- Bypass hardware-filter timestamp quantization to preserve source frame counts and pacing; disable B-frame reordering for H.264 and HEVC.
+- Retry once through the compatibility path when an undetected timestamp conflict occurs.
+
+### 4.1.2
+
+- Keep wheel and touchpad scrolling inside the log region at its boundaries.
+- Add a copy button beside Conversion log to copy the full log and show copy status.
+
+### 4.1.1
+
+- Align Notify when finished vertically by removing top padding and group offsets from the centered layout.
+
+### 4.1.0
+
+- Add Windows job notifications: success includes filename, elapsed time, size, duration and container/codec; failure includes filename, elapsed time and reason.
+- Add a saved, enabled-by-default Notify when finished checkbox beside Open folder; retain failure dialogs.
+- Confirm output replacement, emphasizing Cancel in the GUI; support CLI interactive confirmation and scripted overwrite permission.
+- Use native Windows notifications and system sound settings; clicking a notification returns to the application.
+- Freeze elapsed time at job completion so time spent viewing an error dialog is excluded.
+
+### 4.0.5
+
+- Pass progress snapshots directly to the GUI, bound the event queue and coalesce log refreshes.
+- Create localization matchers on demand and reuse FFmpeg capability queries in batches.
+- Reset input interpretation and output defaults when clearing a source; unsubscribe from system events on close.
+- Split MainWindow by responsibility, unify C# / development-script formatting and add asynchronous-event and cache checks.
+
+### 4.0.4
+
+- Share optical offsets between path text, placeholders and adjacent buttons to align text on each row.
+- Apply the same alignment to footer actions and the Start icon/text group.
+
+### 4.0.3
+
+- Vertically center path text and placeholders with consistent row height and padding beside buttons.
+- Move button text up by 1 logical pixel for optical centering; align the output-path row the same way.
+- Retain the accent style for initial source selection and use the standard button style after a source is selected.
+
+### 4.0.2
+
+- Restore rounded corners on Change video using WinUI button templates for both states.
+- Use explicit text controls for source selection with consistent font fallback and regular weight.
+
+### 4.0.1
+
+- Fix tool lookup with `.exe` suffixes, missing option values and error classification for invalid config/log paths.
+- Fix wildcard bracket matching, scan directories to the required depth and prefer existing paths containing brackets.
+- Fix numeric overflow and progress duration when the requested sample exceeds the source length.
+- Share encoding options and bit-depth policy between GUI and CLI, remove the old process protocol and add boundary checks.
+- Unify code formatting and document core flows, UI state, fonts, builds and tests.
+
+### 4.0.0
+
+- Move the conversion core and CLI to C# / .NET; call the core directly from the GUI and remove the Python runtime from distribution.
+- Retain source detection, Log / HDR conversion, sampling/depth limits, audio policy, batches, progress, cancellation and output verification.
+- Remove Python path settings and `--python`; make `doctor` report the native backend.
+- Update the project layout, build pipeline, third-party notices and four-language documentation.
+
+### 3.8.0
+
+- Rename the project to 映码 · LumaRecode and use `LumaRecode.exe` for GUI and CLI.
+- Update the application icon, names and documentation in all four languages.
+- Import FrameFlow language, appearance, tool paths and accepted component terms on first launch.
+- Use the `LUMARECODE_` environment-variable prefix while accepting the previous `FRAMEFLOW_` prefix.
+
+### 3.7.4
+
+- Use Source Sans 3 and Source Han Sans throughout the interface, with Source Code Pro and Chinese/Japanese fallback in logs.
+- Adjust Chinese/Japanese heading weights and description line spacing; unify dropdown fonts.
+- Add Japanese and Spanish README / CLI guides and complete four-language navigation.
+
+### 3.7.3
+
+- Fix a startup crash caused by accessing application resources too early during font initialization.
+
+### 3.7.2
+
+- Unify Windows native fonts and Chinese/Japanese fallback, fixing Chinese glyph selection in English and Spanish interfaces.
+- Adjust Japanese heading weight, description spacing and text length; display language-menu items with their corresponding glyphs.
+
+### 3.7.1
+
+- Add Japanese and Spanish across the main view, license dialog, messages and CLI help.
+- Recognize Japanese and regional Spanish system languages and switch among four languages immediately.
+
+### 3.7.0
+
+- Add Limited / Full range: archive retains source range and sharing converts to Limited by default.
+- Preserve sampling for software HEVC / H.264 archive, use 4:4:4 for RGB and 4:2:0 for AV1 / Quick share, with manual sampling selection.
+- Add bit-depth selection within source and encoder limits; sampling/depth can be retained or reduced. Software AVC supports 10-bit SDR.
+- Add FLAC audio with per-track lossless-integer checks, retaining sample rates, channels and precision in MKV.
+- Fix dynamic-range defaults and conversion choices for manual input interpretation; disable job options before source selection.
+- Expand settings cards, match side-by-side card dimensions, group LUT/sampling/range under Color conversion and container/audio/decoding under Format & audio; use a single column in narrow windows. Add matching CLI options.
+
+### 3.6.4
+
+- Move the WinUI frontend to Native AOT and exit the single-file entry after GUI startup.
+- Compile main-view XAML, generate localization mappings and JSON serializers, cache control references and disable path/log spelling and text prediction.
+- Reduce the measured mean startup private working set from 122.3 MiB to 116.6 MiB; see [Performance](docs/performance.md#english) for methods and results.
+- Add memory sampling, settings/JSON compatibility checks and separate AOT / JIT lock files; collect licenses from both application and launcher dependency graphs.
+
+### 3.6.3
+
+- Use “界面语言 / Language” for the first-run language entry and accessibility name.
+- Fix popup theme-resource caching and refresh controls when returning to the system accent color.
+
+### 3.6.2
+
+- Remove the full-license link from Tool paths; keep access in About and the first-run dialog.
+- Create the appearance panel and ColorPicker on first use.
+
+### 3.6.1
+
+- Add System / 简体中文 / English selection to the first-run dialog, save the choice and synchronize the main interface.
+- Provide Chinese/English component descriptions and use the selected language for CLI `license --text`.
+- Add a native About dialog with icon, version, development/verification credits, GitHub home and full-license access.
+- Add the icon to Chinese/English READMEs and use GitHub release-asset SHA-256 digests.
+
+### 3.6.0
+
+- Add CLI commands probe, convert, plan, presets, profiles, doctor and license, covering GUI encoding/color options, automatic defaults, config files and path overrides.
+- Support multiple files, directories, recursive wildcards, JSON Lines progress/logs, fps/ETA, batch skipping/continuation, stable exit codes and Ctrl+C / Ctrl+Break cancellation.
+- Use one FrameFlow.exe for GUI and CLI, with PowerShell 7 output pipelines, exit codes and cancellation.
+- Encode and verify temporary output before atomic replacement, protect source files and clean up after failure or cancellation.
+- Add Chinese/English CLI documentation and terminal/encoding integration checks.
+
+### 3.5.1
+
+- Change original code, documentation, artwork and generated Mi-Log / Samsung Log LUTs from Apache-2.0 to MIT.
+- Update Chinese/English READMEs, generator SPDX identifiers, license manifests and in-application text.
+
+### 3.5.0
+
+- Upgrade to .NET SDK 11.0.100 / .NET 11.0.0, Windows App SDK 2.6.5, Windows SDK BuildTools 10.0.28000.2957 and official Python 3.15.2; pin SDK and NuGet dependencies.
+- Remove unused AI, ML, Search and Widgets dependencies.
+- Replace PyInstaller with official embedded Python in the runtime-included single EXE.
+- Offer a framework-dependent ZIP and external Python selection in tool settings.
+- Collect third-party licenses, provenance and hashes; add a first-run component-terms dialog and full-text access.
+- Add worker integration checks for SDR, 10-bit HLG, three Log LUTs, 4:2:2, audio, progress and cancellation cleanup.
+
+### 3.4.7
+
+- Unify WinUI 3 buttons and group icons; adjust source import and footer actions.
+- Fix toolbar-icon clipping; wrap input interpretation and actions in narrow windows.
+- Open the language menu downward, matching the control width and right edge; shorten the English system choice to System.
+
+### 3.4.6
+
+- Fix content shifting right, left-side gaps and right-side clipping at certain window widths.
+- Stretch the scroll container to the viewport; center wide layouts and switch narrow windows to one column.
+
+### 3.4.5
+
+- Use a separate native popup and opaque theme background for appearance settings, fixing HDR bright bands and delayed closing.
+
+### 3.4.4
+
+- Upgrade Windows App SDK to 2.0.1 and use native SystemBackdropElement Mica in HDR mode.
+
+### 3.4.3
+
+- Use an opaque main background in HDR mode.
+
+### 3.4.2
+
+- Adjust popup shadow rendering.
+
+### 3.4.1
+
+- Group System / Light / Dark choices in the appearance panel.
+
+### 3.4.0
+
+- Add live Chinese/English switching and system-language selection, with English for other system languages.
+- Add translation-resource checks.
+
+### 3.3.0
+
+- Update the vector icon and provide PNG, SVG and multi-resolution ICO assets.
+
+### 3.2.0
+
+- Rename the application to 映流 · FrameFlow and update the window, EXE, taskbar and brand assets.
+
+### 3.1.0
+
+- Add independent MP4 / MKV selection and audio/container compatibility checks.
+- Show bit depth, sampling and audio in source information, plus additional encoder parameters in preset details.
+
+### 3.0.0
+
+- Move to native WinUI 3 with Mica, themes and the Windows accent color.
+- Revise the layout and add encoding fps, progress and remaining time.
+
+### 2.0.0
+
+- Add a PySide6 / Qt GUI, categorized presets, dynamic-range and sampling controls.
+- Add automatic source detection and three color-conversion groups.

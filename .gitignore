@@ -4,9 +4,6 @@
 !/.gitattributes
 !/.editorconfig
 !/README.md
-!/README.en.md
-!/README.ja.md
-!/README.es.md
 !/LICENSE
 !/NOTICE
 !/docs/

@@ -1,12 +1,14 @@
 # Command line
 
-[简体中文](cli.zh-CN.md) · English · [日本語](cli.ja.md) · [Español](cli.es.md) · [README](../README.en.md)
+[简体中文](zh-CN.md) · English · [日本語](ja.md) · [Español](es.md) · [README](../readme/en.md)
 
 Run `LumaRecode.exe` in **PowerShell 7**. No arguments opens the GUI; subcommands such as `probe` and `convert` run the CLI.
 
 The program uses the Windows GUI subsystem. **Pipe text output to `Out-Host`, or JSON output to `ConvertFrom-Json`** to wait for completion and read `$LASTEXITCODE`. Other programs can wait through a process API.
 
 Output uses UTF-8. The examples below set the current PowerShell session encoding, display help and tool information, and convert a video.
+
+## Getting started
 
 ```powershell
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
@@ -23,9 +25,9 @@ GUI and CLI share component-term acceptance. For first-time batch use, read the 
 
 Tools resolve from PATH, then saved GUI paths. Override with `--ffmpeg PATH --ffprobe PATH`. `--lang system|en|zh|ja|es` selects the output language.
 
-Dynamic HDR sources default to software HEVC with metadata preservation. Use `--dynamic-hdr standard --purpose share` for standard HDR, or `--range sdr` for SDR. ProRes RAW automatically develops to HLG; use `--range sdr` for SDR. See [Color conversion](color-conversion.md) for supported formats.
+Dynamic HDR sources default to software HEVC with metadata preservation. Use `--dynamic-hdr standard --purpose share` for standard HDR, or `--range sdr` for SDR. ProRes RAW automatically develops to HLG; use `--range sdr` for SDR. See [Color conversion](../color-conversion.md#english) for supported formats.
 
-## Commands and options
+## Commands
 
 | Command | Purpose |
 | --- | --- |
@@ -41,12 +43,14 @@ Dynamic HDR sources default to software HEVC with metadata preservation. Use `--
 
 Every command supports `--help`. Probe/catalog/doctor/license results are JSON. Text progress goes to stderr; results go to stdout.
 
+## Encoding and color options
+
 `convert` and `plan` expose the GUI's encoding and color controls:
 
 | Option | Values |
 | --- | --- |
 | `--preset` | `share-avc`, `share-hevc`, `share-av1`, `archive-avc`, `archive-hevc`, `archive-av1`, `archive-av1-fast` |
-| `--purpose` | `share` (Intel QSV, default), `archive` (CPU) |
+| `--purpose` | `share` (Intel QSV), `archive` (CPU); x64 defaults to share, ARM64 to archive; dynamic HDR sources default to archive |
 | `--codec` | `hevc` (default), `av1`, `avc` |
 | `--range` / `--dynamic-range` | `auto` (default), `sdr`, `hdr` |
 | `--transform` | `auto` (default), `none`, `log-hdr`, `log-sdr`, `hdr-sdr` |
@@ -118,7 +122,7 @@ Frame and time ranges are mutually exclusive and cannot be combined with `--dura
 | `-o PATH`, `--overwrite`, `--skip-existing` | Destination and existing-file policy |
 | `--dry-run` | Report image selection and video range |
 
-Motion Photos use one `MP.jpg` file. HDR stills require HDR, Log or RAW footage. See [Preview, trimming and images](../README.en.md#preview-trimming-and-images) for formats and Google specifications.
+Motion Photos use one `MP.jpg` file. HDR stills require HDR, Log or RAW footage. See [Preview, trimming and images](../readme/en.md#preview-trimming-and-images) for formats and Google specifications.
 
 ## Batch and destination policy
 

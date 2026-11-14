@@ -3,11 +3,11 @@
 </p>
 <h1 align="center">映码 · LumaRecode</h1>
 
-简体中文 | [English](README.en.md) | [日本語](README.ja.md) | [Español](README.es.md)
+简体中文 | [English](docs/readme/en.md) | [日本語](docs/readme/ja.md) | [Español](docs/readme/es.md)
 
 基于 C# / .NET 的 Windows 11 视频转码与色彩转换工具，提供原生 WinUI 3 界面和命令行，使用 FFmpeg 完成视频压缩、相机 Log 转 HDR / SDR，以及 HDR 转 SDR。
 
-[下载](https://github.com/MIKU552/LumaRecode/releases/latest) · [文档](docs/README.md) · [命令行文档](docs/cli.zh-CN.md) · [更新记录](CHANGELOG.md)
+[下载](https://github.com/MIKU552/LumaRecode/releases/latest) · [文档](docs/README.md) · [命令行文档](docs/cli/zh-CN.md) · [更新记录](CHANGELOG.md)
 
 ## 功能
 
@@ -75,7 +75,7 @@ FLAC 用于可确认的整数 PCM 和无损音轨，保留每条音轨的采样�
 
 SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线的 Log 素材默认转换为 HLG。可在“输入解释”和“相机曲线”中手动选择素材类型。
 
-视频按所选预设重新编码，音频可复制或转码。完整参数见 [recommended-presets.json](Assets/recommended-presets.json)，测试结果见[编码预设测试](docs/benchmarks/encoding-benchmark.zh-CN.md)。
+视频按所选预设重新编码，音频可复制或转码。完整参数见 [recommended-presets.json](Assets/recommended-presets.json)，测试结果见[编码预设测试](docs/benchmarks/encoding-benchmark.md#简体中文)。
 
 ## 运行要求
 
@@ -102,7 +102,7 @@ SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线�
 ./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
 ```
 
-首次无人值守使用前，运行 `license --text` 阅读组件条款，再运行 `license --accept-terms`。全部命令、批量用法和退出码见[命令行文档](docs/cli.zh-CN.md)。
+首次无人值守使用前，运行 `license --text` 阅读组件条款，再运行 `license --accept-terms`。全部命令、批量用法和退出码见[命令行文档](docs/cli/zh-CN.md)。
 
 ## 从源码构建
 
@@ -121,7 +121,7 @@ cd LumaRecode
 
 显式指定 X64、Apx 或 Arm64 时，按对应目标的指令集编译，输出到 `dist/SelfContained-X64/`、`dist/SelfContained-Apx/` 或 `dist/SelfContained-Arm64/`。Releases 提供这三种固定目标的 EXE。
 
-使用 Visual Studio 2026 18.12 或更新版本打开 `LumaRecode.sln`。以 `App` 为启动项目，Debug 配置可直接调试。`Release | Native` 自动选择本机目标并优化；`Release | x64`、`Release-APX | x64` 和 `Release | ARM64` 构建固定目标。`Packaging` 项目会生成对应的单文件 EXE。安装与配置见[开发文档](docs/dependencies.md)，检查命令见 [QA 指南](qa/README.md)。
+使用 Visual Studio 2026 18.12 或更新版本打开 `LumaRecode.sln`。以 `LumaRecode.App` 为启动项目，Debug 配置可直接调试。`Release | Native` 自动选择本机目标并优化；`Release | x64`、`Release-APX | x64` 和 `Release | ARM64` 构建固定目标。`Packaging` 项目会生成对应的单文件 EXE。安装与配置见[开发文档](docs/dependencies.md)，检查命令见 [QA 指南](qa/README.md)。
 
 ## 项目结构
 
@@ -146,8 +146,8 @@ licenses/  第三方许可、声明与来源清单
 
 ## 文档
 
-- [命令行](docs/cli.zh-CN.md)
+- [命令行](docs/cli/zh-CN.md)
 - [开发与分发](docs/dependencies.md)
 - [性能优化](docs/performance.md)
-- [编码预设测试](docs/benchmarks/encoding-benchmark.zh-CN.md)
+- [编码预设测试](docs/benchmarks/encoding-benchmark.md#简体中文)
 - [更新记录](CHANGELOG.md)

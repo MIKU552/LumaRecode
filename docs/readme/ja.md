@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="Brand/LumaRecode.svg" width="104" height="104" alt="LumaRecode アイコン" />
+  <img src="../../Brand/LumaRecode.svg" width="104" height="104" alt="LumaRecode アイコン" />
 </p>
 <h1 align="center">映码 · LumaRecode</h1>
 
-[简体中文](README.md) | [English](README.en.md) | 日本語 | [Español](README.es.md)
+[简体中文](../../README.md) | [English](en.md) | 日本語 | [Español](es.md)
 
 C# / .NET で開発した Windows 11 向けの動画変換・色変換ツールです。ネイティブ WinUI 3 インターフェイスとコマンドラインを備え、FFmpeg による動画圧縮、カメラ Log から HDR / SDR への変換、HDR から SDR への変換を行います。
 
-[ダウンロード](https://github.com/MIKU552/LumaRecode/releases/latest) · [ドキュメント](docs/README.md) · [コマンドライン](docs/cli.ja.md) · [変更履歴](CHANGELOG.md)
+[ダウンロード](https://github.com/MIKU552/LumaRecode/releases/latest) · [ドキュメント（中国語・英語）](../README.md#english) · [コマンドライン](../cli/ja.md) · [変更履歴（中国語・英語）](../../CHANGELOG.md#english)
 
 ## 主な機能
 
@@ -25,7 +25,7 @@ C# / .NET で開発した Windows 11 向けの動画変換・色変換ツール�
 ## 使い始める
 
 1. [Releases](https://github.com/MIKU552/LumaRecode/releases) から、お使いのデバイスに合う EXE をダウンロードします。各版の要件は次の表を参照してください。必要なランタイムは同梱されています。
-2. `ffmpeg.exe` と `ffprobe.exe` を含む Windows 版 [FFmpeg](https://ffmpeg.org/download.html) を用意します。初回起動時に `PATH` を検索します。右上の歯車からパスを指定することもできます。
+2. `ffmpeg.exe` と `ffprobe.exe` を含む Windows 版 [FFmpeg（英語）](https://ffmpeg.org/download.html) を用意します。初回起動時に `PATH` を検索します。右上の歯車からパスを指定することもできます。
 3. 動画をドロップするか「動画を選択」を押し、出力のダイナミックレンジ、プリセット、色変換を確認します。
 4. 保存先を指定し、「変換を開始」を押します。
 
@@ -39,19 +39,26 @@ C# / .NET で開発した Windows 11 向けの動画変換・色変換ツール�
 
 ARM64 の初期設定はアーカイブです。エンコード速度は外部 FFmpeg、ハードウェア、プリセットによって変わります。
 
-Dolby Vision / HDR10+ は、ソフトウェア HEVC で動的メタデータを保持する設定が初期値です。共有用にハードウェアで出力する場合は「標準 HDR」を選択します。ProRes RAW は FFmpeg の対応状況を確認し、カメラのホワイトバランス、色変換行列、ゲインで現像します。対応形式は[色変換](docs/color-conversion.md)を参照してください。
+Dolby Vision / HDR10+ は、ソフトウェア HEVC で動的メタデータを保持する設定が初期値です。共有用にハードウェアで出力する場合は「標準 HDR」を選択します。対応する Dolby Vision プロファイルは単層の 5、8.1、8.4、10.1、10.4 です。ProRes RAW は FFmpeg の対応状況を確認し、カメラのホワイトバランス、色変換行列、ゲインで現像し、標準で HLG に出力します。対応形式は[色変換（中国語・英語）](../color-conversion.md#english)を参照してください。
 
 ## プレビュー・トリミング・画像
 
 動画ページの「プレビューとフレーム単位のトリミング」で、タイムラインの移動、コマ送り、開始・終了フレームの指定ができます。初期設定では動画全体を変換します。画面上のフレーム番号は 1 始まりで、終了フレームも含まれます。
 
-「画像・モーションフォト」ページでは、選択したフレームを HDR AVIF（BT.2020 / PQ、10 または 12 ビット）、Ultra HDR JPEG、sRGB JPEG、可逆圧縮の sRGB PNG（8 ビットまたは 16 ビットコンテナー）で書き出せます。
+「画像・モーションフォト」ページでは、選択したフレームを次の形式で書き出せます。
 
-JPEG と Ultra HDR JPEG には Android モーションフォト動画を追加できます。カバーフレームと動画範囲を個別に指定でき、初期範囲はカバー前後の約 3 秒です。[Google Motion Photo 1.0](https://developer.android.com/media/platform/motion-photo-format) に従い、単一の `MP.jpg` ファイルに保存します。Ultra HDR のエンコードには Google の [libultrahdr](https://github.com/google/libultrahdr) を使用します。動画は CPU エンコードが初期設定で、Intel による高速エンコードも選択できます。
+| 形式 | 出力 |
+| --- | --- |
+| HDR AVIF | BT.2020 / PQ、10 または 12 ビット |
+| Ultra HDR JPEG | SDR 基本画像、HDR ゲインマップとメタデータ |
+| SDR JPEG | sRGB 画像 |
+| SDR PNG | 可逆圧縮の sRGB 画像、8 ビットまたは 16 ビットコンテナー |
+
+JPEG と Ultra HDR JPEG には Android モーションフォト動画を追加できます。カバーフレームと動画範囲を個別に指定でき、初期範囲はカバー前後の約 3 秒です。[Google Motion Photo 1.0（英語）](https://developer.android.com/media/platform/motion-photo-format) に従い、単一の `MP.jpg` ファイルに保存します。Ultra HDR のエンコードには Google の [libultrahdr（英語）](https://github.com/google/libultrahdr) を使用します。動画は CPU エンコードが初期設定で、Intel による高速エンコードも選択できます。
 
 プレビューは SDR 表示です。画像は選択した形式で書き出します。フレーム単位のトリミングでは、音声を AAC、Opus または条件に合う FLAC に再エンコードします。
 
-動画の解像度は元のままが初期設定で、最大 1080p または 720p も選べます。短い動画用の専用プリセットは x264 fast / CRF20、x265 fast / CRF23、または Intel TU6 を使用します。音声は AAC-LC、48 kHz で、モノラルを保持し、それ以外はステレオにします。設定は [motion-photo-presets.json](Assets/motion-photo-presets.json) を参照してください。
+動画の解像度は元のままが初期設定で、最大 1080p または 720p も選べます。短い動画用の専用プリセットは x264 fast / CRF20、x265 fast / CRF23、または Intel TU6 を使用します。音声は AAC-LC、48 kHz で、モノラルを保持し、それ以外はステレオにします。設定は [motion-photo-presets.json](../../Assets/motion-photo-presets.json) を参照してください。
 
 ## エンコードと色変換
 
@@ -68,7 +75,7 @@ FLAC は整数 PCM と、可逆形式と確認できる整数音声に対応し�
 
 SDR 素材は SDR 出力、HLG / PQ 素材は HDR 出力が初期値です。曲線を識別できた Log 素材は HLG に変換します。「入力形式」と「カメラプロファイル」で素材の種類を手動指定できます。
 
-動画は選択したプリセットで再エンコードします。音声はコピーまたは変換できます。設定値は [recommended-presets.json](Assets/recommended-presets.json)、測定結果は[エンコードベンチマーク（英語）](docs/benchmarks/encoding-benchmark.en.md)を参照してください。
+動画は選択したプリセットで再エンコードします。音声はコピーまたは変換できます。設定値は [recommended-presets.json](../../Assets/recommended-presets.json)、測定結果は[エンコードベンチマーク（中国語・英語）](../benchmarks/encoding-benchmark.md#english)を参照してください。
 
 ## 動作要件
 
@@ -95,7 +102,7 @@ PowerShell 7 で出力をパイプに接続して実行します。
 ./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
 ```
 
-初めて無人実行する前に `license --text` でコンポーネントの利用条件を確認し、`license --accept-terms` を実行してください。全コマンド、一括処理、終了コードは[CLI ガイド](docs/cli.ja.md)に記載しています。
+初めて無人実行する前に `license --text` でコンポーネントの利用条件を確認し、`license --accept-terms` を実行してください。全コマンド、一括処理、終了コードは[CLI ガイド](../cli/ja.md)に記載しています。
 
 ## ソースからビルド
 
@@ -114,7 +121,7 @@ cd LumaRecode
 
 X64、Apx、Arm64 を明示すると、そのターゲットの命令セットでコンパイルします。出力先は `dist/SelfContained-X64/`、`dist/SelfContained-Apx/`、`dist/SelfContained-Arm64/` です。Releases では、この 3 種類の EXE を配布します。
 
-Visual Studio 2026 18.12 以降で `LumaRecode.sln` を開き、`App` をスタートアッププロジェクトに設定します。Debug でデバッグできます。`Release | Native` は環境に合わせて自動選択・最適化し、`Release | x64`、`Release-APX | x64`、`Release | ARM64` は固定ターゲットを選択します。`Packaging` が単一 EXE を生成します。設定は[開発・配布ドキュメント](docs/dependencies.md)、チェックは [QA ガイド](qa/README.md)を参照してください。
+Visual Studio 2026 18.12 以降で `LumaRecode.sln` を開き、`LumaRecode.App` をスタートアッププロジェクトに設定します。Debug でデバッグできます。`Release | Native` は環境に合わせて自動選択・最適化し、`Release | x64`、`Release-APX | x64`、`Release | ARM64` は固定ターゲットを選択します。`Packaging` が単一 EXE を生成します。設定は[開発・配布ドキュメント（中国語・英語）](../dependencies.md#english)、チェックは [QA ガイド（中国語・英語）](../../qa/README.md#english)を参照してください。
 
 ## ディレクトリ構成
 
@@ -133,14 +140,14 @@ licenses/  第三者のライセンス、通知、配布元の記録
 
 ## 開発とライセンス
 
-本プロジェクトの独自コードは、**Windows 版 Codex** で **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** と **Extra high（`xhigh`）** 推論設定を使用して開発しました。**[MIKU552](https://github.com/MIKU552)** が要件を定義し、機材と素材を提供して実機検証を行っています。
+本プロジェクトの独自コードは、**Windows 版 Codex** で **[GPT-6.1 Sol（英語）](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** と **Extra high（`xhigh`）** 推論設定を使用して開発しました。**[MIKU552](https://github.com/MIKU552)** が要件を定義し、機材と素材を提供して実機検証を行っています。
 
-独自のコード、ドキュメント、画像、生成したカメラ Log LUT には **[MIT License](LICENSE)** が適用されます。第三者の LUT、フォント、ランタイムのライセンスと配布元は [NOTICE](NOTICE) と[第三者コンポーネント](Assets/THIRD_PARTY.md)に記載しています。
+独自のコード、ドキュメント、画像、生成したカメラ Log LUT には **[MIT License（英語）](../../LICENSE)** が適用されます。第三者の LUT、フォント、ランタイムのライセンスと配布元は [NOTICE（英語）](../../NOTICE) と[第三者コンポーネント（中国語・英語）](../../Assets/THIRD_PARTY.md#english)に記載しています。
 
 ## ドキュメント
 
-- [コマンドライン](docs/cli.ja.md)
-- [開発と配布](docs/dependencies.md)
-- [性能](docs/performance.md)
-- [エンコードベンチマーク（英語）](docs/benchmarks/encoding-benchmark.en.md)
-- [変更履歴](CHANGELOG.md)
+- [コマンドライン](../cli/ja.md)
+- [開発と配布（中国語・英語）](../dependencies.md#english)
+- [性能（中国語・英語）](../performance.md#english)
+- [エンコードベンチマーク（中国語・英語）](../benchmarks/encoding-benchmark.md#english)
+- [変更履歴（中国語・英語）](../../CHANGELOG.md#english)
