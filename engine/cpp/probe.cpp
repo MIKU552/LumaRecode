@@ -6,6 +6,7 @@
 #include <atomic>
 #include <charconv>
 #include <chrono>
+#include <compare>
 #include <cstring>
 #include <filesystem>
 #include <map>
@@ -89,6 +90,7 @@ struct stamp
     uintmax_t size;
     std::filesystem::file_time_type modified;
     bool operator==(const stamp &) const = default;
+    auto operator<=>(const stamp &) const = default;
 };
 stamp file_stamp(const std::string &name)
 {
@@ -100,14 +102,8 @@ stamp file_stamp(const std::string &name)
     return {std::filesystem::canonical(file), std::filesystem::file_size(file),
             std::filesystem::last_write_time(file)};
 }
-std::string stamp_key(const stamp &value)
-{
-    const auto bytes = value.canonical.u8string();
-    return std::string(bytes.begin(), bytes.end()) + "\n" + std::to_string(value.size) + "\n" +
-           std::to_string(value.modified.time_since_epoch().count());
-}
 std::mutex pixel_mutex;
-std::map<std::string, std::vector<uint8_t>> pixel_cache;
+std::map<stamp, std::vector<uint8_t>> pixel_cache;
 size_t pixel_cache_bytes = 0;
 
 int32_t integer(luma::probe_json &json, yyjson_mut_val *value, int32_t fallback = 0)
@@ -255,7 +251,7 @@ struct lr_probe
     {
         phase(LR_PROBE_PHASE_PIXEL_FORMATS);
         const auto tool = file_stamp(executable);
-        const auto key = stamp_key(tool);
+        const auto &key = tool;
         std::vector<uint8_t> bytes;
         {
             std::lock_guard lock(pixel_mutex);
@@ -268,7 +264,8 @@ struct lr_probe
             auto *root = json.parse(bytes);
             if (!yyjson_mut_is_obj(root))
                 throw probe_failure(LR_INVALID_DATA, "Invalid pixel-format report.");
-            if (bytes.size() <= 2 * 1024 * 1024 && key.size() <= 16384 && tool == file_stamp(executable))
+            if (bytes.size() <= 2 * 1024 * 1024 && key.canonical.native().size() <= 16384 &&
+                tool == file_stamp(executable))
             {
                 std::lock_guard lock(pixel_mutex);
                 if (pixel_cache.size() >= 8 || pixel_cache_bytes + bytes.size() > 16 * 1024 * 1024)
