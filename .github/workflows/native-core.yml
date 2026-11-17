@@ -76,6 +76,23 @@ jobs:
           $library = if ($IsWindows) { 'LumaRecodeCore.dll' } else { 'libLumaRecodeCore.dylib' }
           dotnet run --project qa/NativeCoreChecks/NativeCoreChecks.csproj -c Release -- "out/native-${{ matrix.cpu }}-release/engine/$library"
           exit $LASTEXITCODE
+      - name: Check SDK build paths
+        shell: pwsh
+        run: |
+          $name = if ($IsWindows) { 'LumaRecodeCore.dll' } else { 'libLumaRecodeCore.dylib' }
+          $binary = "out/native-${{ matrix.cpu }}-release/engine/$name"
+          $bytes = [IO.File]::ReadAllBytes((Join-Path $PWD $binary))
+          $content = [Text.Encoding]::Latin1.GetString($bytes)
+          $roots = @($PWD.Path, $PWD.Path.Replace('\', '/'), $PWD.Path.Replace('/', '\')) | Sort-Object -Unique
+          foreach ($root in $roots) {
+            foreach ($encoding in @([Text.Encoding]::UTF8, [Text.Encoding]::Unicode)) {
+              $pattern = [Text.Encoding]::Latin1.GetString($encoding.GetBytes($root))
+              if ($content.Contains($pattern, [StringComparison]::Ordinal)) {
+                throw 'SDK binary contains an absolute build workspace path.'
+              }
+            }
+          }
+          Write-Output 'SDK build path check passed.'
       - name: SDK artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

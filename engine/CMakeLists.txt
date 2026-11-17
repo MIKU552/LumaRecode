@@ -74,6 +74,10 @@ elseif(APPLE)
     find_library(LUMA_PROC_LIBRARY proc REQUIRED)
     target_link_libraries(luma_core PRIVATE "${LUMA_PROC_LIBRARY}")
     target_link_options(luma_core PRIVATE "LINKER:-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/exports.macos")
+    # Prebuilt Rust standard-library objects can contribute absolute N_OSO
+    # debug-map paths even when our sources use prefix remapping. Keep debug
+    # maps in Debug builds and omit them from distributed Release libraries.
+    target_link_options(luma_core PRIVATE "$<$<NOT:$<CONFIG:Debug>>:LINKER:-S>")
 else()
     target_link_libraries(luma_core PRIVATE m)
     target_link_options(luma_core PRIVATE "LINKER:--version-script=${CMAKE_CURRENT_SOURCE_DIR}/exports.map")
