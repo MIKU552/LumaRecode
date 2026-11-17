@@ -54,7 +54,7 @@ Windows 使用 C#、.NET 11、WinUI 3，保留单 EXE 的 GUI / CLI。macOS 面�
 | P8 发布准备 | 四语文档、许可、免费签名和分发包 | 整体验收与隐私检查完成 |
 | P9 合并发布 | 保留提交历史合并、最终标签和 Release | 产物、来源和标签一致 |
 
-P1 原型已完成三平台编译、C# / Swift 调用、进程生命周期和资源契约验证。P2 已加入文件事务、源色彩分类、相机元数据解析和原生探测编排；任务规划与时间轴继续迁移。原有输出规则与 HDR10+ 的 6,422 项差异检查继续执行。现有 Windows 应用使用 `Core/`；新核心通过独立检查和软件媒体任务验证。
+P1 原型已完成三平台编译、C# / Swift 调用、进程生命周期和资源契约验证。P2 的基础共享核心包含源模型与规则、探测、逐帧时间轴、转码规划、输出核验、进程及文件事务，并已通过与旧核心的差异检查和软件媒体任务。P3 接入 Windows 的 GUI / CLI 任务流程。现有 Windows 应用仍使用 `Core/`；RAW 显影、动态 HDR 辅助文件和图片流程按 P6 迁移。
 
 ### 构建入口
 
@@ -130,6 +130,24 @@ yyjson 0.13.0 以原始 C 源码参与构建，来源和 SHA-256 固定在 [`lic
 
 像素格式报告按工具路径、大小及修改时间缓存，最多 8 项、16 MiB。命中缓存仍检查当前任务的元数据容量。C# 使用 `NativeProbe.RunAsync` 在后台执行，Swift 调用相同的 C 接口。检查覆盖分阶段失败、取消、可选 DJI 超时、源文件变化、缓存容量以及真实软件媒体任务。
 
+### 逐帧时间轴
+
+[`timeline.h`](../engine/include/lumarecode/timeline.h) 保存显示顺序下的原始 PTS、持续时间、关键帧和时间基。渐进式常见编码优先读取压缩包，排除丢弃预滚并按 PTS 排序；缺失或重复的包时间戳切换到解码帧索引。解码索引保留重复 PTS，拒绝逆序时间戳。
+
+ffprobe 输出按行流式解析，单行最多 64 KiB；索引默认预算 512 MiB，包含扩容时的新旧存储。预算针对元数据，不限制视频文件大小。长视频默认不设扫描期限，支持取消和源文件身份复查。失败后不发布部分索引。
+
+`resolve` 接受从零开始、结束帧不包含在内的选择，返回源时间和前置关键帧位置。`at_or_after` 按相对首帧的播放位置进行二分查找。C# `NativeTimeline` 持有原生索引，可查询范围和复制局部帧记录。
+
+### 转码规划与输出核验
+
+[`plan.h`](../engine/include/lumarecode/plan.h) 接收探测快照、编码选项、版本化预设、路径和可选帧范围，返回不可变的参数向量、已解析选项、预期色彩、工作目录及辅助文件要求。规划本身不启动进程或访问文件。
+
+源模型从像素描述、有效分量位深、存储位深、单色标记、范围标签和相机曲线推导精度；FLAC 规则检查整数无损音频、位深及声道顺序。规划复用原生输出规则，覆盖五种 Log 曲线、SDR / HDR 转换、静态与动态 HDR 策略、音频、逐帧裁剪、预览尺寸和动态照片视频参数。QSV 时间戳兼容、软件解码及低功耗重试参数由显式规划标志表达。
+
+`verify_output` 比较新探测的临时输出与计划，检查编码、像素格式、尺寸、方向、色彩、FLAC / 动态照片音频及 HDR 元数据。静态 HDR 按目标编码的量化精度比较。核验通过后，调用方封存并发布文件；裁剪动态 HDR 时，调用方提供所选首帧的元数据。
+
+差异检查比较旧核心与 C++ 的接受条件、完整参数、色彩及默认值。实际任务覆盖 SDR / HLG / PQ 软件 HEVC，以及带偏移、VFR 和 B 帧的 H.264、解码帧回退、逐帧裁剪和事务发布。C 与 Swift 调用相同的版本化接口。
+
 ### 验证与分发
 
 本机已执行 C 数据边界、C++ 策略、Rust HDR10+、.NET 生成式导入，以及与现有 C# 规则和解析器的差异检查。跨架构结果以 Actions 的实际运行记录为准。
@@ -198,7 +216,7 @@ Keep one public C ABI. Internal boundaries can use validated C interfaces or typ
 | P8 Release preparation | Four-language docs, licenses, free signing and distribution | Full acceptance and privacy checks complete |
 | P9 Merge and release | History-preserving merge, final tag and Release | Artifacts, provenance and tag agree |
 
-The P1 prototype passes three-platform builds, C#/Swift calls, process lifecycle and resource contracts. P2 adds file transactions, source color classification, camera metadata parsing and native probe orchestration; task planning and timelines remain in migration. The existing 6,422 output-policy and HDR10+ differential checks continue to run. The Windows application uses `Core/`; independent contracts and software media tasks validate the new engine.
+The P1 prototype passes three-platform builds, C#/Swift calls, process lifecycle and resource contracts. P2's foundational shared core covers source models and policy, inspection, display-frame timelines, encoding plans, output verification, processes and file transactions, with differential checks and software media tasks against the existing core. P3 integrates the Windows GUI / CLI task flow. The existing Windows application still uses `Core/`; RAW development, dynamic HDR auxiliary files and image workflows migrate in P6.
 
 ### Build entry points
 
@@ -273,6 +291,24 @@ Each subprocess defaults to a 25-second deadline. JSON capture defaults to eight
 yyjson 0.13.0 builds from unmodified C sources, with provenance and SHA-256 pinned in [`licenses/yyjson/manifest.json`](../licenses/yyjson/manifest.json) and verified during configuration. Strict JSON input has a 64-level nesting limit. Trees, duplicate-key indexes and writer scratch share a 128-MiB budget. Duplicate keys become arrays following the existing probe rules. Completed inspections retain only serialized output.
 
 Pixel-format reports are cached by tool path, size and modification time, with limits of eight entries and 16 MiB. Cache hits still enforce the current task's metadata capacity. C# dispatches work through `NativeProbe.RunAsync`; Swift uses the same C interface. Checks cover stage failures, cancellation, optional DJI timeouts, source changes, cache capacities and real software media tasks.
+
+### Display-frame timelines
+
+[`timeline.h`](../engine/include/lumarecode/timeline.h) retains original PTS, duration, keyframe evidence and time base in display order. Common progressive codecs first use compressed packets, excluding discarded preroll and sorting by PTS. Missing or duplicate packet timestamps trigger decoded-frame indexing. Decoded indexes retain duplicate PTS and reject descending timestamps.
+
+ffprobe output is parsed as a stream of lines, each limited to 64 KiB. The default 512-MiB index budget includes replacement storage during growth and applies to metadata independently of movie size. Long movies have no default scan deadline. Scans support cancellation and source identity validation; failed scans publish no partial index.
+
+`resolve` accepts a zero-based, end-exclusive selection and returns source times and a preceding keyframe seek point. `at_or_after` uses binary search over positions relative to the first frame. C# `NativeTimeline` owns the native index, supports range queries and copies selected slices of frame records.
+
+### Encoding plans and output verification
+
+[`plan.h`](../engine/include/lumarecode/plan.h) accepts an inspection snapshot, encode choices, versioned presets, paths and an optional frame window. It returns immutable arguments, resolved choices, expected colors, working directories and required auxiliary files. Planning starts no processes and accesses no files.
+
+Source models derive precision from pixel descriptors, usable component depth, storage depth, monochrome evidence, range tags and camera profiles. FLAC policy validates lossless integer audio, precision and channel order. Planning reuses native format policy and covers five Log curves, SDR / HDR conversion, static and dynamic HDR policy, audio, frame-accurate trimming, viewport sizes and Motion Photo video presets. Explicit plan flags express QSV timing compatibility, software decoding and low-power retry parameters.
+
+`verify_output` compares a freshly inspected staging output with its plan, checking codec, pixels, dimensions, orientation, color, FLAC / Motion Photo audio and HDR metadata. Static HDR fields use the target codec's quantization tolerance. The caller seals and publishes verified files, supplying the selected first frame's metadata when trimming dynamic HDR.
+
+Differential checks compare acceptance, complete arguments, colors and defaults against the existing core. Real tasks cover SDR / HLG / PQ software HEVC, offset VFR H.264 with B frames, decoded-frame fallback, frame-accurate trimming and transactional publication. C and Swift call the same versioned interfaces.
 
 ### Verification and distribution
 
