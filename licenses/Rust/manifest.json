@@ -1,0 +1,12 @@
+{
+  "component": "Rust standard library",
+  "version": "1.100.0",
+  "distribution": "Statically linked into LumaRecodeCore through the Rust metadata module",
+  "source": "https://doc.rust-lang.org/1.100.0/COPYRIGHT-library.html",
+  "notices": {
+    "file": "COPYRIGHT-library.html",
+    "sha256": "626556344c12679d7cab2c1aa2ce80de01937b62c2c88c62f0650a469be18799",
+    "origin": "Unmodified share/doc/rust/COPYRIGHT-library.html from the official Rust 1.100.0 toolchain"
+  },
+  "license": "MIT OR Apache-2.0, with third-party terms retained in the upstream notices"
+}

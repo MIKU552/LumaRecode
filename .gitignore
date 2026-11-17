@@ -23,6 +23,13 @@
 !/Assets/
 !/Brand/
 !/qa/
+!/engine/
+!/Interop/
+!/CMakeLists.txt
+!/CMakePresets.json
+!/rust-toolchain.toml
+!/.clang-format
+!/.github/
 /App/app.ico
 /qa/*
 !/qa/README.md
@@ -39,6 +46,7 @@
 !/qa/FrameChecks/
 !/qa/DocumentationChecks/
 !/qa/BuildChecks/
+!/qa/NativeCoreChecks/
 **/bin/
 **/obj/
 **/__pycache__/
@@ -46,3 +54,6 @@
 *.user
 *.suo
 .vs/
+**/target/
+/out/
+CMakeUserPresets.json
