@@ -12,6 +12,8 @@
 | --- | --- |
 | `App/` | WinUI 视图、设置、本地化、通知及 GUI / CLI 启动选择 |
 | `Core/` | 素材探测、输出规则、命令规划、视频与图片导出、CLI |
+| `engine/` | 跨平台 C / C++ / Rust 核心与 C ABI，目前独立构建和验证 |
+| `Interop/` | .NET 生成式 C ABI 导入 |
 | `Bundle/` | 可选 AOT 的单文件入口，传递标准句柄与退出码 |
 | `Packaging/` | 将 Visual Studio 配置映射到完整的单文件构建流程 |
 | `Assets/` | LUT、视频与动态照片预设、资源来源清单 |
@@ -20,6 +22,8 @@
 | `docs/` | 使用说明、实现说明与测量数据 |
 
 `App/MainWindow.*.cs` 按职责拆分：`Media` 负责素材，`Options` 负责约束，`Conversion` 负责任务与进度，`Frames` 负责预览和帧范围，`Dialogs` 与 `Localization` 负责对话框和语言。
+
+Windows 应用目前使用 `Core/`。新核心的阶段、构建和迁移进度见[跨平台重构](refactoring.md)。
 
 ### 转换任务
 
@@ -82,6 +86,8 @@ GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在�
 | --- | --- |
 | `App/` | WinUI views, settings, localization, notifications and GUI / CLI startup selection |
 | `Core/` | Source inspection, output policies, command planning, video/image export and CLI |
+| `engine/` | Cross-platform C/C++/Rust core and C ABI, built and checked independently during migration |
+| `Interop/` | Generated .NET C ABI imports |
 | `Bundle/` | Optional AOT single-file entry; preserve standard handles and exit codes |
 | `Packaging/` | Map Visual Studio configurations to the complete single-file build pipeline |
 | `Assets/` | LUTs, video and Motion Photo presets, resource provenance |
@@ -90,6 +96,8 @@ GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在�
 | `docs/` | User guides, implementation notes and measurements |
 
 `App/MainWindow.*.cs` is split by responsibility: `Media` handles sources, `Options` enforces constraints, `Conversion` manages jobs and progress, `Frames` handles previews and frame ranges, and `Dialogs` / `Localization` handle dialogs and language.
+
+The Windows application currently uses `Core/`. See [Cross-platform refactoring](refactoring.md) for the native engine stages, builds and migration status.
 
 ### Conversion jobs
 

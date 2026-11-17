@@ -54,7 +54,7 @@ Windows 使用 C#、.NET 11、WinUI 3，保留单 EXE 的 GUI / CLI。macOS 面�
 | P8 发布准备 | 四语文档、许可、免费签名和分发包 | 整体验收与隐私检查完成 |
 | P9 合并发布 | 保留提交历史合并、最终标签和 Release | 产物、来源和标签一致 |
 
-目前完成了本机混合核心的初始编译与差异验证，P1 继续接入任务和跨平台构建。现有 Windows 应用仍使用 `Core/`；完整媒体执行、硬件适配和 macOS 应用按上述阶段迁移。
+混合核心已通过 Windows x64、Windows ARM64 和 macOS ARM64 的 Actions 编译、契约检查及每个平台 6,422 项差异检查；macOS 同时验证 Swift 调用。P1 继续接入任务执行。现有 Windows 应用仍使用 `Core/`；完整媒体执行、硬件适配和 macOS 应用按上述阶段迁移。
 
 ### 构建入口
 
@@ -85,6 +85,8 @@ ctest --test-dir out/c-data --output-on-failure
 ```
 
 两端最终提供可完成应用编译与打包的 Visual Studio / Xcode 工程，与脚本和 Actions 共用构建定义。Windows 默认 JIT，保留可选 AOT；C / C++ / Rust 及 FFmpeg 各自管理 CPU 基线和运行时派发。
+
+现有 Visual Studio 解决方案已加入 `Interop` 和 `NativeCoreChecks` 项目。原生核心可通过 Visual Studio 的“打开文件夹”加载根目录 `CMakePresets.json`。[`engine/examples/format.c`](../engine/examples/format.c) 展示 C 调用，使用调用方持有的结构获取归档输出格式。
 
 ### 验证与分发
 
@@ -150,7 +152,7 @@ Keep one public C ABI. Internal boundaries can use validated C interfaces or typ
 | P8 Release preparation | Four-language docs, licenses, free signing and distribution | Full acceptance and privacy checks complete |
 | P9 Merge and release | History-preserving merge, final tag and Release | Artifacts, provenance and tag agree |
 
-Initial local mixed-core builds and differential checks are complete; P1 continues with task execution and cross-platform builds. The existing Windows application still uses `Core/`. Full media execution, hardware adapters and the macOS application migrate through the stages above.
+The mixed core passes Actions builds, contract checks and 6,422 differential checks per platform on Windows x64, Windows ARM64 and macOS ARM64. macOS also verifies the Swift caller. P1 continues with task execution. The existing Windows application still uses `Core/`. Full media execution, hardware adapters and the macOS application migrate through the stages above.
 
 ### Build entry points
 
@@ -181,6 +183,8 @@ ctest --test-dir out/c-data --output-on-failure
 ```
 
 Both platforms will provide Visual Studio/Xcode projects covering complete application builds and packaging, using the same definitions as scripts and Actions. Windows defaults to JIT with optional AOT. C/C++, Rust and FFmpeg manage their CPU baselines and runtime dispatch independently.
+
+The existing Visual Studio solutions include `Interop` and `NativeCoreChecks`. Use Visual Studio's Open Folder command with the root `CMakePresets.json` for the native core. [`engine/examples/format.c`](../engine/examples/format.c) demonstrates a C caller resolving archive output using caller-owned structures.
 
 ### Verification and distribution
 

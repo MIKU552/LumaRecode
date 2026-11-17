@@ -16,6 +16,8 @@
 
 ### 构建与架构
 
+共享原生核心的独立构建与差异检查见[跨平台重构](../docs/refactoring.md)。C、C++、Rust、C# 与 Swift 的契约检查在 Windows x64、Windows ARM64 和 macOS ARM64 执行；C 调用示例位于 [`engine/examples/format.c`](../engine/examples/format.c)。
+
 ```powershell
 python qa/BuildChecks/check_build.py
 python qa/BuildChecks/check_build.py --artifacts
@@ -153,6 +155,8 @@ Run these commands from the repository root. `global.json` selects the .NET SDK.
 Runs C# formatting, resources, serialization, core boundaries, preview scheduling, process pipes, documentation and build-target checks in order. Documentation checks cover links, anchors, parallel language sections and fallback labels. These checks use isolated test processes and require no footage or GPU.
 
 ### Builds and architectures
+
+See [Cross-platform refactoring](../docs/refactoring.md) for independent native builds and differential checks. C, C++, Rust, C# and Swift contract checks run across Windows x64, Windows ARM64 and macOS ARM64. The C caller example is [`engine/examples/format.c`](../engine/examples/format.c).
 
 ```powershell
 python qa/BuildChecks/check_build.py

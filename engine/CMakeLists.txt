@@ -87,6 +87,9 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/build-info.json" CONTENT
     "{\n  \"abi_version\": 1,\n  \"system\": \"${CMAKE_SYSTEM_NAME}\",\n  \"processor\": \"${CMAKE_SYSTEM_PROCESSOR}\",\n  \"compiler\": \"${CMAKE_CXX_COMPILER_ID}\",\n  \"compiler_version\": \"${CMAKE_CXX_COMPILER_VERSION}\",\n  \"c_standard\": 17,\n  \"cpp_standard\": 23,\n  \"rust_target\": \"${LUMA_RUST_TARGET}\"\n}\n")
 
 if(BUILD_TESTING)
+    add_executable(luma_c_example examples/format.c)
+    target_link_libraries(luma_c_example PRIVATE luma_core)
+    add_test(NAME c_example COMMAND luma_c_example)
     add_executable(luma_c_checks tests/c_checks.c)
     target_link_libraries(luma_c_checks PRIVATE luma_core)
     add_test(NAME c_contracts COMMAND luma_c_checks)

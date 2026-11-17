@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: native-core-${{ github.ref }}
+  group: native-core-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -75,6 +75,7 @@ jobs:
             out/native-*-release/engine/*LumaRecodeCore*
             out/native-*-release/engine/build-info.json
             engine/include/
+            engine/examples/
             LICENSE
             licenses/Rust/
             licenses/UltraHDR/MSVC-STL-LICENSE.txt
