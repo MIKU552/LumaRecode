@@ -112,6 +112,17 @@ LR_API lr_status lr_dji_parse_color(const uint8_t *packet, uint64_t size, lr_dji
 LR_API lr_status lr_avc_is_monochrome(const uint8_t *extradata, uint64_t size, uint32_t *result,
                                       lr_error *error);
 
+/* Read the schema-version-1 media snapshot produced by probe.h. Pixel flags,
+ * component precision, storage padding, camera range and monochrome/RAW evidence
+ * determine the source format. AUTO sampling means an unknown representation.
+ * profile_range overrides only an absent range tag. Input is bounded to 64 MiB;
+ * initialized result/error and pointed-to memory remain caller owned. */
+LR_API lr_status lr_media_source_format(lr_utf8_view media_json, lr_color_range profile_range,
+                                        lr_source_format *result, lr_error *error);
+/* Validate one ffprobe audio stream for lossless integer FLAC conversion.
+ * On success depth receives 1-32; on failure it is unchanged. */
+LR_API lr_status lr_media_flac_depth(lr_utf8_view stream_json, uint32_t *depth, lr_error *error);
+
 #ifdef __cplusplus
 }
 #endif

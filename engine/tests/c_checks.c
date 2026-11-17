@@ -2,8 +2,10 @@
 #include "lumarecode/hdr10plus.h"
 #include "lumarecode/media.h"
 #include "lumarecode/output.h"
+#include "lumarecode/plan.h"
 #include "lumarecode/probe.h"
 #include "lumarecode/process.h"
+#include "lumarecode/timeline.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -216,6 +218,25 @@ static void check_process_initialization(void)
           snapshot.cleanup_state == LR_CLEANUP_PENDING);
 }
 
+static void check_planning_initialization(void)
+{
+    lr_plan_options plan;
+    lr_timeline_options timeline;
+    lr_timeline_snapshot snapshot;
+    lr_frame_window window;
+    CHECK(sizeof(plan) == 160 && sizeof(timeline) == 96 && sizeof(snapshot) == 64);
+    CHECK(sizeof(window) == 56 && sizeof(lr_frame_point) == 24);
+    memset(&plan, 0xa5, sizeof(plan));
+    CHECK(lr_plan_options_init(&plan, sizeof(plan) - 1) == LR_BUFFER_TOO_SMALL);
+    CHECK(plan.struct_size == 0xa5a5a5a5U);
+    CHECK(lr_plan_options_init(&plan, sizeof(plan)) == LR_OK && plan.abi_version == LR_ABI_VERSION &&
+          plan.window == NULL && plan.seconds == 0);
+    CHECK(lr_timeline_options_init(&timeline, sizeof(timeline)) == LR_OK &&
+          timeline.index_capacity == 512ULL * 1024 * 1024 && timeline.timeout_ms == 0);
+    CHECK(lr_timeline_snapshot_init(&snapshot, sizeof(snapshot)) == LR_OK && snapshot.count == 0);
+    CHECK(lr_frame_window_init(&window, sizeof(window)) == LR_OK && window.struct_size == 56);
+}
+
 int main(void)
 {
     check_initialization();
@@ -223,6 +244,7 @@ int main(void)
     check_utf8();
     check_process_initialization();
     check_media_data();
+    check_planning_initialization();
     if (failures != 0)
         return 1;
     puts("C ABI initialization, buffer ownership and signed-stride checks passed.");

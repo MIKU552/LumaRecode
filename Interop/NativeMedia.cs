@@ -43,6 +43,46 @@ public static partial class NativeMedia
 {
     private static readonly UTF8Encoding Utf8 = new(false, true);
 
+    public static unsafe NativeStatus ReadSourceFormat(ReadOnlySpan<byte> mediaJson, out SourceFormat format,
+        out string diagnostic, ColorRange profileRange = ColorRange.Auto)
+    {
+        format = NativeCore.CreateSourceFormat();
+        var error = NativeCore.CreateError();
+        fixed (byte* pointer = mediaJson)
+        {
+            var status = SourceFormatFromJson(new()
+            {
+                Data = pointer,
+                Size = (ulong)mediaJson.Length
+            },
+                profileRange, ref format, ref error);
+            diagnostic = NativeCore.ReadDiagnostic(in error);
+            return status;
+        }
+    }
+
+    public static unsafe NativeStatus FlacDepth(ReadOnlySpan<byte> streamJson, out uint depth, out string diagnostic)
+    {
+        var error = NativeCore.CreateError();
+        depth = 0;
+        fixed (byte* pointer = streamJson)
+        {
+            var status = ReadFlacDepth(new()
+            {
+                Data = pointer,
+                Size = (ulong)streamJson.Length
+            }, ref depth, ref error);
+            diagnostic = NativeCore.ReadDiagnostic(in error);
+            return status;
+        }
+    }
+
+    [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_media_source_format")]
+    private static partial NativeStatus SourceFormatFromJson(Utf8View media, ColorRange profileRange,
+        ref SourceFormat result, ref NativeError error);
+    [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_media_flac_depth")]
+    private static partial NativeStatus ReadFlacDepth(Utf8View stream, ref uint depth, ref NativeError error);
+
     public static unsafe MediaClassification Classify(NativeMediaInput input)
     {
         ArgumentNullException.ThrowIfNull(input);

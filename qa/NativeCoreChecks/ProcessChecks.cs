@@ -188,6 +188,7 @@ internal static class ProcessChecks
                     "Interrupted media task changed the existing destination.");
             }
             cleanupConfirmed &= await MediaChecks.SoftwareSamplesAsync(check, ffmpeg, ffprobe, root);
+            cleanupConfirmed &= await TimelineChecks.SoftwareSamplesAsync(check, ffmpeg, ffprobe, root);
             Console.WriteLine("FFmpeg software encode, verification, transactional publication and frame extraction passed.");
         }
         finally

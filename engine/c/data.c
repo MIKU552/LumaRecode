@@ -2,14 +2,65 @@
 #include "lumarecode/hdr10plus.h"
 #include "lumarecode/media.h"
 #include "lumarecode/output.h"
+#include "lumarecode/plan.h"
 #include "lumarecode/probe.h"
 #include "lumarecode/process.h"
+#include "lumarecode/timeline.h"
 
 #include <string.h>
 
 uint32_t lr_abi_version(void)
 {
     return LR_ABI_VERSION;
+}
+
+lr_status lr_plan_options_init(lr_plan_options *value, uint64_t capacity)
+{
+    if (value == NULL)
+        return LR_INVALID_ARGUMENT;
+    if (capacity < sizeof(*value))
+        return LR_BUFFER_TOO_SMALL;
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    return LR_OK;
+}
+
+lr_status lr_timeline_options_init(lr_timeline_options *value, uint64_t capacity)
+{
+    if (value == NULL)
+        return LR_INVALID_ARGUMENT;
+    if (capacity < sizeof(*value))
+        return LR_BUFFER_TOO_SMALL;
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    value->index_capacity = 512ULL * 1024 * 1024;
+    return LR_OK;
+}
+
+lr_status lr_timeline_snapshot_init(lr_timeline_snapshot *value, uint64_t capacity)
+{
+    if (value == NULL)
+        return LR_INVALID_ARGUMENT;
+    if (capacity < sizeof(*value))
+        return LR_BUFFER_TOO_SMALL;
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    return LR_OK;
+}
+
+lr_status lr_frame_window_init(lr_frame_window *value, uint64_t capacity)
+{
+    if (value == NULL)
+        return LR_INVALID_ARGUMENT;
+    if (capacity < sizeof(*value))
+        return LR_BUFFER_TOO_SMALL;
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    return LR_OK;
 }
 
 const char *lr_status_name(lr_status status)

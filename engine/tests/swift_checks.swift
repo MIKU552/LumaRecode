@@ -41,6 +41,28 @@ require(parsed == LR_OK && metadata.average_rgb == 1500 && metadata.max_scl.2 ==
         "Swift/C++/Rust HDR integer codes differ")
 print("Swift/C/C++/Rust ABI, output-policy and HDR checks passed.")
 
+require(MemoryLayout<lr_frame_point>.size == 24 && MemoryLayout<lr_frame_window>.size == 56 &&
+        MemoryLayout<lr_timeline_options>.size == 96 && MemoryLayout<lr_timeline_snapshot>.size == 64,
+        "Swift timeline layout differs")
+var framePoints = [lr_frame_point(pts: 0, duration: 10, key_frame: 1, reserved: 0),
+                   lr_frame_point(pts: 10, duration: 20, key_frame: 0, reserved: 0),
+                   lr_frame_point(pts: 30, duration: 15, key_frame: 1, reserved: 0)]
+var frameTimeline: OpaquePointer?
+let timelineImported = framePoints.withUnsafeBufferPointer { points in
+    lr_timeline_from_points(points.baseAddress, UInt64(points.count), 1, 100, LR_TIMELINE_PACKETS,
+                            &frameTimeline, &error)
+}
+require(timelineImported == LR_OK, "Swift timeline import failed")
+var frameWindow = lr_frame_window()
+require(lr_frame_window_init(&frameWindow, 56) == LR_OK, "Swift frame window init")
+require(lr_timeline_resolve(frameTimeline, 1, UInt64.max, &frameWindow) == LR_OK &&
+        frameWindow.seek_frame == 0 && frameWindow.start_seconds == 0.1 && frameWindow.end_seconds == 0.45,
+        "Swift VFR selection differs")
+var timePosition: UInt64 = 99
+require(lr_timeline_at_or_after(frameTimeline, 0.11, &timePosition) == LR_OK && timePosition == 2,
+        "Swift frame time lookup differs")
+lr_timeline_release(frameTimeline)
+
 require(CommandLine.arguments.count == 2, "Expected the native process helper path")
 require(MemoryLayout<lr_process_options>.size == 80 && MemoryLayout<lr_process_snapshot>.size == 64,
         "Swift process layout differs")
@@ -208,3 +230,51 @@ require(inspectionData.withUnsafeMutableBufferPointer { bytes in
 let inspectedSource = try JSONSerialization.jsonObject(with: Data(inspectionData)) as? [String: Any]
 require(inspectedSource?["kind"] as? String == "hlg", "Swift probe classification differs")
 print("Swift native source inspection and immutable JSON snapshot checks passed.")
+
+require(MemoryLayout<lr_plan_options>.size == 160, "Swift plan layout differs")
+func withViews<Result>(_ values: [[UInt8]], _ body: ([lr_utf8_view]) -> Result) -> Result {
+    func next(_ index: Int, _ views: [lr_utf8_view]) -> Result {
+        if index == values.count { return body(views) }
+        return values[index].withUnsafeBufferPointer { bytes in
+            next(index + 1, views + [lr_utf8_view(data: bytes.baseAddress, size: UInt64(bytes.count))])
+        }
+    }
+    return next(0, [])
+}
+let planningMedia = Array(try JSONSerialization.data(withJSONObject: [
+    "schema_version": 1, "path": String(decoding: sourcePath, as: UTF8.self), "kind": "sdr",
+    "video": ["index": 0, "width": 128, "height": 72, "codec_name": "h264", "pix_fmt": "yuv420p"]
+] as [String: Any]))
+let planningChoices = Array(#"{"purpose":"archive","codec":"avc"}"#.utf8)
+let planningPresets = Array(#"{"archive":{"avc":{"encoder":"libx264","preset":"medium","quality":21}},"audio":{"archive_default":"copy"}}"#.utf8)
+let planningDestination = Array(outputRoot.appendingPathComponent("planned.mkv").path.utf8)
+let planningAssets = Array(outputRoot.path.utf8)
+var planningOptions = lr_plan_options()
+require(lr_plan_options_init(&planningOptions, 160) == LR_OK, "Swift plan init")
+var nativePlan: OpaquePointer?
+let planCreated = withViews([planningMedia, planningChoices, planningPresets, executable,
+                              planningDestination, planningAssets]) { values in
+    planningOptions.media_json = values[0]; planningOptions.encode_json = values[1]
+    planningOptions.presets_json = values[2]; planningOptions.ffmpeg = values[3]
+    planningOptions.destination = values[4]; planningOptions.assets = values[5]
+    return lr_plan_create(&planningOptions, &nativePlan, &error)
+}
+require(planCreated == LR_OK, "Swift pure plan creation")
+defer { lr_plan_release(nativePlan) }
+var planningSize: UInt64 = 0
+require(lr_plan_copy_json(nativePlan, nil, 0, &planningSize) == LR_BUFFER_TOO_SMALL, "Swift plan size query")
+var planningData = [UInt8](repeating: 0, count: Int(planningSize))
+require(planningData.withUnsafeMutableBufferPointer { bytes in
+    lr_plan_copy_json(nativePlan, bytes.baseAddress, UInt64(bytes.count), &planningSize)
+} == LR_OK, "Swift immutable plan copy")
+let planned = try JSONSerialization.jsonObject(with: Data(planningData)) as? [String: Any]
+require((planned?["arguments"] as? [String])?.contains("libx264") == true &&
+        (planned?["options"] as? [String: Any])?["bit_depth"] as? String == "8", "Swift plan choices differ")
+var sourceDescription = lr_source_format()
+require(lr_source_format_init(&sourceDescription, UInt64(MemoryLayout<lr_source_format>.size)) == LR_OK, "Swift source format init")
+require(planningMedia.withUnsafeBufferPointer { bytes in
+    lr_media_source_format(lr_utf8_view(data: bytes.baseAddress, size: UInt64(bytes.count)), LR_RANGE_AUTO,
+                            &sourceDescription, &error)
+} == LR_OK && sourceDescription.bit_depth == 8 && sourceDescription.sampling == LR_SAMPLING_420,
+        "Swift source format derivation differs")
+print("Swift native timeline, planning and source-format contracts passed.")

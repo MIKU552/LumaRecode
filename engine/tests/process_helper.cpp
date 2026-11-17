@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "probe_fixture.hpp"
+#include "timeline_fixture.hpp"
 
 #ifdef _WIN32
 #include <fcntl.h>
@@ -29,7 +30,9 @@ int helper(const std::vector<std::string> &arguments)
 {
     const auto &mode = arguments.at(1);
     if (mode == "-v")
-        return probe_fixture(arguments);
+        return std::find(arguments.begin(), arguments.end(), "compact=p=1:nk=0") != arguments.end()
+                   ? timeline_fixture(arguments)
+                   : probe_fixture(arguments);
     if (mode == "echo")
     {
         for (size_t i = 2; i < arguments.size(); ++i)

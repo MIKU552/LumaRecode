@@ -256,7 +256,11 @@ internal static class MediaChecks
             cleanupConfirmed &= inspectedSource.Snapshot.CleanupConfirmed;
             check(inspectedSource.Status == NativeStatus.Ok, "Native source orchestration failed: " + inspectedSource.Diagnostic);
             if (inspectedSource.Status == NativeStatus.Ok)
+            {
                 ProbeChecks.Compare(check, inspectedSource, await MediaProbe.InspectAsync(new(ffmpeg, ffprobe), path));
+                cleanupConfirmed &= await PlanChecks.SoftwareEncodeAsync(check, ffmpeg, ffprobe, path,
+                    Path.Combine(root, "planned-" + transfer + ".mkv"), inspectedSource.Data, hdr);
+            }
         }
         string gray = Path.Combine(root, "monochrome-h264.mp4");
         var avc = await NativeProcess.RunAsync(new(ffmpeg,
