@@ -1,0 +1,80 @@
+name: Native core
+
+on:
+  push:
+    branches: [next]
+  pull_request:
+    branches: [main, next]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-core-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-2025-vs2026
+            cpu: x64
+          - name: Windows ARM64
+            os: windows-11-vs2026-arm
+            cpu: arm64
+          - name: macOS 27 ARM64
+            os: xcode-27
+            cpu: arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Select Xcode
+        if: runner.os == 'macOS'
+        run: sudo xcode-select -s /Applications/Xcode_27.2.app/Contents/Developer
+      - name: Install pinned build tools
+        shell: pwsh
+        run: ./tools/Install-NativeBuildTools.ps1 -Directory "${{ runner.temp }}/lumarecode-build-tools"
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+      - name: Rust formatting and lints
+        shell: pwsh
+        run: |
+          cargo fmt --all --manifest-path engine/rust/Cargo.toml -- --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo clippy --manifest-path engine/rust/Cargo.toml --workspace --all-targets -- -D warnings
+          exit $LASTEXITCODE
+      - name: Build and test Windows core
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./tools/Build-NativeCore.ps1 -Target Native -Configuration Release -Test
+      - name: Build and test macOS core
+        if: runner.os == 'macOS'
+        run: sh tools/build-native-core.sh Release
+      - name: Managed/native differential checks
+        shell: pwsh
+        run: |
+          $library = if ($IsWindows) { 'LumaRecodeCore.dll' } else { 'libLumaRecodeCore.dylib' }
+          dotnet run --project qa/NativeCoreChecks/NativeCoreChecks.csproj -c Release -- "out/native-${{ matrix.cpu }}-release/engine/$library"
+          exit $LASTEXITCODE
+      - name: SDK artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-core-${{ runner.os }}-${{ matrix.cpu }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            out/native-*-release/engine/*LumaRecodeCore*
+            out/native-*-release/engine/build-info.json
+            engine/include/
+            LICENSE
+            licenses/Rust/
+            licenses/UltraHDR/MSVC-STL-LICENSE.txt
