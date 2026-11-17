@@ -142,7 +142,8 @@ static void check_process_initialization(void)
     CHECK(options.stdout_mode == LR_CAPTURE_FULL && options.stdout_capacity == 8 * 1024 * 1024);
     CHECK(options.stderr_capacity == 8192 && options.timeout_ms == 25000);
     CHECK(lr_process_snapshot_init(&snapshot, sizeof(snapshot)) == LR_OK);
-    CHECK(snapshot.state == LR_PROCESS_CREATED && snapshot.exit_code == -1);
+    CHECK(snapshot.state == LR_PROCESS_CREATED && snapshot.exit_code == -1 &&
+          snapshot.cleanup_state == LR_CLEANUP_PENDING);
 }
 
 int main(void)

@@ -20,6 +20,7 @@ internal static class ProcessChecks
         var running = NativeProcess.RunAsync(new(helper, mutable));
         mutable[1] = "changed after create";
         var echoed = await running;
+        check(echoed.CleanupConfirmed, "Managed success returned before native cleanup.");
         string expected = string.Concat(words.Select(word => $"{Encoding.UTF8.GetByteCount(word)}:{word}\n"));
         check(echoed.Status == NativeStatus.Ok && Encoding.UTF8.GetString(echoed.Output) == expected,
             "Managed arguments were changed, reinterpreted or not copied.");
@@ -37,12 +38,15 @@ internal static class ProcessChecks
         check(failure.Status == NativeStatus.IoError && failure.ExitCode == 17 && failure.ErrorText == "failure-reason",
             "Managed nonzero exit differs.");
         var overflow = await NativeProcess.RunAsync(new(helper, ["binary", "32"], OutputCapacity: 31));
+        check(overflow.CleanupConfirmed, "Output-limit failure did not confirm native cleanup.");
         check(overflow.Status == NativeStatus.ResourceLimit && overflow.Output.Length == 31,
             "Managed output budget was not enforced.");
         var timeout = await NativeProcess.RunAsync(new(helper, ["wait"], TimeoutMilliseconds: 60));
+        check(timeout.CleanupConfirmed, "Timeout did not confirm native cleanup.");
         check(timeout.Status == NativeStatus.TimedOut, "Managed timeout did not wait for native cleanup.");
         using var cancellation = new CancellationTokenSource(100);
         var cancelled = await NativeProcess.RunAsync(new(helper, ["wait"]), cancellation.Token);
+        check(cancelled.CleanupConfirmed, "Cancellation did not confirm native cleanup.");
         check(cancelled.Status == NativeStatus.Cancelled, "Managed cancellation did not reach native context.");
         using var early = new CancellationTokenSource();
         early.Cancel();

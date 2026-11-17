@@ -141,10 +141,19 @@ struct lr_process final : luma::process_sink
             throw luma::process_failure(LR_TIMED_OUT, "External process timed out.");
         }
     }
-    void consume(uint32_t stream, std::span<const uint8_t> bytes) override
+    void started() noexcept override
+    {
+        child_started = true;
+    }
+    void cleaned() noexcept override
+    {
+        cleanup_confirmed = true;
+    }
+    void consume(uint32_t stream, std::span<const uint8_t> bytes, bool cleaning) override
     {
         std::lock_guard lock(mutex);
-        if (!(stream == LR_STREAM_STDOUT ? output : errors).append(bytes))
+        const auto accepted = (stream == LR_STREAM_STDOUT ? output : errors).append(bytes);
+        if (!accepted && !cleaning)
         {
             throw luma::process_failure(LR_RESOURCE_LIMIT,
                                         "External process output exceeds its byte budget.");
@@ -158,7 +167,7 @@ struct lr_process final : luma::process_sink
     uint64_t elapsed() const
     {
         return static_cast<uint64_t>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(clock_type::now() - started).count());
+            std::chrono::duration_cast<std::chrono::milliseconds>(clock_type::now() - started_at).count());
     }
     luma::process_request request;
     uint64_t timeout_ms;
@@ -166,7 +175,9 @@ struct lr_process final : luma::process_sink
     capture_buffer errors;
     std::mutex mutex;
     std::atomic_bool cancelled = false;
-    clock_type::time_point started;
+    bool child_started = false;
+    bool cleanup_confirmed = false;
+    clock_type::time_point started_at;
     lr_process_snapshot snapshot;
 };
 
@@ -232,7 +243,7 @@ extern "C" lr_status lr_process_run(lr_process *process, lr_error *error)
             {
                 return report(error, LR_INVALID_ARGUMENT, "A process context can run only once.");
             }
-            process->started = clock_type::now();
+            process->started_at = clock_type::now();
             process->snapshot.state = LR_PROCESS_RUNNING;
         }
         lr_status status = LR_OK;
@@ -271,8 +282,18 @@ extern "C" lr_status lr_process_run(lr_process *process, lr_error *error)
             set_message("External process failed unexpectedly.");
         }
         std::lock_guard lock(process->mutex);
+        const bool cleanup_confirmed = !process->child_started || process->cleanup_confirmed;
+        if (!cleanup_confirmed)
+        {
+            status = LR_IO_ERROR;
+            const auto original = message;
+            std::snprintf(message.data(), message.size(), "%.600s%s",
+                          original[0] == 0 ? "External process ended." : original.data(),
+                          " Cleanup could not be confirmed; preserve task files.");
+        }
         process->snapshot.state = LR_PROCESS_FINISHED;
         process->snapshot.status = status;
+        process->snapshot.cleanup_state = cleanup_confirmed ? LR_CLEANUP_CONFIRMED : LR_CLEANUP_FAILED;
         process->snapshot.elapsed_ms = process->elapsed();
         return report(error, status, message.data());
     }

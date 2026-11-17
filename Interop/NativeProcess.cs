@@ -16,7 +16,7 @@ public sealed record NativeProcessOptions(string Executable, IReadOnlyList<strin
 
 /// <summary>Final native status, exact output bytes and the retained diagnostic tail.</summary>
 public sealed record NativeProcessResult(NativeStatus Status, int ExitCode, byte[] Output, byte[] Error,
-    ulong ElapsedMilliseconds, ulong OutputBytesSeen, ulong ErrorBytesSeen, string Diagnostic)
+    ulong ElapsedMilliseconds, ulong OutputBytesSeen, ulong ErrorBytesSeen, string Diagnostic, bool CleanupConfirmed)
 {
     public string ErrorText => Encoding.UTF8.GetString(Error);
 }
@@ -133,7 +133,7 @@ public static partial class NativeProcess
         return new NativeProcessResult(status, snapshot.ExitCode,
             Copy(handle, 1, snapshot.OutputRetained), Copy(handle, 2, snapshot.ErrorRetained),
             snapshot.ElapsedMilliseconds, snapshot.OutputSeen, snapshot.ErrorSeen,
-            NativeCore.ReadDiagnostic(in error));
+            NativeCore.ReadDiagnostic(in error), snapshot.CleanupState == 1);
     }
 
     private static unsafe byte[] Copy(ProcessHandle handle, uint stream, ulong count)
@@ -184,7 +184,7 @@ public static partial class NativeProcess
         public uint StructSize, AbiVersion, State;
         public NativeStatus Status;
         public int ExitCode;
-        public uint Reserved;
+        public uint CleanupState;
         public ulong ElapsedMilliseconds, OutputSeen, ErrorSeen, OutputRetained, ErrorRetained;
     }
 

@@ -95,6 +95,11 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/build-info.json" CONTENT
     "{\n  \"abi_version\": 1,\n  \"system\": \"${CMAKE_SYSTEM_NAME}\",\n  \"processor\": \"${CMAKE_SYSTEM_PROCESSOR}\",\n  \"compiler\": \"${CMAKE_CXX_COMPILER_ID}\",\n  \"compiler_version\": \"${CMAKE_CXX_COMPILER_VERSION}\",\n  \"c_standard\": 17,\n  \"cpp_standard\": 23,\n  \"rust_target\": \"${LUMA_RUST_TARGET}\"\n}\n")
 
 if(BUILD_TESTING)
+    add_executable(luma_lifecycle_checks cpp/process.cpp c/data.c c/utf8.c tests/process_failure_checks.cpp)
+    target_compile_definitions(luma_lifecycle_checks PRIVATE LUMA_CORE_STATIC)
+    target_include_directories(luma_lifecycle_checks PRIVATE include)
+    target_link_libraries(luma_lifecycle_checks PRIVATE Threads::Threads)
+    add_test(NAME process_failure_contracts COMMAND luma_lifecycle_checks)
     add_executable(luma_process_helper tests/process_helper.cpp)
     add_executable(luma_process_checks tests/process_checks.cpp)
     if(MSVC)
@@ -138,3 +143,4 @@ endif()
 
 install(TARGETS luma_core RUNTIME DESTINATION bin LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
 install(DIRECTORY include/lumarecode DESTINATION include)
+install(FILES include/module.modulemap DESTINATION include)

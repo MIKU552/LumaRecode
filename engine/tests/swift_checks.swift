@@ -76,7 +76,8 @@ require(executed == LR_OK, "Swift native process execution: \(diagnostic)")
 var processState = lr_process_snapshot()
 require(lr_process_snapshot_init(&processState, 64) == LR_OK, "Process snapshot init")
 require(lr_process_get_snapshot(nativeProcess, &processState) == LR_OK
-        && processState.state == LR_PROCESS_FINISHED && processState.exit_code == 0, "Swift process state")
+        && processState.state == LR_PROCESS_FINISHED && processState.exit_code == 0
+        && processState.cleanup_state == LR_CLEANUP_CONFIRMED, "Swift process state")
 var outputBytes = [UInt8](repeating: 0, count: Int(processState.stdout_retained))
 var required: UInt64 = 0
 let copied = outputBytes.withUnsafeMutableBufferPointer { bytes in

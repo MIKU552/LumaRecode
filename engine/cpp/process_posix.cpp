@@ -254,7 +254,7 @@ bool drain(descriptor &pipe, uint32_t stream, luma::process_sink &sink, bool sto
             }
             luma::fail_os("read(pipe)", errno);
         }
-        sink.consume(stream, std::span(bytes.data(), static_cast<size_t>(count)));
+        sink.consume(stream, std::span(bytes.data(), static_cast<size_t>(count)), stopping);
         consumed = true;
     }
     return consumed;
@@ -324,6 +324,7 @@ void luma::execute_child(const process_request &request, process_sink &sink)
                         arguments.data(), environment),
             "posix_spawn");
     child.pid = spawned;
+    sink.started();
     output.write.reset();
     errors.write.reset();
     try
@@ -360,6 +361,7 @@ void luma::execute_child(const process_request &request, process_sink &sink)
                 wait_for_data(output.read, errors.read);
             }
         }
+        sink.cleaned();
     }
     catch (...)
     {
@@ -373,15 +375,21 @@ void luma::execute_child(const process_request &request, process_sink &sink)
             // Descendants normally share the group. Bound draining as well in
             // case a third-party tool deliberately starts a different session.
             const auto cleanup = std::chrono::steady_clock::now();
-            while (errors.read && std::chrono::steady_clock::now() - cleanup < std::chrono::seconds(5))
+            while (errors.read || output.read)
             {
                 drain(errors.read, LR_STREAM_STDERR, sink, true);
-                if (errors.read)
+                drain(output.read, LR_STREAM_STDOUT, sink, true);
+                if (std::chrono::steady_clock::now() - cleanup > std::chrono::seconds(5))
                 {
-                    pollfd event{errors.read.get(), POLLIN, 0};
-                    poll(&event, 1, 5);
+                    throw process_failure(LR_IO_ERROR,
+                                          "Child pipes remained open after process-group cleanup.");
+                }
+                if (errors.read || output.read)
+                {
+                    wait_for_data(output.read, errors.read);
                 }
             }
+            sink.cleaned();
         }
         catch (...)
         {

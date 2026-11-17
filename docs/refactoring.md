@@ -98,6 +98,8 @@ Windows 在创建进程时将其加入 Job Object，仅继承标准输入与输�
 
 `.NET` 的 `NativeProcess.RunAsync` 使用生成式导入和 `SafeHandle`，在后台执行阻塞调用，回收后返回终态结果。取消及超时通过结果的 `Status` 表达。Swift 检查验证同一套接口的参数复制、执行和释放。
 
+`cleanup_state` 记录回收是否确认；`.NET` 结果提供 `CleanupConfirmed`。文件事务据此决定是否可以发布或清理临时输出。回收未确认时返回 I/O 错误，调用方保留任务文件。生命周期检查注入启动失败、内存不足和清理失败，验证这些终态约束。
+
 ### 验证与分发
 
 本机已执行 C 数据边界、C++ 策略、Rust HDR10+、.NET 生成式导入，以及与现有 C# 规则和解析器的差异检查。跨架构结果以 Actions 的实际运行记录为准。
@@ -209,6 +211,8 @@ stdout supports full capture, a tail ring buffer and discard; stderr retains a t
 Windows associates the process with a Job Object at creation and inherits only standard I/O handles, with NUL input. macOS uses `posix_spawn`, an independent process group and nonblocking pipes, observing terminal events with `waitid`. The leader remains waitable through cleanup to prevent PID reuse. Darwin zombie-only groups are checked for live members before accepting cleanup.
 
 `.NET` `NativeProcess.RunAsync` uses generated imports and `SafeHandle`, executes the blocking call in the background and returns a terminal result after cleanup. The result's `Status` expresses cancellation and timeout. Swift checks verify argument copying, execution and release through the same interface.
+
+`cleanup_state` records whether reclamation is confirmed; `.NET` exposes `CleanupConfirmed`. File transactions use it to authorize publication or removal of temporary output. Unconfirmed cleanup returns an I/O error and the caller retains task files. Lifecycle checks inject launch, allocation and cleanup failures to verify these terminal-state contracts.
 
 ### Verification and distribution
 

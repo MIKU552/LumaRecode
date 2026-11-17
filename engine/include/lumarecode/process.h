@@ -24,6 +24,9 @@ typedef struct lr_utf8_view
 #define LR_PROCESS_CREATED 0U
 #define LR_PROCESS_RUNNING 1U
 #define LR_PROCESS_FINISHED 2U
+#define LR_CLEANUP_PENDING 0U
+#define LR_CLEANUP_CONFIRMED 1U
+#define LR_CLEANUP_FAILED 2U
 
 typedef struct lr_process_options
 {
@@ -49,7 +52,8 @@ typedef struct lr_process_snapshot
     lr_status status;
     /* -1 until an exit code is available. POSIX signal exits use 128+signal. */
     int32_t exit_code;
-    uint32_t reserved;
+    /* File transactions require CONFIRMED before publishing or removing work. */
+    uint32_t cleanup_state;
     uint64_t elapsed_ms;
     uint64_t stdout_seen;
     uint64_t stderr_seen;
@@ -70,7 +74,8 @@ LR_API lr_status lr_process_create(const lr_process_options *options, lr_process
 /* run() blocks its caller and may run once. Hosts dispatch it off the UI thread.
  * Cancellation is sticky, including before run(); terminal state is immutable.
  * Nonzero child exits return LR_IO_ERROR. Pipes and the direct child are joined
- * before returning; descendants in the owned job/process group are terminated. */
+ * before returning; descendants in the owned job/process group are terminated.
+ * Unconfirmed cleanup returns LR_IO_ERROR with LR_CLEANUP_FAILED. */
 LR_API lr_status lr_process_run(lr_process *process, lr_error *error);
 LR_API lr_status lr_process_cancel(lr_process *process);
 LR_API lr_status lr_process_get_snapshot(lr_process *process, lr_process_snapshot *result);

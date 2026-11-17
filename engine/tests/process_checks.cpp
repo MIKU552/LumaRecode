@@ -86,6 +86,7 @@ lr_process_snapshot snapshot(lr_process *process)
     lr_process_snapshot result;
     lr_process_snapshot_init(&result, sizeof(result));
     CHECK(lr_process_get_snapshot(process, &result) == LR_OK);
+    CHECK(result.state != LR_PROCESS_FINISHED || result.cleanup_state == LR_CLEANUP_CONFIRMED);
     return result;
 }
 

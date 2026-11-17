@@ -35,8 +35,10 @@ class process_failure final : public std::exception
 struct process_sink
 {
     virtual ~process_sink() = default;
+    virtual void started() noexcept = 0;
+    virtual void cleaned() noexcept = 0;
     virtual void check_stop() = 0;
-    virtual void consume(uint32_t stream, std::span<const uint8_t> bytes) = 0;
+    virtual void consume(uint32_t stream, std::span<const uint8_t> bytes, bool cleaning = false) = 0;
     virtual void exited(int32_t code) = 0;
 };
 

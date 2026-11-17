@@ -252,7 +252,7 @@ bool drain(handle &pipe, uint32_t stream, luma::process_sink &sink, bool stoppin
         {
             luma::fail_os("ReadFile", GetLastError());
         }
-        sink.consume(stream, std::span(bytes.data(), count));
+        sink.consume(stream, std::span(bytes.data(), count), stopping);
         consumed = true;
     }
     return consumed;
@@ -301,6 +301,7 @@ void luma::execute_child(const process_request &request, process_sink &sink)
         fail_os("CreateProcessW", GetLastError());
     }
     child.process.reset(information.hProcess);
+    sink.started();
     handle thread(information.hThread);
     output.write.reset();
     errors.write.reset();
@@ -333,6 +334,7 @@ void luma::execute_child(const process_request &request, process_sink &sink)
             drain(errors.read, LR_STREAM_STDERR, sink);
             drain(output.read, LR_STREAM_STDOUT, sink);
         }
+        sink.cleaned();
     }
     catch (...)
     {
@@ -340,10 +342,17 @@ void luma::execute_child(const process_request &request, process_sink &sink)
         try
         {
             child.stop_and_join();
-            while (errors.read)
+            const auto cleanup = std::chrono::steady_clock::now();
+            while (errors.read || output.read)
             {
                 drain(errors.read, LR_STREAM_STDERR, sink, true);
+                drain(output.read, LR_STREAM_STDOUT, sink, true);
+                if (std::chrono::steady_clock::now() - cleanup > std::chrono::seconds(5))
+                {
+                    throw luma::process_failure(LR_IO_ERROR, "Child pipes remained open after job cleanup.");
+                }
             }
+            sink.cleaned();
         }
         catch (...)
         {
