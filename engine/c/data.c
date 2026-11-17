@@ -1,5 +1,6 @@
 #include "lumarecode/core.h"
 #include "lumarecode/hdr10plus.h"
+#include "lumarecode/media.h"
 #include "lumarecode/output.h"
 #include "lumarecode/process.h"
 
@@ -43,6 +44,43 @@ const char *lr_status_name(lr_status status)
     default:
         return "unknown";
     }
+}
+
+lr_status lr_classify_input_init(lr_classify_input *value, uint64_t capacity)
+{
+    if (value == NULL)
+        return LR_INVALID_ARGUMENT;
+    if (capacity < sizeof(*value))
+        return LR_BUFFER_TOO_SMALL;
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    return LR_OK;
+}
+
+lr_status lr_classification_init(lr_classification *value, uint64_t capacity)
+{
+    if (value == NULL)
+        return LR_INVALID_ARGUMENT;
+    if (capacity < sizeof(*value))
+        return LR_BUFFER_TOO_SMALL;
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    value->tag_index = UINT32_MAX;
+    return LR_OK;
+}
+
+lr_status lr_dji_color_init(lr_dji_color *value, uint64_t capacity)
+{
+    if (value == NULL)
+        return LR_INVALID_ARGUMENT;
+    if (capacity < sizeof(*value))
+        return LR_BUFFER_TOO_SMALL;
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    return LR_OK;
 }
 
 lr_status lr_output_options_init(lr_output_options *value, uint64_t capacity)

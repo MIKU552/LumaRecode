@@ -1,11 +1,13 @@
-//! Bounded HDR10+ T.35 parsing. This module never owns a media file, a decoder,
-//! a task thread or a GPU resource; the C++ engine owns those lifetimes.
+//! Bounded HDR10+ T.35 and camera metadata parsing. These modules never own a
+//! media file, decoder, task thread or GPU resource; C++ owns those lifetimes.
 //!
 //! Syntax and representability match the stable C# implementation. Integer code
 //! values survive parsing unchanged, including reduced rational representations
 //! at the later ffprobe/x265 boundary.
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
+
+mod camera;
 
 const PREFIX: &[u8; 6] = &[0xb5, 0, 0x3c, 0, 1, 4];
 const MAX_RECORD_BYTES: usize = 1024 * 1024;

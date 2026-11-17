@@ -27,9 +27,9 @@ else()
 endif()
 set(luma_rust_target_dir "${CMAKE_CURRENT_BINARY_DIR}/rust")
 if(WIN32)
-    set(luma_rust_library "${luma_rust_target_dir}/${LUMA_RUST_TARGET}/${luma_rust_profile}/luma_hdr10plus.lib")
+    set(luma_rust_library "${luma_rust_target_dir}/${LUMA_RUST_TARGET}/${luma_rust_profile}/luma_metadata.lib")
 else()
-    set(luma_rust_library "${luma_rust_target_dir}/${LUMA_RUST_TARGET}/${luma_rust_profile}/libluma_hdr10plus.a")
+    set(luma_rust_library "${luma_rust_target_dir}/${LUMA_RUST_TARGET}/${luma_rust_profile}/libluma_metadata.a")
 endif()
 file(GLOB_RECURSE luma_rust_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/rust/*.rs")
 set(luma_rust_environment "CARGO_TARGET_DIR=${luma_rust_target_dir}")
@@ -42,7 +42,7 @@ add_custom_command(OUTPUT "${luma_rust_library}"
     COMMAND "${CMAKE_COMMAND}" -E env ${luma_rust_environment}
         "${CARGO_EXECUTABLE}" build --locked --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/rust/Cargo.toml"
         --target "${LUMA_RUST_TARGET}" ${luma_rust_profile_arguments}
-    DEPENDS ${luma_rust_sources} rust/Cargo.toml rust/hdr10plus/Cargo.toml rust/Cargo.lock
+    DEPENDS ${luma_rust_sources} rust/Cargo.toml rust/metadata/Cargo.toml rust/Cargo.lock
         "${PROJECT_SOURCE_DIR}/rust-toolchain.toml"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Building bounded Rust metadata module (${LUMA_RUST_TARGET})"
@@ -54,7 +54,7 @@ add_dependencies(luma_rust luma_rust_build)
 
 add_subdirectory(c)
 add_library(luma_core SHARED cpp/output_policy.cpp cpp/hdr10plus.cpp cpp/process.cpp
-    cpp/output_transaction.cpp $<TARGET_OBJECTS:luma_c>)
+    cpp/output_transaction.cpp cpp/media_classification.cpp $<TARGET_OBJECTS:luma_c>)
 if(WIN32)
     target_sources(luma_core PRIVATE cpp/process_windows.cpp cpp/output_windows.cpp)
     target_compile_definitions(luma_core PRIVATE _WIN32_WINNT=0x0A00)
@@ -143,7 +143,8 @@ if(BUILD_TESTING)
                 -lLumaRecodeCore -Xlinker -rpath -Xlinker @loader_path
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/swift_checks.swift" -o "${luma_swift_check}"
             DEPENDS luma_core tests/swift_checks.swift include/lumarecode/core.h
-                include/lumarecode/hdr10plus.h include/lumarecode/process.h include/lumarecode/output.h include/module.modulemap
+                include/lumarecode/hdr10plus.h include/lumarecode/process.h include/lumarecode/output.h
+                include/lumarecode/media.h include/module.modulemap
             VERBATIM)
         add_custom_target(luma_swift_check_build ALL DEPENDS "${luma_swift_check}")
         add_test(NAME swift_contracts COMMAND "${luma_swift_check}" $<TARGET_FILE:luma_process_helper>)

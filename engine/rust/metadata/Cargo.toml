@@ -1,5 +1,5 @@
 [package]
-name = "luma-hdr10plus"
+name = "luma-metadata"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -1,5 +1,6 @@
 #include "lumarecode/core.h"
 #include "lumarecode/hdr10plus.h"
+#include "lumarecode/media.h"
 #include "lumarecode/output.h"
 #include "lumarecode/process.h"
 
@@ -56,6 +57,47 @@ static void check_initialization(void)
         CHECK(strcmp(lr_status_name(LR_ALREADY_EXISTS), "already_exists") == 0);
         CHECK(strcmp(lr_status_name(LR_SOURCE_CHANGED), "source_changed") == 0);
     }
+}
+
+static void check_media_data(void)
+{
+    lr_classify_input input;
+    lr_classification classification;
+    lr_dji_color dji;
+    uint8_t output[8];
+    uint64_t size = 42;
+    const char dump[] = "\n00000000: 12aB cd00  ABCDEF: not payload\r\n";
+    const char invalid[] = "00000000: 12xz\n";
+    lr_utf8_view view = {(const uint8_t *)dump, sizeof(dump) - 1};
+    CHECK(sizeof(input) == 88 && sizeof(classification) == 24 && sizeof(dji) == 24);
+    CHECK(lr_classify_input_init(&input, sizeof(input)) == LR_OK);
+    CHECK(input.tag_count == 0 && input.flags == 0 && input.tags == NULL);
+    CHECK(lr_classification_init(&classification, sizeof(classification)) == LR_OK);
+    CHECK(classification.kind == LR_MEDIA_UNKNOWN && classification.tag_index == UINT32_MAX);
+    CHECK(lr_dji_color_init(&dji, sizeof(dji)) == LR_OK && dji.mode == 0 && dji.reserved == 0);
+    memset(output, 0xa5, sizeof(output));
+    CHECK(lr_probe_decode_hex(view, output, 3, &size) == LR_BUFFER_TOO_SMALL && size == 4);
+    CHECK(output[0] == 0xa5 && output[7] == 0xa5);
+    CHECK(lr_probe_decode_hex(view, output, sizeof(output), &size) == LR_OK && size == 4);
+    CHECK(output[0] == 0x12 && output[1] == 0xab && output[2] == 0xcd && output[3] == 0 && output[4] == 0xa5);
+    view.data = (const uint8_t *)invalid;
+    view.size = sizeof(invalid) - 1;
+    size = 42;
+    memset(output, 0xa5, sizeof(output));
+    CHECK(lr_probe_decode_hex(view, output, sizeof(output), &size) == LR_INVALID_DATA && size == 42);
+    CHECK(output[0] == 0xa5 && output[7] == 0xa5);
+    view.data = (const uint8_t *)"0: 123";
+    view.size = 6;
+    CHECK(lr_probe_decode_hex(view, output, sizeof(output), &size) == LR_INVALID_DATA);
+    view.data = output;
+    view.size = sizeof(output);
+    CHECK(lr_probe_decode_hex(view, output, sizeof(output), &size) == LR_INVALID_ARGUMENT);
+    view.data = NULL;
+    view.size = 0;
+    CHECK(lr_probe_decode_hex(view, NULL, 0, &size) == LR_OK && size == 0);
+    view.data = output;
+    view.size = 16 * 1024 * 1024 + 1;
+    CHECK(lr_probe_decode_hex(view, NULL, 0, &size) == LR_RESOURCE_LIMIT);
 }
 
 static void check_planes(void)
@@ -170,6 +212,7 @@ int main(void)
     check_planes();
     check_utf8();
     check_process_initialization();
+    check_media_data();
     if (failures != 0)
         return 1;
     puts("C ABI initialization, buffer ownership and signed-stride checks passed.");

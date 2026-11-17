@@ -131,3 +131,50 @@ let publishedData = try Data(contentsOf: destinationURL), retainedSource = try D
 require(publishedData == Data("verified output".utf8) && retainedSource == Data("source".utf8),
         "Swift publication changed bytes")
 print("Swift file transaction ownership and publication checks passed.")
+
+require(MemoryLayout<lr_classify_input>.size == 88 && MemoryLayout<lr_classification>.size == 24
+        && MemoryLayout<lr_dji_color>.size == 24, "Swift media layout differs")
+var classifyInput = lr_classify_input(), classification = lr_classification()
+require(lr_classify_input_init(&classifyInput, 88) == LR_OK, "Classification input init")
+require(lr_classification_init(&classification, 24) == LR_OK, "Classification result init")
+classifyInput.flags = LR_CLASSIFY_HAS_DJI
+classifyInput.dji_mode = 19
+let djiSchema = Array("dvtm_PP-101.proto".utf8), transfer = Array("bt709".utf8)
+let classified = djiSchema.withUnsafeBufferPointer { schema in
+    transfer.withUnsafeBufferPointer { curve in
+        classifyInput.dji_schema = lr_utf8_view(data: schema.baseAddress, size: UInt64(schema.count))
+        classifyInput.transfer = lr_utf8_view(data: curve.baseAddress, size: UInt64(curve.count))
+        return lr_media_classify(&classifyInput, &classification, &error)
+    }
+}
+require(classified == LR_OK && classification.kind == LR_MEDIA_LOG
+        && classification.profile == LR_PROFILE_DJI_POCKET3 && classification.evidence == LR_EVIDENCE_DJI_DLOG_M,
+        "Swift camera evidence precedence differs")
+let spsBytes: [UInt8] = [0, 0, 1, 0x67, 100, 0, 40, 0xc0]
+var monochrome: UInt32 = 0
+require(spsBytes.withUnsafeBufferPointer { bytes in
+    lr_avc_is_monochrome(bytes.baseAddress, UInt64(bytes.count), &monochrome, &error)
+} == LR_OK && monochrome == 1, "Swift AVC metadata reader")
+let hexDump = Array("00000000: 0000 0167 6400 28c0  ABCDEF is ASCII".utf8)
+var decoded = [UInt8](repeating: 0, count: 8)
+var decodedSize: UInt64 = 0
+let decodedStatus = hexDump.withUnsafeBufferPointer { dump in
+    decoded.withUnsafeMutableBufferPointer { bytes in
+        lr_probe_decode_hex(lr_utf8_view(data: dump.baseAddress, size: UInt64(dump.count)),
+                            bytes.baseAddress, UInt64(bytes.count), &decodedSize)
+    }
+}
+require(decodedStatus == LR_OK && decodedSize == 8 && decoded == spsBytes, "Swift C hex dump decoder")
+print("Swift classification and C/Rust camera metadata checks passed.")
+
+func cameraField(_ number: UInt8, _ payload: [UInt8]) -> [UInt8] {
+    require(payload.count < 128, "Swift camera fixture length")
+    return [number << 3 | 2, UInt8(payload.count)] + payload
+}
+let djiPacket = cameraField(1, cameraField(1, cameraField(1, djiSchema)))
+    + cameraField(2, cameraField(4, [8, 19]))
+var djiColor = lr_dji_color()
+require(lr_dji_color_init(&djiColor, 24) == LR_OK, "Swift DJI output init")
+require(djiPacket.withUnsafeBufferPointer { bytes in
+    lr_dji_parse_color(bytes.baseAddress, UInt64(bytes.count), &djiColor, &error)
+} == LR_OK && djiColor.schema == LR_DJI_POCKET3 && djiColor.mode == 19, "Swift DJI packet parsing")

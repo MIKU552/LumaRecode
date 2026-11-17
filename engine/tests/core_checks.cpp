@@ -1,5 +1,6 @@
 #include "lumarecode/core.h"
 #include "lumarecode/hdr10plus.h"
+#include "lumarecode/media.h"
 
 #include <cstdio>
 #include <cstring>
@@ -149,12 +150,57 @@ void check_rust_bridge()
         CHECK(lr_hdr10plus_parse_t35(nullptr, 0, &metadata, &error) == LR_INVALID_ARGUMENT);
     }
 }
+void check_media_boundaries()
+{
+    lr_classify_input input;
+    lr_classification result;
+    lr_error error;
+    lr_classify_input_init(&input, sizeof(input));
+    lr_classification_init(&result, sizeof(result));
+    lr_error_init(&error, sizeof(error));
+    CHECK(lr_media_classify(&input, &result, &error) == LR_OK && result.kind == LR_MEDIA_UNKNOWN);
+    const auto before = result;
+    input.flags = 4;
+    CHECK(lr_media_classify(&input, &result, &error) == LR_INVALID_ARGUMENT);
+    CHECK(std::memcmp(&before, &result, sizeof(result)) == 0);
+    input.flags = 0;
+    input.codec = {nullptr, 1};
+    CHECK(lr_media_classify(&input, &result, &error) == LR_INVALID_ARGUMENT);
+    const uint8_t invalid[] = {0xc0, 0xaf};
+    input.codec = {invalid, sizeof(invalid)};
+    CHECK(lr_media_classify(&input, &result, &error) == LR_INVALID_ARGUMENT);
+    input.codec = {};
+    input.tag_count = 1025;
+    lr_media_tag tag{};
+    input.tags = &tag;
+    CHECK(lr_media_classify(&input, &result, &error) == LR_RESOURCE_LIMIT);
+    input.tag_count = 1;
+    tag.value = {invalid, 65537};
+    CHECK(lr_media_classify(&input, &result, &error) == LR_RESOURCE_LIMIT);
+    CHECK(std::memcmp(&before, &result, sizeof(result)) == 0);
+    lr_dji_color color;
+    lr_dji_color_init(&color, sizeof(color));
+    color.mode = 42;
+    const auto color_before = color;
+    CHECK(lr_dji_parse_color(nullptr, 0, &color, &error) == LR_INVALID_DATA);
+    CHECK(std::memcmp(&color_before, &color, sizeof(color)) == 0);
+    color.abi_version = 99;
+    CHECK(lr_dji_parse_color(nullptr, 0, &color, &error) == LR_INVALID_ARGUMENT);
+    uint32_t mono = 42;
+    const uint8_t missing[] = {0, 0, 1, 0x68};
+    CHECK(lr_avc_is_monochrome(missing, sizeof(missing), &mono, &error) == LR_NOT_FOUND && mono == 42);
+    const uint8_t malformed[] = {1, 100, 0};
+    CHECK(lr_avc_is_monochrome(malformed, sizeof(malformed), &mono, &error) == LR_INVALID_DATA && mono == 42);
+    const uint8_t sps[] = {0, 0, 1, 0x67, 100, 0, 40, 0xc0};
+    CHECK(lr_avc_is_monochrome(sps, sizeof(sps), &mono, &error) == LR_OK && mono == 1);
+}
 } // namespace
 
 int main()
 {
     check_policy();
     check_rust_bridge();
+    check_media_boundaries();
     if (failures != 0)
         return 1;
     std::puts("C++ output-policy and Rust HDR10+ boundary checks passed.");
