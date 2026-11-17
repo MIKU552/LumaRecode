@@ -38,6 +38,18 @@ lr_utf8_view view(const std::string &text)
     return {reinterpret_cast<const uint8_t *>(text.data()), text.size()};
 }
 
+lr_status run(lr_process *process)
+{
+    lr_error error;
+    lr_error_init(&error, sizeof(error));
+    const auto status = lr_process_run(process, &error);
+    if (status == LR_IO_ERROR || status == LR_INTERNAL_ERROR)
+    {
+        std::fprintf(stderr, "Native process execution: %s (%s)\n", lr_status_name(status), error.message);
+    }
+    return status;
+}
+
 process_handle create(const std::filesystem::path &executable, std::vector<std::string> arguments,
                       uint32_t mode = LR_CAPTURE_FULL, uint64_t capacity = 8 * 1024 * 1024,
                       uint64_t timeout = 3000, const std::filesystem::path &directory = {})
@@ -98,7 +110,7 @@ void check_capture(const std::filesystem::path &helper)
     for (size_t size : {0U, 1U, 31U, 8192U, 8193U, 200000U, 1048576U})
     {
         auto process = create(helper, {"binary", std::to_string(size)}, LR_CAPTURE_FULL, size);
-        CHECK(lr_process_run(process.get(), nullptr) == LR_OK);
+        CHECK(run(process.get()) == LR_OK);
         auto state = snapshot(process.get());
         CHECK(state.state == LR_PROCESS_FINISHED && state.exit_code == 0);
         CHECK(state.stdout_seen == size && state.stdout_retained == size && state.stderr_retained == 8192);
@@ -112,7 +124,7 @@ void check_capture(const std::filesystem::path &helper)
         CHECK(text(process.get(), LR_STREAM_STDERR).ends_with("diagnostic-tail"));
     }
     auto tail = create(helper, {"binary", "100000"}, LR_CAPTURE_TAIL, 31);
-    CHECK(lr_process_run(tail.get(), nullptr) == LR_OK);
+    CHECK(run(tail.get()) == LR_OK);
     const auto bytes = output(tail.get());
     bool equal = bytes.size() == 31;
     for (size_t i = 0; equal && i < bytes.size(); ++i)
@@ -127,10 +139,10 @@ void check_capture(const std::filesystem::path &helper)
           LR_BUFFER_TOO_SMALL);
     CHECK(sentinel == previous && required == 31);
     auto discarded = create(helper, {"binary", "100000"}, LR_CAPTURE_DISCARD, 0);
-    CHECK(lr_process_run(discarded.get(), nullptr) == LR_OK);
+    CHECK(run(discarded.get()) == LR_OK);
     CHECK(snapshot(discarded.get()).stdout_seen == 100000 && output(discarded.get()).empty());
     auto limited = create(helper, {"binary", "32"}, LR_CAPTURE_FULL, 31);
-    CHECK(lr_process_run(limited.get(), nullptr) == LR_RESOURCE_LIMIT);
+    CHECK(run(limited.get()) == LR_RESOURCE_LIMIT);
     CHECK(snapshot(limited.get()).state == LR_PROCESS_FINISHED && output(limited.get()).size() == 31);
 }
 
@@ -155,17 +167,17 @@ void check_arguments(const std::filesystem::path &helper, const std::filesystem:
         expected += std::to_string(arguments[i].size()) + ":" + arguments[i] + "\n";
     }
     auto process = create(copied, arguments, LR_CAPTURE_FULL, 8192, 3000, directory);
-    CHECK(lr_process_run(process.get(), nullptr) == LR_OK);
+    CHECK(run(process.get()) == LR_OK);
     CHECK(text(process.get()) == expected);
-    CHECK(lr_process_run(process.get(), nullptr) == LR_INVALID_ARGUMENT);
+    CHECK(run(process.get()) == LR_INVALID_ARGUMENT);
     CHECK(snapshot(process.get()).status == LR_OK);
     auto cwd = create(helper, {"cwd"}, LR_CAPTURE_FULL, 8192, 3000, directory);
-    CHECK(lr_process_run(cwd.get(), nullptr) == LR_OK);
+    CHECK(run(cwd.get()) == LR_OK);
     const auto actual_directory = text(cwd.get());
     CHECK(std::filesystem::equivalent(
         std::filesystem::path(std::u8string(actual_directory.begin(), actual_directory.end())), directory));
     auto input = create(helper, {"stdin"});
-    CHECK(lr_process_run(input.get(), nullptr) == LR_OK && text(input.get()) == "eof");
+    CHECK(run(input.get()) == LR_OK && text(input.get()) == "eof");
     auto failed = create(helper, {"fail"});
     lr_error error;
     lr_error_init(&error, sizeof(error));
@@ -181,17 +193,17 @@ void check_cancellation(const std::filesystem::path &helper, const std::filesyst
 {
     auto cancelled = create(helper, {"wait"}, LR_CAPTURE_FULL, 8192, 0);
     CHECK(lr_process_cancel(cancelled.get()) == LR_OK);
-    CHECK(lr_process_run(cancelled.get(), nullptr) == LR_CANCELLED);
+    CHECK(run(cancelled.get()) == LR_CANCELLED);
     CHECK(snapshot(cancelled.get()).stdout_seen == 0);
     auto timeout = create(helper, {"wait"}, LR_CAPTURE_FULL, 8192, 60);
-    CHECK(lr_process_run(timeout.get(), nullptr) == LR_TIMED_OUT);
+    CHECK(run(timeout.get()) == LR_TIMED_OUT);
     CHECK(snapshot(timeout.get()).elapsed_ms < 2000);
     for (const auto &mode : {"tree", "orphan"})
     {
         const auto heartbeat = root / (std::string(mode) + ".heartbeat");
         auto process = create(helper, {mode, utf8_path(heartbeat)});
         lr_status status = LR_INTERNAL_ERROR;
-        std::jthread worker([&] { status = lr_process_run(process.get(), nullptr); });
+        std::jthread worker([&] { status = run(process.get()); });
         const auto started = clock_type::now();
         while (snapshot(process.get()).stdout_retained < std::strlen("child-readytree-ready") &&
                snapshot(process.get()).state != LR_PROCESS_FINISHED &&
@@ -233,7 +245,7 @@ void check_validation(const std::filesystem::path &helper)
     options.argument_count = 0;
     options.stdout_capacity = 64 * 1024 * 1024 + 1;
     CHECK(lr_process_create(&options, &sentinel, nullptr) == LR_INVALID_ARGUMENT);
-    CHECK(lr_process_run(nullptr, nullptr) == LR_INVALID_ARGUMENT);
+    CHECK(run(nullptr) == LR_INVALID_ARGUMENT);
     CHECK(lr_process_cancel(nullptr) == LR_INVALID_ARGUMENT);
     lr_process_release(nullptr);
 }

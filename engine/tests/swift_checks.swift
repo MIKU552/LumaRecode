@@ -68,7 +68,11 @@ let created = executable.withUnsafeBufferPointer { path in
 require(created == LR_OK, "Swift process creation")
 defer { lr_process_release(nativeProcess) }
 // All borrowed pointers are out of scope; create() retained its own copies.
-require(lr_process_run(nativeProcess, &error) == LR_OK, "Swift native process execution")
+let executed = lr_process_run(nativeProcess, &error)
+let diagnostic = withUnsafeBytes(of: error.message) { bytes in
+    String(decoding: bytes.prefix(while: { $0 != 0 }), as: UTF8.self)
+}
+require(executed == LR_OK, "Swift native process execution: \(diagnostic)")
 var processState = lr_process_snapshot()
 require(lr_process_snapshot_init(&processState, 64) == LR_OK, "Process snapshot init")
 require(lr_process_get_snapshot(nativeProcess, &processState) == LR_OK

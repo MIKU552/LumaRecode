@@ -164,9 +164,20 @@ class child_group
             }
             luma::fail_os("waitid", code);
         }
-        return information.si_pid != 0;
+        // Darwin may report a stopped child even when WSTOPPED was omitted.
+        // Only a terminal CLD_* event authorizes cleanup of this group.
+        if (information.si_pid == pid &&
+            (information.si_code == CLD_EXITED || information.si_code == CLD_KILLED ||
+             information.si_code == CLD_DUMPED))
+        {
+            observed_exit =
+                information.si_code == CLD_EXITED ? information.si_status : 128 + information.si_status;
+            return true;
+        }
+        return false;
     }
     pid_t pid = -1;
+    int observed_exit = -1;
 };
 
 bool drain(descriptor &pipe, uint32_t stream, luma::process_sink &sink, bool stopping = false)
@@ -281,7 +292,10 @@ void luma::execute_child(const process_request &request, process_sink &sink)
                 wait_for_data(output.read, errors.read);
             }
         }
-        sink.exited(child.stop_and_join());
+        // Preserve the terminal event before killing remaining group members.
+        // Cleanup and reaping must not reinterpret the completed leader's exit.
+        sink.exited(child.observed_exit);
+        child.stop_and_join();
         const auto cleanup = std::chrono::steady_clock::now();
         while (output.read || errors.read)
         {
