@@ -55,7 +55,14 @@ public static partial class NativeCore
         }
     }
 
-    private static unsafe string ReadDiagnostic(in NativeError error)
+    internal static NativeError CreateError()
+    {
+        NativeError value = default;
+        Check(InitializeError(ref value, (ulong)Unsafe.SizeOf<NativeError>()));
+        return value;
+    }
+
+    internal static unsafe string ReadDiagnostic(in NativeError error)
     {
         fixed (byte* message = error.Message)
         {
@@ -68,7 +75,7 @@ public static partial class NativeCore
         }
     }
 
-    private static void Check(NativeStatus status)
+    internal static void Check(NativeStatus status)
     {
         if (status != NativeStatus.Ok)
         {
