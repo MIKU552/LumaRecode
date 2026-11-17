@@ -24,52 +24,52 @@ extern "C"
 /* This ABI is versioned independently of the application. Fields use fixed-width
  * values; enum constants never depend on a compiler's enum representation. All
  * pointed-to memory must be accessible for its declared length during a call. */
-#define LR_ABI_VERSION UINT32_C(1)
+#define LR_ABI_VERSION 1U
 typedef int32_t lr_status;
-#define LR_OK INT32_C(0)
-#define LR_INVALID_ARGUMENT INT32_C(1)
-#define LR_UNSUPPORTED INT32_C(2)
-#define LR_BUFFER_TOO_SMALL INT32_C(3)
-#define LR_INVALID_DATA INT32_C(4)
-#define LR_CANCELLED INT32_C(5)
-#define LR_IO_ERROR INT32_C(6)
-#define LR_INTERNAL_ERROR INT32_C(7)
-#define LR_TIMED_OUT INT32_C(8)
-#define LR_NOT_FOUND INT32_C(9)
+#define LR_OK 0
+#define LR_INVALID_ARGUMENT 1
+#define LR_UNSUPPORTED 2
+#define LR_BUFFER_TOO_SMALL 3
+#define LR_INVALID_DATA 4
+#define LR_CANCELLED 5
+#define LR_IO_ERROR 6
+#define LR_INTERNAL_ERROR 7
+#define LR_TIMED_OUT 8
+#define LR_NOT_FOUND 9
 
 typedef uint32_t lr_sampling;
-#define LR_SAMPLING_AUTO UINT32_C(0)
-#define LR_SAMPLING_420 UINT32_C(1)
-#define LR_SAMPLING_422 UINT32_C(2)
-#define LR_SAMPLING_444 UINT32_C(3)
-#define LR_SAMPLING_GRAY UINT32_C(4)
-#define LR_SAMPLING_RGB UINT32_C(5)
-#define LR_SAMPLING_440 UINT32_C(6)
-#define LR_SAMPLING_411 UINT32_C(7)
-#define LR_SAMPLING_410 UINT32_C(8)
-#define LR_SAMPLING_SOURCE UINT32_C(9)
+#define LR_SAMPLING_AUTO 0U
+#define LR_SAMPLING_420 1U
+#define LR_SAMPLING_422 2U
+#define LR_SAMPLING_444 3U
+#define LR_SAMPLING_GRAY 4U
+#define LR_SAMPLING_RGB 5U
+#define LR_SAMPLING_440 6U
+#define LR_SAMPLING_411 7U
+#define LR_SAMPLING_410 8U
+#define LR_SAMPLING_SOURCE 9U
 
 typedef uint32_t lr_color_range;
-#define LR_RANGE_AUTO UINT32_C(0)
-#define LR_RANGE_LIMITED UINT32_C(1)
-#define LR_RANGE_FULL UINT32_C(2)
+#define LR_RANGE_AUTO 0U
+#define LR_RANGE_LIMITED 1U
+#define LR_RANGE_FULL 2U
 
 typedef uint32_t lr_dynamic_range;
-#define LR_DYNAMIC_RANGE_AUTO UINT32_C(0)
-#define LR_DYNAMIC_RANGE_SDR UINT32_C(1)
-#define LR_DYNAMIC_RANGE_HDR UINT32_C(2)
+#define LR_DYNAMIC_RANGE_AUTO 0U
+#define LR_DYNAMIC_RANGE_SDR 1U
+#define LR_DYNAMIC_RANGE_HDR 2U
 
 typedef uint32_t lr_purpose;
-#define LR_PURPOSE_SHARE UINT32_C(1)
-#define LR_PURPOSE_ARCHIVE UINT32_C(2)
+#define LR_PURPOSE_SHARE 1U
+#define LR_PURPOSE_ARCHIVE 2U
 
 typedef uint32_t lr_codec;
-#define LR_CODEC_HEVC UINT32_C(1)
-#define LR_CODEC_AVC UINT32_C(2)
-#define LR_CODEC_AV1 UINT32_C(3)
+#define LR_CODEC_HEVC 1U
+#define LR_CODEC_AVC 2U
+#define LR_CODEC_AV1 3U
 
-#define LR_SOURCE_ALPHA UINT32_C(1)
-#define LR_SOURCE_RAW UINT32_C(2)
+#define LR_SOURCE_ALPHA 1U
+#define LR_SOURCE_RAW 2U
 
 typedef struct lr_error
 {

@@ -60,7 +60,9 @@ target_link_libraries(luma_core PRIVATE luma_rust Threads::Threads ${CMAKE_DL_LI
 set_target_properties(luma_core PROPERTIES OUTPUT_NAME LumaRecodeCore
     C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
 if(WIN32)
-    target_link_libraries(luma_core PRIVATE userenv ntdll ws2_32 bcrypt advapi32)
+    # Match rustc --print=native-static-libs, including synchronization APIs that
+    # newer local SDKs can also resolve indirectly through their umbrella libs.
+    target_link_libraries(luma_core PRIVATE userenv ntdll ws2_32 dbghelp synchronization)
 elseif(APPLE)
     target_link_options(luma_core PRIVATE "LINKER:-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/exports.macos")
 else()
