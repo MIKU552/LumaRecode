@@ -106,4 +106,5 @@ jobs:
             engine/examples/
             LICENSE
             licenses/Rust/
+            licenses/yyjson/
             licenses/UltraHDR/MSVC-STL-LICENSE.txt

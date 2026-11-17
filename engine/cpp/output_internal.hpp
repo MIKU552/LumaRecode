@@ -32,6 +32,13 @@ struct output_storage
     virtual void cleanup() = 0;
 };
 
+struct source_lease
+{
+    virtual ~source_lease() = default;
+    virtual void validate() const = 0;
+};
+std::unique_ptr<source_lease> open_source_lease(const std::filesystem::path &path);
+
 std::unique_ptr<output_storage> create_output_storage(const std::filesystem::path &source,
                                                       const std::filesystem::path &destination,
                                                       bool overwrite);

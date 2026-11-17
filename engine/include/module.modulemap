@@ -4,5 +4,6 @@ module CLumaRecode {
     header "lumarecode/process.h"
     header "lumarecode/output.h"
     header "lumarecode/media.h"
+    header "lumarecode/probe.h"
     export *
 }

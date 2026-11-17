@@ -7,6 +7,8 @@
 #include <thread>
 #include <vector>
 
+#include "probe_fixture.hpp"
+
 #ifdef _WIN32
 #include <fcntl.h>
 #include <io.h>
@@ -26,6 +28,8 @@ std::string utf8_path(const std::filesystem::path &path)
 int helper(const std::vector<std::string> &arguments)
 {
     const auto &mode = arguments.at(1);
+    if (mode == "-v")
+        return probe_fixture(arguments);
     if (mode == "echo")
     {
         for (size_t i = 2; i < arguments.size(); ++i)

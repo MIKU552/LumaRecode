@@ -2,6 +2,7 @@
 #include "lumarecode/hdr10plus.h"
 #include "lumarecode/media.h"
 #include "lumarecode/output.h"
+#include "lumarecode/probe.h"
 #include "lumarecode/process.h"
 
 #include <string.h>
@@ -44,6 +45,34 @@ const char *lr_status_name(lr_status status)
     default:
         return "unknown";
     }
+}
+
+lr_status lr_probe_options_init(lr_probe_options *value, uint64_t capacity)
+{
+    if (value == NULL)
+        return LR_INVALID_ARGUMENT;
+    if (capacity < sizeof(*value))
+        return LR_BUFFER_TOO_SMALL;
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    value->metadata_capacity = 8 * 1024 * 1024;
+    value->timeout_ms = 25000;
+    return LR_OK;
+}
+
+lr_status lr_probe_snapshot_init(lr_probe_snapshot *value, uint64_t capacity)
+{
+    if (value == NULL)
+        return LR_INVALID_ARGUMENT;
+    if (capacity < sizeof(*value))
+        return LR_BUFFER_TOO_SMALL;
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    value->video_index = -1;
+    value->dji_index = -1;
+    return LR_OK;
 }
 
 lr_status lr_classify_input_init(lr_classify_input *value, uint64_t capacity)

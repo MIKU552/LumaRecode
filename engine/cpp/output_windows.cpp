@@ -374,4 +374,29 @@ bool files_same(const std::filesystem::path &left, const std::filesystem::path &
     open_regular(second, right);
     return identity(info(first.get()), info(second.get()));
 }
+std::unique_ptr<source_lease> open_source_lease(const std::filesystem::path &path)
+{
+    class lease final : public source_lease
+    {
+      public:
+        explicit lease(const std::filesystem::path &path) : path(path)
+        {
+            open_regular(file, path);
+            original = info(file.get());
+        }
+        void validate() const override
+        {
+            file_handle current;
+            open_regular(current, path);
+            if (!revision(original, info(file.get())) || !revision(original, info(current.get())))
+                throw file_failure(LR_SOURCE_CHANGED, "Source changed during inspection.");
+        }
+
+      private:
+        std::filesystem::path path;
+        file_handle file;
+        file_info original;
+    };
+    return std::make_unique<lease>(path);
+}
 } // namespace luma

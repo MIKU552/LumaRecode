@@ -28,3 +28,6 @@ Ultra HDR image encoding uses libultrahdr and libjpeg-turbo.
 Their original licenses and notices are retained in licenses/UltraHDR/.
 This product includes Gain Map technology under license by Adobe.
 This software is based in part on the work of the Independent JPEG Group.
+
+The shared native core uses yyjson 0.13.0 under the MIT License.
+Its original license and pinned source checksums are retained in licenses/yyjson/.

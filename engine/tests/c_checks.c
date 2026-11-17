@@ -2,6 +2,7 @@
 #include "lumarecode/hdr10plus.h"
 #include "lumarecode/media.h"
 #include "lumarecode/output.h"
+#include "lumarecode/probe.h"
 #include "lumarecode/process.h"
 
 #include <stdio.h>
@@ -61,6 +62,15 @@ static void check_initialization(void)
 
 static void check_media_data(void)
 {
+    lr_probe_options probe_options;
+    lr_probe_snapshot probe_snapshot;
+    CHECK(sizeof(probe_options) == 64 && sizeof(probe_snapshot) == 64);
+    CHECK(lr_probe_options_init(&probe_options, sizeof(probe_options)) == LR_OK);
+    CHECK(probe_options.timeout_ms == 25000 && probe_options.metadata_capacity == 8 * 1024 * 1024 &&
+          probe_options.reserved == 0);
+    CHECK(lr_probe_snapshot_init(&probe_snapshot, sizeof(probe_snapshot)) == LR_OK);
+    CHECK(probe_snapshot.video_index == -1 && probe_snapshot.dji_index == -1 &&
+          probe_snapshot.state == LR_PROBE_CREATED);
     lr_classify_input input;
     lr_classification classification;
     lr_dji_color dji;

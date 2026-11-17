@@ -178,3 +178,33 @@ require(lr_dji_color_init(&djiColor, 24) == LR_OK, "Swift DJI output init")
 require(djiPacket.withUnsafeBufferPointer { bytes in
     lr_dji_parse_color(bytes.baseAddress, UInt64(bytes.count), &djiColor, &error)
 } == LR_OK && djiColor.schema == LR_DJI_POCKET3 && djiColor.mode == 19, "Swift DJI packet parsing")
+
+require(MemoryLayout<lr_probe_options>.size == 64 && MemoryLayout<lr_probe_snapshot>.size == 64,
+        "Swift probe layout differs")
+var inspectionOptions = lr_probe_options()
+require(lr_probe_options_init(&inspectionOptions, 64) == LR_OK, "Swift probe options init")
+var inspection: OpaquePointer?
+let inspectionCreated = executable.withUnsafeBufferPointer { tool in
+    sourcePath.withUnsafeBufferPointer { source in
+        inspectionOptions.ffprobe = lr_utf8_view(data: tool.baseAddress, size: UInt64(tool.count))
+        inspectionOptions.source = lr_utf8_view(data: source.baseAddress, size: UInt64(source.count))
+        return lr_probe_create(&inspectionOptions, &inspection, &error)
+    }
+}
+require(inspectionCreated == LR_OK, "Swift probe creation")
+defer { lr_probe_release(inspection) }
+require(lr_probe_run(inspection, &error) == LR_OK, "Swift probe execution")
+var inspectionState = lr_probe_snapshot()
+require(lr_probe_snapshot_init(&inspectionState, 64) == LR_OK, "Swift probe snapshot init")
+require(lr_probe_get_snapshot(inspection, &inspectionState) == LR_OK
+        && inspectionState.state == LR_PROBE_FINISHED && inspectionState.cleanup_state == LR_CLEANUP_CONFIRMED
+        && inspectionState.video_index == 1 && inspectionState.audio_count == 2 && inspectionState.duration == 2,
+        "Swift probe terminal state")
+var inspectionData = [UInt8](repeating: 0, count: Int(inspectionState.json_size))
+var inspectionSize: UInt64 = 0
+require(inspectionData.withUnsafeMutableBufferPointer { bytes in
+    lr_probe_copy_json(inspection, bytes.baseAddress, UInt64(bytes.count), &inspectionSize)
+} == LR_OK && inspectionSize == inspectionState.json_size, "Swift probe result copy")
+let inspectedSource = try JSONSerialization.jsonObject(with: Data(inspectionData)) as? [String: Any]
+require(inspectedSource?["kind"] as? String == "hlg", "Swift probe classification differs")
+print("Swift native source inspection and immutable JSON snapshot checks passed.")
