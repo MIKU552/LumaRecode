@@ -69,13 +69,14 @@ bool group_has_no_live_members(pid_t group, int observed_leader_exit)
     // result; an actual permission failure on a live member remains an error.
     std::array<pid_t, 256> members{};
     errno = 0;
-    const auto bytes = proc_listpgrppids(group, members.data(), static_cast<int>(sizeof(members)));
-    if (bytes < 0 || bytes >= static_cast<int>(sizeof(members)) || bytes % sizeof(pid_t) != 0 ||
-        (bytes == 0 && errno != 0))
+    // This convenience API returns a PID count; proc_listpids returns bytes.
+    const auto member_count = proc_listpgrppids(group, members.data(), static_cast<int>(sizeof(members)));
+    if (member_count < 0 || member_count >= static_cast<int>(members.size()) ||
+        (member_count == 0 && errno != 0 && errno != ESRCH))
     {
         return false;
     }
-    for (size_t index = 0; index < static_cast<size_t>(bytes) / sizeof(pid_t); ++index)
+    for (size_t index = 0; index < static_cast<size_t>(member_count); ++index)
     {
         const auto pid = members[index];
         if (pid <= 0 || (pid == group && observed_leader_exit >= 0))
@@ -84,12 +85,13 @@ bool group_has_no_live_members(pid_t group, int observed_leader_exit)
         }
         proc_bsdinfo information{};
         errno = 0;
-        const auto count = proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &information, sizeof(information));
+        const auto count =
+            proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &information, static_cast<int>(sizeof(information)));
         if (count == 0 && errno == ESRCH)
         {
             continue;
         }
-        if (count != sizeof(information) ||
+        if (count != static_cast<int>(sizeof(information)) ||
             (information.pbi_pgid == static_cast<uint32_t>(group) && information.pbi_status != SZOMB))
         {
             return false;
