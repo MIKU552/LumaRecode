@@ -9,7 +9,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     set(luma_c_standalone ON)
 endif()
 
-add_library(luma_c OBJECT data.c)
+add_library(luma_c OBJECT data.c utf8.c)
 set_target_properties(luma_c PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(luma_c PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 if(luma_c_standalone)

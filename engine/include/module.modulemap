@@ -1,5 +1,6 @@
 module CLumaRecode {
     header "lumarecode/core.h"
     header "lumarecode/hdr10plus.h"
+    header "lumarecode/process.h"
     export *
 }

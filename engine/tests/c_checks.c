@@ -1,5 +1,6 @@
 #include "lumarecode/core.h"
 #include "lumarecode/hdr10plus.h"
+#include "lumarecode/process.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -76,10 +77,80 @@ static void check_planes(void)
     CHECK(lr_validate_plane(&source) == LR_OK);
 }
 
+static void check_utf8(void)
+{
+    uint32_t scalar;
+    const uint8_t invalid[][4] = {
+        {0x80, 0, 0, 0},          {0xc0, 0x80, 0, 0},       {0xe0, 0x80, 0x80, 0},    {0xed, 0xa0, 0x80, 0},
+        {0xf0, 0x80, 0x80, 0x80}, {0xf4, 0x90, 0x80, 0x80}, {0xf5, 0x80, 0x80, 0x80}, {0xe2, 0x28, 0xa1, 0}};
+    size_t i;
+    CHECK(lr_utf8_validate(NULL, 0) == LR_OK);
+    CHECK(lr_utf8_validate(NULL, 1) == LR_INVALID_ARGUMENT);
+    for (i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i)
+    {
+        CHECK(lr_utf8_validate(invalid[i], sizeof(invalid[i])) == LR_INVALID_DATA);
+    }
+    for (scalar = 0; scalar <= 0x10ffff; ++scalar)
+    {
+        uint8_t bytes[4];
+        size_t count;
+        if (scalar >= 0xd800 && scalar <= 0xdfff)
+        {
+            continue;
+        }
+        if (scalar < 0x80)
+        {
+            bytes[0] = (uint8_t)scalar;
+            count = 1;
+        }
+        else if (scalar < 0x800)
+        {
+            bytes[0] = (uint8_t)(0xc0 | (scalar >> 6));
+            bytes[1] = (uint8_t)(0x80 | (scalar & 0x3f));
+            count = 2;
+        }
+        else if (scalar < 0x10000)
+        {
+            bytes[0] = (uint8_t)(0xe0 | (scalar >> 12));
+            bytes[1] = (uint8_t)(0x80 | ((scalar >> 6) & 0x3f));
+            bytes[2] = (uint8_t)(0x80 | (scalar & 0x3f));
+            count = 3;
+        }
+        else
+        {
+            bytes[0] = (uint8_t)(0xf0 | (scalar >> 18));
+            bytes[1] = (uint8_t)(0x80 | ((scalar >> 12) & 0x3f));
+            bytes[2] = (uint8_t)(0x80 | ((scalar >> 6) & 0x3f));
+            bytes[3] = (uint8_t)(0x80 | (scalar & 0x3f));
+            count = 4;
+        }
+        CHECK(lr_utf8_validate(bytes, count) == LR_OK);
+        if (count > 1)
+        {
+            CHECK(lr_utf8_validate(bytes, count - 1) == LR_INVALID_DATA);
+        }
+    }
+}
+
+static void check_process_initialization(void)
+{
+    lr_process_options options;
+    lr_process_snapshot snapshot;
+    CHECK(sizeof(options) == 80 && sizeof(snapshot) == 64 && sizeof(lr_utf8_view) == 16);
+    CHECK(lr_process_options_init(&options, sizeof(options) - 1) == LR_BUFFER_TOO_SMALL);
+    CHECK(lr_process_options_init(&options, sizeof(options)) == LR_OK);
+    CHECK(options.stdout_mode == LR_CAPTURE_FULL && options.stdout_capacity == 8 * 1024 * 1024);
+    CHECK(options.stderr_capacity == 8192 && options.timeout_ms == 25000);
+    CHECK(lr_process_snapshot_init(&snapshot, sizeof(snapshot)) == LR_OK);
+    CHECK(snapshot.state == LR_PROCESS_CREATED && snapshot.exit_code == -1);
+}
+
 int main(void)
 {
     check_initialization();
     check_planes();
+    check_utf8();
+    check_process_initialization();
     if (failures != 0)
         return 1;
     puts("C ABI initialization, buffer ownership and signed-stride checks passed.");

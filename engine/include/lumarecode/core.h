@@ -36,6 +36,7 @@ typedef int32_t lr_status;
 #define LR_INTERNAL_ERROR 7
 #define LR_TIMED_OUT 8
 #define LR_NOT_FOUND 9
+#define LR_RESOURCE_LIMIT 10
 
 typedef uint32_t lr_sampling;
 #define LR_SAMPLING_AUTO 0U

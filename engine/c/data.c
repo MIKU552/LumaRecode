@@ -1,5 +1,6 @@
 #include "lumarecode/core.h"
 #include "lumarecode/hdr10plus.h"
+#include "lumarecode/process.h"
 
 #include <string.h>
 
@@ -32,9 +33,47 @@ const char *lr_status_name(lr_status status)
         return "timed_out";
     case LR_NOT_FOUND:
         return "not_found";
+    case LR_RESOURCE_LIMIT:
+        return "resource_limit";
     default:
         return "unknown";
     }
+}
+
+lr_status lr_process_options_init(lr_process_options *value, uint64_t capacity)
+{
+    if (value == NULL)
+    {
+        return LR_INVALID_ARGUMENT;
+    }
+    if (capacity < sizeof(*value))
+    {
+        return LR_BUFFER_TOO_SMALL;
+    }
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    value->stdout_capacity = 8 * 1024 * 1024;
+    value->stderr_capacity = 8192;
+    value->timeout_ms = 25000;
+    return LR_OK;
+}
+
+lr_status lr_process_snapshot_init(lr_process_snapshot *value, uint64_t capacity)
+{
+    if (value == NULL)
+    {
+        return LR_INVALID_ARGUMENT;
+    }
+    if (capacity < sizeof(*value))
+    {
+        return LR_BUFFER_TOO_SMALL;
+    }
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    value->exit_code = -1;
+    return LR_OK;
 }
 
 lr_status lr_source_format_init(lr_source_format *value, uint64_t capacity)
