@@ -35,7 +35,11 @@ public sealed partial class NativeTimeline : IDisposable
         CancellationToken cancellation = default, ulong indexCapacity = 512 * 1024 * 1024, ulong timeoutMilliseconds = 0)
     {
         ArgumentNullException.ThrowIfNull(mediaJson);
-        return await LoadHandleAsync(CreateProbeHandle(ffprobe, mediaJson, indexCapacity, timeoutMilliseconds), cancellation).ConfigureAwait(false);
+        // A large inspection snapshot also needs parsing before run begins.
+        // Keep both native creation and scanning off the host's UI thread.
+        var handle = await Task.Run(() => CreateProbeHandle(ffprobe, mediaJson, indexCapacity, timeoutMilliseconds),
+            CancellationToken.None).ConfigureAwait(false);
+        return await LoadHandleAsync(handle, cancellation).ConfigureAwait(false);
     }
 
     private static async Task<NativeTimelineResult> LoadHandleAsync(TimelineHandle handle, CancellationToken cancellation)
