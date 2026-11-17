@@ -1,8 +1,6 @@
 name: Native core
 
 on:
-  push:
-    branches: [next]
   pull_request:
     branches: [main, next]
   workflow_dispatch:
@@ -11,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: native-core-${{ github.head_ref || github.ref_name }}
+  group: native-core-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
