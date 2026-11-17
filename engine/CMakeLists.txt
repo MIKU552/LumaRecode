@@ -70,6 +70,8 @@ if(WIN32)
     # newer local SDKs can also resolve indirectly through their umbrella libs.
     target_link_libraries(luma_core PRIVATE userenv ntdll ws2_32 dbghelp synchronization)
 elseif(APPLE)
+    find_library(LUMA_PROC_LIBRARY proc REQUIRED)
+    target_link_libraries(luma_core PRIVATE "${LUMA_PROC_LIBRARY}")
     target_link_options(luma_core PRIVATE "LINKER:-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/exports.macos")
 else()
     target_link_libraries(luma_core PRIVATE m)

@@ -55,6 +55,38 @@ internal static class ProcessChecks
             && simultaneous.Select(result => Encoding.UTF8.GetString(result.Output)).Distinct().Count() == 4,
             "Concurrent native contexts interfered with each other.");
 
+        // Install the runtime's process-exit handling as well. Native children
+        // must retain their exit status while managed Process instances coexist.
+        using var managedCancellation = new CancellationTokenSource(250);
+        var managed = ProcessRunner.CaptureAsync(helper, ["wait"], managedCancellation.Token);
+        var alongside = await Task.WhenAll(Enumerable.Range(0, 4)
+            .Select(index => NativeProcess.RunAsync(new(helper, ["echo", $"coexist-{index}"]))));
+        check(alongside.All(result => result.Status == NativeStatus.Ok),
+            "Managed process-exit handling interfered with native children.");
+        bool managedCancelled = false;
+        try
+        {
+            await managed;
+        }
+        catch (OperationCanceledException)
+        {
+            managedCancelled = true;
+        }
+        check(managedCancelled, "Managed sidecar did not finish cancellation cleanup.");
+        foreach (var invalid in new[] { "embedded\0NUL", "invalid\ud800surrogate" })
+        {
+            bool rejected = false;
+            try
+            {
+                await NativeProcess.RunAsync(new(helper, ["echo", invalid]));
+            }
+            catch (ArgumentException)
+            {
+                rejected = true;
+            }
+            check(rejected, "Invalid managed process text reached the executable.");
+        }
+
         var ffmpeg = ProcessRunner.FindTool("ffmpeg");
         var ffprobe = ProcessRunner.FindTool("ffprobe");
         if (ffmpeg.Length == 0 || ffprobe.Length == 0)

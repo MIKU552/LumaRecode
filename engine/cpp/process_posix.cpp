@@ -13,6 +13,8 @@
 
 #ifdef __APPLE__
 #include <crt_externs.h>
+#include <libproc.h>
+#include <sys/proc.h>
 #else
 extern char **environ;
 #endif
@@ -58,6 +60,44 @@ void checked(int status, const char *operation)
         luma::fail_os(operation, static_cast<unsigned long>(status));
     }
 }
+
+#ifdef __APPLE__
+bool group_has_no_live_members(pid_t group, int observed_leader_exit)
+{
+    // Darwin excludes zombies when delivering a group signal and can return
+    // EPERM when only zombies remain. Confirm quiescence before accepting that
+    // result; an actual permission failure on a live member remains an error.
+    std::array<pid_t, 256> members{};
+    errno = 0;
+    const auto bytes = proc_listpgrppids(group, members.data(), static_cast<int>(sizeof(members)));
+    if (bytes < 0 || bytes >= static_cast<int>(sizeof(members)) || bytes % sizeof(pid_t) != 0 ||
+        (bytes == 0 && errno != 0))
+    {
+        return false;
+    }
+    for (size_t index = 0; index < static_cast<size_t>(bytes) / sizeof(pid_t); ++index)
+    {
+        const auto pid = members[index];
+        if (pid <= 0 || (pid == group && observed_leader_exit >= 0))
+        {
+            continue;
+        }
+        proc_bsdinfo information{};
+        errno = 0;
+        const auto count = proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &information, sizeof(information));
+        if (count == 0 && errno == ESRCH)
+        {
+            continue;
+        }
+        if (count != sizeof(information) ||
+            (information.pbi_pgid == static_cast<uint32_t>(group) && information.pbi_status != SZOMB))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+#endif
 
 struct pipe_pair
 {
@@ -126,9 +166,17 @@ class child_group
     }
     int stop_and_join()
     {
-        if (kill(-pid, SIGKILL) == -1 && errno != ESRCH)
+        if (kill(-pid, SIGKILL) == -1)
         {
-            luma::fail_os("kill(process group)", errno);
+            const auto code = errno;
+            bool quiescent = code == ESRCH;
+#ifdef __APPLE__
+            quiescent = quiescent || (code == EPERM && group_has_no_live_members(pid, observed_exit));
+#endif
+            if (!quiescent)
+            {
+                luma::fail_os("kill(process group)", code);
+            }
         }
         int status = 0;
         pid_t waited;

@@ -79,7 +79,7 @@ public static partial class NativeCore
     {
         if (status != NativeStatus.Ok)
         {
-            throw new InvalidOperationException($"Native ABI initialization failed: {status}.");
+            throw new InvalidOperationException($"Native core call failed: {status}.");
         }
     }
 
