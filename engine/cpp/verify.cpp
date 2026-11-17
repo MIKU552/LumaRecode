@@ -56,7 +56,9 @@ void verify(luma::probe_json &json, json_value *plan, json_value *source, json_v
     auto actual_pixel = text(video, "pix_fmt");
     if (actual_pixel.starts_with("yuvj"))
         actual_pixel.erase(3, 1);
-    require(actual_pixel == pixel || (sampling == "gray" && luma::flag_field(json, video, "_monochrome")),
+    require(actual_pixel == pixel ||
+                (sampling == "gray" && luma::flag_field(json, video, "_monochrome") &&
+                 luma::source_format(json, output).bit_depth == static_cast<uint32_t>(depth)),
             "Output pixel format differs from the plan.");
     require(text(video, "codec_name") == (codec == "avc" ? "h264" : codec),
             "Output video codec differs from the plan.");

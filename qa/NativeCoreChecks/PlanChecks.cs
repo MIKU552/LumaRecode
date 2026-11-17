@@ -104,6 +104,23 @@ internal static class PlanChecks
         lost["video"]!["side_data_list"]!.AsArray().RemoveAt(2);
         check(NativePlanner.VerifyOutput(request, Encoding.UTF8.GetBytes(lost.ToJsonString())).Status == NativeStatus.InvalidData,
             "Missing HDR10+ output metadata accepted.");
+        var gray = Source(path, "sdr", null);
+        gray.Video["pix_fmt"] = "gray10le";
+        gray.Video["bits_per_raw_sample"] = 10;
+        gray.Video["side_data_list"] = new JsonArray();
+        request = Request(planner, tools, gray, new(Purpose: "archive", Codec: "avc"), destination);
+        var mono = JsonNode.Parse(MediaJson(gray))!.AsObject();
+        mono["video"]!["codec_name"] = "h264";
+        mono["video"]!["color_primaries"] = "bt709";
+        mono["video"]!["color_space"] = "bt709";
+        mono["video"]!["pix_fmt"] = "yuv420p10le";
+        mono["video"]!["_monochrome"] = true;
+        check(NativePlanner.VerifyOutput(request, Encoding.UTF8.GetBytes(mono.ToJsonString())).Status == NativeStatus.Ok,
+            "Matching monochrome AVC storage rejected.");
+        mono["video"]!["bits_per_raw_sample"] = 8;
+        mono["video"]!["pix_fmt"] = "yuv420p";
+        check(NativePlanner.VerifyOutput(request, Encoding.UTF8.GetBytes(mono.ToJsonString())).Status == NativeStatus.InvalidData,
+            "Monochrome AVC flag bypassed requested output precision.");
     }
     internal static void Compare(Action<bool, string> check, Transcoder baseline, MediaTools tools, MediaInfo media,
         EncodeOptions options, string destination, FrameWindow? window = null, bool motion = false,
