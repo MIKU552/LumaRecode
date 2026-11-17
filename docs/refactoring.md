@@ -54,7 +54,7 @@ Windows 使用 C#、.NET 11、WinUI 3，保留单 EXE 的 GUI / CLI。macOS 面�
 | P8 发布准备 | 四语文档、许可、免费签名和分发包 | 整体验收与隐私检查完成 |
 | P9 合并发布 | 保留提交历史合并、最终标签和 Release | 产物、来源和标签一致 |
 
-混合核心已通过 Windows x64、Windows ARM64 和 macOS ARM64 的 Actions 编译、契约检查及每个平台 6,422 项差异检查；macOS 同时验证 Swift 调用。P1 继续接入任务执行。现有 Windows 应用仍使用 `Core/`；完整媒体执行、硬件适配和 macOS 应用按上述阶段迁移。
+P1 原型已完成三平台编译、C# / Swift 调用、进程生命周期和资源契约验证。原有输出规则与 HDR10+ 的 6,422 项差异检查继续执行。P2 将迁移探测、任务规划、时间轴与文件事务。现有 Windows 应用使用 `Core/`；新核心通过独立检查和软件媒体任务验证。
 
 ### 构建入口
 
@@ -88,11 +88,25 @@ ctest --test-dir out/c-data --output-on-failure
 
 现有 Visual Studio 解决方案已加入 `Interop` 和 `NativeCoreChecks` 项目。原生核心可通过 Visual Studio 的“打开文件夹”加载根目录 `CMakePresets.json`。[`engine/examples/format.c`](../engine/examples/format.c) 展示 C 调用，使用调用方持有的结构获取归档输出格式。
 
+### 进程执行
+
+[`process.h`](../engine/include/lumarecode/process.h) 定义带长度的 UTF-8 视图、执行选项、状态快照和不透明句柄。`create` 复制路径及参数，`run` 在调用线程执行一次，`cancel` 可从另一线程请求停止，全部调用返回后释放句柄。C 模块校验 UTF-8，C++ 拥有参数、管道、捕获缓冲和进程状态。
+
+stdout 支持完整捕获、尾部环形缓冲和丢弃；stderr 保留尾部。默认容量分别为 8 MiB 和 8 KiB，默认超时 25 秒。`timeout_ms = 0` 用于长任务。容量按保留的输出字节计算；参数总量上限为 1 MiB，stdout 和 stderr 的保留上限分别为 64 MiB、1 MiB。
+
+Windows 在创建进程时将其加入 Job Object，仅继承标准输入与输出句柄；标准输入连接 NUL。macOS 使用 `posix_spawn`、独立进程组及非阻塞管道，终态由 `waitid` 确认。回收前保持主进程可等待，避免 PID 重用；Darwin 的僵尸进程组通过成员查询确认已无活动进程。
+
+`.NET` 的 `NativeProcess.RunAsync` 使用生成式导入和 `SafeHandle`，在后台执行阻塞调用，回收后返回终态结果。取消及超时通过结果的 `Status` 表达。Swift 检查验证同一套接口的参数复制、执行和释放。
+
 ### 验证与分发
 
 本机已执行 C 数据边界、C++ 策略、Rust HDR10+、.NET 生成式导入，以及与现有 C# 规则和解析器的差异检查。跨架构结果以 Actions 的实际运行记录为准。
 
-测试覆盖结构布局、失败后的输出状态、正负行步长、容量、溢出、精度限制、HDR 整数码值和截断 / 变异输入。后续任务检查包括取消、回调、子进程回收、同文件识别、覆盖和临时文件保护，并处理长时间 4K HDR10+ 素材。
+测试覆盖结构布局、失败后的输出状态、正负行步长、容量、溢出、精度限制、HDR 整数码值和截断 / 变异输入。C 检查遍历全部 Unicode 标量值，并测试错误及截断序列。进程检查覆盖中文路径、空参数、引号、二进制管道、容量边界、超时、取消、后代进程回收和 .NET 进程并行运行。
+
+软件媒体检查使用合成输入，执行 FFV1 编码、ffprobe 帧数与格式校验、PNG 帧提取。`tools/media-test-tools.json` 固定 CI 使用的原生架构 FFmpeg / ffprobe 版本与 SHA-256；测试工具保存在开发缓存中，应用继续使用用户提供的工具。
+
+后续验证加入同文件识别、覆盖、原子发布、临时文件保护及长时间 4K HDR10+ 素材。
 
 缺少 GPU 的环境运行编译、规则、模拟能力和软件媒体检查。硬件检查只有真实初始化和执行后计为通过；没有条件的用例记录为未运行。
 
@@ -152,7 +166,7 @@ Keep one public C ABI. Internal boundaries can use validated C interfaces or typ
 | P8 Release preparation | Four-language docs, licenses, free signing and distribution | Full acceptance and privacy checks complete |
 | P9 Merge and release | History-preserving merge, final tag and Release | Artifacts, provenance and tag agree |
 
-The mixed core passes Actions builds, contract checks and 6,422 differential checks per platform on Windows x64, Windows ARM64 and macOS ARM64. macOS also verifies the Swift caller. P1 continues with task execution. The existing Windows application still uses `Core/`. Full media execution, hardware adapters and the macOS application migrate through the stages above.
+The P1 prototype passes three-platform builds, C#/Swift calls, process lifecycle and resource contracts. The existing 6,422 output-policy and HDR10+ differential checks continue to run. P2 will migrate probing, task planning, timelines and file transactions. The Windows application uses `Core/`; independent contracts and software media tasks validate the new engine.
 
 ### Build entry points
 
@@ -186,11 +200,25 @@ Both platforms will provide Visual Studio/Xcode projects covering complete appli
 
 The existing Visual Studio solutions include `Interop` and `NativeCoreChecks`. Use Visual Studio's Open Folder command with the root `CMakePresets.json` for the native core. [`engine/examples/format.c`](../engine/examples/format.c) demonstrates a C caller resolving archive output using caller-owned structures.
 
+### Process execution
+
+[`process.h`](../engine/include/lumarecode/process.h) defines length-delimited UTF-8 views, options, snapshots and opaque handles. `create` copies paths and arguments; `run` executes once on its caller's thread; `cancel` can request termination from another thread. Release handles after all calls return. C validates UTF-8; C++ owns arguments, pipes, capture buffers and process state.
+
+stdout supports full capture, a tail ring buffer and discard; stderr retains a tail. Defaults are 8 MiB stdout, 8 KiB stderr and a 25-second deadline. Use `timeout_ms = 0` for long tasks. Capacities count retained output bytes. Arguments have a one-MiB total budget; stdout and stderr retention are capped at 64 MiB and one MiB respectively.
+
+Windows associates the process with a Job Object at creation and inherits only standard I/O handles, with NUL input. macOS uses `posix_spawn`, an independent process group and nonblocking pipes, observing terminal events with `waitid`. The leader remains waitable through cleanup to prevent PID reuse. Darwin zombie-only groups are checked for live members before accepting cleanup.
+
+`.NET` `NativeProcess.RunAsync` uses generated imports and `SafeHandle`, executes the blocking call in the background and returns a terminal result after cleanup. The result's `Status` expresses cancellation and timeout. Swift checks verify argument copying, execution and release through the same interface.
+
 ### Verification and distribution
 
 Local checks cover C data boundaries, C++ policies, Rust HDR10+, generated .NET imports and differential behavior against existing C# policies and parsers. Cross-architecture status follows actual Actions execution records.
 
-Coverage includes layout, unchanged output after failure, signed strides, capacities, overflow, precision restrictions, HDR integer codes and truncated/mutated inputs. Task checks add cancellation, callbacks, child-process cleanup, file identity, overwrite and temporary-file protection, including long 4K HDR10+ recordings.
+Coverage includes layout, unchanged output after failure, signed strides, capacities, overflow, precision restrictions, HDR integer codes and truncated/mutated inputs. C checks traverse every Unicode scalar value and test malformed and truncated sequences. Process checks cover Unicode paths, empty arguments, quotes, binary pipes, capacity boundaries, deadlines, cancellation, descendant cleanup and coexistence with .NET processes.
+
+Software media checks use synthetic inputs for FFV1 encoding, ffprobe frame/format validation and PNG frame extraction. `tools/media-test-tools.json` pins native-architecture FFmpeg/ffprobe versions and SHA-256 values for CI. Test tools live in the development cache; the application continues to use user-provided tools.
+
+Further verification will add file identity, overwrite, atomic publication, temporary-file protection and long 4K HDR10+ recordings.
 
 GPU-free environments run builds, policies, capability simulations and software media checks. Hardware checks pass only after real initialization and execution. Unavailable cases are recorded as not run.
 

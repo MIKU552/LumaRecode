@@ -65,7 +65,12 @@ jobs:
       - name: Build and test macOS core
         if: runner.os == 'macOS'
         run: sh tools/build-native-core.sh Release
+      - name: Install pinned media test tools
+        shell: pwsh
+        run: ./tools/Install-MediaTestTools.ps1 -Directory "${{ runner.temp }}/lumarecode-media-tools"
       - name: Managed/native differential checks
+        env:
+          LUMA_REQUIRE_MEDIA_TOOLS: '1'
         shell: pwsh
         run: |
           $library = if ($IsWindows) { 'LumaRecodeCore.dll' } else { 'libLumaRecodeCore.dylib' }

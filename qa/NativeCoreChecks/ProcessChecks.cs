@@ -87,10 +87,14 @@ internal static class ProcessChecks
             check(rejected, "Invalid managed process text reached the executable.");
         }
 
-        var ffmpeg = ProcessRunner.FindTool("ffmpeg");
-        var ffprobe = ProcessRunner.FindTool("ffprobe");
+        var ffmpeg = ProcessRunner.FindTool("ffmpeg", Environment.GetEnvironmentVariable("LUMA_TEST_FFMPEG") ?? "");
+        var ffprobe = ProcessRunner.FindTool("ffprobe", Environment.GetEnvironmentVariable("LUMA_TEST_FFPROBE") ?? "");
         if (ffmpeg.Length == 0 || ffprobe.Length == 0)
         {
+            if (Environment.GetEnvironmentVariable("LUMA_REQUIRE_MEDIA_TOOLS") == "1")
+            {
+                check(false, "Required FFmpeg software checks have no executable tools.");
+            }
             Console.WriteLine("FFmpeg software smoke: not run (FFmpeg/ffprobe unavailable).");
             return;
         }

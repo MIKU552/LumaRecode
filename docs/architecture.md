@@ -13,7 +13,7 @@
 | `App/` | WinUI 视图、设置、本地化、通知及 GUI / CLI 启动选择 |
 | `Core/` | 素材探测、输出规则、命令规划、视频与图片导出、CLI |
 | `engine/` | 跨平台 C / C++ / Rust 核心与 C ABI，目前独立构建和验证 |
-| `Interop/` | .NET 生成式 C ABI 导入 |
+| `Interop/` | .NET 生成式 C ABI 导入、SafeHandle 与后台调用适配 |
 | `Bundle/` | 可选 AOT 的单文件入口，传递标准句柄与退出码 |
 | `Packaging/` | 将 Visual Studio 配置映射到完整的单文件构建流程 |
 | `Assets/` | LUT、视频与动态照片预设、资源来源清单 |
@@ -87,7 +87,7 @@ GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在�
 | `App/` | WinUI views, settings, localization, notifications and GUI / CLI startup selection |
 | `Core/` | Source inspection, output policies, command planning, video/image export and CLI |
 | `engine/` | Cross-platform C/C++/Rust core and C ABI, built and checked independently during migration |
-| `Interop/` | Generated .NET C ABI imports |
+| `Interop/` | Generated .NET C ABI imports, SafeHandle ownership and background invocation |
 | `Bundle/` | Optional AOT single-file entry; preserve standard handles and exit codes |
 | `Packaging/` | Map Visual Studio configurations to the complete single-file build pipeline |
 | `Assets/` | LUTs, video and Motion Photo presets, resource provenance |
