@@ -78,6 +78,12 @@ LR_API lr_status lr_frame_window_init(lr_frame_window *value, uint64_t capacity)
  * PTS fall back to decoded display frames. Source identity is pinned per scan. */
 LR_API lr_status lr_timeline_create(const lr_timeline_options *options, lr_timeline **result,
                                     lr_error *error);
+/* Derive codec, index, time base, source path and interlaced routing from a
+ * probe schema-1 snapshot. Consume only ffprobe/index_capacity/timeout_ms from
+ * initialized options; remaining source fields must be zero. JSON is bounded
+ * to 64 MiB with the shared 128 MiB allocation budget. */
+LR_API lr_status lr_timeline_create_from_probe(const lr_timeline_options *options, lr_utf8_view media_json,
+                                               lr_timeline **result, lr_error *error);
 LR_API lr_status lr_timeline_run(lr_timeline *timeline, lr_error *error);
 LR_API lr_status lr_timeline_cancel(lr_timeline *timeline);
 LR_API lr_status lr_timeline_get_snapshot(lr_timeline *timeline, lr_timeline_snapshot *result);

@@ -28,7 +28,18 @@ public sealed partial class NativeTimeline : IDisposable
         CancellationToken cancellation = default)
     {
         ArgumentNullException.ThrowIfNull(options);
-        var handle = CreateHandle(options);
+        return await LoadHandleAsync(CreateHandle(options), cancellation).ConfigureAwait(false);
+    }
+
+    public static async Task<NativeTimelineResult> LoadFromProbeAsync(string ffprobe, byte[] mediaJson,
+        CancellationToken cancellation = default, ulong indexCapacity = 512 * 1024 * 1024, ulong timeoutMilliseconds = 0)
+    {
+        ArgumentNullException.ThrowIfNull(mediaJson);
+        return await LoadHandleAsync(CreateProbeHandle(ffprobe, mediaJson, indexCapacity, timeoutMilliseconds), cancellation).ConfigureAwait(false);
+    }
+
+    private static async Task<NativeTimelineResult> LoadHandleAsync(TimelineHandle handle, CancellationToken cancellation)
+    {
         try
         {
             using var registration = cancellation.UnsafeRegister(static state => Cancel((TimelineHandle)state!), handle);
@@ -156,6 +167,37 @@ public sealed partial class NativeTimeline : IDisposable
         }
     }
 
+    private static unsafe TimelineHandle CreateProbeHandle(string ffprobe, byte[] mediaJson, ulong capacity, ulong timeout)
+    {
+        var tool = Encode(ffprobe);
+        fixed (byte* toolPointer = tool, mediaPointer = mediaJson)
+        {
+            TimelineOptions options = default;
+            NativeCore.Check(InitializeOptions(ref options, (ulong)sizeof(TimelineOptions)));
+            options.Ffprobe = new()
+            {
+                Data = toolPointer,
+                Size = (ulong)tool.Length
+            };
+            options.IndexCapacity = capacity;
+            options.TimeoutMilliseconds = timeout;
+            var error = NativeCore.CreateError();
+            var status = CreateFromProbe(in options, new()
+            {
+                Data = mediaPointer,
+                Size = (ulong)mediaJson.Length
+            },
+                out var pointer, ref error);
+            if (status != NativeStatus.Ok)
+                throw new ArgumentException(NativeCore.ReadDiagnostic(in error), nameof(mediaJson));
+            try
+            {
+                return new(pointer);
+            }
+            catch { Release(pointer); throw; }
+        }
+    }
+
     private static NativeTimelineResult Execute(TimelineHandle handle)
     {
         var error = NativeCore.CreateError();
@@ -230,6 +272,9 @@ public sealed partial class NativeTimeline : IDisposable
     private static partial NativeStatus Create(in TimelineOptions options, out IntPtr value, ref NativeError error);
     [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_timeline_run")]
     private static partial NativeStatus Run(TimelineHandle handle, ref NativeError error);
+    [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_timeline_create_from_probe")]
+    private static partial NativeStatus CreateFromProbe(in TimelineOptions options, Utf8View media,
+        out IntPtr result, ref NativeError error);
     [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_timeline_cancel")]
     private static partial NativeStatus Cancel(TimelineHandle handle);
     [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_timeline_get_snapshot")]

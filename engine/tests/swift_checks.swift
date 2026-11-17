@@ -243,7 +243,8 @@ func withViews<Result>(_ values: [[UInt8]], _ body: ([lr_utf8_view]) -> Result) 
 }
 let planningMedia = Array(try JSONSerialization.data(withJSONObject: [
     "schema_version": 1, "path": String(decoding: sourcePath, as: UTF8.self), "kind": "sdr",
-    "video": ["index": 0, "width": 128, "height": 72, "codec_name": "h264", "pix_fmt": "yuv420p"]
+    "video": ["index": 0, "width": 128, "height": 72, "codec_name": "h264", "pix_fmt": "yuv420p",
+              "time_base": "1/100", "field_order": "tt"]
 ] as [String: Any]))
 let planningChoices = Array(#"{"purpose":"archive","codec":"avc"}"#.utf8)
 let planningPresets = Array(#"{"archive":{"avc":{"encoder":"libx264","preset":"medium","quality":21}},"audio":{"archive_default":"copy"}}"#.utf8)
@@ -278,3 +279,16 @@ require(planningMedia.withUnsafeBufferPointer { bytes in
 } == LR_OK && sourceDescription.bit_depth == 8 && sourceDescription.sampling == LR_SAMPLING_420,
         "Swift source format derivation differs")
 print("Swift native timeline, planning and source-format contracts passed.")
+var derivedOptions = lr_timeline_options()
+require(lr_timeline_options_init(&derivedOptions, 96) == LR_OK, "Swift derived timeline init")
+var derivedTimeline: OpaquePointer?
+let derivedCreated = withViews([executable, planningMedia]) { values in
+    derivedOptions.ffprobe = values[0]
+    return lr_timeline_create_from_probe(&derivedOptions, values[1], &derivedTimeline, &error)
+}
+require(derivedCreated == LR_OK && lr_timeline_run(derivedTimeline, &error) == LR_OK, "Swift probe-derived timeline scan")
+var derivedState = lr_timeline_snapshot()
+require(lr_timeline_snapshot_init(&derivedState, 64) == LR_OK, "Swift derived timeline snapshot init")
+require(lr_timeline_get_snapshot(derivedTimeline, &derivedState) == LR_OK && derivedState.count == 3 &&
+        derivedState.flags == 0, "Swift interlaced source used packet indexing")
+lr_timeline_release(derivedTimeline)

@@ -1,4 +1,5 @@
 #include "lumarecode/timeline.h"
+#include "media_model.hpp"
 #include "output_internal.hpp"
 #include "process_internal.hpp"
 
@@ -41,6 +42,10 @@ template <class Function> lr_status boundary(lr_error *error, Function &&functio
         return report(error, failure.status, failure.what());
     }
     catch (const luma::file_failure &failure)
+    {
+        return report(error, failure.status, failure.what());
+    }
+    catch (const luma::probe_failure &failure)
     {
         return report(error, failure.status, failure.what());
     }
@@ -346,6 +351,57 @@ extern "C" lr_status lr_timeline_create(const lr_timeline_options *options, lr_t
                         value->timeout = options->timeout_ms;
                         *result = value.release();
                     });
+}
+
+extern "C" lr_status lr_timeline_create_from_probe(const lr_timeline_options *options,
+                                                   lr_utf8_view media_json, lr_timeline **result,
+                                                   lr_error *error)
+{
+    if (options == nullptr || result == nullptr || options->struct_size != sizeof(*options) ||
+        options->abi_version != LR_ABI_VERSION || options->source.size != 0 || options->codec.size != 0 ||
+        options->time_base_numerator != 0 || options->time_base_denominator != 0 ||
+        options->video_index != 0 || options->flags != 0 ||
+        (media_json.size != 0 && media_json.data == nullptr))
+        return report(error, LR_INVALID_ARGUMENT, "Probe timeline options require empty source fields.");
+    if (media_json.size > 64 * 1024 * 1024)
+        return report(error, LR_RESOURCE_LIMIT, "Timeline source JSON exceeds its byte budget.");
+    lr_status status = LR_INTERNAL_ERROR;
+    const auto parsed =
+        boundary(error,
+                 [&]
+                 {
+                     luma::probe_json json;
+                     const auto media = json.parse({media_json.data, static_cast<size_t>(media_json.size)});
+                     const auto video = luma::member(media, "video");
+                     if (!yyjson_mut_is_obj(media) || !yyjson_mut_is_obj(video))
+                         fail(LR_INVALID_DATA, "Timeline requires a media snapshot with video metadata.");
+                     const auto source = luma::field(json, media, "path"),
+                                codec = luma::field(json, video, "codec_name");
+                     const auto time_base = luma::field(json, video, "time_base");
+                     const auto slash = time_base.find('/');
+                     int64_t numerator = 0, denominator = 0;
+                     if (slash == std::string::npos ||
+                         !integer(std::string_view(time_base).substr(0, slash), numerator) ||
+                         !integer(std::string_view(time_base).substr(slash + 1), denominator) ||
+                         numerator <= 0 || denominator <= 0)
+                         fail(LR_INVALID_DATA, "Timeline source has no valid rational time base.");
+                     auto resolved = *options;
+                     resolved.source = {reinterpret_cast<const uint8_t *>(source.data()), source.size()};
+                     resolved.codec = {reinterpret_cast<const uint8_t *>(codec.data()), codec.size()};
+                     resolved.time_base_numerator = numerator;
+                     resolved.time_base_denominator = denominator;
+                     resolved.video_index = static_cast<int32_t>(luma::int_field(json, video, "index", -1));
+                     const auto order = luma::field(json, video, "field_order");
+                     bool progressive = order != "tt" && order != "bb" && order != "tb" && order != "bt";
+                     for (const auto frame : luma::objects(luma::member(media, "frames")))
+                         progressive = progressive && luma::int_field(json, frame, "interlaced_frame") != 1;
+                     resolved.flags = progressive ? LR_TIMELINE_PROGRESSIVE : 0;
+                     status = lr_timeline_create(&resolved, result, error);
+                     if (status != LR_OK)
+                         fail(status, error == nullptr ? "Cannot create timeline from source snapshot."
+                                                       : error->message);
+                 });
+    return parsed == LR_OK ? status : parsed;
 }
 
 extern "C" lr_status lr_timeline_run(lr_timeline *timeline, lr_error *error)

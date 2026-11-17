@@ -136,7 +136,7 @@ yyjson 0.13.0 以原始 C 源码参与构建，来源和 SHA-256 固定在 [`lic
 
 ffprobe 输出按行流式解析，单行最多 64 KiB；索引默认预算 512 MiB，包含扩容时的新旧存储。预算针对元数据，不限制视频文件大小。长视频默认不设扫描期限，支持取消和源文件身份复查。失败后不发布部分索引。
 
-`resolve` 接受从零开始、结束帧不包含在内的选择，返回源时间和前置关键帧位置。`at_or_after` 按相对首帧的播放位置进行二分查找。C# `NativeTimeline` 持有原生索引，可查询范围和复制局部帧记录。
+`create_from_probe` 从探测快照推导索引参数和隔行路由。`resolve` 接受从零开始、结束帧不包含在内的选择，返回源时间和前置关键帧位置。`at_or_after` 按相对首帧的播放位置进行二分查找。C# `NativeTimeline` 持有原生索引，可查询范围和复制局部帧记录。
 
 ### 转码规划与输出核验
 
@@ -298,7 +298,7 @@ Pixel-format reports are cached by tool path, size and modification time, with l
 
 ffprobe output is parsed as a stream of lines, each limited to 64 KiB. The default 512-MiB index budget includes replacement storage during growth and applies to metadata independently of movie size. Long movies have no default scan deadline. Scans support cancellation and source identity validation; failed scans publish no partial index.
 
-`resolve` accepts a zero-based, end-exclusive selection and returns source times and a preceding keyframe seek point. `at_or_after` uses binary search over positions relative to the first frame. C# `NativeTimeline` owns the native index, supports range queries and copies selected slices of frame records.
+`create_from_probe` derives index parameters and interlaced routing from an inspection snapshot. `resolve` accepts a zero-based, end-exclusive selection and returns source times and a preceding keyframe seek point. `at_or_after` uses binary search over positions relative to the first frame. C# `NativeTimeline` owns the native index, supports range queries and copies selected slices of frame records.
 
 ### Encoding plans and output verification
 

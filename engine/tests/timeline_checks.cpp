@@ -190,6 +190,53 @@ int main(int count, char **arguments)
             check(snapshot.count == 0, "Failed timeline retained a published partial index.");
         lr_timeline_release(timeline);
     }
+    {
+        std::ofstream stream(file);
+        stream << "valid";
+    }
+    std::string quoted;
+    for (const auto byte : source)
+    {
+        if (byte == '\\' || byte == '"')
+            quoted += '\\';
+        quoted += byte;
+    }
+    for (const auto *order : {"progressive", "tt", "bb", "tb", "bt", "frame_interlaced"})
+    {
+        const std::string mode(order);
+        const std::string metadata =
+            "{\"schema_version\":1,\"path\":\"" + quoted +
+            "\",\"video\":{\"index\":0,\"codec_name\":\"hevc\",\"time_base\":\"1/100\",\"field_order\":\"" +
+            mode + "\"},\"frames\":[{\"interlaced_frame\":" + (mode == "frame_interlaced" ? "1" : "0") +
+            "}]}";
+        lr_timeline_options from_probe;
+        lr_timeline_options_init(&from_probe, sizeof(from_probe));
+        from_probe.ffprobe = view(tool);
+        lr_timeline *timeline = nullptr;
+        check(lr_timeline_create_from_probe(&from_probe, view(metadata), &timeline, nullptr) == LR_OK,
+              "Cannot derive timeline from probe metadata.");
+        if (timeline == nullptr)
+            continue;
+        check(lr_timeline_run(timeline, nullptr) == LR_OK, "Derived timeline scan failed.");
+        lr_timeline_snapshot state;
+        lr_timeline_snapshot_init(&state, sizeof(state));
+        check(lr_timeline_get_snapshot(timeline, &state) == LR_OK && state.count == 3 &&
+                  state.flags == (mode == "progressive" ? LR_TIMELINE_PACKETS : 0),
+              "Interlaced source used packet indexing.");
+        lr_timeline_release(timeline);
+    }
+    for (const auto *time_base : {"1/0", "1/", "1/1/2", "9223372036854775808/1", "0/1", "--1/2"})
+    {
+        const std::string metadata = "{\"video\":{\"time_base\":\"" + std::string(time_base) + "\"}}";
+        lr_timeline_options from_probe;
+        lr_timeline_options_init(&from_probe, sizeof(from_probe));
+        from_probe.ffprobe = view(tool);
+        lr_timeline *timeline = nullptr;
+        check(lr_timeline_create_from_probe(&from_probe, view(metadata), &timeline, nullptr) ==
+                      LR_INVALID_DATA &&
+                  timeline == nullptr,
+              "Invalid source time base changed a timeline output.");
+    }
     // This test owns exactly one file and one directory; never recursively clean
     // an unverified path in the system temporary directory.
     if (fs::canonical(root).parent_path() == parent)

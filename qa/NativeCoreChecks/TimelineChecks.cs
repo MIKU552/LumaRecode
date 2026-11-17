@@ -83,7 +83,12 @@ internal static class TimelineChecks
             var timeBase = media.Video.Text("time_base").Split('/');
             var options = new NativeTimelineOptions(ffprobe, source, media.Video.Text("codec_name"),
                 media.Video.Integer("index"), long.Parse(timeBase[0]), long.Parse(timeBase[1]));
-            var loaded = await NativeTimeline.LoadAsync(options);
+            var sourceMetadata = await NativeProbe.RunAsync(new(ffprobe, source));
+            cleanupConfirmed &= sourceMetadata.Snapshot.CleanupConfirmed;
+            check(sourceMetadata.Status == NativeStatus.Ok, "Timeline native source metadata failed.");
+            if (sourceMetadata.Status != NativeStatus.Ok)
+                continue;
+            var loaded = await NativeTimeline.LoadFromProbeAsync(ffprobe, sourceMetadata.Data);
             cleanupConfirmed &= loaded.Snapshot.CleanupConfirmed;
             check(loaded.Status == NativeStatus.Ok, "Native VFR timeline scan failed: " + loaded.Diagnostic);
             using var timeline = loaded.Timeline;
@@ -136,10 +141,7 @@ internal static class TimelineChecks
                 check(verified.Status == NativeStatus.Ok, "Native selected-window output verification failed: " + verified.Diagnostic);
                 if (verified.Status != NativeStatus.Ok)
                     continue;
-                var inspected = JsonNode.Parse(outputProbe.Data)!["video"]!;
-                var result = await NativeTimeline.LoadAsync(new(ffprobe, transaction.StagingPath,
-                    inspected.Text("codec_name"), inspected.Integer("index"),
-                    1, long.Parse(inspected.Text("time_base").Split('/')[1])));
+                var result = await NativeTimeline.LoadFromProbeAsync(ffprobe, outputProbe.Data);
                 jobCleaned &= result.Snapshot.CleanupConfirmed;
                 using var outputTimeline = result.Timeline;
                 check(result.Status == NativeStatus.Ok && result.Snapshot.Count == 16,
