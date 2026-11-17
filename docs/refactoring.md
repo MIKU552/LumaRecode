@@ -54,7 +54,7 @@ Windows 使用 C#、.NET 11、WinUI 3，保留单 EXE 的 GUI / CLI。macOS 面�
 | P8 发布准备 | 四语文档、许可、免费签名和分发包 | 整体验收与隐私检查完成 |
 | P9 合并发布 | 保留提交历史合并、最终标签和 Release | 产物、来源和标签一致 |
 
-P1 原型已完成三平台编译、C# / Swift 调用、进程生命周期和资源契约验证。原有输出规则与 HDR10+ 的 6,422 项差异检查继续执行。P2 将迁移探测、任务规划、时间轴与文件事务。现有 Windows 应用使用 `Core/`；新核心通过独立检查和软件媒体任务验证。
+P1 原型已完成三平台编译、C# / Swift 调用、进程生命周期和资源契约验证。P2 已加入文件身份检查与输出事务；探测、任务规划和时间轴继续迁移。原有输出规则与 HDR10+ 的 6,422 项差异检查继续执行。现有 Windows 应用使用 `Core/`；新核心通过独立检查和软件媒体任务验证。
 
 ### 构建入口
 
@@ -100,6 +100,16 @@ Windows 在创建进程时将其加入 Job Object，仅继承标准输入与输�
 
 `cleanup_state` 记录回收是否确认；`.NET` 结果提供 `CleanupConfirmed`。文件事务据此决定是否可以发布或清理临时输出。回收未确认时返回 I/O 错误，调用方保留任务文件。生命周期检查注入启动失败、内存不足和清理失败，验证这些终态约束。
 
+### 文件与输出事务
+
+[`output.h`](../engine/include/lumarecode/output.h) 提供文件身份比较、私有任务目录和输出发布。`lr_files_same` 按操作系统文件标识比较已有文件，识别硬链接和源路径别名。事务接收绝对路径，固定覆盖授权，在目标目录下建立私有临时目录。
+
+调用顺序为 `create → 编码 → 媒体核验 → seal → commit`。`seal` 需要调用方确认相关子进程全部回收，并固定非空、单链接的普通输出文件。`commit` 复查原片、临时输出及目录的身份与修改状态，再以操作系统重命名发布；未授权覆盖时，其他任务新建的目标仍受保护。
+
+Windows 持有原片的只读共享句柄，阻止写入和删除；临时目录使用受保护的访问控制。macOS 通过文件描述符与目录相对操作管理文件，并在封存和发布前核对原片的大小、修改时间及状态变化时间。封存后的临时输出同样接受修改检查。
+
+`cleanup` 仅移除已知的临时输出和空目录。额外文件、目录身份变化或未确认的进程回收会保留工作目录。发布成功后，清理问题通过 `WORKSPACE_EXISTS` 标记报告，输出状态保持成功。`release` 仅关闭句柄；`.NET` 的 `NativeOutputTransaction.Dispose` 遵循相同约定。
+
 ### 验证与分发
 
 本机已执行 C 数据边界、C++ 策略、Rust HDR10+、.NET 生成式导入，以及与现有 C# 规则和解析器的差异检查。跨架构结果以 Actions 的实际运行记录为准。
@@ -108,7 +118,7 @@ Windows 在创建进程时将其加入 Job Object，仅继承标准输入与输�
 
 软件媒体检查使用合成输入，执行 FFV1 编码、ffprobe 帧数与格式校验、PNG 帧提取。`tools/media-test-tools.json` 固定 CI 使用的原生架构 FFmpeg / ffprobe 版本与 SHA-256；测试工具保存在开发缓存中，应用继续使用用户提供的工具。
 
-后续验证加入同文件识别、覆盖、原子发布、临时文件保护及长时间 4K HDR10+ 素材。
+文件检查覆盖硬链接、覆盖竞争、封存状态、原片及输出修改、目录替换、保留与重试清理。软件媒体任务先核验临时输出，再通过共享核心发布。后续补充任务辅助文件、恢复策略和长时间 4K HDR10+ 录像检查。
 
 缺少 GPU 的环境运行编译、规则、模拟能力和软件媒体检查。硬件检查只有真实初始化和执行后计为通过；没有条件的用例记录为未运行。
 
@@ -168,7 +178,7 @@ Keep one public C ABI. Internal boundaries can use validated C interfaces or typ
 | P8 Release preparation | Four-language docs, licenses, free signing and distribution | Full acceptance and privacy checks complete |
 | P9 Merge and release | History-preserving merge, final tag and Release | Artifacts, provenance and tag agree |
 
-The P1 prototype passes three-platform builds, C#/Swift calls, process lifecycle and resource contracts. The existing 6,422 output-policy and HDR10+ differential checks continue to run. P2 will migrate probing, task planning, timelines and file transactions. The Windows application uses `Core/`; independent contracts and software media tasks validate the new engine.
+The P1 prototype passes three-platform builds, C#/Swift calls, process lifecycle and resource contracts. P2 adds file identity checks and output transactions; probing, task planning and timelines remain in migration. The existing 6,422 output-policy and HDR10+ differential checks continue to run. The Windows application uses `Core/`; independent contracts and software media tasks validate the new engine.
 
 ### Build entry points
 
@@ -214,6 +224,16 @@ Windows associates the process with a Job Object at creation and inherits only s
 
 `cleanup_state` records whether reclamation is confirmed; `.NET` exposes `CleanupConfirmed`. File transactions use it to authorize publication or removal of temporary output. Unconfirmed cleanup returns an I/O error and the caller retains task files. Lifecycle checks inject launch, allocation and cleanup failures to verify these terminal-state contracts.
 
+### Files and output transactions
+
+[`output.h`](../engine/include/lumarecode/output.h) provides file identity comparison, private workspaces and output publication. `lr_files_same` compares existing files by OS identity, recognizing hard links and source path aliases. Transactions accept absolute paths, fix overwrite consent and create a private workspace beside the destination.
+
+The call sequence is `create → encode → verify media → seal → commit`. `seal` requires confirmation that all related child processes have completed cleanup, then pins a nonempty, single-link regular output. `commit` rechecks source, staging and directory identities and revisions before publishing through an OS rename. Without overwrite consent, a destination created by another job remains protected.
+
+Windows holds the source with read-only sharing to block writes and deletion, and gives the workspace protected access control. macOS uses file descriptors and directory-relative operations, checking source size, modification time and status-change time before sealing and publication. Sealed staging output is also checked for modification.
+
+`cleanup` removes only the known staging output and an empty directory. Extra files, changed directory identities or unconfirmed process cleanup retain the workspace. After successful publication, cleanup problems set `WORKSPACE_EXISTS` while the output remains successful. `release` closes handles only; `.NET` `NativeOutputTransaction.Dispose` follows the same contract.
+
 ### Verification and distribution
 
 Local checks cover C data boundaries, C++ policies, Rust HDR10+, generated .NET imports and differential behavior against existing C# policies and parsers. Cross-architecture status follows actual Actions execution records.
@@ -222,7 +242,7 @@ Coverage includes layout, unchanged output after failure, signed strides, capaci
 
 Software media checks use synthetic inputs for FFV1 encoding, ffprobe frame/format validation and PNG frame extraction. `tools/media-test-tools.json` pins native-architecture FFmpeg/ffprobe versions and SHA-256 values for CI. Test tools live in the development cache; the application continues to use user-provided tools.
 
-Further verification will add file identity, overwrite, atomic publication, temporary-file protection and long 4K HDR10+ recordings.
+File checks cover hard links, competing publishers, seal states, source and staging mutations, directory replacement, retention and cleanup retries. Software media tasks verify staging output before publishing through the shared core. Further checks will cover job auxiliary files, recovery policies and long 4K HDR10+ recordings.
 
 GPU-free environments run builds, policies, capability simulations and software media checks. Hardware checks pass only after real initialization and execution. Unavailable cases are recorded as not run.
 

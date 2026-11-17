@@ -110,13 +110,32 @@ internal static class ProcessChecks
         var parent = Path.GetFullPath(Path.GetTempPath());
         var root = Path.Combine(parent, "LumaRecode-native-media-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
+        bool cleanupConfirmed = true;
+        NativeOutputTransaction? transaction = null;
         try
         {
+            var source = Path.Combine(root, "原片 日本語.mkv");
             var output = Path.Combine(root, "中文 日本語 software.mkv");
-            var encoded = await NativeProcess.RunAsync(new(ffmpeg,
+            var fixture = await NativeProcess.RunAsync(new(ffmpeg,
                 ["-hide_banner", "-nostdin", "-v", "error", "-f", "lavfi", "-i", "testsrc2=s=128x72:r=10:d=1",
-                "-c:v", "ffv1", "-threads", "1", "-progress", "pipe:1", "-n", output], TimeoutMilliseconds: 30000));
-            check(encoded.Status == NativeStatus.Ok && File.Exists(output)
+                "-c:v", "ffv1", "-threads", "1", "-n", source], TimeoutMilliseconds: 30000));
+            cleanupConfirmed &= fixture.CleanupConfirmed;
+            check(fixture.Status == NativeStatus.Ok, "Native source fixture failed: " + fixture.Diagnostic);
+            if (fixture.Status != NativeStatus.Ok)
+                return;
+            var sourceBytes = await File.ReadAllBytesAsync(source);
+            transaction = NativeOutputTransaction.Create(source, output);
+            var stage = transaction.StagingPath;
+            var workspace = transaction.WorkspacePath;
+            check(transaction.Snapshot.State == NativeOutputState.Created && !File.Exists(output),
+                "Managed file transaction created its final output too early.");
+            check(NativeOutputTransaction.FilesSame(source, source, out var same, out _) == NativeStatus.Ok && same,
+                "Managed file identity check differs.");
+            var encoded = await NativeProcess.RunAsync(new(ffmpeg,
+                ["-hide_banner", "-nostdin", "-v", "error", "-i", source,
+                "-c:v", "ffv1", "-threads", "1", "-progress", "pipe:1", "-n", stage], TimeoutMilliseconds: 30000));
+            cleanupConfirmed &= encoded.CleanupConfirmed;
+            check(encoded.Status == NativeStatus.Ok && File.Exists(stage) && !File.Exists(output)
                 && Encoding.UTF8.GetString(encoded.Output).Contains("progress=end", StringComparison.Ordinal),
                 "Native FFmpeg software encode failed: " + encoded.ErrorText + encoded.Diagnostic);
             if (encoded.Status != NativeStatus.Ok)
@@ -125,7 +144,8 @@ internal static class ProcessChecks
             }
             var probed = await NativeProcess.RunAsync(new(ffprobe,
                 ["-v", "error", "-count_frames", "-show_entries", "stream=codec_name,width,height,nb_read_frames",
-                "-of", "json", output], OutputCapacity: 65536));
+                "-of", "json", stage], OutputCapacity: 65536));
+            cleanupConfirmed &= probed.CleanupConfirmed;
             check(probed.Status == NativeStatus.Ok, "Native ffprobe failed: " + probed.Diagnostic);
             if (probed.Status != NativeStatus.Ok)
             {
@@ -135,22 +155,57 @@ internal static class ProcessChecks
             check(stream["codec_name"]!.GetValue<string>() == "ffv1"
                 && stream["width"]!.GetValue<int>() == 128 && stream["height"]!.GetValue<int>() == 72
                 && stream["nb_read_frames"]!.GetValue<string>() == "10", "Native software media output differs.");
+            check(transaction.Seal(cleanupConfirmed, out var sealDiagnostic) == NativeStatus.Ok,
+                "Managed output seal failed: " + sealDiagnostic);
+            check(transaction.Commit(out var commitDiagnostic) == NativeStatus.Ok,
+                "Managed output commit failed: " + commitDiagnostic);
+            check(File.Exists(output) && !Directory.Exists(workspace)
+                && transaction.Snapshot.State == NativeOutputState.Committed && !transaction.Snapshot.WorkspaceExists,
+                "Managed output publication retained its workspace.");
+            check((await File.ReadAllBytesAsync(source)).AsSpan().SequenceEqual(sourceBytes),
+                "Native file transaction changed source bytes.");
             var frame = await NativeProcess.RunAsync(new(ffmpeg,
                 ["-hide_banner", "-nostdin", "-v", "error", "-i", output, "-frames:v", "1", "-threads", "1",
                 "-f", "image2pipe", "-c:v", "png", "pipe:1"]));
+            cleanupConfirmed &= frame.CleanupConfirmed;
             byte[] png = [137, 80, 78, 71, 13, 10, 26, 10];
             check(frame.Status == NativeStatus.Ok && frame.Output.AsSpan().StartsWith(png),
                 "Native FFmpeg binary frame extraction failed.");
-            Console.WriteLine("FFmpeg software encode, probe and binary frame extraction passed.");
+            using (var interrupted = NativeOutputTransaction.Create(source, output, overwrite: true))
+            {
+                var publishedBytes = await File.ReadAllBytesAsync(output);
+                var cancelled = await NativeProcess.RunAsync(new(ffmpeg,
+                    ["-hide_banner", "-nostdin", "-v", "error", "-re", "-stream_loop", "-1", "-i", source,
+                    "-c:v", "ffv1", "-threads", "1", "-n", interrupted.StagingPath], TimeoutMilliseconds: 150));
+                cleanupConfirmed &= cancelled.CleanupConfirmed;
+                check(cancelled.Status == NativeStatus.TimedOut && cancelled.CleanupConfirmed,
+                    "Interrupted media task did not complete native cleanup.");
+                check(interrupted.Cleanup(cancelled.CleanupConfirmed, out _) == NativeStatus.Ok
+                    && !Directory.Exists(interrupted.WorkspacePath)
+                    && interrupted.Snapshot.State == NativeOutputState.Aborted,
+                    "Interrupted media task retained its private output.");
+                check((await File.ReadAllBytesAsync(output)).AsSpan().SequenceEqual(publishedBytes),
+                    "Interrupted media task changed the existing destination.");
+            }
+            Console.WriteLine("FFmpeg software encode, verification, transactional publication and frame extraction passed.");
         }
         finally
         {
+            if (transaction is not null)
+            {
+                var status = transaction.Cleanup(cleanupConfirmed, out _);
+                cleanupConfirmed &= status == NativeStatus.Ok;
+                transaction.Dispose();
+            }
             // Only remove the generated child of the canonical temporary root.
             if (Path.GetDirectoryName(Path.GetFullPath(root)) != Path.TrimEndingDirectorySeparator(parent))
             {
                 throw new InvalidOperationException("Unexpected native media test directory.");
             }
-            Directory.Delete(root, recursive: true);
+            if (cleanupConfirmed)
+                Directory.Delete(root, recursive: true);
+            else
+                Console.WriteLine("Retained native media test directory after unconfirmed cleanup: " + root);
         }
     }
 }

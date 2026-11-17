@@ -109,5 +109,6 @@ foreach (var (depth, sampling, alpha, purpose, codec, dynamicRange, requestedSam
 await HdrParityChecks.RunAsync(Check);
 Console.WriteLine($"Managed/native policy and HDR parity: {cases} checks, {failures} failures.");
 await ProcessChecks.RunAsync(Check, library);
+OutputChecks.Run(Check);
 Console.WriteLine($"Managed/native contracts total: {cases} checks, {failures} failures.");
 return failures == 0 ? 0 : 1;

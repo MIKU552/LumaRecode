@@ -5,7 +5,8 @@ namespace LumaRecode.Native;
 public enum NativeStatus : int
 {
     Ok = 0, InvalidArgument = 1, Unsupported = 2, BufferTooSmall = 3, InvalidData = 4,
-    Cancelled = 5, IoError = 6, InternalError = 7, TimedOut = 8, NotFound = 9, ResourceLimit = 10
+    Cancelled = 5, IoError = 6, InternalError = 7, TimedOut = 8, NotFound = 9, ResourceLimit = 10,
+    AlreadyExists = 11, SourceChanged = 12
 }
 
 // Assign every ABI value explicitly; inserting a managed member must not change
