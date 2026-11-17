@@ -111,5 +111,6 @@ Console.WriteLine($"Managed/native policy and HDR parity: {cases} checks, {failu
 await ProcessChecks.RunAsync(Check, library);
 OutputChecks.Run(Check);
 MediaChecks.Run(Check);
+await ProbeChecks.RunAsync(Check, library);
 Console.WriteLine($"Managed/native contracts total: {cases} checks, {failures} failures.");
 return failures == 0 ? 0 : 1;

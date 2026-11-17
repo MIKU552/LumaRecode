@@ -54,7 +54,7 @@ Windows 使用 C#、.NET 11、WinUI 3，保留单 EXE 的 GUI / CLI。macOS 面�
 | P8 发布准备 | 四语文档、许可、免费签名和分发包 | 整体验收与隐私检查完成 |
 | P9 合并发布 | 保留提交历史合并、最终标签和 Release | 产物、来源和标签一致 |
 
-P1 原型已完成三平台编译、C# / Swift 调用、进程生命周期和资源契约验证。P2 已加入文件事务、源色彩分类和相机元数据解析；探测编排、任务规划和时间轴继续迁移。原有输出规则与 HDR10+ 的 6,422 项差异检查继续执行。现有 Windows 应用使用 `Core/`；新核心通过独立检查和软件媒体任务验证。
+P1 原型已完成三平台编译、C# / Swift 调用、进程生命周期和资源契约验证。P2 已加入文件事务、源色彩分类、相机元数据解析和原生探测编排；任务规划与时间轴继续迁移。原有输出规则与 HDR10+ 的 6,422 项差异检查继续执行。现有 Windows 应用使用 `Core/`；新核心通过独立检查和软件媒体任务验证。
 
 ### 构建入口
 
@@ -119,6 +119,16 @@ Windows 持有原片的只读共享句柄，阻止写入和删除；临时目录
 C 模块以两遍扫描解码 ffprobe 十六进制转储，先检查输入和容量，再写入输出；偏移与 ASCII 列会被跳过。Rust 模块位于 `engine/rust/metadata/`，以借用切片读取 DJI protobuf 字段及 AVC SPS，支持 avcC 与 Annex B。两种解析器均无堆分配，单条二进制记录上限为 1 MiB。DJI 模式按已识别的 schema 解释，重复字段保留第一个值。
 
 分类与旧 C# 规则进行组合对照；解析检查覆盖截断、变异、重复字段和失败后输出保持原值。软件媒体任务另外生成 SDR / HLG / PQ 文件及单色 H.264，通过实际 ffprobe 标签和 SPS 验证结果。
+
+### 原生探测流程
+
+[`probe.h`](../engine/include/lumarecode/probe.h) 提供 `create / run / cancel / snapshot / copy_json`。C++ 选择可播放视频轨、排除封面并优先选择 ProRes RAW，读取首帧和 DJI 数据，再合并标签、像素描述及动态 HDR 信息。成功后返回版本为 1 的不可变 JSON 快照，包含完整轨道、选中视频、首帧、标签、像素描述、分类和证据编号。RAW 以 `RAW_CALIBRATION_PENDING` 交给显影阶段。
+
+单个子进程默认超时 25 秒，JSON 捕获默认 8 MiB、可设置到 64 MiB。容量针对元数据，与素材文件大小无关。取消会等待子进程回收；失败与取消返回状态和诊断，成功快照只在完成后发布。Windows 在探测期间阻止源文件写入和删除；macOS 持有文件描述符并复查身份及修改状态。
+
+yyjson 0.13.0 以原始 C 源码参与构建，来源和 SHA-256 固定在 [`licenses/yyjson/manifest.json`](../licenses/yyjson/manifest.json)，构建时校验。严格 JSON 的输入深度上限为 64；解析树、重复键索引和写入暂存共用 128 MiB 预算。重复键按既有探测规则合并为数组。探测完成后仅保留序列化结果。
+
+像素格式报告按工具路径、大小及修改时间缓存，最多 8 项、16 MiB。命中缓存仍检查当前任务的元数据容量。C# 使用 `NativeProbe.RunAsync` 在后台执行，Swift 调用相同的 C 接口。检查覆盖分阶段失败、取消、可选 DJI 超时、源文件变化、缓存容量以及真实软件媒体任务。
 
 ### 验证与分发
 
@@ -188,7 +198,7 @@ Keep one public C ABI. Internal boundaries can use validated C interfaces or typ
 | P8 Release preparation | Four-language docs, licenses, free signing and distribution | Full acceptance and privacy checks complete |
 | P9 Merge and release | History-preserving merge, final tag and Release | Artifacts, provenance and tag agree |
 
-The P1 prototype passes three-platform builds, C#/Swift calls, process lifecycle and resource contracts. P2 adds file transactions, source color classification and camera metadata parsing; probe orchestration, task planning and timelines remain in migration. The existing 6,422 output-policy and HDR10+ differential checks continue to run. The Windows application uses `Core/`; independent contracts and software media tasks validate the new engine.
+The P1 prototype passes three-platform builds, C#/Swift calls, process lifecycle and resource contracts. P2 adds file transactions, source color classification, camera metadata parsing and native probe orchestration; task planning and timelines remain in migration. The existing 6,422 output-policy and HDR10+ differential checks continue to run. The Windows application uses `Core/`; independent contracts and software media tasks validate the new engine.
 
 ### Build entry points
 
@@ -253,6 +263,16 @@ Tags are borrowed for the call and compared using ASCII case folding. Equivalent
 The C module decodes ffprobe hex dumps in two passes, checking data and capacity before writing and skipping offsets and ASCII columns. Rust modules in `engine/rust/metadata/` read DJI protobuf fields and AVC SPS from borrowed slices, supporting avcC and Annex B. Both parsers avoid heap allocation and limit binary records to one MiB. DJI modes are interpreted within recognized schemas; duplicate fields retain their first occurrence.
 
 Classification combinations are compared with the C# rules. Parser checks cover truncation, mutation, duplicate fields and unchanged output on failure. Software media tasks also generate SDR/HLG/PQ files and monochrome H.264, validating actual ffprobe tags and SPS data.
+
+### Native inspection flow
+
+[`probe.h`](../engine/include/lumarecode/probe.h) provides `create / run / cancel / snapshot / copy_json`. C++ selects playable video, excludes cover art and prefers ProRes RAW, reads first-frame and DJI data, then merges tags, pixel descriptors and dynamic HDR information. Success returns an immutable version-1 JSON snapshot containing all streams, selected video, first frames, tags, pixel descriptors, classification and evidence codes. RAW passes to the development stage with `RAW_CALIBRATION_PENDING`.
+
+Each subprocess defaults to a 25-second deadline. JSON capture defaults to eight MiB and can be raised to 64 MiB, independently of media file size. Cancellation waits for subprocess cleanup. Failures and cancellation return status and diagnostics; successful snapshots are published after completion. Windows prevents source writes and deletion during inspection; macOS retains a file descriptor and rechecks identity and revision.
+
+yyjson 0.13.0 builds from unmodified C sources, with provenance and SHA-256 pinned in [`licenses/yyjson/manifest.json`](../licenses/yyjson/manifest.json) and verified during configuration. Strict JSON input has a 64-level nesting limit. Trees, duplicate-key indexes and writer scratch share a 128-MiB budget. Duplicate keys become arrays following the existing probe rules. Completed inspections retain only serialized output.
+
+Pixel-format reports are cached by tool path, size and modification time, with limits of eight entries and 16 MiB. Cache hits still enforce the current task's metadata capacity. C# dispatches work through `NativeProbe.RunAsync`; Swift uses the same C interface. Checks cover stage failures, cancellation, optional DJI timeouts, source changes, cache capacities and real software media tasks.
 
 ### Verification and distribution
 

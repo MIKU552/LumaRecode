@@ -252,6 +252,11 @@ internal static class MediaChecks
                 $"Encoded transfer metadata differs: requested={transfer}, reported={video.Text("color_transfer")}, kind={actual.Kind}.");
             check(NativeMedia.DecodeProbeHex(video.Text("extradata")).AsSpan().SequenceEqual(MediaProbe.ReadHexDump(video.Text("extradata"))),
                 "Native hex decoder changed real ffprobe extradata.");
+            var inspectedSource = await NativeProbe.RunAsync(new(ffprobe, path));
+            cleanupConfirmed &= inspectedSource.Snapshot.CleanupConfirmed;
+            check(inspectedSource.Status == NativeStatus.Ok, "Native source orchestration failed: " + inspectedSource.Diagnostic);
+            if (inspectedSource.Status == NativeStatus.Ok)
+                ProbeChecks.Compare(check, inspectedSource, await MediaProbe.InspectAsync(new(ffmpeg, ffprobe), path));
         }
         string gray = Path.Combine(root, "monochrome-h264.mp4");
         var avc = await NativeProcess.RunAsync(new(ffmpeg,
@@ -271,6 +276,11 @@ internal static class MediaChecks
         var bytes = NativeMedia.DecodeProbeHex(avcVideo.Text("extradata"));
         check(NativeMedia.AvcIsMonochrome(bytes, out bool mono, out _) == NativeStatus.Ok && mono
             && MediaProbe.AvcMonochrome(avcVideo), "Real AVC SPS monochrome detection differs.");
+        var inspectedGray = await NativeProbe.RunAsync(new(ffprobe, gray));
+        cleanupConfirmed &= inspectedGray.Snapshot.CleanupConfirmed;
+        check(inspectedGray.Status == NativeStatus.Ok, "Native monochrome inspection failed: " + inspectedGray.Diagnostic);
+        if (inspectedGray.Status == NativeStatus.Ok)
+            ProbeChecks.Compare(check, inspectedGray, await MediaProbe.InspectAsync(new(ffmpeg, ffprobe), gray));
         Console.WriteLine("Encoded SDR/HLG/PQ source classification and monochrome AVC metadata checks passed.");
         return cleanupConfirmed;
     }

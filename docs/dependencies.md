@@ -17,6 +17,7 @@
 | MSVC linker | 14.52.37029+ | 可选 Native AOT 构建 |
 | libultrahdr / libjpeg-turbo | 2.0.2 / 3.2.1 | Ultra HDR JPEG 编码 |
 | PySide6 | 6.12.0 | 可选图标生成工具 |
+| yyjson | 0.13.0 | 共享原生核心的 JSON 读取与写入，MIT 许可 |
 
 默认 JIT 构建需要 .NET SDK、PowerShell 7，以及 WinUI 构建所需的 Windows 工具：
 
@@ -133,6 +134,7 @@ JIT 默认直接打包应用、中间代码、.NET 运行时、Windows App SDK�
 | MSVC linker | 14.52.37029+ | Optional Native AOT builds |
 | libultrahdr / libjpeg-turbo | 2.0.2 / 3.2.1 | Ultra HDR JPEG encoding |
 | PySide6 | 6.12.0 | Optional icon-generation tool |
+| yyjson | 0.13.0 | JSON reading and writing in the shared native core, MIT license |
 
 Default JIT builds require the .NET SDK, PowerShell 7 and Windows tools for WinUI compilation:
 
