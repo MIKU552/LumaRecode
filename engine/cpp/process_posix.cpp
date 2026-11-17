@@ -221,8 +221,12 @@ void luma::execute_child(const process_request &request, process_sink &sink)
             "spawn stderr");
     if (!request.directory.empty())
     {
+#ifdef __APPLE__
+        checked(posix_spawn_file_actions_addchdir(&settings.actions, request.directory.c_str()), "spawn cwd");
+#else
         checked(posix_spawn_file_actions_addchdir_np(&settings.actions, request.directory.c_str()),
                 "spawn cwd");
+#endif
     }
     sigset_t empty, defaults;
     sigemptyset(&empty);

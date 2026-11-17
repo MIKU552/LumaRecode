@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 4.0)
 # Rust's MSVC standard library uses the dynamic release CRT in both profiles.
 # Keep every native object on that allocator/runtime, including Debug builds.
 set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
+if(CMAKE_HOST_APPLE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "27.0" CACHE STRING "Minimum macOS version")
+endif()
 project(LumaRecode VERSION 0.1.0 LANGUAGES C CXX)
 
 include(CTest)

@@ -40,3 +40,46 @@ let parsed = payload.withUnsafeBufferPointer { bytes in
 require(parsed == LR_OK && metadata.average_rgb == 1500 && metadata.max_scl.2 == 3000,
         "Swift/C++/Rust HDR integer codes differ")
 print("Swift/C/C++/Rust ABI, output-policy and HDR checks passed.")
+
+require(CommandLine.arguments.count == 2, "Expected the native process helper path")
+require(MemoryLayout<lr_process_options>.size == 80 && MemoryLayout<lr_process_snapshot>.size == 64,
+        "Swift process layout differs")
+var processOptions = lr_process_options()
+require(lr_process_options_init(&processOptions, 80) == LR_OK, "Process options init")
+processOptions.stdout_capacity = 8192
+let executable = Array(CommandLine.arguments[1].utf8)
+let echo = Array("echo".utf8)
+let word = Array("Swift 日本語 🌈".utf8)
+var nativeProcess: OpaquePointer?
+let created = executable.withUnsafeBufferPointer { path in
+    echo.withUnsafeBufferPointer { mode in
+        word.withUnsafeBufferPointer { text in
+            processOptions.executable = lr_utf8_view(data: path.baseAddress, size: UInt64(path.count))
+            let views = [lr_utf8_view(data: mode.baseAddress, size: UInt64(mode.count)),
+                         lr_utf8_view(data: text.baseAddress, size: UInt64(text.count))]
+            return views.withUnsafeBufferPointer { arguments in
+                processOptions.arguments = arguments.baseAddress
+                processOptions.argument_count = UInt32(arguments.count)
+                return lr_process_create(&processOptions, &nativeProcess, &error)
+            }
+        }
+    }
+}
+require(created == LR_OK, "Swift process creation")
+defer { lr_process_release(nativeProcess) }
+// All borrowed pointers are out of scope; create() retained its own copies.
+require(lr_process_run(nativeProcess, &error) == LR_OK, "Swift native process execution")
+var processState = lr_process_snapshot()
+require(lr_process_snapshot_init(&processState, 64) == LR_OK, "Process snapshot init")
+require(lr_process_get_snapshot(nativeProcess, &processState) == LR_OK
+        && processState.state == LR_PROCESS_FINISHED && processState.exit_code == 0, "Swift process state")
+var outputBytes = [UInt8](repeating: 0, count: Int(processState.stdout_retained))
+var required: UInt64 = 0
+let copied = outputBytes.withUnsafeMutableBufferPointer { bytes in
+    lr_process_copy_output(nativeProcess, LR_STREAM_STDOUT, bytes.baseAddress,
+                           UInt64(bytes.count), &required)
+}
+require(copied == LR_OK && required == UInt64(outputBytes.count)
+        && String(decoding: outputBytes, as: UTF8.self) == "\(word.count):Swift 日本語 🌈\n",
+        "Swift process output bytes differ")
+print("Swift native process ownership and UTF-8 invocation checks passed.")

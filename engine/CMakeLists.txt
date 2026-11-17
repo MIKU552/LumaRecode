@@ -126,10 +126,11 @@ if(BUILD_TESTING)
                 -lLumaRecodeCore -Xlinker -rpath -Xlinker @loader_path
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/swift_checks.swift" -o "${luma_swift_check}"
             DEPENDS luma_core tests/swift_checks.swift include/lumarecode/core.h
-                include/lumarecode/hdr10plus.h include/module.modulemap
+                include/lumarecode/hdr10plus.h include/lumarecode/process.h include/module.modulemap
             VERBATIM)
         add_custom_target(luma_swift_check_build ALL DEPENDS "${luma_swift_check}")
-        add_test(NAME swift_contracts COMMAND "${luma_swift_check}")
+        add_test(NAME swift_contracts COMMAND "${luma_swift_check}" $<TARGET_FILE:luma_process_helper>)
+        set_tests_properties(swift_contracts PROPERTIES TIMEOUT 35)
     endif()
 endif()
 
