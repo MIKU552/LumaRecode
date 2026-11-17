@@ -43,6 +43,14 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
+      - name: Managed source formatting
+        if: runner.os == 'Windows' && matrix.cpu == 'x64'
+        shell: pwsh
+        run: |
+          dotnet format Interop/LumaRecode.Native.csproj --verify-no-changes
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet format qa/NativeCoreChecks/NativeCoreChecks.csproj --verify-no-changes
+          exit $LASTEXITCODE
       - name: Rust formatting and lints
         shell: pwsh
         run: |

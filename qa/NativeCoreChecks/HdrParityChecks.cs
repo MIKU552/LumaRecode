@@ -125,13 +125,29 @@ internal static class HdrParityChecks
                 }
             }
         }
-        Put(1, 8); Put(1, 2); Put(curve ? 1000 : 0, 27); Put(0, 1);
-        Put(1000, 17); Put(2000, 17); Put(3000, 17); Put(1500, 17);
-        Put(2, 4); Put(1, 7); Put(500, 17); Put(100, 7); Put(3000, 17);
-        Put(0, 10); Put(0, 1); Put(curve ? 1 : 0, 1);
+        Put(1, 8);
+        Put(1, 2);
+        Put(curve ? 1000 : 0, 27);
+        Put(0, 1);
+        Put(1000, 17);
+        Put(2000, 17);
+        Put(3000, 17);
+        Put(1500, 17);
+        Put(2, 4);
+        Put(1, 7);
+        Put(500, 17);
+        Put(100, 7);
+        Put(3000, 17);
+        Put(0, 10);
+        Put(0, 1);
+        Put(curve ? 1 : 0, 1);
         if (curve)
         {
-            Put(1024, 12); Put(2048, 12); Put(2, 4); Put(100, 10); Put(900, 10);
+            Put(1024, 12);
+            Put(2048, 12);
+            Put(2, 4);
+            Put(100, 10);
+            Put(900, 10);
         }
         Put(0, 1);
         if (used != 0)

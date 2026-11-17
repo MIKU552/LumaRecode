@@ -33,13 +33,16 @@ var samplingCases = new (string Name, Sampling Value)[]
     ("gray", Sampling.Gray), ("440", Sampling.Yuv440), ("rgb", Sampling.Rgb),
     ("411", Sampling.Yuv411), ("410", Sampling.Yuv410)
 };
-foreach (int depth in new[] { 8, 10, 12, 16 })
-foreach (var sampling in samplingCases)
-foreach (bool alpha in new[] { false, true })
-foreach (var purpose in new[] { Purpose.Share, Purpose.Archive })
-foreach (var codec in new[] { Codec.Hevc, Codec.Avc, Codec.Av1 })
-foreach (var dynamicRange in new[] { DynamicRange.Sdr, DynamicRange.Hdr })
-foreach (var requestedSampling in new[] { "auto", "source", "420", "422", "444", "gray" })
+var matrix =
+    from depth in new[] { 8, 10, 12, 16 }
+    from sampling in samplingCases
+    from alpha in new[] { false, true }
+    from purpose in new[] { Purpose.Share, Purpose.Archive }
+    from codec in new[] { Codec.Hevc, Codec.Avc, Codec.Av1 }
+    from dynamicRange in new[] { DynamicRange.Sdr, DynamicRange.Hdr }
+    from requestedSampling in new[] { "auto", "source", "420", "422", "444", "gray" }
+    select (depth, sampling, alpha, purpose, codec, dynamicRange, requestedSampling);
+foreach (var (depth, sampling, alpha, purpose, codec, dynamicRange, requestedSampling) in matrix)
 {
     var source = NativeCore.CreateSourceFormat();
     source.BitDepth = (uint)depth;
@@ -53,8 +56,12 @@ foreach (var requestedSampling in new[] { "auto", "source", "420", "422", "444",
     options.DynamicRange = dynamicRange;
     options.Sampling = requestedSampling switch
     {
-        "source" => Sampling.Source, "420" => Sampling.Yuv420, "422" => Sampling.Yuv422,
-        "444" => Sampling.Yuv444, "gray" => Sampling.Gray, _ => Sampling.Auto
+        "source" => Sampling.Source,
+        "420" => Sampling.Yuv420,
+        "422" => Sampling.Yuv422,
+        "444" => Sampling.Yuv444,
+        "gray" => Sampling.Gray,
+        _ => Sampling.Auto
     };
     var name = sampling.Name == "rgb" ? $"gbrp{depth}le" : sampling.Name == "gray" ? $"gray{depth}le" : $"yuv{sampling.Name}p{depth}le";
     var pixel = new JsonObject
@@ -62,13 +69,25 @@ foreach (var requestedSampling in new[] { "auto", "source", "420", "422", "444",
         ["nb_components"] = sampling.Name == "gray" ? 1 : 3,
         ["flags"] = new JsonObject { ["rgb"] = sampling.Name == "rgb", ["alpha"] = alpha }
     };
-    var media = new MediaInfo("synthetic.mkv", new JsonObject { ["pix_fmt"] = name,
-        ["bits_per_raw_sample"] = depth, ["color_range"] = "pc" }, [], [], "sdr", null, "fixture", 1, [], pixel);
+    var media = new MediaInfo("synthetic.mkv", new JsonObject
+    {
+        ["pix_fmt"] = name,
+        ["bits_per_raw_sample"] = depth,
+        ["color_range"] = "pc"
+    }, [], [], "sdr", null, "fixture", 1, [], pixel);
     var oldOptions = new EncodeOptions(Purpose: purpose == Purpose.Share ? "share" : "archive",
-        Codec: codec switch { Codec.Avc => "avc", Codec.Av1 => "av1", _ => "hevc" },
+        Codec: codec switch
+        {
+            Codec.Avc => "avc",
+            Codec.Av1 => "av1",
+            _ => "hevc"
+        },
         Output: dynamicRange == DynamicRange.Hdr ? "hdr" : "sdr", Sampling: requestedSampling);
     EncodeOptions? expected = null;
-    try { expected = baseline.ResolveFormat(oldOptions, media); }
+    try
+    {
+        expected = baseline.ResolveFormat(oldOptions, media);
+    }
     catch (InvalidDataException) { }
     var status = NativeCore.ResolveFormat(in source, in options, out var actual, out var diagnostic);
     string detail = $"{depth}/{sampling.Name}/alpha={alpha}/{purpose}/{codec}/{dynamicRange}/{requestedSampling}";
@@ -77,7 +96,10 @@ foreach (var requestedSampling in new[] { "auto", "source", "420", "422", "444",
     {
         var expectedSampling = expected.Sampling switch
         {
-            "420" => Sampling.Yuv420, "422" => Sampling.Yuv422, "444" => Sampling.Yuv444, _ => Sampling.Gray
+            "420" => Sampling.Yuv420,
+            "422" => Sampling.Yuv422,
+            "444" => Sampling.Yuv444,
+            _ => Sampling.Gray
         };
         Check(actual.BitDepth == expected.Depth && actual.Sampling == expectedSampling
             && actual.ColorRange == (expected.ColorRange == "full" ? ColorRange.Full : ColorRange.Limited),
