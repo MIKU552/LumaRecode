@@ -88,3 +88,46 @@ require(copied == LR_OK && required == UInt64(outputBytes.count)
         && String(decoding: outputBytes, as: UTF8.self) == "\(word.count):Swift 日本語 🌈\n",
         "Swift process output bytes differ")
 print("Swift native process ownership and UTF-8 invocation checks passed.")
+
+require(MemoryLayout<lr_output_options>.size == 48 && MemoryLayout<lr_output_snapshot>.size == 32,
+        "Swift output layout differs")
+let temporaryParent = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
+let outputRoot = temporaryParent.appendingPathComponent("LumaRecode-swift-output-" + UUID().uuidString)
+try FileManager.default.createDirectory(at: outputRoot, withIntermediateDirectories: false)
+defer { try? FileManager.default.removeItem(at: outputRoot) }
+let sourceURL = outputRoot.appendingPathComponent("原片.dat")
+let destinationURL = outputRoot.appendingPathComponent("日本語.mkv")
+try Data("source".utf8).write(to: sourceURL)
+let sourcePath = Array(sourceURL.path.utf8), destinationPath = Array(destinationURL.path.utf8)
+var outputOptions = lr_output_options()
+require(lr_output_options_init(&outputOptions, 48) == LR_OK, "Output options init")
+var transaction: OpaquePointer?
+let outputCreated = sourcePath.withUnsafeBufferPointer { first in
+    destinationPath.withUnsafeBufferPointer { second in
+        outputOptions.source = lr_utf8_view(data: first.baseAddress, size: UInt64(first.count))
+        outputOptions.destination = lr_utf8_view(data: second.baseAddress, size: UInt64(second.count))
+        return lr_output_create(&outputOptions, &transaction, &error)
+    }
+}
+require(outputCreated == LR_OK, "Swift output transaction creation")
+defer { lr_output_release(transaction) }
+var pathSize: UInt64 = 0
+require(lr_output_copy_path(transaction, LR_OUTPUT_PATH_STAGING, nil, 0, &pathSize) == LR_BUFFER_TOO_SMALL,
+        "Swift output path size")
+var pathBytes = [UInt8](repeating: 0, count: Int(pathSize))
+require(pathBytes.withUnsafeMutableBufferPointer { bytes in
+    lr_output_copy_path(transaction, LR_OUTPUT_PATH_STAGING, bytes.baseAddress, UInt64(bytes.count), &pathSize)
+} == LR_OK, "Swift output path copy")
+let stagingURL = URL(fileURLWithPath: String(decoding: pathBytes, as: UTF8.self))
+try Data("verified output".utf8).write(to: stagingURL)
+require(lr_output_seal(transaction, 1, &error) == LR_OK, "Swift output seal")
+require(lr_output_commit(transaction, &error) == LR_OK, "Swift output publication")
+var outputState = lr_output_snapshot()
+require(lr_output_snapshot_init(&outputState, 32) == LR_OK, "Output snapshot init")
+require(lr_output_get_snapshot(transaction, &outputState) == LR_OK
+        && outputState.state == LR_OUTPUT_COMMITTED && outputState.flags == 0 && outputState.output_size == 15,
+        "Swift committed output state")
+let publishedData = try Data(contentsOf: destinationURL), retainedSource = try Data(contentsOf: sourceURL)
+require(publishedData == Data("verified output".utf8) && retainedSource == Data("source".utf8),
+        "Swift publication changed bytes")
+print("Swift file transaction ownership and publication checks passed.")

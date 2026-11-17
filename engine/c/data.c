@@ -1,5 +1,6 @@
 #include "lumarecode/core.h"
 #include "lumarecode/hdr10plus.h"
+#include "lumarecode/output.h"
 #include "lumarecode/process.h"
 
 #include <string.h>
@@ -35,9 +36,37 @@ const char *lr_status_name(lr_status status)
         return "not_found";
     case LR_RESOURCE_LIMIT:
         return "resource_limit";
+    case LR_ALREADY_EXISTS:
+        return "already_exists";
+    case LR_SOURCE_CHANGED:
+        return "source_changed";
     default:
         return "unknown";
     }
+}
+
+lr_status lr_output_options_init(lr_output_options *value, uint64_t capacity)
+{
+    if (value == NULL)
+        return LR_INVALID_ARGUMENT;
+    if (capacity < sizeof(*value))
+        return LR_BUFFER_TOO_SMALL;
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    return LR_OK;
+}
+
+lr_status lr_output_snapshot_init(lr_output_snapshot *value, uint64_t capacity)
+{
+    if (value == NULL)
+        return LR_INVALID_ARGUMENT;
+    if (capacity < sizeof(*value))
+        return LR_BUFFER_TOO_SMALL;
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    return LR_OK;
 }
 
 lr_status lr_process_options_init(lr_process_options *value, uint64_t capacity)

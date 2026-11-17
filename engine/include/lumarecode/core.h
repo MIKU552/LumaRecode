@@ -37,6 +37,16 @@ typedef int32_t lr_status;
 #define LR_TIMED_OUT 8
 #define LR_NOT_FOUND 9
 #define LR_RESOURCE_LIMIT 10
+#define LR_ALREADY_EXISTS 11
+#define LR_SOURCE_CHANGED 12
+
+typedef struct lr_utf8_view
+{
+    const uint8_t *data;
+    uint64_t size;
+} lr_utf8_view;
+
+LR_API lr_status lr_utf8_validate(const uint8_t *data, uint64_t size);
 
 typedef uint32_t lr_sampling;
 #define LR_SAMPLING_AUTO 0U

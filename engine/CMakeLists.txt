@@ -53,12 +53,13 @@ set_target_properties(luma_rust PROPERTIES IMPORTED_LOCATION "${luma_rust_librar
 add_dependencies(luma_rust luma_rust_build)
 
 add_subdirectory(c)
-add_library(luma_core SHARED cpp/output_policy.cpp cpp/hdr10plus.cpp cpp/process.cpp $<TARGET_OBJECTS:luma_c>)
+add_library(luma_core SHARED cpp/output_policy.cpp cpp/hdr10plus.cpp cpp/process.cpp
+    cpp/output_transaction.cpp $<TARGET_OBJECTS:luma_c>)
 if(WIN32)
-    target_sources(luma_core PRIVATE cpp/process_windows.cpp)
+    target_sources(luma_core PRIVATE cpp/process_windows.cpp cpp/output_windows.cpp)
     target_compile_definitions(luma_core PRIVATE _WIN32_WINNT=0x0A00)
 else()
-    target_sources(luma_core PRIVATE cpp/process_posix.cpp)
+    target_sources(luma_core PRIVATE cpp/process_posix.cpp cpp/output_posix.cpp)
 endif()
 target_include_directories(luma_core PUBLIC include)
 target_compile_definitions(luma_core PRIVATE LUMA_CORE_BUILD)
@@ -68,7 +69,7 @@ set_target_properties(luma_core PROPERTIES OUTPUT_NAME LumaRecodeCore
 if(WIN32)
     # Match rustc --print=native-static-libs, including synchronization APIs that
     # newer local SDKs can also resolve indirectly through their umbrella libs.
-    target_link_libraries(luma_core PRIVATE userenv ntdll ws2_32 dbghelp synchronization)
+    target_link_libraries(luma_core PRIVATE userenv ntdll ws2_32 dbghelp synchronization bcrypt advapi32)
 elseif(APPLE)
     find_library(LUMA_PROC_LIBRARY proc REQUIRED)
     target_link_libraries(luma_core PRIVATE "${LUMA_PROC_LIBRARY}")
@@ -102,14 +103,19 @@ if(BUILD_TESTING)
     add_test(NAME process_failure_contracts COMMAND luma_lifecycle_checks)
     add_executable(luma_process_helper tests/process_helper.cpp)
     add_executable(luma_process_checks tests/process_checks.cpp)
+    add_executable(luma_output_checks tests/output_checks.cpp)
     if(MSVC)
         target_compile_options(luma_process_helper PRIVATE /utf-8)
         target_compile_options(luma_process_checks PRIVATE /utf-8)
+        target_compile_options(luma_output_checks PRIVATE /utf-8)
         target_compile_definitions(luma_process_helper PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
     endif()
     target_link_libraries(luma_process_checks PRIVATE luma_core Threads::Threads)
     add_test(NAME process_contracts COMMAND luma_process_checks $<TARGET_FILE:luma_process_helper>)
     set_tests_properties(process_contracts PROPERTIES TIMEOUT 45)
+    target_link_libraries(luma_output_checks PRIVATE luma_core Threads::Threads)
+    add_test(NAME output_contracts COMMAND luma_output_checks)
+    set_tests_properties(output_contracts PROPERTIES TIMEOUT 45)
     add_executable(luma_c_example examples/format.c)
     target_link_libraries(luma_c_example PRIVATE luma_core)
     add_test(NAME c_example COMMAND luma_c_example)
@@ -133,7 +139,7 @@ if(BUILD_TESTING)
                 -lLumaRecodeCore -Xlinker -rpath -Xlinker @loader_path
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/swift_checks.swift" -o "${luma_swift_check}"
             DEPENDS luma_core tests/swift_checks.swift include/lumarecode/core.h
-                include/lumarecode/hdr10plus.h include/lumarecode/process.h include/module.modulemap
+                include/lumarecode/hdr10plus.h include/lumarecode/process.h include/lumarecode/output.h include/module.modulemap
             VERBATIM)
         add_custom_target(luma_swift_check_build ALL DEPENDS "${luma_swift_check}")
         add_test(NAME swift_contracts COMMAND "${luma_swift_check}" $<TARGET_FILE:luma_process_helper>)

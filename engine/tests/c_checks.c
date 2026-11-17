@@ -1,5 +1,6 @@
 #include "lumarecode/core.h"
 #include "lumarecode/hdr10plus.h"
+#include "lumarecode/output.h"
 #include "lumarecode/process.h"
 
 #include <stdio.h>
@@ -38,6 +39,23 @@ static void check_initialization(void)
     CHECK(sizeof(metadata) == 236);
     CHECK(strcmp(lr_status_name(LR_CANCELLED), "cancelled") == 0);
     CHECK(strcmp(lr_status_name(-1), "unknown") == 0);
+    {
+        lr_output_options output;
+        lr_output_snapshot state;
+        unsigned char saved[sizeof(output)];
+        memset(&output, 0xa5, sizeof(output));
+        memcpy(saved, &output, sizeof(output));
+        CHECK(sizeof(output) == 48 && sizeof(state) == 32);
+        CHECK(lr_output_options_init(&output, sizeof(output) - 1) == LR_BUFFER_TOO_SMALL);
+        CHECK(memcmp(saved, &output, sizeof(output)) == 0);
+        CHECK(lr_output_options_init(&output, sizeof(output)) == LR_OK);
+        CHECK(output.struct_size == sizeof(output) && output.abi_version == LR_ABI_VERSION);
+        CHECK(output.overwrite == 0 && output.reserved == 0 && output.source.data == NULL);
+        CHECK(lr_output_snapshot_init(&state, sizeof(state)) == LR_OK);
+        CHECK(state.state == LR_OUTPUT_CREATED && state.flags == 0);
+        CHECK(strcmp(lr_status_name(LR_ALREADY_EXISTS), "already_exists") == 0);
+        CHECK(strcmp(lr_status_name(LR_SOURCE_CHANGED), "source_changed") == 0);
+    }
 }
 
 static void check_planes(void)

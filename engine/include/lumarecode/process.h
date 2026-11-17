@@ -10,12 +10,6 @@ extern "C"
 
 /* Views are borrowed only by create(). Lengths exclude a terminator. Strings
  * must be valid UTF-8 without embedded NUL; an empty directory inherits cwd. */
-typedef struct lr_utf8_view
-{
-    const uint8_t *data;
-    uint64_t size;
-} lr_utf8_view;
-
 #define LR_CAPTURE_FULL 0U
 #define LR_CAPTURE_TAIL 1U
 #define LR_CAPTURE_DISCARD 2U
@@ -65,7 +59,6 @@ typedef struct lr_process lr_process;
 
 LR_API lr_status lr_process_options_init(lr_process_options *value, uint64_t capacity);
 LR_API lr_status lr_process_snapshot_init(lr_process_snapshot *value, uint64_t capacity);
-LR_API lr_status lr_utf8_validate(const uint8_t *data, uint64_t size);
 
 /* create() copies all strings and arguments before returning. It launches
  * nothing. The executable and nonempty working directory must be absolute.
