@@ -54,7 +54,7 @@ Windows 使用 C#、.NET 11、WinUI 3，保留单 EXE 的 GUI / CLI。macOS 面�
 | P8 发布准备 | 四语文档、许可、免费签名和分发包 | 整体验收与隐私检查完成 |
 | P9 合并发布 | 保留提交历史合并、最终标签和 Release | 产物、来源和标签一致 |
 
-P1 原型已完成三平台编译、C# / Swift 调用、进程生命周期和资源契约验证。P2 已加入文件身份检查与输出事务；探测、任务规划和时间轴继续迁移。原有输出规则与 HDR10+ 的 6,422 项差异检查继续执行。现有 Windows 应用使用 `Core/`；新核心通过独立检查和软件媒体任务验证。
+P1 原型已完成三平台编译、C# / Swift 调用、进程生命周期和资源契约验证。P2 已加入文件事务、源色彩分类和相机元数据解析；探测编排、任务规划和时间轴继续迁移。原有输出规则与 HDR10+ 的 6,422 项差异检查继续执行。现有 Windows 应用使用 `Core/`；新核心通过独立检查和软件媒体任务验证。
 
 ### 构建入口
 
@@ -109,6 +109,16 @@ Windows 在创建进程时将其加入 Job Object，仅继承标准输入与输�
 Windows 持有原片的只读共享句柄，阻止写入和删除；临时目录使用受保护的访问控制。macOS 通过文件描述符与目录相对操作管理文件，并在封存和发布前核对原片的大小、修改时间及状态变化时间。封存后的临时输出同样接受修改检查。
 
 `cleanup` 仅移除已知的临时输出和空目录。额外文件、目录身份变化或未确认的进程回收会保留工作目录。发布成功后，清理问题通过 `WORKSPACE_EXISTS` 标记报告，输出状态保持成功。`release` 仅关闭句柄；`.NET` 的 `NativeOutputTransaction.Dispose` 遵循相同约定。
+
+### 源色彩与相机元数据
+
+[`media.h`](../engine/include/lumarecode/media.h) 定义 SDR、HLG、PQ、Log 和 RAW 分类、相机曲线及证据编号。C++ 按相机标签、DJI 数据和传递曲线判断输入；Dolby Vision 配置信息优先。Apple Log 由专用曲线标签确认。通用 Log 标记保留待确认的曲线，由宿主提供手动选择。
+
+标签在调用期间借用，按 ASCII 大小写比较。等价键采用最后一个值，并保留首次出现的优先级。每次调用最多 1,024 个标签、每个视图 64 KiB、文本总量 1 MiB；证据返回原始标签索引，界面负责本地化。
+
+C 模块以两遍扫描解码 ffprobe 十六进制转储，先检查输入和容量，再写入输出；偏移与 ASCII 列会被跳过。Rust 模块位于 `engine/rust/metadata/`，以借用切片读取 DJI protobuf 字段及 AVC SPS，支持 avcC 与 Annex B。两种解析器均无堆分配，单条二进制记录上限为 1 MiB。DJI 模式按已识别的 schema 解释，重复字段保留第一个值。
+
+分类与旧 C# 规则进行组合对照；解析检查覆盖截断、变异、重复字段和失败后输出保持原值。软件媒体任务另外生成 SDR / HLG / PQ 文件及单色 H.264，通过实际 ffprobe 标签和 SPS 验证结果。
 
 ### 验证与分发
 
@@ -178,7 +188,7 @@ Keep one public C ABI. Internal boundaries can use validated C interfaces or typ
 | P8 Release preparation | Four-language docs, licenses, free signing and distribution | Full acceptance and privacy checks complete |
 | P9 Merge and release | History-preserving merge, final tag and Release | Artifacts, provenance and tag agree |
 
-The P1 prototype passes three-platform builds, C#/Swift calls, process lifecycle and resource contracts. P2 adds file identity checks and output transactions; probing, task planning and timelines remain in migration. The existing 6,422 output-policy and HDR10+ differential checks continue to run. The Windows application uses `Core/`; independent contracts and software media tasks validate the new engine.
+The P1 prototype passes three-platform builds, C#/Swift calls, process lifecycle and resource contracts. P2 adds file transactions, source color classification and camera metadata parsing; probe orchestration, task planning and timelines remain in migration. The existing 6,422 output-policy and HDR10+ differential checks continue to run. The Windows application uses `Core/`; independent contracts and software media tasks validate the new engine.
 
 ### Build entry points
 
@@ -233,6 +243,16 @@ The call sequence is `create → encode → verify media → seal → commit`. `
 Windows holds the source with read-only sharing to block writes and deletion, and gives the workspace protected access control. macOS uses file descriptors and directory-relative operations, checking source size, modification time and status-change time before sealing and publication. Sealed staging output is also checked for modification.
 
 `cleanup` removes only the known staging output and an empty directory. Extra files, changed directory identities or unconfirmed process cleanup retain the workspace. After successful publication, cleanup problems set `WORKSPACE_EXISTS` while the output remains successful. `release` closes handles only; `.NET` `NativeOutputTransaction.Dispose` follows the same contract.
+
+### Source color and camera metadata
+
+[`media.h`](../engine/include/lumarecode/media.h) defines SDR, HLG, PQ, Log and RAW classification, camera curves and evidence codes. C++ resolves camera tags, DJI data and transfer functions, with Dolby Vision configuration taking precedence. Dedicated curve tags confirm Apple Log. Generic Log markers retain an unconfirmed curve for the host's manual selection.
+
+Tags are borrowed for the call and compared using ASCII case folding. Equivalent keys use the last value while retaining their original precedence. Each call allows 1,024 tags, 64 KiB per view and one MiB of text in total. Evidence refers to the original tag index; hosts supply localized labels.
+
+The C module decodes ffprobe hex dumps in two passes, checking data and capacity before writing and skipping offsets and ASCII columns. Rust modules in `engine/rust/metadata/` read DJI protobuf fields and AVC SPS from borrowed slices, supporting avcC and Annex B. Both parsers avoid heap allocation and limit binary records to one MiB. DJI modes are interpreted within recognized schemas; duplicate fields retain their first occurrence.
+
+Classification combinations are compared with the C# rules. Parser checks cover truncation, mutation, duplicate fields and unchanged output on failure. Software media tasks also generate SDR/HLG/PQ files and monochrome H.264, validating actual ffprobe tags and SPS data.
 
 ### Verification and distribution
 

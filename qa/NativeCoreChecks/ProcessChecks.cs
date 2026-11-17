@@ -187,6 +187,7 @@ internal static class ProcessChecks
                 check((await File.ReadAllBytesAsync(output)).AsSpan().SequenceEqual(publishedBytes),
                     "Interrupted media task changed the existing destination.");
             }
+            cleanupConfirmed &= await MediaChecks.SoftwareSamplesAsync(check, ffmpeg, ffprobe, root);
             Console.WriteLine("FFmpeg software encode, verification, transactional publication and frame extraction passed.");
         }
         finally
