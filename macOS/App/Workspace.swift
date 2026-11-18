@@ -47,21 +47,25 @@ final class Workspace {
         lastFrame = ""
         options = EncodingOptions()
         run(.inspect) { control in
-            try Self.engine().inspect(url, control: control)
+            try Self.engine(requireEncoder: false).inspect(url, control: control)
         } finished: { media in
-            self.media = media
-            let asset = AVURLAsset(url: media.url)
-            Task { @MainActor [weak self] in
-                guard (try? await asset.load(.isPlayable)) == true, self?.media?.url == media.url else { return }
-                self?.player = AVPlayer(playerItem: AVPlayerItem(asset: asset))
-            }
+            self.show(media)
+        }
+    }
+
+    private func show(_ media: MediaSource) {
+        self.media = media
+        let asset = AVURLAsset(url: media.url)
+        Task { @MainActor [weak self] in
+            guard (try? await asset.load(.isPlayable)) == true, self?.media?.url == media.url else { return }
+            self?.player = AVPlayer(playerItem: AVPlayerItem(asset: asset))
         }
     }
 
     func indexFrames() {
         guard !busy, let media, frames == nil else { return }
         run(.index) { control in
-            try Self.engine().loadFrames(media, control: control)
+            try Self.engine(requireEncoder: false).loadFrames(media, control: control)
         } finished: { frames in
             self.frames = frames
             self.lastFrame = String(frames.count)
@@ -141,9 +145,10 @@ final class Workspace {
         }
     }
 
-    private nonisolated static func engine() throws -> NativeEngine {
+    private nonisolated static func engine(requireEncoder: Bool = true) throws -> NativeEngine {
         let defaults = UserDefaults.standard
-        let tools = try MediaTools.discover(ffmpeg: defaults.string(forKey: "ffmpeg"), ffprobe: defaults.string(forKey: "ffprobe"))
+        let tools = try MediaTools.discover(ffmpeg: defaults.string(forKey: "ffmpeg"), ffprobe: defaults.string(forKey: "ffprobe"),
+                                            requireEncoder: requireEncoder)
         return try NativeEngine(tools: tools, assets: NativeEngine.bundledAssets)
     }
 

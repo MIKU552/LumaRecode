@@ -43,6 +43,14 @@ MediaProbe → OutputPolicy / Transcoder.Plan → 要求检查 → FFmpeg
 
 ARM64 省去 x86 专用 RAW 解码参数。Ultra HDR 的 P/Invoke 接口在各架构保持一致，发布过程选择对应的原生 DLL。
 
+### macOS 宿主
+
+`macOS/LumaRecode.xcodeproj` 构建 Apple Silicon 应用。SwiftUI 和 AppKit 提供工作区、系统文件面板与设置，AVKit 播放系统支持的素材。Swift 经 C ABI 调用源探测、帧索引、编码规划、进程执行与输出事务。指定帧范围时，导出后核验帧数再发布文件。
+
+打开 Xcode 的 LumaRecode scheme 可直接构建应用。终端执行 `sh tools/build-macos.sh Release --dmg` 可生成 ad-hoc 签名的应用和开发 DMG。工具链使用 Xcode 27.2、Rustup、CMake 和 Ninja。运行时从设置、环境或 Homebrew 查找 FFmpeg 和 ffprobe。
+
+应用的 `Contents/MacOS/LumaRecode` 同时提供 `probe`、`frames` 和 `convert`。软件归档支持 SDR、HLG、PQ 和已选曲线的相机 Log。HDR10+ 和 Dolby Vision 素材可转换为标准 HDR 或 SDR。编码能力取决于外部 FFmpeg。
+
 ### Windows 硬件编码
 
 快速分享支持 Intel QSV、NVIDIA NVENC、AMD AMF 和 Windows Media Foundation。应用使用当前配置的 FFmpeg，以 320 × 192 合成视频逐项验证编码和 MP4 封装。界面只提供通过试跑且符合输出要求的组合。缺少合适的硬件编码器时默认使用软件归档。`doctor` 显示探测结果。
@@ -122,6 +130,14 @@ Encoding writes into a private job directory beside the destination. Verificatio
 Dynamic HDR preservation, standard color conversion and RAW development each select their processing path through their own policies. `Hdr10PlusBitstream` reads HEVC SEI from compressed packets first and uses decoded-frame metadata for ambiguous timelines. `RawDevelopment` writes per-frame camera calibration into FFmpeg commands.
 
 ARM64 omits the x86-specific RAW decoder workaround. Ultra HDR uses the same P/Invoke interface on each architecture. Publishing selects the matching native DLL.
+
+### macOS host
+
+`macOS/LumaRecode.xcodeproj` builds the Apple Silicon application. SwiftUI and AppKit provide the workspace, system file panels, and settings. AVKit plays footage supported by macOS. Swift calls the C ABI for inspection, frame indexing, planning, process execution, and output transactions. Trimmed exports are checked for the expected frame count before publication.
+
+Open the LumaRecode scheme in Xcode to build the app. From the shell, run `sh tools/build-macos.sh Release --dmg` to make the ad-hoc-signed app and development DMG. The toolchain uses Xcode 27.2, Rustup, CMake, and Ninja. At runtime, the app finds FFmpeg and ffprobe through settings, the environment, or Homebrew.
+
+The app's `Contents/MacOS/LumaRecode` executable also provides `probe`, `frames`, and `convert`. Software archive supports SDR, HLG, PQ, and camera Log with a selected curve. HDR10+ and Dolby Vision footage can be converted to standard HDR or SDR. Encoding capabilities depend on the external FFmpeg build.
 
 ### Windows hardware encoding
 

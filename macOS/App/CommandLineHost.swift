@@ -52,7 +52,7 @@ enum CommandLineHost {
                 print("{\"frame_count\":\(index.count)}")
             default:
                 guard let output = parsed.output else { throw EngineError(message: "Missing output path.") }
-                let overwrite = try confirmOverwrite(output, allowed: parsed.flags.contains("--overwrite"))
+                let overwrite = try confirmOverwrite(output, allowed: parsed.flags.contains("--overwrite"), control: control)
                 try engine.convert(source, to: output, options: parsed.encoding, overwrite: overwrite,
                                    selection: parsed.selection, control: control)
                 print(output.path)
@@ -66,13 +66,23 @@ enum CommandLineHost {
         }
     }
 
-    private static func confirmOverwrite(_ url: URL, allowed: Bool) throws -> Bool {
+    private static func confirmOverwrite(_ url: URL, allowed: Bool, control: JobControl) throws -> Bool {
         guard FileManager.default.fileExists(atPath: url.path) else { return false }
         if allowed { return true }
         guard isatty(STDIN_FILENO) != 0 else {
             throw EngineError(message: "Output exists. Use --overwrite to replace it.")
         }
         diagnostic("Replace \(url.lastPathComponent)? [y/N]")
+        // An interactive prompt is cancellable even while the terminal has
+        // not delivered a complete input line.
+        var input = pollfd(fd: STDIN_FILENO, events: Int16(POLLIN), revents: 0)
+        while true {
+            try control.check()
+            let ready = poll(&input, 1, 100)
+            if ready > 0 { break }
+            if ready < 0 && errno != EINTR { throw EngineError(message: "Cannot read overwrite confirmation.") }
+        }
+        try control.check()
         guard let answer = readLine()?.lowercased(), ["y", "yes"].contains(answer) else {
             throw EngineError(message: "Existing output kept.")
         }
@@ -98,8 +108,8 @@ enum CommandLineHost {
             }
             command = words[0]
             input = URL(fileURLWithPath: words[1]).standardizedFileURL
-            let common: Set<String> = ["--ffmpeg", "--ffprobe"]
-            let conversion: Set<String> = ["-o", "--codec", "--range", "--input-kind", "--profile", "--start-frame", "--end-frame"]
+            let common: Set<String> = ["--ffprobe"]
+            let conversion: Set<String> = ["-o", "--ffmpeg", "--codec", "--range", "--input-kind", "--profile", "--start-frame", "--end-frame"]
             var remaining = words.dropFirst(2).makeIterator()
             while let word = remaining.next() {
                 if command == "convert", ["--standard-hdr", "--overwrite"].contains(word), flags.insert(word).inserted {
