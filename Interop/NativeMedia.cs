@@ -88,7 +88,9 @@ public static partial class NativeMedia
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(input.Tags);
         if (input.Tags.Count > 1024)
+        {
             throw new ArgumentOutOfRangeException(nameof(input), "Too many camera tags.");
+        }
         // Snapshot the caller's collection before pinning borrowed views. Native
         // code consumes them synchronously and retains no managed pointers.
         var tags = input.Tags.ToArray();
@@ -100,7 +102,9 @@ public static partial class NativeMedia
             ArgumentNullException.ThrowIfNull(text);
             int count = Utf8.GetByteCount(text);
             if (count > 65536 || (total += count) > 1048576)
+            {
                 throw new ArgumentOutOfRangeException(nameof(input), "Camera tags exceed the inspection budget.");
+            }
         }
         var pins = new List<GCHandle>(texts.Length);
         var views = new Utf8View[texts.Length];
@@ -119,11 +123,14 @@ public static partial class NativeMedia
             }
             var pairs = new MediaTag[tags.Length];
             for (int index = 0; index < pairs.Length; ++index)
+            {
                 pairs[index] = new()
                 {
                     Key = views[index * 2 + 3],
                     Value = views[index * 2 + 4]
                 };
+            }
+
             ClassifyInput value = default;
             Classification result = default;
             NativeCore.Check(InitializeInput(ref value, (ulong)sizeof(ClassifyInput)));
@@ -149,7 +156,9 @@ public static partial class NativeMedia
                 value.TagCount = (uint)pairs.Length;
                 var status = ClassifyNative(in value, ref result, ref error);
                 if (status != NativeStatus.Ok)
+                {
                     throw new InvalidDataException(NativeCore.ReadDiagnostic(in error));
+                }
             }
             return new(result.Kind, result.Profile, result.Evidence,
                 result.TagIndex == uint.MaxValue ? null : checked((int)result.TagIndex));
@@ -157,7 +166,9 @@ public static partial class NativeMedia
         finally
         {
             foreach (var pin in pins)
+            {
                 pin.Free();
+            }
         }
     }
 
@@ -166,7 +177,10 @@ public static partial class NativeMedia
     {
         ArgumentNullException.ThrowIfNull(dump);
         if (Utf8.GetByteCount(dump) > 16 * 1024 * 1024)
+        {
             throw new ArgumentOutOfRangeException(nameof(dump));
+        }
+
         var bytes = Utf8.GetBytes(dump);
         fixed (byte* source = bytes)
         {
@@ -177,13 +191,18 @@ public static partial class NativeMedia
             };
             var status = DecodeHexNative(view, null, 0, out var required);
             if (status is not (NativeStatus.Ok or NativeStatus.BufferTooSmall))
+            {
                 throw new InvalidDataException($"Invalid ffprobe hexadecimal data ({status}).");
+            }
+
             var result = new byte[checked((int)required)];
             fixed (byte* destination = result)
             {
                 status = DecodeHexNative(view, destination, (ulong)result.Length, out var copied);
                 if (status != NativeStatus.Ok || copied != required)
+                {
                     throw new InvalidDataException($"Invalid ffprobe hexadecimal data ({status}).");
+                }
             }
             return result;
         }

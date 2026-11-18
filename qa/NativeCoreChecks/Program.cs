@@ -3,6 +3,8 @@ using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using LumaRecode.Native;
 using VideoConverter.Core;
+using OutputPolicy = LumaRecode.Tests.Reference.ReferenceOutputPolicy;
+using Transcoder = LumaRecode.Tests.Reference.ReferencePlanner;
 
 if (args.Length != 1 || !File.Exists(args[0]))
 {
@@ -24,7 +26,7 @@ void Check(bool value, string detail)
 }
 Check(NativeCore.GetAbiVersion() == NativeCore.AbiVersion, "ABI version mismatch");
 Check(Unsafe.SizeOf<SourceFormat>() == 28 && Unsafe.SizeOf<OutputOptions>() == 32
-    && Unsafe.SizeOf<ResolvedFormat>() == 24 && Unsafe.SizeOf<LumaRecode.Native.Hdr10PlusMetadata>() == 236,
+    && Unsafe.SizeOf<ResolvedFormat>() == 24 && Unsafe.SizeOf<FormatChoices>() == 24 && Unsafe.SizeOf<LumaRecode.Native.Hdr10PlusMetadata>() == 236,
     "Managed/native layout mismatch");
 var baseline = new Transcoder(Path.Combine(Directory.GetCurrentDirectory(), "Assets"));
 var samplingCases = new (string Name, Sampling Value)[]
@@ -83,6 +85,22 @@ foreach (var (depth, sampling, alpha, purpose, codec, dynamicRange, requestedSam
             _ => "hevc"
         },
         Output: dynamicRange == DynamicRange.Hdr ? "hdr" : "sdr", Sampling: requestedSampling);
+    if (requestedSampling == "auto")
+    {
+        var choicesStatus = NativeCore.GetFormatChoices(source, purpose, codec, dynamicRange, out var choices, out var choicesDiagnostic);
+        var expectedDepths = OutputPolicy.DepthChoices(media, oldOptions.Purpose, oldOptions.Codec, oldOptions.Output);
+        uint depthMask = expectedDepths.Aggregate(0U, (mask, value) => mask | 1U << value);
+        uint samplingMask = OutputPolicy.SamplingChoices(media).Aggregate(0U, (mask, value) => mask | 1U << (int)(value switch
+        {
+            "420" => Sampling.Yuv420,
+            "422" => Sampling.Yuv422,
+            "444" => Sampling.Yuv444,
+            _ => Sampling.Gray
+        }));
+        Check(choicesStatus == NativeStatus.Ok && choices.DepthMask == depthMask && choices.SamplingMask == samplingMask
+            && choices.DefaultDepth == (uint)(OutputPolicy.DefaultDepth(media, oldOptions.Purpose, oldOptions.Codec, oldOptions.Output) ?? 0),
+            $"UI format choices differ: {depth}/{sampling.Name}/{purpose}/{codec}/{dynamicRange}: {choicesDiagnostic}");
+    }
     EncodeOptions? expected = null;
     try
     {
@@ -109,6 +127,7 @@ foreach (var (depth, sampling, alpha, purpose, codec, dynamicRange, requestedSam
 await HdrParityChecks.RunAsync(Check);
 Console.WriteLine($"Managed/native policy and HDR parity: {cases} checks, {failures} failures.");
 await ProcessChecks.RunAsync(Check, library);
+await HostIntegrationChecks.StreamingAsync(Check, library);
 OutputChecks.Run(Check);
 MediaChecks.Run(Check);
 await ProbeChecks.RunAsync(Check, library);

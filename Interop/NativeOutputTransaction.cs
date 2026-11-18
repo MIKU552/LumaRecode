@@ -75,9 +75,14 @@ public sealed partial class NativeOutputTransaction : IDisposable
             catch
             {
                 if (owned is null)
+                {
                     Release(pointer);
+                }
                 else
+                {
                     owned.Dispose();
+                }
+
                 throw;
             }
         }
@@ -147,13 +152,18 @@ public sealed partial class NativeOutputTransaction : IDisposable
     {
         var status = CopyPathNative(handle, kind, null, 0, out var required);
         if (status != NativeStatus.BufferTooSmall)
+        {
             NativeCore.Check(status);
+        }
+
         var bytes = new byte[checked((int)required)];
         fixed (byte* destination = bytes)
         {
             NativeCore.Check(CopyPathNative(handle, kind, destination, (ulong)bytes.Length, out var copied));
             if (copied != (ulong)bytes.Length)
+            {
                 throw new InvalidOperationException("Native path length changed.");
+            }
         }
         return Utf8.GetString(bytes);
     }

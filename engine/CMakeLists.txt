@@ -73,7 +73,7 @@ else()
     target_compile_options(luma_json PRIVATE "$<$<NOT:$<CONFIG:Debug>>:-ffile-prefix-map=${PROJECT_SOURCE_DIR}=/_/src>")
 endif()
 add_library(luma_core SHARED cpp/output_policy.cpp cpp/hdr10plus.cpp cpp/process.cpp
-    cpp/output_transaction.cpp cpp/media_classification.cpp cpp/media_model.cpp cpp/probe_json.cpp cpp/probe.cpp cpp/timeline.cpp cpp/plan.cpp cpp/verify.cpp $<TARGET_OBJECTS:luma_c>)
+    cpp/output_transaction.cpp cpp/media_classification.cpp cpp/media_model.cpp cpp/probe_json.cpp cpp/probe.cpp cpp/timeline.cpp cpp/plan.cpp cpp/raw_model.cpp cpp/verify.cpp $<TARGET_OBJECTS:luma_c>)
 if(WIN32)
     target_sources(luma_core PRIVATE cpp/process_windows.cpp cpp/output_windows.cpp)
     target_compile_definitions(luma_core PRIVATE _WIN32_WINNT=0x0A00)

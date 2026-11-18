@@ -203,7 +203,12 @@ internal static class CodeChecks
             {
                 try
                 {
-                    MediaProbe.ProtobufFields(payload);
+                    var status = LumaRecode.Native.NativeMedia.ParseDjiColor(payload, out _, out _);
+                    if (status != LumaRecode.Native.NativeStatus.Ok)
+                    {
+                        throw new InvalidDataException();
+                    }
+
                     Check(false, "truncated protobuf rejection");
                 }
                 catch (InvalidDataException)

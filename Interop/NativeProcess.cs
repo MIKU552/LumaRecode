@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
@@ -8,6 +9,8 @@ public enum NativeCaptureMode : uint
 {
     Full = 0, Tail = 1, Discard = 2
 }
+
+public delegate void NativeOutputReceived(uint stream, ReadOnlySpan<byte> bytes);
 
 /// <summary>One shell-free invocation. Capacities retain bytes; timeout zero permits long jobs.</summary>
 public sealed record NativeProcessOptions(string Executable, IReadOnlyList<string> Arguments,
@@ -40,6 +43,55 @@ public static partial class NativeProcess
         // Do not pass cancellation to Task.Run: a cancelled scheduling token
         // could skip run() and its final native state transition altogether.
         return await Task.Run(() => Execute(handle), CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>Streams borrowed pipe bytes on the worker while retaining bounded capture snapshots.</summary>
+    public static async Task<NativeProcessResult> RunStreamingAsync(NativeProcessOptions options,
+        NativeOutputReceived receive, CancellationToken cancellation = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(receive);
+        using var handle = CreateHandle(options);
+        using var registration = cancellation.UnsafeRegister(static state => Cancel((ProcessHandle)state!), handle);
+        var consumer = new OutputConsumer(receive);
+        var pin = GCHandle.Alloc(consumer);
+        try
+        {
+            return await Task.Run(() =>
+            {
+                var result = Execute(handle, GCHandle.ToIntPtr(pin));
+                // A callback exception is rethrown only after native cleanup.
+                if (result.CleanupConfirmed)
+                {
+                    consumer.Error?.Throw();
+                }
+
+                return result;
+            }, CancellationToken.None).ConfigureAwait(false);
+        }
+        finally { pin.Free(); }
+    }
+
+    private sealed class OutputConsumer(NativeOutputReceived receive)
+    {
+        internal readonly NativeOutputReceived Receive = receive;
+        internal ExceptionDispatchInfo? Error;
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe NativeStatus ReceiveOutput(IntPtr context, uint stream, byte* bytes, ulong size)
+    {
+        var consumer = (OutputConsumer)GCHandle.FromIntPtr(context).Target!;
+        try
+        {
+            consumer.Receive(stream, new ReadOnlySpan<byte>(bytes, checked((int)size)));
+            return NativeStatus.Ok;
+        }
+        catch (Exception error)
+        {
+            consumer.Error ??= ExceptionDispatchInfo.Capture(error);
+            return error is OperationCanceledException ? NativeStatus.Cancelled : NativeStatus.IoError;
+        }
     }
 
     private static unsafe ProcessHandle CreateHandle(NativeProcessOptions options)
@@ -119,10 +171,11 @@ public static partial class NativeProcess
         }
     }
 
-    private static unsafe NativeProcessResult Execute(ProcessHandle handle)
+    private static unsafe NativeProcessResult Execute(ProcessHandle handle, IntPtr consumer = default)
     {
         var error = NativeCore.CreateError();
-        var status = Run(handle, ref error);
+        var status = consumer == IntPtr.Zero ? Run(handle, ref error)
+            : RunStreaming(handle, &ReceiveOutput, consumer, ref error);
         ProcessSnapshot snapshot = default;
         NativeCore.Check(InitializeSnapshot(ref snapshot, (ulong)sizeof(ProcessSnapshot)));
         NativeCore.Check(GetSnapshot(handle, ref snapshot));
@@ -196,6 +249,9 @@ public static partial class NativeProcess
     private static partial NativeStatus Create(in ProcessOptions options, out IntPtr result, ref NativeError error);
     [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_process_run")]
     private static partial NativeStatus Run(ProcessHandle handle, ref NativeError error);
+    [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_process_run_streaming")]
+    private static unsafe partial NativeStatus RunStreaming(ProcessHandle handle,
+        delegate* unmanaged<IntPtr, uint, byte*, ulong, NativeStatus> callback, IntPtr context, ref NativeError error);
     [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_process_cancel")]
     private static partial NativeStatus Cancel(ProcessHandle handle);
     [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_process_get_snapshot")]

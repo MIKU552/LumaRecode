@@ -40,8 +40,8 @@ LR_API lr_status lr_plan_options_init(lr_plan_options *value, uint64_t capacity)
  * inspect devices, start processes, access files or create output directories.
  * Paths are absolute UTF-8. Limits: media 64 MiB, each preset 1 MiB, choices 64 KiB,
  * each path 500,000 bytes. A 128 MiB JSON allocation budget is shared per call.
- * RAW calibration/development is a separate pipeline; RAW returns UNSUPPORTED
- * until that pipeline supplies a supported planning contract. */
+ * Calibrated RAW snapshots supply _raw matrix/crop and decoder capability flags;
+ * the host prepares the requested per-frame calibration sidecar. */
 LR_API lr_status lr_plan_create(const lr_plan_options *options, lr_plan **result, lr_error *error);
 /* Immutable schema 1 JSON: arguments, colors, options, working_directory,
  * asset_directory, qsv_timing_compatibility, uses_software_decoding and sidecars.

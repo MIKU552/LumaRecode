@@ -54,7 +54,7 @@ Windows 使用 C#、.NET 11、WinUI 3，保留单 EXE 的 GUI / CLI。macOS 面�
 | P8 发布准备 | 四语文档、许可、免费签名和分发包 | 整体验收与隐私检查完成 |
 | P9 合并发布 | 保留提交历史合并、最终标签和 Release | 产物、来源和标签一致 |
 
-P1 原型已完成三平台编译、C# / Swift 调用、进程生命周期和资源契约验证。P2 的基础共享核心包含源模型与规则、探测、逐帧时间轴、转码规划、输出核验、进程及文件事务，并已通过与旧核心的差异检查和软件媒体任务。P3 接入 Windows 的 GUI / CLI 任务流程。现有 Windows 应用仍使用 `Core/`；RAW 显影、动态 HDR 辅助文件和图片流程按 P6 迁移。
+P1 原型和 P2 基础核心已完成。P3 将 Windows GUI / CLI 的素材探测、格式选项、时间轴、转码规划、进度与输出发布接入共享核心。`Core/` 保留宿主模型与任务编排；RAW 相机参数提取、动态 HDR 辅助文件和图片封装按 P6 迁移。
 
 ### 构建入口
 
@@ -97,6 +97,8 @@ stdout 支持完整捕获、尾部环形缓冲和丢弃；stderr 保留尾部。
 Windows 在创建进程时将其加入 Job Object，仅继承标准输入与输出句柄；标准输入连接 NUL。macOS 使用 `posix_spawn`、独立进程组及非阻塞管道，终态由 `waitid` 确认。回收前保持主进程可等待，避免 PID 重用；Darwin 的僵尸进程组通过成员查询确认已无活动进程。
 
 `.NET` 的 `NativeProcess.RunAsync` 使用生成式导入和 `SafeHandle`，在后台执行阻塞调用，回收后返回终态结果。取消及超时通过结果的 `Status` 表达。Swift 检查验证同一套接口的参数复制、执行和释放。
+
+`run_streaming` 在执行线程同步交付 stdout / stderr 字节，回调期间不持有状态锁。Windows 宿主分别解码进度和诊断，限制未完成行的长度；消费者异常先触发进程回收，再返回宿主。长任务无需保留完整日志缓冲。
 
 `cleanup_state` 记录回收是否确认；`.NET` 结果提供 `CleanupConfirmed`。文件事务据此决定是否可以发布或清理临时输出。回收未确认时返回 I/O 错误，调用方保留任务文件。生命周期检查注入启动失败、内存不足和清理失败，验证这些终态约束。
 
@@ -149,6 +151,8 @@ ffprobe 输出按行流式解析，单行最多 64 KiB；索引默认预算 512 
 差异检查比较旧核心与 C++ 的接受条件、完整参数、色彩及默认值。实际任务覆盖 SDR / HLG / PQ 软件 HEVC，以及带偏移、VFR 和 B 帧的 H.264、解码帧回退、逐帧裁剪和事务发布。C 与 Swift 调用相同的版本化接口。
 
 ### 验证与分发
+
+迁移前的探测、规则、规划与时间轴实现保存在 `qa/NativeCoreChecks/Reference/`，作为独立对照，仅参与测试构建。
 
 本机已执行 C 数据边界、C++ 策略、Rust HDR10+、.NET 生成式导入，以及与现有 C# 规则和解析器的差异检查。跨架构结果以 Actions 的实际运行记录为准。
 
@@ -216,7 +220,7 @@ Keep one public C ABI. Internal boundaries can use validated C interfaces or typ
 | P8 Release preparation | Four-language docs, licenses, free signing and distribution | Full acceptance and privacy checks complete |
 | P9 Merge and release | History-preserving merge, final tag and Release | Artifacts, provenance and tag agree |
 
-The P1 prototype passes three-platform builds, C#/Swift calls, process lifecycle and resource contracts. P2's foundational shared core covers source models and policy, inspection, display-frame timelines, encoding plans, output verification, processes and file transactions, with differential checks and software media tasks against the existing core. P3 integrates the Windows GUI / CLI task flow. The existing Windows application still uses `Core/`; RAW development, dynamic HDR auxiliary files and image workflows migrate in P6.
+P1 prototypes and the P2 foundational core are complete. P3 connects Windows GUI / CLI source inspection, format choices, timelines, encoding plans, progress and output publication to the shared engine. `Core/` retains host models and orchestration; RAW camera parameter extraction, dynamic HDR auxiliary files and image packaging migrate in P6.
 
 ### Build entry points
 
@@ -259,6 +263,8 @@ stdout supports full capture, a tail ring buffer and discard; stderr retains a t
 Windows associates the process with a Job Object at creation and inherits only standard I/O handles, with NUL input. macOS uses `posix_spawn`, an independent process group and nonblocking pipes, observing terminal events with `waitid`. The leader remains waitable through cleanup to prevent PID reuse. Darwin zombie-only groups are checked for live members before accepting cleanup.
 
 `.NET` `NativeProcess.RunAsync` uses generated imports and `SafeHandle`, executes the blocking call in the background and returns a terminal result after cleanup. The result's `Status` expresses cancellation and timeout. Swift checks verify argument copying, execution and release through the same interface.
+
+`run_streaming` delivers stdout/stderr bytes synchronously on the execution thread without holding the snapshot lock. The Windows host decodes progress and diagnostics separately and bounds incomplete lines. Consumer exceptions trigger process cleanup before returning to the host. Long jobs do not retain a complete log buffer.
 
 `cleanup_state` records whether reclamation is confirmed; `.NET` exposes `CleanupConfirmed`. File transactions use it to authorize publication or removal of temporary output. Unconfirmed cleanup returns an I/O error and the caller retains task files. Lifecycle checks inject launch, allocation and cleanup failures to verify these terminal-state contracts.
 
@@ -311,6 +317,8 @@ Source models derive precision from pixel descriptors, usable component depth, s
 Differential checks compare acceptance, complete arguments, colors and defaults against the existing core. Real tasks cover SDR / HLG / PQ software HEVC, offset VFR H.264 with B frames, decoded-frame fallback, frame-accurate trimming and transactional publication. C and Swift call the same versioned interfaces.
 
 ### Verification and distribution
+
+The pre-migration inspection, policy, planning and timeline implementations live in `qa/NativeCoreChecks/Reference/` as independent test-only references.
 
 Local checks cover C data boundaries, C++ policies, Rust HDR10+, generated .NET imports and differential behavior against existing C# policies and parsers. Cross-architecture status follows actual Actions execution records.
 

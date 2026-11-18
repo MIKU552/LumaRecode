@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using LumaRecode.Native;
 using VideoConverter.Core;
+using MediaProbe = LumaRecode.Tests.Reference.ReferenceMediaProbe;
 
 internal static class ProbeChecks
 {
@@ -29,7 +30,10 @@ internal static class ProbeChecks
                 check(current.Status == NativeStatus.Ok && current.Snapshot.CleanupConfirmed,
                     $"Native fixture probe failed ({mode}): {current.Diagnostic}");
                 if (current.Status != NativeStatus.Ok)
+                {
                     continue;
+                }
+
                 var old = await MediaProbe.InspectAsync(new(helper, helper), file);
                 Compare(check, current, old);
                 check(current.Snapshot.VideoIndex == 1 && current.Snapshot.AudioCount == 2,
@@ -102,11 +106,18 @@ internal static class ProbeChecks
         finally
         {
             if (Path.GetDirectoryName(Path.GetFullPath(root)) != Path.TrimEndingDirectorySeparator(parent))
+            {
                 throw new InvalidOperationException("Unexpected probe fixture root.");
+            }
+
             if (safeCleanup)
+            {
                 Directory.Delete(root, recursive: true);
+            }
             else
+            {
                 Console.WriteLine("Retained probe fixtures after unconfirmed child cleanup: " + root);
+            }
         }
     }
 
@@ -117,7 +128,9 @@ internal static class ProbeChecks
             && Math.Abs(current.Snapshot.Duration - previous.Duration) < 1e-9, "Native inspection classification/duration differs.");
         foreach (var pair in new[] { ("video", (JsonNode)previous.Video), ("streams", previous.Streams),
             ("frames", previous.Frames), ("tags", previous.Tags), ("pixel", previous.Pixel) })
+        {
             check(JsonNode.DeepEquals(data[pair.Item1], pair.Item2), "Native inspection snapshot differs: " + pair.Item1);
+        }
     }
 
     private static void Normalize(Action<bool, string> check)
@@ -132,8 +145,10 @@ internal static class ProbeChecks
             var normalized = NativeProbe.NormalizeJson(Encoding.UTF8.GetBytes(input));
             check(JsonNode.DeepEquals(JsonNode.Parse(normalized), JsonNode.Parse(expected)), "Probe JSON normalization differs.");
             if (input.StartsWith("{\"a\"", StringComparison.Ordinal))
+            {
                 check(JsonNode.Parse(normalized)!.AsObject().Select(pair => pair.Key).SequenceEqual(new[] { "a", "c", "b" }),
                     "Duplicate normalization changed tag precedence.");
+            }
         }
         foreach (byte[] input in new byte[][] { [], [255], Encoding.UTF8.GetBytes("{\"x\":1,}"),
             Encoding.UTF8.GetBytes(new string('[', 70) + "0" + new string(']', 70)) })

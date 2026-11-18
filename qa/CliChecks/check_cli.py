@@ -64,7 +64,7 @@ def ctrl_break_case(exe, source, output):
         assert any(e["event"] == "cancelled" for e in events), events
         assert not output.exists() and not list(
             output.parent.glob(".video-converter-*")
-        )
+        ) and not list(output.parent.glob(".lumarecode-*"))
     finally:
         if child.poll() is None:
             child.kill()
@@ -368,6 +368,7 @@ def main():
         )
         assert hashlib.sha256(output.read_bytes()).hexdigest() == old_hash
         assert not list(folder.glob(".video-converter-*"))
+        assert not list(folder.glob(".lumarecode-*"))
         tree = folder / "input"
         (tree / "nested").mkdir(parents=True)
         shutil.copyfile(source, tree / "a.mp4")

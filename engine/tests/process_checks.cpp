@@ -265,6 +265,41 @@ int run_checks(const std::filesystem::path &helper)
         check_capture(helper);
         check_arguments(helper, root);
         check_cancellation(helper, root);
+        struct consumer_state
+        {
+            lr_process *process;
+            uint64_t output = 0, errors = 0;
+            bool valid = true;
+        };
+        auto streamed = create(helper, {"binary", "350000"}, LR_CAPTURE_DISCARD, 0);
+        consumer_state consumer{streamed.get()};
+        const auto consume = [](void *context, uint32_t stream, const uint8_t *bytes,
+                                uint64_t size) -> lr_status
+        {
+            auto &state = *static_cast<consumer_state *>(context);
+            lr_process_snapshot live;
+            lr_process_snapshot_init(&live, sizeof(live));
+            if (lr_process_get_snapshot(state.process, &live) != LR_OK || live.state != LR_PROCESS_RUNNING)
+                state.valid = false;
+            if (stream == LR_STREAM_STDOUT)
+            {
+                for (uint64_t i = 0; i < size; ++i)
+                    if (bytes[i] != static_cast<uint8_t>((state.output + i) % 251))
+                        state.valid = false;
+                state.output += size;
+            }
+            else
+                state.errors += size;
+            return LR_OK;
+        };
+        CHECK(lr_process_run_streaming(streamed.get(), consume, &consumer, nullptr) == LR_OK);
+        CHECK(consumer.valid && consumer.output == 350000 && consumer.errors > 150000);
+        CHECK(snapshot(streamed.get()).stdout_retained == 0);
+        auto stopped = create(helper, {"binary", "350000"}, LR_CAPTURE_DISCARD, 0);
+        CHECK(lr_process_run_streaming(
+                  stopped.get(), [](void *, uint32_t, const uint8_t *, uint64_t) -> lr_status
+                  { return LR_CANCELLED; }, nullptr, nullptr) == LR_CANCELLED);
+        CHECK(snapshot(stopped.get()).cleanup_state == LR_CLEANUP_CONFIRMED);
     }
     catch (const std::exception &error)
     {

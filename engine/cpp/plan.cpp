@@ -1,6 +1,7 @@
 #include "lumarecode/plan.h"
 #include "media_model.hpp"
 #include "plan_internal.hpp"
+#include "raw_model.hpp"
 
 #include <algorithm>
 #include <array>
@@ -247,8 +248,17 @@ class planner
         require(kind == "sdr" || kind == "hlg" || kind == "pq" || kind == "log" || kind == "raw" ||
                     kind == "unknown",
                 "Unknown input interpretation.");
-        require(!luma::media_raw(json, media) && kind != "raw",
-                "RAW planning requires the calibration/development pipeline.");
+        require((kind == "raw") == luma::media_raw(json, media),
+                "ProRes RAW requires its calibrated source interpretation.");
+        if (kind == "raw")
+        {
+            const auto raw = member(video, "_raw");
+            require(yyjson_mut_is_obj(raw) && luma::flag_field(json, raw, "decoder_version_supported"),
+                    "ProRes RAW requires FFmpeg 9 or later.");
+            require(luma::flag_field(json, raw, "decoder_supported"),
+                    "ProRes RAW is not supported by the selected decoder.");
+            luma::raw_orientation(json, media);
+        }
         const auto selected = profiles.find(selected_profile);
         source = luma::source_format(
             json, media,
@@ -490,7 +500,9 @@ class planner
         const bool rgb = luma::media_rgb(json, media), render_dolby = dovi != nullptr && !preserve;
         if (rgb)
             put(video, "color_space", "gbr");
-        auto colors = output == "sdr" ? color(false) : kind == "log" ? color(true) : json.object();
+        auto colors = output == "sdr"                  ? color(false)
+                      : kind == "log" || kind == "raw" ? color(true)
+                                                       : json.object();
         if (yyjson_mut_obj_size(colors) == 0)
             for (const auto key : color_keys)
                 json.put(colors, key,
@@ -510,7 +522,7 @@ class planner
             display_transform = display_transform || text(entry, "side_data_type") == "Display Matrix";
         bool software = transform != "none" || purpose == "archive" ||
                         luma::flag_field(json, choices, "cpu_decode") || conversion || display_transform ||
-                        dovi != nullptr || hdr10plus || window != nullptr || motion;
+                        dovi != nullptr || hdr10plus || window != nullptr || motion || kind == "raw";
         const auto average = luma::probe_number(text(video, "avg_frame_rate")),
                    nominal = luma::probe_number(text(video, "r_frame_rate"));
         const bool timing =
@@ -532,6 +544,14 @@ class planner
         const auto add = [&](std::initializer_list<std::string> values) { args.insert(args.end(), values); };
         if (gpu)
             add({"-hwaccel", "qsv", "-hwaccel_output_format", "qsv", "-c:v", decoder});
+        if (kind == "raw")
+        {
+            add({"-threads:v", "2", "-filter_threads", "2"});
+#if defined(_M_X64) || defined(__x86_64__)
+            add({"-cpuflags", "-avx2"});
+#endif
+            add({"-apply_cropping", "0", "-noautorotate"});
+        }
         if (window != nullptr && window->seek_frame > 0)
             add({"-seek_timestamp", "1", "-ss", number(window->seek_seconds)});
         add({"-i", source_path, "-map", "0:" + text(video, "index"), "-map", motion ? "0:a:0?" : "0:a?",
@@ -541,11 +561,20 @@ class planner
         if (window != nullptr)
             filters.push_back("trim=start_frame=" + std::to_string(window->start - window->seek_frame) +
                               ":end_frame=" + std::to_string(window->end - window->seek_frame));
-        if (request.preview_size > 0)
+        if (request.preview_size > 0 && kind != "raw")
             filters.push_back(scale_filter(request.preview_size));
-        if (motion)
+        if (motion && kind != "raw")
             filters.emplace_back("pad=ceil(iw/2)*2:ceil(ih/2)*2");
-        if (preserve)
+        if (kind == "raw")
+        {
+            filters.push_back(luma::raw_filter(json, member(video, "_raw"), request.preview_size));
+            const auto orientation = luma::raw_orientation(json, media);
+            filters.insert(filters.end(), orientation.begin(), orientation.end());
+            if (sampling == "420" || sampling == "422")
+                filters.push_back("pad=ceil(iw/2)*2:" +
+                                  std::string(sampling == "420" ? "ceil(ih/2)*2" : "ih"));
+        }
+        else if (preserve)
             filters.emplace_back("null");
         else if (render_dolby)
         {
@@ -569,7 +598,7 @@ class planner
                                          : "format=gbrp16le");
             filters.push_back(frame_tags(video));
         }
-        if (transform == "hdr-sdr" || transform == "log-sdr")
+        if (transform == "hdr-sdr" || transform == "log-sdr" || (kind == "raw" && output == "sdr"))
             filters.push_back("libplacebo=format=yuv444p16le:colorspace=bt709:color_primaries=bt709:color_"
                               "trc=bt709:range=" +
                               std::string(range == "full" ? "pc" : "tv") +
@@ -675,6 +704,8 @@ class planner
                 !(preserve && dovi != nullptr && integer(dovi, "dv_profile") == 5))
                 add({color_flags[i], text(colors, color_keys[i])});
         add({"-fps_mode:v", "passthrough", "-enc_time_base:v", "filter"});
+        if (kind == "raw")
+            add({"-metadata:s:v:0", "rotate=0"});
         std::vector<std::string> audio_filters;
         if (window != nullptr && !audio.empty())
         {
@@ -742,6 +773,8 @@ class planner
             json.append(arguments, json.string(argument));
         if (preserve && hdr10plus)
             json.append(sidecars, json.string("hdr10plus.json"));
+        if (kind == "raw")
+            json.append(sidecars, json.string("raw-calibration.cmd"));
         json.put(result, "schema_version", yyjson_mut_uint(json.doc(), 1));
         json.put(result, "arguments", arguments);
         json.put(result, "colors", colors);
@@ -749,8 +782,8 @@ class planner
         json.put(result, "qsv_timing_compatibility", yyjson_mut_bool(json.doc(), timing));
         json.put(result, "uses_software_decoding", yyjson_mut_bool(json.doc(), !gpu));
         json.put(result, "working_directory",
-                 preserve && hdr10plus ? json.string(luma_path_parent(destination))
-                                       : yyjson_mut_null(json.doc()));
+                 (preserve && hdr10plus) || kind == "raw" ? json.string(luma_path_parent(destination))
+                                                          : yyjson_mut_null(json.doc()));
         put(result, "asset_directory", assets);
         json.put(result, "sidecars", sidecars);
         json.put(result, "motion_photo", yyjson_mut_bool(json.doc(), motion));

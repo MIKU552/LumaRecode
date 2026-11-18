@@ -80,30 +80,47 @@ public static partial class NativePlanner
             var error = NativeCore.CreateError();
             var status = Create(in options, out plan, ref error);
             if (status != NativeStatus.Ok)
+            {
                 return new(status, [], NativeCore.ReadDiagnostic(in error));
+            }
+
             if (outputJson is not null)
             {
                 fixed (byte* output = outputJson)
+                {
                     status = Verify(plan, views[0], new()
                     {
                         Data = output,
                         Size = (ulong)outputJson.Length
                     }, ref error);
+                }
+
                 return new(status, [], NativeCore.ReadDiagnostic(in error));
             }
             if (CopyJson(plan, null, 0, out var required) != NativeStatus.BufferTooSmall)
+            {
                 throw new InvalidOperationException("Native plan size query failed.");
+            }
+
             var bytes = new byte[checked((int)required)];
             fixed (byte* destination = bytes)
+            {
                 NativeCore.Check(CopyJson(plan, destination, (ulong)bytes.Length, out _));
+            }
+
             return new(status, bytes, "");
         }
         finally
         {
             if (plan != IntPtr.Zero)
+            {
                 Release(plan);
+            }
+
             foreach (var pin in pins)
+            {
                 pin.Free();
+            }
         }
     }
 

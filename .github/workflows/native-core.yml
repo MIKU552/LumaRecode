@@ -49,6 +49,8 @@ jobs:
         run: |
           dotnet format Interop/LumaRecode.Native.csproj --verify-no-changes
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet format Core/LumaRecode.Core.csproj --verify-no-changes
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet format qa/NativeCoreChecks/NativeCoreChecks.csproj --verify-no-changes
           exit $LASTEXITCODE
       - name: Rust formatting and lints
@@ -93,6 +95,28 @@ jobs:
             }
           }
           Write-Output 'SDK build path check passed.'
+      - name: Build Windows application
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./build.ps1 -Target Native -Compilation Jit
+      - name: Windows application regression checks
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          dotnet run --project qa/BackendChecks -c Release -- --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project qa/PerformanceChecks -c Release -- --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python qa/RuntimeChecks/check_shared_host.py --exe dist/SelfContained/LumaRecode.exe
+          exit $LASTEXITCODE
+      - name: Windows development application
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lumarecode-windows-${{ matrix.cpu }}-development
+          retention-days: 14
+          if-no-files-found: error
+          path: dist/SelfContained/LumaRecode.exe
       - name: SDK artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

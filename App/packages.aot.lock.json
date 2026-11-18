@@ -78,6 +78,12 @@
         }
       },
       "lumarecode.core": {
+        "type": "Project",
+        "dependencies": {
+          "LumaRecode.Native": "[1.0.0, )"
+        }
+      },
+      "lumarecode.native": {
         "type": "Project"
       }
     },

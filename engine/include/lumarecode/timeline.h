@@ -68,6 +68,10 @@ typedef struct lr_timeline_snapshot
 } lr_timeline_snapshot;
 
 typedef struct lr_timeline lr_timeline;
+/* Parse one bounded compact ffprobe record. NOT_FOUND means no valid PTS; the
+ * point and discard evidence are still returned. Other errors preserve outputs. */
+LR_API lr_status lr_timeline_parse_point(lr_utf8_view line, uint32_t packets, lr_frame_point *point,
+                                         uint32_t *discarded);
 LR_API lr_status lr_timeline_options_init(lr_timeline_options *value, uint64_t capacity);
 LR_API lr_status lr_timeline_snapshot_init(lr_timeline_snapshot *value, uint64_t capacity);
 LR_API lr_status lr_frame_window_init(lr_frame_window *value, uint64_t capacity);

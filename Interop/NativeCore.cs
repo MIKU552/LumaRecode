@@ -21,6 +21,23 @@ public static partial class NativeCore
         return value;
     }
 
+    public static NativeStatus GetFormatChoices(in SourceFormat source, Purpose purpose, Codec codec, DynamicRange range,
+        out FormatChoices choices, out string diagnostic)
+    {
+        choices = default;
+        Check(InitializeChoices(ref choices, (ulong)Unsafe.SizeOf<FormatChoices>()));
+        var error = CreateError();
+        var status = ReadChoices(in source, purpose, codec, range, ref choices, ref error);
+        diagnostic = ReadDiagnostic(in error);
+        return status;
+    }
+
+    [LibraryImport(LibraryName, EntryPoint = "lr_format_choices_init")]
+    private static partial NativeStatus InitializeChoices(ref FormatChoices value, ulong capacity);
+    [LibraryImport(LibraryName, EntryPoint = "lr_get_format_choices")]
+    private static partial NativeStatus ReadChoices(in SourceFormat source, Purpose purpose, Codec codec, DynamicRange range,
+        ref FormatChoices value, ref NativeError error);
+
     public static OutputOptions CreateOutputOptions()
     {
         OutputOptions value = default;

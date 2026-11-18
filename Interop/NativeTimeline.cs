@@ -21,8 +21,18 @@ public sealed record NativeTimelineResult(NativeStatus Status, NativeTimelineSna
 public sealed partial class NativeTimeline : IDisposable
 {
     private readonly TimelineHandle handle;
+    private long memoryPressure;
     private static readonly UTF8Encoding Utf8 = new(false, true);
-    private NativeTimeline(TimelineHandle handle) => this.handle = handle;
+    private NativeTimeline(TimelineHandle handle)
+    {
+        this.handle = handle;
+        memoryPressure = checked((long)ReadSnapshot(handle).Count * 48);
+        if (memoryPressure > 0)
+        {
+            GC.AddMemoryPressure(memoryPressure);
+        }
+    }
+    ~NativeTimeline() => RemovePressure();
 
     public static async Task<NativeTimelineResult> LoadAsync(NativeTimelineOptions options,
         CancellationToken cancellation = default)
@@ -52,7 +62,10 @@ public sealed partial class NativeTimeline : IDisposable
             var result = await Task.Run(() => Execute(handle), CancellationToken.None).ConfigureAwait(false);
             registration.Dispose();
             if (result.Status != NativeStatus.Ok)
+            {
                 handle.Dispose();
+            }
+
             return result;
         }
         catch
@@ -71,19 +84,44 @@ public sealed partial class NativeTimeline : IDisposable
             var status = Import(pointer, (ulong)points.Length, numerator, denominator,
                 packetIndexed ? 1U : 0, out var created, ref error);
             if (status != NativeStatus.Ok)
+            {
                 throw new ArgumentException(NativeCore.ReadDiagnostic(in error), nameof(points));
+            }
+
             return Own(created);
         }
     }
 
     public NativeTimelineSnapshot Snapshot => ReadSnapshot(handle);
+    public static unsafe bool ParsePoint(string line, bool packets, out NativeFramePoint point, out bool discarded)
+    {
+        var bytes = Utf8.GetBytes(line);
+        fixed (byte* pointer = bytes)
+        {
+            var status = Parse(new()
+            {
+                Data = pointer,
+                Size = (ulong)bytes.Length
+            }, packets ? 1U : 0, out point, out uint dropped);
+            if (status is not (NativeStatus.Ok or NativeStatus.NotFound))
+            {
+                NativeCore.Check(status);
+            }
+
+            discarded = dropped != 0;
+            return status == NativeStatus.Ok;
+        }
+    }
 
     public unsafe NativeFramePoint[] CopyPoints(ulong start, int count)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(count);
         var points = new NativeFramePoint[count];
         fixed (NativeFramePoint* destination = points)
+        {
             NativeCore.Check(Copy(handle, start, (ulong)count, destination, (ulong)count));
+        }
+
         return points;
     }
 
@@ -101,7 +139,20 @@ public sealed partial class NativeTimeline : IDisposable
         return new(value.Start, value.End, value.SeekFrame, value.SeekSeconds, value.StartSeconds, value.EndSeconds);
     }
 
-    public void Dispose() => handle.Dispose();
+    public void Dispose()
+    {
+        handle.Dispose();
+        RemovePressure();
+        GC.SuppressFinalize(this);
+    }
+    private void RemovePressure()
+    {
+        long bytes = Interlocked.Exchange(ref memoryPressure, 0);
+        if (bytes > 0)
+        {
+            GC.RemoveMemoryPressure(bytes);
+        }
+    }
 
     private static NativeTimeline Own(IntPtr pointer)
     {
@@ -114,9 +165,14 @@ public sealed partial class NativeTimeline : IDisposable
         catch
         {
             if (owner is null)
+            {
                 Release(pointer);
+            }
             else
+            {
                 owner.Dispose();
+            }
+
             throw;
         }
     }
@@ -125,7 +181,10 @@ public sealed partial class NativeTimeline : IDisposable
     {
         ArgumentNullException.ThrowIfNull(value);
         if (value.Length == 0 || value.Contains('\0') || Utf8.GetByteCount(value) > 500000)
+        {
             throw new ArgumentException("Expected bounded UTF-8 text without NUL.", nameof(value));
+        }
+
         return Utf8.GetBytes(value);
     }
 
@@ -162,7 +221,10 @@ public sealed partial class NativeTimeline : IDisposable
             var error = NativeCore.CreateError();
             var status = Create(in value, out var pointer, ref error);
             if (status != NativeStatus.Ok)
+            {
                 throw new ArgumentException(NativeCore.ReadDiagnostic(in error), nameof(options));
+            }
+
             try
             {
                 return new(pointer);
@@ -193,7 +255,10 @@ public sealed partial class NativeTimeline : IDisposable
             },
                 out var pointer, ref error);
             if (status != NativeStatus.Ok)
+            {
                 throw new ArgumentException(NativeCore.ReadDiagnostic(in error), nameof(mediaJson));
+            }
+
             try
             {
                 return new(pointer);
@@ -208,7 +273,10 @@ public sealed partial class NativeTimeline : IDisposable
         var status = Run(handle, ref error);
         var snapshot = ReadSnapshot(handle);
         if (snapshot.Status != status)
+        {
             throw new InvalidOperationException("Native timeline terminal status mismatch.");
+        }
+
         return new(status, snapshot, status == NativeStatus.Ok ? new NativeTimeline(handle) : null,
             NativeCore.ReadDiagnostic(in error));
     }
@@ -219,7 +287,10 @@ public sealed partial class NativeTimeline : IDisposable
         NativeCore.Check(InitializeSnapshot(ref value, (ulong)sizeof(TimelineSnapshot)));
         NativeCore.Check(GetSnapshot(handle, ref value));
         if (value.State != 2)
+        {
             throw new InvalidOperationException("Native timeline has not finished.");
+        }
+
         return new(value.Status, (value.Flags & 1) != 0, value.CleanupState == 1, value.Count,
             value.TimeBaseNumerator, value.TimeBaseDenominator, value.Duration, value.ElapsedMilliseconds);
     }
@@ -268,6 +339,8 @@ public sealed partial class NativeTimeline : IDisposable
     }
     [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_timeline_options_init")]
     private static partial NativeStatus InitializeOptions(ref TimelineOptions value, ulong capacity);
+    [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_timeline_parse_point")]
+    private static partial NativeStatus Parse(Utf8View line, uint packets, out NativeFramePoint point, out uint discarded);
     [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_timeline_snapshot_init")]
     private static partial NativeStatus InitializeSnapshot(ref TimelineSnapshot value, ulong capacity);
     [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_frame_window_init")]

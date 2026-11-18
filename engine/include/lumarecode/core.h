@@ -81,6 +81,7 @@ typedef uint32_t lr_codec;
 
 #define LR_SOURCE_ALPHA 1U
 #define LR_SOURCE_RAW 2U
+#define LR_SOURCE_RGB 4U
 
 typedef struct lr_error
 {
@@ -123,6 +124,23 @@ typedef struct lr_resolved_format
     lr_color_range color_range;
     lr_dynamic_range dynamic_range;
 } lr_resolved_format;
+
+typedef struct lr_format_choices
+{
+    uint32_t struct_size;
+    uint32_t abi_version;
+    /* Bits use literal depths (1<<8, 1<<10, 1<<12) and LR_SAMPLING_* values. */
+    uint32_t depth_mask;
+    uint32_t sampling_mask;
+    uint32_t default_depth;
+    lr_sampling default_sampling;
+} lr_format_choices;
+LR_API lr_status lr_format_choices_init(lr_format_choices *value, uint64_t capacity);
+/* Presentation choices before concrete device capabilities are intersected.
+ * Source sampling AUTO can express an unknown representation. */
+LR_API lr_status lr_get_format_choices(const lr_source_format *source, lr_purpose purpose, lr_codec codec,
+                                       lr_dynamic_range dynamic_range, lr_format_choices *result,
+                                       lr_error *error);
 
 /* A borrowed byte plane. origin locates logical row zero within [data, size).
  * A negative stride is valid. width_bytes describes active bytes, excluding

@@ -47,13 +47,18 @@ public static partial class NativeProbe
             };
             var status = Normalize(input, null, 0, out var required, ref error);
             if (status != NativeStatus.BufferTooSmall)
+            {
                 throw new InvalidDataException(NativeCore.ReadDiagnostic(in error));
+            }
+
             var bytes = new byte[checked((int)required)];
             fixed (byte* output = bytes)
             {
                 status = Normalize(input, output, (ulong)bytes.Length, out var copied, ref error);
                 if (status != NativeStatus.Ok || copied != required)
+                {
                     throw new InvalidDataException(NativeCore.ReadDiagnostic(in error));
+                }
             }
             return bytes;
         }
@@ -63,13 +68,19 @@ public static partial class NativeProbe
     {
         ArgumentNullException.ThrowIfNull(path);
         if (path.Length == 0 || path.Contains('\0') || Utf8.GetByteCount(path) > 1048576)
+        {
             throw new ArgumentException("Expected a bounded path without NUL.", nameof(path));
+        }
+
         return Utf8.GetBytes(path);
     }
     private static unsafe ProbeHandle CreateHandle(NativeProbeOptions options)
     {
         if (options.MetadataCapacity is <= 0 or > 64 * 1024 * 1024)
+        {
             throw new ArgumentOutOfRangeException(nameof(options));
+        }
+
         var tool = EncodePath(options.Ffprobe);
         var source = EncodePath(options.Source);
         fixed (byte* toolPointer = tool, sourcePointer = source)
@@ -91,7 +102,10 @@ public static partial class NativeProbe
             var error = NativeCore.CreateError();
             var status = Create(in value, out var pointer, ref error);
             if (status != NativeStatus.Ok)
+            {
                 throw new ArgumentException(NativeCore.ReadDiagnostic(in error), nameof(options));
+            }
+
             try
             {
                 return new ProbeHandle(pointer);
@@ -107,7 +121,10 @@ public static partial class NativeProbe
         NativeCore.Check(InitializeSnapshot(ref snapshot, (ulong)sizeof(ProbeSnapshot)));
         NativeCore.Check(GetSnapshot(handle, ref snapshot));
         if (snapshot.State != 2 || snapshot.Status != status)
+        {
             throw new InvalidOperationException("The native probe did not return a matching terminal state.");
+        }
+
         byte[] data = [];
         if (status == NativeStatus.Ok)
         {
@@ -116,7 +133,9 @@ public static partial class NativeProbe
             {
                 NativeCore.Check(CopyJson(handle, destination, (ulong)data.Length, out var copied));
                 if (copied != (ulong)data.Length)
+                {
                     throw new InvalidOperationException("Native probe JSON changed after completion.");
+                }
             }
         }
         var result = new NativeProbeSnapshot(status, snapshot.Flags, snapshot.CleanupState == 1,

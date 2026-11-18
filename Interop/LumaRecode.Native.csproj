@@ -5,5 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IsAotCompatible>true</IsAotCompatible>
+    <LumaBuildNativeCore Condition="'$(LumaBuildNativeCore)' == ''">true</LumaBuildNativeCore>
   </PropertyGroup>
+  <Import Project="../tools/NativeCore.targets" />
 </Project>

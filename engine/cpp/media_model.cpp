@@ -92,7 +92,7 @@ lr_source_format source_format(probe_json &json, json_value *media, lr_color_ran
     const auto name = field(json, video, "pix_fmt");
     const bool rgb = media_rgb(json, media), raw = media_raw(json, media),
                alpha = flag_field(json, flags, "alpha");
-    result.flags = (alpha ? LR_SOURCE_ALPHA : 0) | (raw ? LR_SOURCE_RAW : 0);
+    result.flags = (alpha ? LR_SOURCE_ALPHA : 0) | (raw ? LR_SOURCE_RAW : 0) | (rgb ? LR_SOURCE_RGB : 0);
     if (raw)
         result.sampling = LR_SAMPLING_444;
     else if (flag_field(json, video, "_monochrome"))

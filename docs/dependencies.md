@@ -14,14 +14,17 @@
 | Windows SDK BuildTools | 10.0.28000.2957 | Windows 资源与清单 |
 | Windows API target | 10.0.26100.0 | Windows API 编译合约 |
 | Visual Studio | 2026 18.12+ | 解决方案、调试与打包 |
-| MSVC linker | 14.52.37029+ | 可选 Native AOT 构建 |
+| MSVC | 19.52.37029+ | 共享 C / C++ 核心与可选 AOT |
+| Rust | 1.100.0 | 共享元数据模块 |
+| CMake / Ninja | 由 `tools/native-build-tools.json` 固定 | 原生构建 |
 | libultrahdr / libjpeg-turbo | 2.0.2 / 3.2.1 | Ultra HDR JPEG 编码 |
 | PySide6 | 6.12.0 | 可选图标生成工具 |
 | yyjson | 0.13.0 | 共享原生核心的 JSON 读取与写入，MIT 许可 |
 
-默认 JIT 构建需要 .NET SDK、PowerShell 7，以及 WinUI 构建所需的 Windows 工具：
+应用构建需要 .NET SDK、PowerShell 7、Rustup 和 Visual Studio 桌面 C++ 工具。先安装固定的原生构建工具，再运行应用构建：
 
 ```powershell
+./tools/Install-NativeBuildTools.ps1
 ./build.ps1
 ```
 
@@ -47,7 +50,7 @@ JIT 在运行设备上选择指令集。x64 的 CPU 与 Windows 均支持 APX，
 
 AOT 的 Native 目标按构建 CPU 优化，需要与系统架构相同的 .NET SDK。显式 X64、Apx、Arm64 使用固定指令集，支持交叉编译。APX AOT 入口在加载主体前检查 CPU 和 Windows 支持。ARM64 默认选择软件归档。
 
-JIT 交叉发布无需 C++ 链接器；AOT 交叉编译需要对应架构的 [C++ 构建工具](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile)。中间目录为 `obj/<Compilation>/<Target>/` 和 `bin/<Compilation>/<Target>/`，分发许可清单位于 `build-cache/licenses/<Compilation>/<Target>/`，AOT 载荷位于 `dist/NativeAot/<Target>/`。
+JIT 与 AOT 均需为共享原生核心安装目标架构的 C++ 和 Rust 工具。AOT 交叉编译另需对应架构的 [C++ 构建工具](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile)。中间目录为 `obj/<Compilation>/<Target>/` 和 `bin/<Compilation>/<Target>/`，分发许可清单位于 `build-cache/licenses/<Compilation>/<Target>/`，AOT 载荷位于 `dist/NativeAot/<Target>/`。
 
 ### 部署方式
 
@@ -70,7 +73,7 @@ ARM64 使用 NEON，x64 使用 libjpeg-turbo 的 x86 SIMD。源码版本、构�
 
 ### Visual Studio
 
-使用 Visual Studio 2026 18.12 或更新版本，安装 WinUI / C# 桌面开发工具、.NET SDK 11.0.100，并将 PowerShell 7 的 `pwsh` 加入 `PATH`。AOT 另需对应架构的 C++ 构建工具。
+使用 Visual Studio 2026 18.12 或更新版本，安装 WinUI / C# 桌面开发工具、目标架构的 C++ 工具、.NET SDK 11.0.100 和 Rustup，并将 PowerShell 7 的 `pwsh` 加入 `PATH`。原生核心随应用自动构建。
 
 打开 `LumaRecode.sln` 或 `LumaRecode.slnx`，将 `LumaRecode.App` 设为启动项目。Debug / x64 和 Debug / ARM64 用于调试。
 
@@ -131,14 +134,17 @@ JIT 默认直接打包应用、中间代码、.NET 运行时、Windows App SDK�
 | Windows SDK BuildTools | 10.0.28000.2957 | Windows resources and manifests |
 | Windows API target | 10.0.26100.0 | Windows API contracts |
 | Visual Studio | 2026 18.12+ | Solution, debugging and packaging |
-| MSVC linker | 14.52.37029+ | Optional Native AOT builds |
+| MSVC | 19.52.37029+ | Shared C/C++ core and optional AOT |
+| Rust | 1.100.0 | Shared metadata modules |
+| CMake / Ninja | Pinned in `tools/native-build-tools.json` | Native builds |
 | libultrahdr / libjpeg-turbo | 2.0.2 / 3.2.1 | Ultra HDR JPEG encoding |
 | PySide6 | 6.12.0 | Optional icon-generation tool |
 | yyjson | 0.13.0 | JSON reading and writing in the shared native core, MIT license |
 
-Default JIT builds require the .NET SDK, PowerShell 7 and Windows tools for WinUI compilation:
+Application builds require the .NET SDK, PowerShell 7, Rustup and Visual Studio desktop C++ tools. Install the pinned native build tools before building the application:
 
 ```powershell
+./tools/Install-NativeBuildTools.ps1
 ./build.ps1
 ```
 
@@ -164,7 +170,7 @@ The JIT selects instructions on the running device. When the x64 CPU and Windows
 
 AOT Native targets the build CPU and requires a .NET SDK matching the system architecture. Explicit X64, Apx and Arm64 targets use fixed instruction profiles and support cross-compilation. The APX AOT entry checks CPU and Windows support before loading the application. ARM64 defaults to Software archive.
 
-JIT cross-publishing does not need a C++ linker. AOT cross-compilation requires the corresponding [C++ build tools](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile). Intermediate files use `obj/<Compilation>/<Target>/` and `bin/<Compilation>/<Target>/`. Distribution licenses use `build-cache/licenses/<Compilation>/<Target>/`; AOT payloads use `dist/NativeAot/<Target>/`.
+Both JIT and AOT builds need target-architecture C++ and Rust tools for the shared engine. AOT cross-compilation also requires the corresponding [C++ build tools](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile). Intermediate files use `obj/<Compilation>/<Target>/` and `bin/<Compilation>/<Target>/`. Distribution licenses use `build-cache/licenses/<Compilation>/<Target>/`; AOT payloads use `dist/NativeAot/<Target>/`.
 
 ### Deployment options
 
@@ -187,7 +193,7 @@ ARM64 uses NEON; x64 uses libjpeg-turbo x86 SIMD. Source versions, build setting
 
 ### Visual Studio
 
-Use Visual Studio 2026 18.12 or later with WinUI / C# desktop tools and .NET SDK 11.0.100. Add PowerShell 7's `pwsh` to `PATH`. AOT also requires C++ build tools for the target architecture.
+Use Visual Studio 2026 18.12 or later with WinUI / C# desktop tools, target-architecture C++ tools, .NET SDK 11.0.100 and Rustup. Add PowerShell 7's `pwsh` to `PATH`. The shared engine builds automatically with the application.
 
 Open `LumaRecode.sln` or `LumaRecode.slnx` and set `LumaRecode.App` as the startup project. Debug / x64 and Debug / ARM64 support debugging.
 

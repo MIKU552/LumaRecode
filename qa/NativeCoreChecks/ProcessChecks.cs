@@ -122,7 +122,10 @@ internal static class ProcessChecks
             cleanupConfirmed &= fixture.CleanupConfirmed;
             check(fixture.Status == NativeStatus.Ok, "Native source fixture failed: " + fixture.Diagnostic);
             if (fixture.Status != NativeStatus.Ok)
+            {
                 return;
+            }
+
             var sourceBytes = await File.ReadAllBytesAsync(source);
             transaction = NativeOutputTransaction.Create(source, output);
             var stage = transaction.StagingPath;
@@ -205,9 +208,13 @@ internal static class ProcessChecks
                 throw new InvalidOperationException("Unexpected native media test directory.");
             }
             if (cleanupConfirmed)
+            {
                 Directory.Delete(root, recursive: true);
+            }
             else
+            {
                 Console.WriteLine("Retained native media test directory after unconfirmed cleanup: " + root);
+            }
         }
     }
 }

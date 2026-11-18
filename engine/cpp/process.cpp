@@ -151,12 +151,21 @@ struct lr_process final : luma::process_sink
     }
     void consume(uint32_t stream, std::span<const uint8_t> bytes, bool cleaning) override
     {
-        std::lock_guard lock(mutex);
-        const auto accepted = (stream == LR_STREAM_STDOUT ? output : errors).append(bytes);
+        bool accepted;
+        {
+            std::lock_guard lock(mutex);
+            accepted = (stream == LR_STREAM_STDOUT ? output : errors).append(bytes);
+        }
         if (!accepted && !cleaning)
         {
             throw luma::process_failure(LR_RESOURCE_LIMIT,
                                         "External process output exceeds its byte budget.");
+        }
+        if (!cleaning && callback != nullptr)
+        {
+            const auto status = callback(callback_context, stream, bytes.data(), bytes.size());
+            if (status != LR_OK)
+                throw luma::process_failure(status, "Process output consumer stopped the invocation.");
         }
     }
     void exited(int32_t code) override
@@ -179,6 +188,8 @@ struct lr_process final : luma::process_sink
     bool cleanup_confirmed = false;
     clock_type::time_point started_at;
     lr_process_snapshot snapshot;
+    lr_process_output_callback callback = nullptr;
+    void *callback_context = nullptr;
 };
 
 extern "C" lr_status lr_process_create(const lr_process_options *options, lr_process **result,
@@ -229,7 +240,8 @@ extern "C" lr_status lr_process_create(const lr_process_options *options, lr_pro
     }
 }
 
-extern "C" lr_status lr_process_run(lr_process *process, lr_error *error)
+extern "C" lr_status lr_process_run_streaming(lr_process *process, lr_process_output_callback callback,
+                                              void *context, lr_error *error)
 {
     if (process == nullptr || !valid_error(error))
     {
@@ -245,6 +257,8 @@ extern "C" lr_status lr_process_run(lr_process *process, lr_error *error)
             }
             process->started_at = clock_type::now();
             process->snapshot.state = LR_PROCESS_RUNNING;
+            process->callback = callback;
+            process->callback_context = context;
         }
         lr_status status = LR_OK;
         std::array<char, 768> message{};
@@ -301,6 +315,11 @@ extern "C" lr_status lr_process_run(lr_process *process, lr_error *error)
     {
         return report(error, LR_INTERNAL_ERROR, "Cannot access process state.");
     }
+}
+
+extern "C" lr_status lr_process_run(lr_process *process, lr_error *error)
+{
+    return lr_process_run_streaming(process, nullptr, nullptr, error);
 }
 
 extern "C" lr_status lr_process_cancel(lr_process *process)

@@ -11,8 +11,8 @@
 | 目录 | 职责 |
 | --- | --- |
 | `App/` | WinUI 视图、设置、本地化、通知及 GUI / CLI 启动选择 |
-| `Core/` | 素材探测、输出规则、命令规划、视频与图片导出、CLI |
-| `engine/` | 跨平台 C / C++ / Rust 核心与 C ABI，目前独立构建和验证 |
+| `Core/` | Windows 宿主模型、共享核心适配、媒体导出编排与 CLI |
+| `engine/` | 跨平台 C / C++ / Rust 核心：探测、规则、时间轴、规划、进程与文件事务 |
 | `Interop/` | .NET 生成式 C ABI 导入、SafeHandle 与后台调用适配 |
 | `Bundle/` | 可选 AOT 的单文件入口，传递标准句柄与退出码 |
 | `Packaging/` | 将 Visual Studio 配置映射到完整的单文件构建流程 |
@@ -23,7 +23,7 @@
 
 `App/MainWindow.*.cs` 按职责拆分：`Media` 负责素材，`Options` 负责约束，`Conversion` 负责任务与进度，`Frames` 负责预览和帧范围，`Dialogs` 与 `Localization` 负责对话框和语言。
 
-Windows 应用目前使用 `Core/`。新核心的阶段、构建和迁移进度见[跨平台重构](refactoring.md)。
+Windows 的 `Core/` 经 `Interop/` 调用共享核心。RAW 参数提取、动态 HDR 辅助文件和图片封装保留在宿主层，按媒体功能阶段迁移。阶段与构建入口见[跨平台重构](refactoring.md)。
 
 ### 转换任务
 
@@ -35,7 +35,7 @@ MediaProbe → OutputPolicy / Transcoder.Plan → 要求检查 → FFmpeg
 目标文件 ← 校验通过后替换 ← 临时输出 ← 编码、元数据处理
 ```
 
-`MediaInfo` 是一次素材探测快照。`EncodeOptions` 保存用户选择，`OutputPolicy` 根据输入位深、采样和编码器能力解析默认值。`Transcoder.Plan` 生成独立的参数数组；参数通过 `ProcessStartInfo.ArgumentList` 传递。
+`MediaInfo` 是一次素材探测快照，`EncodeOptions` 保存用户选择。共享核心解析格式约束并生成参数数组；`Transcoder` 编排能力检查、辅助文件和重试。执行使用原生进程接口，参数逐项传递，进度与诊断按 UTF-8 流读取。
 
 编码写入输出目录下独立的任务临时目录。完成后检查像素格式、色彩标签、音轨及动态 HDR；逐帧任务还检查时间轴。只有校验通过才替换目标文件。取消或失败会先停止并等待子进程，再清理临时目录。
 
@@ -85,8 +85,8 @@ GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在�
 | Directory | Responsibility |
 | --- | --- |
 | `App/` | WinUI views, settings, localization, notifications and GUI / CLI startup selection |
-| `Core/` | Source inspection, output policies, command planning, video/image export and CLI |
-| `engine/` | Cross-platform C/C++/Rust core and C ABI, built and checked independently during migration |
+| `Core/` | Windows host models, shared-core adapters, media export orchestration and CLI |
+| `engine/` | Cross-platform C/C++/Rust core: inspection, policy, timelines, planning, processes and file transactions |
 | `Interop/` | Generated .NET C ABI imports, SafeHandle ownership and background invocation |
 | `Bundle/` | Optional AOT single-file entry; preserve standard handles and exit codes |
 | `Packaging/` | Map Visual Studio configurations to the complete single-file build pipeline |
@@ -97,7 +97,7 @@ GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在�
 
 `App/MainWindow.*.cs` is split by responsibility: `Media` handles sources, `Options` enforces constraints, `Conversion` manages jobs and progress, `Frames` handles previews and frame ranges, and `Dialogs` / `Localization` handle dialogs and language.
 
-The Windows application currently uses `Core/`. See [Cross-platform refactoring](refactoring.md) for the native engine stages, builds and migration status.
+Windows `Core/` calls the shared engine through `Interop/`. RAW parameter extraction, dynamic HDR auxiliary files and image packaging remain in the host until the media-feature stage. See [Cross-platform refactoring](refactoring.md) for stages and build entry points.
 
 ### Conversion jobs
 
@@ -109,7 +109,7 @@ MediaProbe → OutputPolicy / Transcoder.Plan → Requirements → FFmpeg
 Destination ← Replace after verification ← Temporary output ← Encoding / metadata
 ```
 
-`MediaInfo` is a source-inspection snapshot. `EncodeOptions` stores user selections, and `OutputPolicy` resolves defaults against source bit depth, sampling and encoder capabilities. `Transcoder.Plan` produces an argument array passed through `ProcessStartInfo.ArgumentList`.
+`MediaInfo` is a source-inspection snapshot; `EncodeOptions` stores user selections. The shared engine resolves format constraints and produces argument arrays. `Transcoder` orchestrates requirement checks, auxiliary files and retries. Execution uses the native process interface with separate arguments and streaming UTF-8 progress and diagnostics.
 
 Encoding writes into a private job directory beside the destination. Verification checks pixel format, color tags, audio and dynamic HDR; frame-accurate jobs also check the timeline. The destination is replaced after verification succeeds. Cancellation and failure stop and join child processes before removing temporary files.
 

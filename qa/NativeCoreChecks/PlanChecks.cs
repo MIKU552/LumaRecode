@@ -2,6 +2,8 @@ using System.Text;
 using System.Text.Json.Nodes;
 using LumaRecode.Native;
 using VideoConverter.Core;
+using OutputPolicy = LumaRecode.Tests.Reference.ReferenceOutputPolicy;
+using Transcoder = LumaRecode.Tests.Reference.ReferencePlanner;
 
 internal static class PlanChecks
 {
@@ -47,23 +49,35 @@ internal static class PlanChecks
             var planned = NativePlanner.Create(request);
             check(planned.Status == NativeStatus.Ok, "Software HEVC native planning failed: " + planned.Diagnostic);
             if (planned.Status != NativeStatus.Ok)
+            {
                 return cleaned;
+            }
+
             var plan = JsonNode.Parse(planned.Data)!.AsObject();
             var args = plan["arguments"]!.AsArray().Select(v => v!.GetValue<string>()).ToArray();
             var converted = await NativeProcess.RunAsync(new(args[0], args[1..], WorkingDirectory: assets));
             cleaned &= converted.CleanupConfirmed;
             check(converted.Status == NativeStatus.Ok, "Software HEVC native plan encode failed: " + converted.ErrorText);
             if (converted.Status != NativeStatus.Ok)
+            {
                 return cleaned;
+            }
+
             var inspected = await NativeProbe.RunAsync(new(ffprobe, transaction.StagingPath));
             cleaned &= inspected.Snapshot.CleanupConfirmed;
             check(inspected.Status == NativeStatus.Ok, "Planned HEVC output inspection failed: " + inspected.Diagnostic);
             if (inspected.Status != NativeStatus.Ok)
+            {
                 return cleaned;
+            }
+
             var verified = NativePlanner.VerifyOutput(request, inspected.Data);
             check(verified.Status == NativeStatus.Ok, "Planned HEVC native verification failed: " + verified.Diagnostic);
             if (verified.Status != NativeStatus.Ok)
+            {
                 return cleaned;
+            }
+
             check(transaction.Seal(cleaned, out _) == NativeStatus.Ok && transaction.Commit(out _) == NativeStatus.Ok,
                 "Verified HEVC output publication failed.");
         }
@@ -136,7 +150,10 @@ internal static class PlanChecks
         check((result.Status == NativeStatus.Ok) == (expected is not null),
             $"Native plan acceptance differs: {options.ToJson()}, {media.Kind}: {result.Diagnostic}");
         if (expected is null || result.Status != NativeStatus.Ok)
+        {
             return;
+        }
+
         var actual = JsonNode.Parse(result.Data)!.AsObject();
         var actualArgs = actual["arguments"]!.AsArray().Select(v => v!.GetValue<string>()).ToArray();
         bool same = actualArgs.SequenceEqual(expected.Arguments);
@@ -144,8 +161,12 @@ internal static class PlanChecks
         if (!same && differences++ < 8)
         {
             foreach (var (value, index) in actualArgs.Select((v, i) => (v, i)))
+            {
                 if (index >= expected.Arguments.Length || value != expected.Arguments[index])
+                {
                     Console.Error.WriteLine($"  argument {index}: native={value}\n  expected={(index < expected.Arguments.Length ? expected.Arguments[index] : "<absent>")}");
+                }
+            }
         }
         check(JsonNode.DeepEquals(actual["colors"], expected.Colors), "Native expected color tags differ.");
         check(JsonNode.DeepEquals(actual["options"], expected.Options.ToJson()), "Native resolved choices differ.");
@@ -163,9 +184,13 @@ internal static class PlanChecks
         var sourcePath = Path.Combine(assets, "source.mkv");
         var destination = Path.Combine(assets, "output.mp4");
         foreach (string kind in new[] { "sdr", "hlg", "pq", "log", "unknown" })
+        {
             foreach (string purpose in new[] { "share", "archive" })
+            {
                 foreach (string codec in new[] { "hevc", "avc", "av1" })
+                {
                     foreach (int depth in new[] { 8, 10, 12 })
+                    {
                         foreach (string sampling in new[] { "420", "422", "444", "gray", "rgb" })
                         {
                             var video = new JsonObject
@@ -187,12 +212,20 @@ internal static class PlanChecks
                             Compare(check, baseline, tools, media, options, destination);
                             CheckSource(check, media);
                         }
+                    }
+                }
+            }
+        }
         // Full option routes: LUT profiles, static/dynamic HDR, rotation,
         // multiple audio tracks, float RGB, precision and source range.
         foreach (string kind in new[] { "sdr", "hlg", "pq", "log" })
+        {
             foreach (string profile in new[] { "pocket3", "samsung", "milog", "applelog", "applelog2" })
+            {
                 foreach (string purpose in new[] { "share", "archive" })
+                {
                     foreach (string codec in new[] { "hevc", "avc", "av1" })
+                    {
                         foreach (string audio in new[] { "auto", "copy", "aac", "opus", "flac" })
                         {
                             var media = Source(sourcePath, kind, profile);
@@ -204,11 +237,20 @@ internal static class PlanChecks
                                 Compare(check, baseline, tools, media, options, Path.ChangeExtension(destination, ".mkv"));
                             }
                         }
+                    }
+                }
+            }
+        }
+
         var window = new FrameWindow(7, 29, 5, .625, .675, 1.225);
         foreach (string kind in new[] { "sdr", "hlg", "pq", "log" })
+        {
             foreach (bool motion in new[] { false, true })
+            {
                 foreach (int preview in new[] { 0, 1024 })
+                {
                     foreach (string codec in new[] { "hevc", "avc", "av1" })
+                    {
                         foreach (string audio in new[] { "auto", "copy", "aac", "flac" })
                         {
                             var media = Source(sourcePath, kind, "applelog2");
@@ -216,19 +258,32 @@ internal static class PlanChecks
                                 Transform: kind == "log" ? "log-sdr" : kind == "sdr" ? "none" : "hdr-sdr", Profile: "applelog2");
                             Compare(check, baseline, tools, media, options, destination, window, motion, "720", preview, 1.125);
                         }
+                    }
+                }
+            }
+        }
+
         foreach (string type in new[] { "hdr10plus", "dovi5", "dovi8", "dovi10", "dovi7", "rotation" })
+        {
             foreach (string output in new[] { "sdr", "hdr" })
+            {
                 foreach (string dynamic in new[] { "preserve", "standard" })
+                {
                     foreach (string codec in new[] { "hevc", "avc", "av1" })
                     {
                         var media = Source(sourcePath, "pq", null);
                         media.Video["bits_per_raw_sample"] = 10;
                         var side = media.Video["side_data_list"]!.AsArray();
                         if (type == "hdr10plus")
+                        {
                             side.Add(new JsonObject { ["side_data_type"] = "HDR10+ Dynamic Metadata (SMPTE 2094-40)" });
+                        }
                         else if (type == "rotation")
+                        {
                             side.Add(new JsonObject { ["side_data_type"] = "Display Matrix", ["rotation"] = 90 });
+                        }
                         else
+                        {
                             side.Add(new JsonObject
                             {
                                 ["side_data_type"] = "DOVI configuration record",
@@ -238,11 +293,48 @@ internal static class PlanChecks
                                 ["el_present_flag"] = 0,
                                 ["dv_bl_signal_compatibility_id"] = type == "dovi5" ? 0 : 1
                             });
+                        }
+
                         Compare(check, baseline, tools, media, new(Purpose: "archive", Codec: codec, Output: output,
                             Transform: output == "sdr" ? "hdr-sdr" : "none", DynamicHdr: dynamic), destination);
                     }
+                }
+            }
+        }
+
         Flac(check, sourcePath);
         Verify(check, baseline, tools, sourcePath, destination);
+        foreach (string output in new[] { "sdr", "hdr" })
+        {
+            foreach (int preview in new[] { 0, 1024 })
+            {
+                foreach (string purpose in new[] { "share", "archive" })
+                {
+                    foreach (var axes in new[] { (1, 0, 0, 1), (-1, 0, 0, 1), (1, 0, 0, -1), (-1, 0, 0, -1), (0, -1, 1, 0), (0, 1, -1, 0), (0, 1, 1, 0), (0, -1, -1, 0) })
+                    {
+                        var media = Source(sourcePath, "raw", null);
+                        media.Video["codec_name"] = "prores_raw";
+                        media.Video["pix_fmt"] = "bayer_rggb16le";
+                        media.Video["color_range"] = "pc";
+                        media.Video["_raw"] = new JsonObject
+                        {
+                            ["decoder_version_supported"] = true,
+                            ["decoder_supported"] = true,
+                            ["width"] = 128,
+                            ["height"] = 72,
+                            ["crop"] = new JsonArray(1, 1, 1, 1),
+                            ["matrix"] = new JsonArray(0.0009765625, 0, 0, 0, 0, 0.0009765625, 0, 0, 0, 0, 0.0009765625, 0)
+                        };
+                        media.Video["side_data_list"] = new JsonArray(new JsonObject
+                        {
+                            ["side_data_type"] = "Display Matrix",
+                            ["displaymatrix"] = $"00000000: {axes.Item1 * 65536} {axes.Item2 * 65536} 0\n00000001: {axes.Item3 * 65536} {axes.Item4 * 65536} 0\n00000002: 0 0 1073741824"
+                        });
+                        Compare(check, baseline, tools, media, new(Purpose: purpose, Output: output), destination, preview: preview);
+                    }
+                }
+            }
+        }
     }
 
     private static MediaInfo Source(string path, string kind, string? profile)
@@ -301,8 +393,11 @@ internal static class PlanChecks
     private static void Flac(Action<bool, string> check, string path)
     {
         foreach (string codec in new[] { "aac", "opus", "flac", "alac", "ape", "pcm_s16le", "pcm_u8", "pcm_s24be_planar", "pcm_f32le", "dts", "pcm_s24oops" })
+        {
             foreach (int channels in new[] { 0, 1, 2, 3, 6, 8, 9 })
+            {
                 foreach (string layout in new[] { "", "unknown", "mono", "stereo", "5.1", "7.1" })
+                {
                     foreach (string sample in new[] { "s32", "fltp", "dbl" })
                     {
                         var stream = new JsonObject
@@ -323,6 +418,10 @@ internal static class PlanChecks
                         var status = NativeMedia.FlacDepth(Encoding.UTF8.GetBytes(stream.ToJsonString()), out var depth, out _);
                         check((status == NativeStatus.Ok) == expected && (!expected || depth == 24), "Native lossless FLAC eligibility differs.");
                     }
+                }
+            }
+        }
+
         foreach (string pixel in new[] { "rgba", "gbrap16le", "yuv422p10le", "yuv440p", "yuv411p", "yuv410p", "nv12", "p010le", "ya16le", "unknown" })
         {
             var media = Source(path, "sdr", null);

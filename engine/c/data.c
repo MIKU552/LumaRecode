@@ -14,6 +14,18 @@ uint32_t lr_abi_version(void)
     return LR_ABI_VERSION;
 }
 
+lr_status lr_format_choices_init(lr_format_choices *value, uint64_t capacity)
+{
+    if (value == NULL)
+        return LR_INVALID_ARGUMENT;
+    if (capacity < sizeof(*value))
+        return LR_BUFFER_TOO_SMALL;
+    memset(value, 0, sizeof(*value));
+    value->struct_size = (uint32_t)sizeof(*value);
+    value->abi_version = LR_ABI_VERSION;
+    return LR_OK;
+}
+
 lr_status lr_plan_options_init(lr_plan_options *value, uint64_t capacity)
 {
     if (value == NULL)

@@ -62,6 +62,7 @@ try {
     }
 
     Invoke-DotNet @('run','--project','qa/LanguageChecks/LanguageChecks.csproj','-c','Release')
+    & (Join-Path $taskRoot 'tools/Build-NativeCore.ps1') -Target $taskArchitecture -Configuration Release
     $taskCommon = @('-r',$taskRid,"-p:Platform=$taskPlatform","-p:LumaBuildTarget=$Target","-p:LumaResolvedTarget=$($taskPlan.ResolvedTarget)","-p:LumaCompilation=$Compilation")
     Invoke-DotNet (@('restore','App/VideoConverter.WinUI.csproj','--locked-mode',"-p:PublishAot=$($taskAot.ToString().ToLowerInvariant())") + $taskCommon)
     $taskLicenseArgs = @{

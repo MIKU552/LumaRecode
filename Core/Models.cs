@@ -79,5 +79,9 @@ public sealed record EncodeOptions(string Purpose = "share", string Codec = "hev
 /// <summary>A shell-free FFmpeg argument vector and the color tags required during output verification.</summary>
 public sealed record EncodingPlan(string[] Arguments, JsonObject Colors, EncodeOptions Options, bool QsvTimingCompatibility = false, string? WorkingDirectory = null)
 {
+    internal LumaRecode.Native.NativePlanRequest? NativeRequest
+    {
+        get; init;
+    }
     public bool UsesSoftwareDecoding => !Arguments.Contains("-hwaccel");
 }

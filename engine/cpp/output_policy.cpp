@@ -56,7 +56,7 @@ extern "C" lr_status lr_resolve_format(const lr_source_format *source, const lr_
             return fail(error, LR_INVALID_ARGUMENT, "Invalid structure size or ABI version.");
         if (source->bit_depth == 0 || source->bit_depth > 64 || source->sampling < LR_SAMPLING_420 ||
             source->sampling > LR_SAMPLING_410 || source->color_range > LR_RANGE_FULL ||
-            (source->flags & ~(LR_SOURCE_ALPHA | LR_SOURCE_RAW)) != 0 ||
+            (source->flags & ~(LR_SOURCE_ALPHA | LR_SOURCE_RAW | LR_SOURCE_RGB)) != 0 ||
             source->dynamic_range < LR_DYNAMIC_RANGE_SDR || source->dynamic_range > LR_DYNAMIC_RANGE_HDR ||
             options->purpose < LR_PURPOSE_SHARE || options->purpose > LR_PURPOSE_ARCHIVE ||
             options->codec < LR_CODEC_HEVC || options->codec > LR_CODEC_AV1 ||
@@ -140,4 +140,53 @@ extern "C" lr_status lr_resolve_format(const lr_source_format *source, const lr_
     {
         return fail(error, LR_INTERNAL_ERROR, "Unexpected native error.");
     }
+}
+
+extern "C" lr_status lr_get_format_choices(const lr_source_format *source, lr_purpose purpose, lr_codec codec,
+                                           lr_dynamic_range dynamic_range, lr_format_choices *result,
+                                           lr_error *error)
+{
+    if (source == nullptr || result == nullptr || source->struct_size != sizeof(*source) ||
+        source->abi_version != LR_ABI_VERSION || result->struct_size != sizeof(*result) ||
+        result->abi_version != LR_ABI_VERSION || source->bit_depth == 0 || source->bit_depth > 64 ||
+        source->sampling > LR_SAMPLING_410 || purpose < LR_PURPOSE_SHARE || purpose > LR_PURPOSE_ARCHIVE ||
+        codec < LR_CODEC_HEVC || codec > LR_CODEC_AV1 || dynamic_range < LR_DYNAMIC_RANGE_SDR ||
+        dynamic_range > LR_DYNAMIC_RANGE_HDR || (error != nullptr && error->struct_size != sizeof(*error)))
+        return fail(error, LR_INVALID_ARGUMENT, "Invalid format-choice input.");
+    auto value = *result;
+    value.depth_mask = value.sampling_mask = value.default_depth = 0;
+    const auto maximum = purpose == LR_PURPOSE_SHARE && codec == LR_CODEC_AVC      ? 8U
+                         : purpose == LR_PURPOSE_ARCHIVE && codec == LR_CODEC_HEVC ? 12U
+                                                                                   : 10U;
+    for (const auto depth : {8U, 10U, 12U})
+        if (depth <= std::max(8U, source->bit_depth) && depth <= maximum &&
+            (dynamic_range != LR_DYNAMIC_RANGE_HDR || depth >= 10))
+        {
+            value.depth_mask |= 1U << depth;
+            if (value.default_depth == 0 || purpose == LR_PURPOSE_ARCHIVE)
+                value.default_depth = depth;
+        }
+    if (source->sampling == LR_SAMPLING_GRAY)
+        value.sampling_mask = (1U << LR_SAMPLING_GRAY) | (1U << LR_SAMPLING_420);
+    else if (source->sampling != LR_SAMPLING_AUTO)
+    {
+        const auto input = shifts(source->sampling);
+        for (const auto sampling : {LR_SAMPLING_420, LR_SAMPLING_422, LR_SAMPLING_444})
+        {
+            const auto target = shifts(sampling);
+            if (target[0] >= input[0] && target[1] >= input[1])
+                value.sampling_mask |= 1U << sampling;
+        }
+    }
+    value.default_sampling =
+        purpose == LR_PURPOSE_SHARE || codec == LR_CODEC_AV1 || source->sampling == LR_SAMPLING_440
+            ? LR_SAMPLING_420
+        : (source->flags & (LR_SOURCE_RGB | LR_SOURCE_RAW)) != 0 || source->sampling == LR_SAMPLING_RGB
+            ? LR_SAMPLING_444
+        : (source->flags & LR_SOURCE_ALPHA) != 0
+            ? source->sampling >= LR_SAMPLING_420 && source->sampling <= LR_SAMPLING_GRAY ? source->sampling
+                                                                                          : LR_SAMPLING_420
+            : LR_SAMPLING_SOURCE;
+    *result = value;
+    return fail(error, LR_OK, "");
 }

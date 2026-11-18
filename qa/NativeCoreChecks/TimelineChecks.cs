@@ -2,6 +2,9 @@ using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
 using LumaRecode.Native;
 using VideoConverter.Core;
+using FrameTimeline = LumaRecode.Tests.Reference.ReferenceFrameTimeline;
+using MediaProbe = LumaRecode.Tests.Reference.ReferenceMediaProbe;
+using Transcoder = LumaRecode.Tests.Reference.ReferencePlanner;
 
 internal static class TimelineChecks
 {
@@ -10,8 +13,11 @@ internal static class TimelineChecks
         check(Unsafe.SizeOf<NativeFramePoint>() == 24, "Managed frame point ABI differs.");
         var random = new Random(617);
         foreach (bool packets in new[] { false, true })
+        {
             foreach (int count in new[] { 1, 2, 17, 129 })
+            {
                 foreach (long numerator in new long[] { 1, 1001 })
+                {
                     foreach (long denominator in new long[] { 1000, 90000 })
                     {
                         long pts = -5000;
@@ -25,6 +31,9 @@ internal static class TimelineChecks
                         var baseline = new FrameTimeline(points, numerator, denominator, packets);
                         Compare(check, native, baseline);
                     }
+                }
+            }
+        }
     }
 
     private static void Compare(Action<bool, string> check, NativeTimeline native, FrameTimeline baseline)
@@ -72,13 +81,19 @@ internal static class TimelineChecks
                 "-vf", "select=not(eq(mod(n\\,5)\\,1)),setpts=PTS+0.5/TB,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited", "-fps_mode", "passthrough",
                 "-c:v", codec, "-threads", "1", "-c:a", "pcm_s16le", "-af", "asetpts=PTS+0.5/TB" };
             if (codec == "libx264")
+            {
                 arguments.AddRange(["-preset", "ultrafast", "-g", "5", "-bf", "2"]);
+            }
+
             arguments.AddRange(["-n", source]);
             var encoded = await NativeProcess.RunAsync(new(ffmpeg, arguments));
             cleanupConfirmed &= encoded.CleanupConfirmed;
             check(encoded.Status == NativeStatus.Ok, "Timeline VFR fixture encode failed: " + encoded.ErrorText);
             if (encoded.Status != NativeStatus.Ok)
+            {
                 continue;
+            }
+
             var media = await MediaProbe.InspectAsync(tools, source);
             var timeBase = media.Video.Text("time_base").Split('/');
             var options = new NativeTimelineOptions(ffprobe, source, media.Video.Text("codec_name"),
@@ -87,13 +102,19 @@ internal static class TimelineChecks
             cleanupConfirmed &= sourceMetadata.Snapshot.CleanupConfirmed;
             check(sourceMetadata.Status == NativeStatus.Ok, "Timeline native source metadata failed.");
             if (sourceMetadata.Status != NativeStatus.Ok)
+            {
                 continue;
+            }
+
             var loaded = await NativeTimeline.LoadFromProbeAsync(ffprobe, sourceMetadata.Data);
             cleanupConfirmed &= loaded.Snapshot.CleanupConfirmed;
             check(loaded.Status == NativeStatus.Ok, "Native VFR timeline scan failed: " + loaded.Diagnostic);
             using var timeline = loaded.Timeline;
             if (timeline is null)
+            {
                 continue;
+            }
+
             var baseline = await FrameTimeline.LoadAsync(tools, media);
             Compare(check, timeline, baseline);
             check(timeline.Snapshot.Count == 32 && timeline.Snapshot.PacketIndexed == (codec == "libx264"),
@@ -114,7 +135,10 @@ internal static class TimelineChecks
                 jobCleaned &= sourceProbe.Snapshot.CleanupConfirmed;
                 check(sourceProbe.Status == NativeStatus.Ok, "Native selected-window source probe failed.");
                 if (sourceProbe.Status != NativeStatus.Ok)
+                {
                     continue;
+                }
+
                 var request = PlanChecks.Request(planner, tools, media, new(Purpose: "archive", Codec: "avc", Audio: "aac"),
                     transaction.StagingPath, window: window) with
                 {
@@ -123,7 +147,10 @@ internal static class TimelineChecks
                 var planned = NativePlanner.Create(request);
                 check(planned.Status == NativeStatus.Ok, "Native selected-window plan failed: " + planned.Diagnostic);
                 if (planned.Status != NativeStatus.Ok)
+                {
                     continue;
+                }
+
                 var plan = JsonNode.Parse(planned.Data)!.AsObject();
                 var args = plan["arguments"]!.AsArray().Select(v => v!.GetValue<string>()).ToArray();
                 var converted = await NativeProcess.RunAsync(new(args[0], args[1..],
@@ -131,16 +158,25 @@ internal static class TimelineChecks
                 jobCleaned = converted.CleanupConfirmed;
                 check(converted.Status == NativeStatus.Ok, "Native selected-window encode failed: " + converted.ErrorText);
                 if (converted.Status != NativeStatus.Ok)
+                {
                     continue;
+                }
+
                 var outputProbe = await NativeProbe.RunAsync(new(ffprobe, transaction.StagingPath));
                 jobCleaned &= outputProbe.Snapshot.CleanupConfirmed;
                 check(outputProbe.Status == NativeStatus.Ok, "Native selected-window output probe failed.");
                 if (outputProbe.Status != NativeStatus.Ok)
+                {
                     continue;
+                }
+
                 var verified = NativePlanner.VerifyOutput(request, outputProbe.Data);
                 check(verified.Status == NativeStatus.Ok, "Native selected-window output verification failed: " + verified.Diagnostic);
                 if (verified.Status != NativeStatus.Ok)
+                {
                     continue;
+                }
+
                 var result = await NativeTimeline.LoadFromProbeAsync(ffprobe, outputProbe.Data);
                 jobCleaned &= result.Snapshot.CleanupConfirmed;
                 using var outputTimeline = result.Timeline;

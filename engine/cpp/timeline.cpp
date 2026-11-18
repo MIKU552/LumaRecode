@@ -127,6 +127,23 @@ bool read_point(std::string_view line, bool packets, lr_frame_point &point, bool
 }
 } // namespace
 
+extern "C" lr_status lr_timeline_parse_point(lr_utf8_view line, uint32_t packets, lr_frame_point *point,
+                                             uint32_t *discarded)
+{
+    if (point == nullptr || discarded == nullptr || packets > 1 || line.size > line_limit ||
+        lr_utf8_validate(line.data, line.size) != LR_OK)
+        return LR_INVALID_ARGUMENT;
+    lr_frame_point value{};
+    bool dropped = false;
+    const bool valid = read_point(line.size == 0 ? std::string_view{}
+                                                 : std::string_view(reinterpret_cast<const char *>(line.data),
+                                                                    static_cast<size_t>(line.size)),
+                                  packets != 0, value, dropped);
+    *point = value;
+    *discarded = dropped ? 1U : 0;
+    return valid ? LR_OK : LR_NOT_FOUND;
+}
+
 /* The process driver streams into this sink on run's thread. Only immutable
  * frame storage is published; UI snapshots never lock while sorting or scanning. */
 struct lr_timeline final : luma::process_sink

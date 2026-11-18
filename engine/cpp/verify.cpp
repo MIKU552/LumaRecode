@@ -1,6 +1,7 @@
 #include "lumarecode/plan.h"
 #include "media_model.hpp"
 #include "plan_internal.hpp"
+#include "raw_model.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -46,7 +47,7 @@ void verify(luma::probe_json &json, json_value *plan, json_value *source, json_v
     const auto before_video = member(source, "video"), video = member(output, "video");
     require(yyjson_mut_is_obj(before_video) && yyjson_mut_is_obj(video),
             "Verification requires source and output video metadata.");
-    require(!luma::media_raw(json, source), "RAW output verification requires its development contract.");
+    const bool raw_source = luma::media_raw(json, source);
     const auto sampling = text(options, "sampling"), codec = text(options, "codec"),
                output_kind = text(options, "output");
     const auto depth = integer(options, "bit_depth");
@@ -78,11 +79,25 @@ void verify(luma::probe_json &json, json_value *plan, json_value *source, json_v
                 "Motion Photo audio differs from the plan.");
     }
     auto width = integer(before_video, "width"), height = integer(before_video, "height");
+    if (raw_source)
+    {
+        const auto raw = member(before_video, "_raw");
+        const auto crop = luma::raw_crop(json, raw);
+        width = integer(raw, "width") - crop[0] - crop[1];
+        height = integer(raw, "height") - crop[2] - crop[3];
+    }
     const auto matrix = first(json, before_side, "Display Matrix");
     const auto angle = std::fmod(std::abs(luma::probe_number(text(matrix, "rotation"))), 180.0);
     if (matrix != nullptr && std::abs(angle - 90) < 1)
         std::swap(width, height);
-    if (motion)
+    if (raw_source)
+    {
+        if (sampling == "420" || sampling == "422")
+            width += width % 2;
+        if (sampling == "420")
+            height += height % 2;
+    }
+    if (motion && !raw_source)
     {
         width += width % 2;
         height += height % 2;

@@ -57,6 +57,13 @@ typedef struct lr_process_snapshot
 
 typedef struct lr_process lr_process;
 
+/* Called synchronously on run's thread after capture bookkeeping, outside the
+ * snapshot mutex. Bytes are borrowed for the callback. Return a non-OK status
+ * to abort; callbacks stop during failure cleanup. Never throw across the ABI.
+ * Hosts marshal presentation separately and release context after run returns. */
+typedef lr_status (*lr_process_output_callback)(void *context, uint32_t stream, const uint8_t *bytes,
+                                                uint64_t size);
+
 LR_API lr_status lr_process_options_init(lr_process_options *value, uint64_t capacity);
 LR_API lr_status lr_process_snapshot_init(lr_process_snapshot *value, uint64_t capacity);
 
@@ -70,6 +77,8 @@ LR_API lr_status lr_process_create(const lr_process_options *options, lr_process
  * before returning; descendants in the owned job/process group are terminated.
  * Unconfirmed cleanup returns LR_IO_ERROR with LR_CLEANUP_FAILED. */
 LR_API lr_status lr_process_run(lr_process *process, lr_error *error);
+LR_API lr_status lr_process_run_streaming(lr_process *process, lr_process_output_callback callback,
+                                          void *context, lr_error *error);
 LR_API lr_status lr_process_cancel(lr_process *process);
 LR_API lr_status lr_process_get_snapshot(lr_process *process, lr_process_snapshot *result);
 /* Byte snapshots preserve binary data; no terminator is added. required receives

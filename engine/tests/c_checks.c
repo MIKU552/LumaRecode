@@ -39,6 +39,18 @@ static void check_initialization(void)
     CHECK(options.bit_depth == 0 && options.sampling == LR_SAMPLING_AUTO);
     CHECK(lr_source_format_init(&source, sizeof(source)) == LR_OK);
     CHECK(lr_resolved_format_init(&result, sizeof(result)) == LR_OK);
+    {
+        lr_format_choices choices;
+        unsigned char saved[sizeof(choices)];
+        memset(&choices, 0xa5, sizeof(choices));
+        memcpy(saved, &choices, sizeof(choices));
+        CHECK(sizeof(choices) == 24);
+        CHECK(lr_format_choices_init(&choices, sizeof(choices) - 1) == LR_BUFFER_TOO_SMALL);
+        CHECK(memcmp(saved, &choices, sizeof(choices)) == 0);
+        CHECK(lr_format_choices_init(&choices, sizeof(choices)) == LR_OK);
+        CHECK(choices.struct_size == sizeof(choices) && choices.abi_version == LR_ABI_VERSION);
+        CHECK(choices.depth_mask == 0 && choices.sampling_mask == 0 && choices.default_depth == 0);
+    }
     CHECK(lr_hdr10plus_metadata_init(&metadata, sizeof(metadata)) == LR_OK);
     CHECK(sizeof(metadata) == 236);
     CHECK(strcmp(lr_status_name(LR_CANCELLED), "cancelled") == 0);

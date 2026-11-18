@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using LumaRecode.Native;
 using VideoConverter.Core;
+using MediaProbe = LumaRecode.Tests.Reference.ReferenceMediaProbe;
 
 internal static class MediaChecks
 {
@@ -39,14 +40,20 @@ internal static class MediaChecks
             new(DjiSchema.Pocket3, 0), new(DjiSchema.Pocket3, 1), new(DjiSchema.Pocket3, 2), new(DjiSchema.Pocket3, 22),
             new(DjiSchema.Unknown, 19), new(DjiSchema.Pocket3, 999)];
         foreach (var entries in tags)
+        {
             foreach (var transfer in transfers)
+            {
                 foreach (var codec in new[] { "hevc", "h264", "prores_raw" })
+                {
                     foreach (var color in dji)
                     {
                         var video = new JsonObject { ["codec_name"] = codec, ["color_transfer"] = transfer };
                         var metadata = new JsonObject();
                         foreach (var pair in entries)
+                        {
                             metadata[pair.Key] = pair.Value;
+                        }
+
                         var expected = MediaProbe.Classify(video, metadata, color is null ? null : (color.SchemaName, color.Mode));
                         var actual = NativeMedia.Classify(new(codec, transfer, entries, color));
                         check(Kind(actual.Kind) == expected.Kind && Profile(actual.Profile) == expected.Profile,
@@ -54,6 +61,10 @@ internal static class MediaChecks
                         check(actual.TagIndex is null || actual.TagIndex is >= 0 && actual.TagIndex < entries.Length,
                             "Classification evidence index points outside input tags.");
                     }
+                }
+            }
+        }
+
         foreach (uint compatibility in new uint[] { 0, 1, 2, 4, 6, 7 })
         {
             var actual = NativeMedia.Classify(new("prores_raw", "bt709", Tags("com.xiaomi.record_log", "1"),
@@ -127,7 +138,10 @@ internal static class MediaChecks
                 _ => DjiSchema.Unknown
             };
             if (id == DjiSchema.Unknown)
+            {
                 return null;
+            }
+
             var color = MediaProbe.ProtobufFields((byte[])MediaProbe.ProtobufFields((byte[])message[2])[4]);
             return new(id, color.TryGetValue(1, out var mode) ? (ulong)mode : 0);
         }
@@ -140,6 +154,7 @@ internal static class MediaChecks
     private static void BinaryMetadata(Action<bool, string> check)
     {
         foreach (var schema in new[] { "dvtm_PP-101.proto", "dvtm_ac206.proto", "dvtm_oq101.proto", "unrecognized.proto" })
+        {
             foreach (ulong mode in new ulong[] { 0, 1, 2, 9, 19, 22, 999, ulong.MaxValue })
             {
                 var packet = DjiPacket(schema, [8, .. Integer(mode), 8, 9]);
@@ -147,25 +162,35 @@ internal static class MediaChecks
                 check(actual == ReferenceDji(packet) && status == (schema == "unrecognized.proto" ? NativeStatus.NotFound : NativeStatus.Ok),
                     "DJI schema, mode or duplicate-field precedence differs.");
             }
+        }
+
         var valid = DjiPacket("dvtm_PP-101.proto", [8, 19]);
         var random = new Random(4481);
         for (int round = 0; round < 1200; ++round)
         {
             var bytes = round < valid.Length ? valid[..round] : (byte[])valid.Clone();
             if (round >= valid.Length)
+            {
                 bytes[random.Next(bytes.Length)] = (byte)random.Next(256);
+            }
+
             var status = NativeMedia.ParseDjiColor(bytes, out var actual, out _);
             check(actual == ReferenceDji(bytes) && (actual is null || status == NativeStatus.Ok), "DJI malformed-packet fallback differs.");
         }
         foreach (byte profile in new byte[] { 44, 66, 83, 86, 100, 110, 118, 122, 128, 134, 135, 138, 139, 144, 244 })
+        {
             foreach (byte tail in new byte[] { 0xc0, 0xa0, 0x90, 0x80, 0, 1 })
             {
                 byte[] nal = [0x67, profile, 0, 40, tail];
                 foreach (byte[] extra in new byte[][] { [0, 0, 1, .. nal], [0, 0, 0, 1, .. nal],
                 [1, profile, 0, 40, 255, 225, 0, (byte)nal.Length, .. nal],
                 [0,0,1,0x69,0x10,0,0,1,..nal,0,0,1,0x68,0] })
+                {
                     CheckAvc(check, extra);
+                }
             }
+        }
+
         for (int round = 0; round < 1000; ++round)
         {
             var bytes = new byte[random.Next(65)];
@@ -174,7 +199,10 @@ internal static class MediaChecks
         }
         byte[] mono = [1, 100, 0, 40, 255, 225, 0, 5, 0x67, 100, 0, 40, 0xc0];
         for (int length = 0; length < mono.Length; ++length)
+        {
             CheckAvc(check, mono[..length]);
+        }
+
         CheckAvc(check, [0, 0, 1, 0x67, 100, 0, 0, 3, 0xc0]);
         check(NativeMedia.ParseDjiColor(new byte[1048577], out _, out _) == NativeStatus.InvalidArgument,
             "Oversized DJI packet reached Rust.");
@@ -197,7 +225,9 @@ internal static class MediaChecks
             {
                 result.Append(bytes[index].ToString("x2"));
                 if ((index - offset) % 2 == 1)
+                {
                     result.Append(' ');
+                }
             }
             result.Append("  ABCDEF0123: ASCII preview\r\n");
         }
@@ -232,13 +262,19 @@ internal static class MediaChecks
             cleanupConfirmed &= encoded.CleanupConfirmed;
             check(encoded.Status == NativeStatus.Ok, "Source color fixture failed: " + encoded.ErrorText);
             if (encoded.Status != NativeStatus.Ok)
+            {
                 return cleanupConfirmed;
+            }
+
             var probe = await NativeProcess.RunAsync(new(ffprobe,
                 ["-v", "error", "-show_streams", "-show_format", "-show_data", "-of", "json", path], OutputCapacity: 65536));
             cleanupConfirmed &= probe.CleanupConfirmed;
             check(probe.Status == NativeStatus.Ok, "Source color fixture probe failed: " + probe.Diagnostic);
             if (probe.Status != NativeStatus.Ok)
+            {
                 return cleanupConfirmed;
+            }
+
             var data = JsonNode.Parse(probe.Output)!;
             var video = data["streams"]![0]!.AsObject();
             var actual = NativeMedia.Classify(new(video.Text("codec_name"), video.Text("color_transfer"), []));
@@ -260,6 +296,8 @@ internal static class MediaChecks
                 ProbeChecks.Compare(check, inspectedSource, await MediaProbe.InspectAsync(new(ffmpeg, ffprobe), path));
                 cleanupConfirmed &= await PlanChecks.SoftwareEncodeAsync(check, ffmpeg, ffprobe, path,
                     Path.Combine(root, "planned-" + transfer + ".mkv"), inspectedSource.Data, hdr);
+                cleanupConfirmed &= await HostIntegrationChecks.VideoAsync(check, ffmpeg, ffprobe, path,
+                    Path.Combine(root, "host-" + transfer + ".mkv"), hdr);
             }
         }
         string gray = Path.Combine(root, "monochrome-h264.mp4");
@@ -269,13 +307,19 @@ internal static class MediaChecks
         cleanupConfirmed &= avc.CleanupConfirmed;
         check(avc.Status == NativeStatus.Ok, "Monochrome AVC fixture failed: " + avc.ErrorText);
         if (avc.Status != NativeStatus.Ok)
+        {
             return cleanupConfirmed;
+        }
+
         var inspected = await NativeProcess.RunAsync(new(ffprobe,
             ["-v", "error", "-show_streams", "-show_data", "-of", "json", gray], OutputCapacity: 65536));
         cleanupConfirmed &= inspected.CleanupConfirmed;
         check(inspected.Status == NativeStatus.Ok, "Monochrome AVC fixture probe failed.");
         if (inspected.Status != NativeStatus.Ok)
+        {
             return cleanupConfirmed;
+        }
+
         var avcVideo = JsonNode.Parse(inspected.Output)!["streams"]![0]!.AsObject();
         var bytes = NativeMedia.DecodeProbeHex(avcVideo.Text("extradata"));
         check(NativeMedia.AvcIsMonochrome(bytes, out bool mono, out _) == NativeStatus.Ok && mono
@@ -284,7 +328,10 @@ internal static class MediaChecks
         cleanupConfirmed &= inspectedGray.Snapshot.CleanupConfirmed;
         check(inspectedGray.Status == NativeStatus.Ok, "Native monochrome inspection failed: " + inspectedGray.Diagnostic);
         if (inspectedGray.Status == NativeStatus.Ok)
+        {
             ProbeChecks.Compare(check, inspectedGray, await MediaProbe.InspectAsync(new(ffmpeg, ffprobe), gray));
+        }
+
         Console.WriteLine("Encoded SDR/HLG/PQ source classification and monochrome AVC metadata checks passed.");
         return cleanupConfirmed;
     }

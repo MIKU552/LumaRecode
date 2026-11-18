@@ -35,7 +35,14 @@ public enum Codec : uint
 [Flags]
 public enum SourceFlags : uint
 {
-    None = 0, Alpha = 1, Raw = 2
+    None = 0, Alpha = 1, Raw = 2, Rgb = 4
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct FormatChoices
+{
+    public uint StructSize, AbiVersion, DepthMask, SamplingMask, DefaultDepth;
+    public Sampling DefaultSampling;
 }
 
 /// <summary>Blittable source precision; public layout follows core.h, not managed serialization.</summary>

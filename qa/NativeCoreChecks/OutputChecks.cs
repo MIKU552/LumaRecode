@@ -55,7 +55,10 @@ internal static class OutputChecks
         {
             // These fixtures have no subprocesses and belong only to this check.
             if (Path.GetDirectoryName(Path.GetFullPath(root)) != Path.TrimEndingDirectorySeparator(parent))
+            {
                 throw new InvalidOperationException("Unexpected managed output test directory.");
+            }
+
             Directory.Delete(root, recursive: true);
         }
     }
