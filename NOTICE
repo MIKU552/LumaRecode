@@ -18,7 +18,10 @@ highlight mapping. Their generator is tools/generate_hlg_luts.py.
 The Windows distribution includes Microsoft runtime components.
 Their licenses and notices are included in licenses/.
 
-FFmpeg and ffprobe are supplied by the user and run as separate processes.
+FFmpeg and ffprobe run as separate processes. The optional macOS FFmpeg Full
+package includes a GPL-3.0-or-later FFmpeg build from Homebrew. See the bundled
+FFmpeg/BUILDINFO.txt, FFmpeg/Licenses, and the corresponding source archive
+provided with that download. Standard packages use user-provided tools.
 
 Source Sans 3, Source Han Sans and Source Code Pro are bundled unmodified
 under the SIL Open Font License 1.1. Their original license texts,
@@ -28,3 +31,6 @@ Ultra HDR image encoding uses libultrahdr and libjpeg-turbo.
 Their original licenses and notices are retained in licenses/UltraHDR/.
 This product includes Gain Map technology under license by Adobe.
 This software is based in part on the work of the Independent JPEG Group.
+
+The shared native core uses yyjson 0.13.0 under the MIT License.
+Its original license and pinned source checksums are retained in licenses/yyjson/.

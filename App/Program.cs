@@ -67,8 +67,9 @@ public sealed partial class ConverterApp : Application
     }
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        L.Configure(UserSettings.Load().Language);
-        window = new MainWindow();
+        var settings = UserSettings.Load();
+        L.Configure(settings.Language);
+        window = new MainWindow(settings);
         window.Activate();
     }
 }

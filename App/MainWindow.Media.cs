@@ -73,7 +73,8 @@ public sealed partial class MainWindow
     /// <summary>Probes one source asynchronously and applies only the current generation's results.</summary>
     private async Task InspectAsync(bool force = false)
     {
-        if (activeJob is not null || probing)
+        await initialTools.Task;
+        if (closing || activeJob is not null || probing)
         {
             return;
         }
@@ -115,6 +116,11 @@ public sealed partial class MainWindow
         probes.Add(client);
         try
         {
+            await InspectHardwareAsync();
+            if (token != generation)
+            {
+                return;
+            }
             await client.RunAsync(new ConversionRequest("probe", ToolsObject(), path), (type, data) =>
             {
                 if (token != generation)
@@ -135,6 +141,7 @@ public sealed partial class MainWindow
                 }
             });
         }
+        catch (OperationCanceledException) when (closing) { }
         catch (Exception error)
         {
             if (!closing)
@@ -152,18 +159,22 @@ public sealed partial class MainWindow
             }
         }
     }
-    // A new source starts from platform defaults; subsequent user selections are
-    // retained by Refresh as long as the source and encoder can support them.
+    // Pick defaults from the source and the available encoders. Refresh retains
+    // subsequent user choices while they remain compatible.
     private void ResetSourceOptions()
     {
         Select(InputKind, "auto");
-        Select(Purpose, MediaFlag("dynamic_hdr") ? "archive" : PlatformDefaults.Purpose);
+        Select(Purpose, MediaFlag("dynamic_hdr") || !hardwareEncoders.Any(item => item.Available) ? "archive" : "share");
         Select(DynamicMetadata, "preserve");
         Select(Codec, "hevc");
         Select(Variant, "standard");
         ApplyPurposeDefaults();
         Range.SelectedIndex = MediaText("kind") is "log" or "hlg" or "pq" or "raw" ? 1 : 0;
         Select(Profile, MediaText("profile"));
+        if (Value(Purpose) == "share")
+        {
+            RefreshHardwareChoices(preserve: false, selectPreferred: true);
+        }
     }
 
     private void ApplyMedia(JsonObject data)

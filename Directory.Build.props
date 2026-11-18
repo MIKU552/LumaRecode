@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
     <LumaRecodeArchitecture Condition="'$(RuntimeIdentifier)' == 'win-arm64' or '$(Platform)' == 'ARM64'">arm64</LumaRecodeArchitecture>
+    <LumaRecodeArchitecture Condition="'$(LumaRecodeArchitecture)' == '' and '$(Platform)' != 'x64' and '$(RuntimeIdentifier)' != 'win-x64' and $([System.String]::Copy('$(NETCoreSdkRuntimeIdentifier)').EndsWith('-arm64'))">arm64</LumaRecodeArchitecture>
     <LumaRecodeArchitecture Condition="'$(LumaRecodeArchitecture)' == ''">x64</LumaRecodeArchitecture>
     <LumaCompilation Condition="'$(LumaCompilation)' == ''">Jit</LumaCompilation>
     <!-- Published symbols use a stable source root instead of a developer's home directory. -->

@@ -4,7 +4,7 @@
 
 ## 简体中文
 
-快速分享使用 Intel QSV 的 H.264、HEVC 和 AV1 编码器。滤镜和解码路径按输入格式选择，编码后的文件通过格式与色彩校验后才写入最终位置。
+Intel QSV 快速分享支持 H.264、HEVC 和 AV1 编码器。滤镜和解码路径按输入格式选择，编码后的文件通过格式与色彩校验后才写入最终位置。
 
 复现环境：Windows 11、Intel Arc B390、驱动 32.0.101.9150、FFmpeg 9.0.2（Gyan）。
 
@@ -71,7 +71,7 @@ python qa/TimingChecks/check_qsv_recovery.py
 
 ## English
 
-Quick share uses Intel QSV H.264, HEVC and AV1 encoders. Source format determines decoding and filtering. Encoded files are written to their final destinations after format and color verification.
+Intel QSV offers Quick share for H.264, HEVC and AV1. Source format determines decoding and filtering. Encoded files are written to their final destinations after format and color verification.
 
 Reproduction environment: Windows 11, Intel Arc B390, driver 32.0.101.9150 and FFmpeg 9.0.2 (Gyan).
 

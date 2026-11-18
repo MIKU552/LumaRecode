@@ -5,11 +5,21 @@
 
 [简体中文](../../README.md) | English | [日本語](ja.md) | [Español](es.md)
 
-Video transcoding and color conversion for Windows 11, built with C# and .NET. LumaRecode provides a native WinUI 3 interface and a command line for FFmpeg, with video compression, camera Log to HDR / SDR, and HDR to SDR workflows.
+LumaRecode is a video transcoder and color conversion tool for Windows 11 and Apple Silicon Macs, with native interfaces and command-line access to FFmpeg.
 
 [Download](https://github.com/MIKU552/LumaRecode/releases/latest) · [Documentation](../README.md#english) · [Command line](../cli/en.md) · [Changelog](../../CHANGELOG.md#english)
 
-## Features
+## macOS
+
+Requires an Apple Silicon Mac with macOS 27 or later. Open the DMG and drag LumaRecode into Applications. The app finds FFmpeg and ffprobe through PATH or Homebrew. You can also set their paths in Settings.
+
+The FFmpeg Full test build includes FFmpeg, ffprobe, libplacebo, and MoltenVK. For Dolby Vision rendering with the standard build, install the tools with `brew install ffmpeg-full molten-vk`. See [macOS installation and distribution](../dependencies.md#macos-installation-and-distribution) for first launch and tool selection.
+
+The SwiftUI workspace supports video preview, frame-accurate trimming, software archive, and VideoToolbox quick share. Standard 10-bit HLG footage can be exported as Dolby Vision 8.4. Individual frames can be saved as SDR JPEG, HDR HEIC, or Adaptive HDR HEIC with a gain map. See the [macOS CLI guide](../cli/en.md#macos).
+
+Export SDR JPEG or Adaptive HDR HEIC as a Live Photo paired with a MOV. The clip defaults to about three seconds around the cover, with optional frame boundaries.
+
+## Windows 11
 
 - Frame preview and trimming, HDR / SDR stills, and Android Motion Photos with a selected cover frame.
 - Quick share and Software archive presets for HEVC, AV1, and H.264, with MP4 / MKV output.
@@ -29,14 +39,14 @@ Video transcoding and color conversion for Windows 11, built with C# and .NET. L
 3. Drop a video or choose **Choose video**, then confirm the output range, preset, and color conversion.
 4. Choose the output path and select **Start conversion**.
 
-Quick share uses Intel QSV. Software archive uses CPU encoding.
+Quick share uses an available hardware encoder. Software archive uses the CPU.
 
 | Download | Platform and requirements |
 | --- | --- |
 | `LumaRecode.exe` | X64, using the common x64 instruction-set profile |
 | `LumaRecode-ARM64.exe` | Windows ARM64, with a native ARM64 app and image codec |
 
-ARM64 defaults to Software archive. Encoding speed depends on the external FFmpeg build, hardware and selected preset.
+Both x64 and ARM64 check for hardware encoding. Software archive is the default when no compatible hardware encoder is available.
 
 Dolby Vision / HDR10+ sources default to software HEVC with dynamic metadata preservation. Select Standard HDR for hardware quick sharing. Supported Dolby Vision profiles are single-layer 5, 8.1, 8.4, 10.1 and 10.4. ProRes RAW checks FFmpeg decoder compatibility, then develops with camera white balance, color matrix and gain, with HLG output by default. See [Color conversion](../color-conversion.md#english) for formats and processing paths.
 
@@ -63,7 +73,7 @@ Motion video keeps the source resolution by default, with optional 1080p and 720
 
 | Purpose | Encoders | Default container | Default audio |
 | --- | --- | --- | --- |
-| Quick share | Intel QSV: HEVC / AV1 / H.264 | MP4 | AAC for HEVC / H.264; Opus for AV1 |
+| Quick share | Hardware HEVC / AV1 / H.264, depending on the device | MP4 | AAC for HEVC / H.264; Opus for AV1 |
 | Software archive | x265 / SVT-AV1 / x264 | MKV | Copy source tracks |
 
 Container, chroma sampling, bit depth, color range, and audio can be selected separately. Quick share defaults to 8-bit SDR and 10-bit HDR. Software archive keeps source bit depth within encoder limits: 8 / 10 / 12 bits for HEVC and 8 / 10 bits for AVC and AV1.
@@ -80,7 +90,7 @@ Video is re-encoded with the selected preset; audio can be copied or transcoded.
 
 - Windows 11 x64 or ARM64, with the instructions required by the selected variant.
 - User-provided FFmpeg / ffprobe with the required encoders and filters.
-- Intel QSV support for Quick share.
+- Quick share requires encoding support in FFmpeg, the GPU and its driver.
 - `zscale` and `lut3d` for Log conversion; `libplacebo` and Vulkan for HDR / Log to SDR.
 
 Language and theme follow the system by default. Chinese, English, Japanese and Spanish system languages are recognized; other languages default to English. Settings are stored at `%LOCALAPPDATA%\LumaRecode\settings.json`.
@@ -105,11 +115,12 @@ For first-time unattended use, read the component terms with `license --text`, t
 
 ## Build from source
 
-Requires .NET SDK 11.0.100 and PowerShell 7. Optional AOT builds also require the Visual Studio C++ toolchain.
+Requires .NET SDK 11.0.100, PowerShell 7, Rustup and Visual Studio desktop C++ tools.
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
+./tools/Install-NativeBuildTools.ps1
 ./build.ps1
 ./build.ps1 -Target X64
 ./build.ps1 -Target X64 -Compilation Aot
@@ -139,7 +150,7 @@ licenses/  Third-party licenses, notices, and provenance
 
 ## Development and license
 
-Original project code was developed with **Codex for Windows**, using **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** with **Extra high (`xhigh`)** reasoning. **[MIKU552](https://github.com/MIKU552)** defines requirements, supplies hardware and footage, and verifies the application.
+Original project code was developed with **Codex for Windows** using **GPT-6.1 Sol** for early development and **GPT-6.2 Sol** for later work, both with **Extra high (`xhigh`)** reasoning. **[MIKU552](https://github.com/MIKU552)** defines requirements, supplies hardware and footage, and verifies the application.
 
 Original code, documentation, graphics, and generated camera Log LUTs use the **[MIT License](../../LICENSE)**. Licenses and sources for third-party LUTs, fonts, and runtimes are listed in [NOTICE](../../NOTICE) and [third-party components](../../Assets/THIRD_PARTY.md#english).
 

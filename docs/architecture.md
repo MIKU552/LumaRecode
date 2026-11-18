@@ -11,7 +11,9 @@
 | 目录 | 职责 |
 | --- | --- |
 | `App/` | WinUI 视图、设置、本地化、通知及 GUI / CLI 启动选择 |
-| `Core/` | 素材探测、输出规则、命令规划、视频与图片导出、CLI |
+| `Core/` | Windows 宿主模型、共享核心适配、媒体导出编排与 CLI |
+| `engine/` | 跨平台 C / C++ / Rust 核心：探测、规则、时间轴、规划、进程与文件事务 |
+| `Interop/` | .NET 生成式 C ABI 导入、SafeHandle 与后台调用适配 |
 | `Bundle/` | 可选 AOT 的单文件入口，传递标准句柄与退出码 |
 | `Packaging/` | 将 Visual Studio 配置映射到完整的单文件构建流程 |
 | `Assets/` | LUT、视频与动态照片预设、资源来源清单 |
@@ -20,6 +22,8 @@
 | `docs/` | 使用说明、实现说明与测量数据 |
 
 `App/MainWindow.*.cs` 按职责拆分：`Media` 负责素材，`Options` 负责约束，`Conversion` 负责任务与进度，`Frames` 负责预览和帧范围，`Dialogs` 与 `Localization` 负责对话框和语言。
+
+Windows 的 `Core/` 经 `Interop/` 调用共享核心。RAW 参数提取、动态 HDR 辅助文件和图片封装保留在宿主层，按媒体功能阶段迁移。阶段与构建入口见[跨平台重构](refactoring.md)。
 
 ### 转换任务
 
@@ -31,13 +35,37 @@ MediaProbe → OutputPolicy / Transcoder.Plan → 要求检查 → FFmpeg
 目标文件 ← 校验通过后替换 ← 临时输出 ← 编码、元数据处理
 ```
 
-`MediaInfo` 是一次素材探测快照。`EncodeOptions` 保存用户选择，`OutputPolicy` 根据输入位深、采样和编码器能力解析默认值。`Transcoder.Plan` 生成独立的参数数组；参数通过 `ProcessStartInfo.ArgumentList` 传递。
+`MediaInfo` 是一次素材探测快照，`EncodeOptions` 保存用户选择。共享核心解析格式约束并生成参数数组；`Transcoder` 编排能力检查、辅助文件和重试。执行使用原生进程接口，参数逐项传递，进度与诊断按 UTF-8 流读取。
 
 编码写入输出目录下独立的任务临时目录。完成后检查像素格式、色彩标签、音轨及动态 HDR；逐帧任务还检查时间轴。只有校验通过才替换目标文件。取消或失败会先停止并等待子进程，再清理临时目录。
 
 动态 HDR 保留、标准色彩转换和 RAW 显影由各自的规则决定处理路径。`Hdr10PlusBitstream` 优先读取 HEVC 压缩包中的 SEI，时间轴存在歧义时交由解码帧元数据处理。`RawDevelopment` 将逐帧相机参数写入 FFmpeg 校准命令。
 
-`PlatformDefaults` 统一 GUI 与 CLI 的架构默认值：ARM64 默认软件归档，并省去 x86 专用 RAW 解码参数。Ultra HDR 的 P/Invoke 接口在各架构保持一致，发布过程选择对应的原生 DLL。
+ARM64 省去 x86 专用 RAW 解码参数。Ultra HDR 的 P/Invoke 接口在各架构保持一致，发布过程选择对应的原生 DLL。
+
+### macOS 宿主
+
+`macOS/LumaRecode.xcodeproj` 构建 Apple Silicon 应用。SwiftUI 和 AppKit 提供工作区、系统文件面板与设置，AVKit 播放系统支持的素材。Swift 经 C ABI 调用源探测、帧索引、编码规划、进程执行与输出事务。指定帧范围时，导出后核验帧数再发布文件。
+
+打开 Xcode 的 LumaRecode scheme 可直接构建应用。终端执行 `sh tools/build-macos.sh Release --dmg` 可生成 ad-hoc 签名的应用和开发 DMG。工具链使用 Xcode 27.2、Rustup、CMake 和 Ninja。运行时从设置、环境或 Homebrew 查找 FFmpeg 和 ffprobe。
+
+应用的 `Contents/MacOS/LumaRecode` 同时提供 `probe`、`frames`、`convert` 和 `doctor`。软件归档支持 SDR、HLG、PQ 和已选曲线的相机 Log。HDR10+ 和 Dolby Vision 素材可转换为标准 HDR 或 SDR。编码能力取决于外部 FFmpeg。
+
+快速分享通过 FFmpeg 调用 VideoToolbox，候选档位覆盖 8 位 H.264 / HEVC SDR 和 10 位 HEVC HLG / PQ。每个档位以 320 × 192 合成视频验证实际编码、MP4 封装和色彩标签，试跑与正式导出均要求硬件编码。GUI 按输出信号显示通过的档位，可手动重新检测。CLI 默认使用软件归档，`--encoder auto` 优先使用通过检测的硬件档位，`--encoder videotoolbox` 显式要求硬件可用。`doctor` 返回各档位的检测结果。质量值按档位独立调校，当前取值见 [编码预设](../Assets/recommended-presets.json)。
+
+VideoToolbox 的标准 HLG 输出使用 FFmpeg 的 `dovi_rpu=strip=1` 去除编码器可能写入的 Dolby Vision 元数据，并保留 HLG 基础层。保留源片静态 HDR 元数据的导出使用软件归档。输出核验检查色彩标签与元数据。[FFmpeg 比特流过滤器文档](https://ffmpeg.org/ffmpeg-bitstream-filters.html#dovi_005frpu)
+
+10 位及以上的普通 HLG 素材可单独选择 **Dolby Vision 8.4**。通过硬件检测时，该选项输出带 HLG 基础层的 10 位 HEVC MP4。导出时核验容器中的 Dolby Vision 配置和解码帧中的动态元数据。macOS 命令行为 `convert input.mov -o output.mp4 --range dolbyvision84`。
+
+逐帧导出复用时间轴和色彩处理，macOS 通过 Core Image 写入 SDR JPEG、10 位 PQ HEIC 和带 ISO 增益图的 Adaptive HDR HEIC。单张图片使用与视频相同的输出事务。CLI 用法为 `image input.mov -o frame.heic --frame 120 --format adaptive`，帧号从 1 开始。
+
+实况照片用同一时间轴定位封面和短片范围。AVFoundation 写入 MOV 的配对标识和封面时间，Photos 成功读取静态图与 MOV 后再发布配对文件夹。
+
+### Windows 硬件编码
+
+快速分享支持 Intel QSV、NVIDIA NVENC、AMD AMF 和 Windows Media Foundation。应用使用当前配置的 FFmpeg，以 320 × 192 合成视频逐项验证编码和 MP4 封装。界面只提供通过试跑且符合输出要求的组合。缺少合适的硬件编码器时默认使用软件归档。`doctor` 显示探测结果。
+
+NVENC 使用 VBR CQ。AMF 的 8 位档使用 QVBR，10 位档使用 CQP，且关闭预分析。Media Foundation 试跑强制使用硬件，提供 8 位 H.264 和 HEVC。新增档位的质量参数是调校起点，目前实机验证覆盖 Intel。各后端参数与驱动的具体差异见 [NVIDIA FFmpeg 指南](https://docs.nvidia.com/video-technologies/video-codec-sdk/13.1/ffmpeg-with-nvidia-gpu/)、[AMD AMF 调校指南](https://github.com/GPUOpen-LibrariesAndSDKs/AMF/wiki/AMF-Encoder-Settings-and-Tuning-in-FFmpeg)、[AMF P010 兼容性报告](https://github.com/GPUOpen-LibrariesAndSDKs/AMF/issues/591)及 [FFmpeg Media Foundation 实现](https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/mfenc.c)。
 
 ### 构建与打包
 
@@ -81,7 +109,9 @@ GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在�
 | Directory | Responsibility |
 | --- | --- |
 | `App/` | WinUI views, settings, localization, notifications and GUI / CLI startup selection |
-| `Core/` | Source inspection, output policies, command planning, video/image export and CLI |
+| `Core/` | Windows host models, shared-core adapters, media export orchestration and CLI |
+| `engine/` | Cross-platform C/C++/Rust core: inspection, policy, timelines, planning, processes and file transactions |
+| `Interop/` | Generated .NET C ABI imports, SafeHandle ownership and background invocation |
 | `Bundle/` | Optional AOT single-file entry; preserve standard handles and exit codes |
 | `Packaging/` | Map Visual Studio configurations to the complete single-file build pipeline |
 | `Assets/` | LUTs, video and Motion Photo presets, resource provenance |
@@ -90,6 +120,8 @@ GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在�
 | `docs/` | User guides, implementation notes and measurements |
 
 `App/MainWindow.*.cs` is split by responsibility: `Media` handles sources, `Options` enforces constraints, `Conversion` manages jobs and progress, `Frames` handles previews and frame ranges, and `Dialogs` / `Localization` handle dialogs and language.
+
+Windows `Core/` calls the shared engine through `Interop/`. RAW parameter extraction, dynamic HDR auxiliary files and image packaging remain in the host until the media-feature stage. See [Cross-platform refactoring](refactoring.md) for stages and build entry points.
 
 ### Conversion jobs
 
@@ -101,13 +133,37 @@ MediaProbe → OutputPolicy / Transcoder.Plan → Requirements → FFmpeg
 Destination ← Replace after verification ← Temporary output ← Encoding / metadata
 ```
 
-`MediaInfo` is a source-inspection snapshot. `EncodeOptions` stores user selections, and `OutputPolicy` resolves defaults against source bit depth, sampling and encoder capabilities. `Transcoder.Plan` produces an argument array passed through `ProcessStartInfo.ArgumentList`.
+`MediaInfo` is a source-inspection snapshot; `EncodeOptions` stores user selections. The shared engine resolves format constraints and produces argument arrays. `Transcoder` orchestrates requirement checks, auxiliary files and retries. Execution uses the native process interface with separate arguments and streaming UTF-8 progress and diagnostics.
 
 Encoding writes into a private job directory beside the destination. Verification checks pixel format, color tags, audio and dynamic HDR; frame-accurate jobs also check the timeline. The destination is replaced after verification succeeds. Cancellation and failure stop and join child processes before removing temporary files.
 
 Dynamic HDR preservation, standard color conversion and RAW development each select their processing path through their own policies. `Hdr10PlusBitstream` reads HEVC SEI from compressed packets first and uses decoded-frame metadata for ambiguous timelines. `RawDevelopment` writes per-frame camera calibration into FFmpeg commands.
 
-`PlatformDefaults` provides common GUI / CLI architecture defaults: ARM64 starts with Software archive and omits the x86-specific RAW decoder workaround. Ultra HDR uses the same P/Invoke interface on each architecture; publishing selects the matching native DLL.
+ARM64 omits the x86-specific RAW decoder workaround. Ultra HDR uses the same P/Invoke interface on each architecture. Publishing selects the matching native DLL.
+
+### macOS host
+
+`macOS/LumaRecode.xcodeproj` builds the Apple Silicon application. SwiftUI and AppKit provide the workspace, system file panels, and settings. AVKit plays footage supported by macOS. Swift calls the C ABI for inspection, frame indexing, planning, process execution, and output transactions. Trimmed exports are checked for the expected frame count before publication.
+
+Open the LumaRecode scheme in Xcode to build the app. From the shell, run `sh tools/build-macos.sh Release --dmg` to make the ad-hoc-signed app and development DMG. The toolchain uses Xcode 27.2, Rustup, CMake, and Ninja. At runtime, the app finds FFmpeg and ffprobe through settings, the environment, or Homebrew.
+
+The app's `Contents/MacOS/LumaRecode` executable also provides `probe`, `frames`, `convert`, and `doctor`. Software archive supports SDR, HLG, PQ, and camera Log with a selected curve. HDR10+ and Dolby Vision footage can be converted to standard HDR or SDR. Encoding capabilities depend on the external FFmpeg build.
+
+Quick share uses VideoToolbox through FFmpeg. The candidate profiles include 8-bit H.264 / HEVC SDR and 10-bit HEVC HLG / PQ. Each trial checks encoding, MP4 muxing, and color tags with a 320 × 192 synthetic clip. Both trials and exports require hardware encoding. The GUI lists the passing profiles for the selected output signal and offers a manual recheck. The CLI defaults to software archive. Use `--encoder auto` to prefer an available hardware profile, `--encoder videotoolbox` to require one, or `doctor` to see the trial results. Quality settings are defined per profile in the [encoding presets](../Assets/recommended-presets.json).
+
+The standard HLG path uses FFmpeg's `dovi_rpu=strip=1` to remove Dolby Vision metadata that VideoToolbox may insert and retain the HLG base layer. Exports that retain source static HDR metadata use software archive. Output verification checks the color tags and metadata. [FFmpeg bitstream filters](https://ffmpeg.org/ffmpeg-bitstream-filters.html#dovi_005frpu)
+
+**Dolby Vision 8.4** is an explicit export option for standard HLG footage at 10 bits or higher. On hardware that passes the capability check, it writes a 10-bit HEVC MP4 with an HLG base layer. Export verification checks the Dolby Vision configuration in the container and dynamic metadata on decoded frames. On macOS, use `convert input.mov -o output.mp4 --range dolbyvision84`.
+
+Frame export reuses the shared timeline and color processing. On macOS, Core Image writes SDR JPEG, 10-bit PQ HEIC, and Adaptive HDR HEIC with an ISO gain map. Still and video exports use the same output transaction. For example, run `image input.mov -o frame.heic --frame 120 --format adaptive`. Frame numbers are one-based.
+
+Live Photos use the same timeline for the cover and motion range. AVFoundation writes the matching identifier and cover time into the MOV. The app publishes the pair as a folder after Photos reads both resources successfully.
+
+### Windows hardware encoding
+
+Quick share supports Intel QSV, NVIDIA NVENC, AMD AMF, and Windows Media Foundation. LumaRecode tests encoding and MP4 muxing with the configured FFmpeg and 320 × 192 synthetic video. The GUI offers the combinations that pass and match the output settings. Software archive is the default when no suitable hardware encoder is available. The `doctor` command reports the results.
+
+NVENC uses VBR CQ. AMF uses QVBR at 8-bit and CQP with pre-analysis disabled at 10-bit. Media Foundation trials require hardware encoding and cover 8-bit H.264 and HEVC. Preset quality values are starting points for tuning. Device testing currently covers Intel. See the [NVIDIA FFmpeg guide](https://docs.nvidia.com/video-technologies/video-codec-sdk/13.1/ffmpeg-with-nvidia-gpu/), [AMD AMF tuning guide](https://github.com/GPUOpen-LibrariesAndSDKs/AMF/wiki/AMF-Encoder-Settings-and-Tuning-in-FFmpeg), [AMF P010 compatibility report](https://github.com/GPUOpen-LibrariesAndSDKs/AMF/issues/591), and [FFmpeg Media Foundation implementation](https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/mfenc.c).
 
 ### Building and packaging
 

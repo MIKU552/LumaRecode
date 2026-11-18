@@ -14,13 +14,17 @@
 | Windows SDK BuildTools | 10.0.28000.2957 | Windows 资源与清单 |
 | Windows API target | 10.0.26100.0 | Windows API 编译合约 |
 | Visual Studio | 2026 18.12+ | 解决方案、调试与打包 |
-| MSVC linker | 14.52.37029+ | 可选 Native AOT 构建 |
+| MSVC | 19.52.37029+ | 共享 C / C++ 核心与可选 AOT |
+| Rust | 1.100.0 | 共享元数据模块 |
+| CMake / Ninja | 由 `tools/native-build-tools.json` 固定 | 原生构建 |
 | libultrahdr / libjpeg-turbo | 2.0.2 / 3.2.1 | Ultra HDR JPEG 编码 |
 | PySide6 | 6.12.0 | 可选图标生成工具 |
+| yyjson | 0.13.0 | 共享原生核心的 JSON 读取与写入，MIT 许可 |
 
-默认 JIT 构建需要 .NET SDK、PowerShell 7，以及 WinUI 构建所需的 Windows 工具：
+应用构建需要 .NET SDK、PowerShell 7、Rustup 和 Visual Studio 桌面 C++ 工具。先安装固定的原生构建工具，再运行应用构建：
 
 ```powershell
+./tools/Install-NativeBuildTools.ps1
 ./build.ps1
 ```
 
@@ -44,15 +48,16 @@ NuGet 按架构和编译方式使用锁文件：JIT 使用 `packages.lock.json` 
 
 JIT 在运行设备上选择指令集。x64 的 CPU 与 Windows 均支持 APX，且 `DOTNET_EnableAPX` / `COMPlus_EnableAPX` 未显式设置时，启动阶段以子进程环境启用 APX 后重新进入应用。ARM64 使用运行时的特性检测和指令选择。
 
-AOT 的 Native 目标按构建 CPU 优化，需要与系统架构相同的 .NET SDK。显式 X64、Apx、Arm64 使用固定指令集，支持交叉编译。APX AOT 入口在加载主体前检查 CPU 和 Windows 支持。ARM64 默认选择软件归档。
+AOT 的 Native 目标按构建 CPU 优化，需要与系统架构相同的 .NET SDK。显式 X64、Apx、Arm64 使用固定指令集，支持交叉编译。APX AOT 入口在加载主体前检查 CPU 和 Windows 支持。
 
-JIT 交叉发布无需 C++ 链接器；AOT 交叉编译需要对应架构的 [C++ 构建工具](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile)。中间目录为 `obj/<Compilation>/<Target>/` 和 `bin/<Compilation>/<Target>/`，分发许可清单位于 `build-cache/licenses/<Compilation>/<Target>/`，AOT 载荷位于 `dist/NativeAot/<Target>/`。
+JIT 与 AOT 均需为共享原生核心安装目标架构的 C++ 和 Rust 工具。AOT 交叉编译另需对应架构的 [C++ 构建工具](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile)。中间目录为 `obj/<Compilation>/<Target>/` 和 `bin/<Compilation>/<Target>/`，分发许可清单位于 `build-cache/licenses/<Compilation>/<Target>/`，AOT 载荷位于 `dist/NativeAot/<Target>/`。
 
 ### 部署方式
 
 | 命令 | 产物 | 运行时 |
 | --- | --- | --- |
 | `./build.ps1` | JIT 单文件 EXE | 内置所需运行时 |
+| `./build.ps1 -Deployment Portable` | JIT 便携 ZIP | 运行时随程序放在同一目录 |
 | `./build.ps1 -Compilation Aot` | AOT 单文件 EXE | 内置所需运行组件 |
 | `./build.ps1 -Deployment FrameworkDependent` | JIT ZIP | 用户安装 .NET 11 Runtime、Windows App Runtime 2.6 |
 
@@ -69,7 +74,7 @@ ARM64 使用 NEON，x64 使用 libjpeg-turbo 的 x86 SIMD。源码版本、构�
 
 ### Visual Studio
 
-使用 Visual Studio 2026 18.12 或更新版本，安装 WinUI / C# 桌面开发工具、.NET SDK 11.0.100，并将 PowerShell 7 的 `pwsh` 加入 `PATH`。AOT 另需对应架构的 C++ 构建工具。
+使用 Visual Studio 2026 18.12 或更新版本，安装 WinUI / C# 桌面开发工具、目标架构的 C++ 工具、.NET SDK 11.0.100 和 Rustup，并将 PowerShell 7 的 `pwsh` 加入 `PATH`。原生核心随应用自动构建。
 
 打开 `LumaRecode.sln` 或 `LumaRecode.slnx`，将 `LumaRecode.App` 设为启动项目。Debug / x64 和 Debug / ARM64 用于调试。
 
@@ -109,6 +114,8 @@ JIT 默认直接打包应用、中间代码、.NET 运行时、Windows App SDK�
 
 单文件使用 `IncludeAllContentForSelfExtract` 保留磁盘文件兼容性。缓存与进程的性能测量见[性能优化](performance.md)，命令行说明见 [CLI 手册](cli/zh-CN.md)。
 
+便携 ZIP 解压后直接从程序目录加载依赖，适用于频繁切换版本或需要控制临时目录占用的环境。GUI 和 CLI 共用解压目录中的 `LumaRecode.exe`。
+
 ### 依赖收集
 
 1. 按锁文件还原当前架构与编译方式的依赖。
@@ -117,6 +124,24 @@ JIT 默认直接打包应用、中间代码、.NET 运行时、Windows App SDK�
 4. 随单文件发布完整组件许可与来源清单。
 
 项目许可见 [LICENSE](../LICENSE)、[NOTICE](../NOTICE)和[第三方组件](../Assets/THIRD_PARTY.md)。
+
+### 构建来源证明
+
+从 GitHub Actions 手动运行 **Native core** 可生成 Windows x64 / ARM64 JIT、macOS ARM64 DMG、FFmpeg Full 调试包与对应源码，以及共享 SDK。工作流先完成构建及回归测试，再为每个最终文件签发并验证来源证明。通过验证的文件位于 `lumarecode-distribution-<commit>` 产物中。
+
+```powershell
+gh attestation verify <file> --repo MIKU552/LumaRecode --signer-workflow MIKU552/LumaRecode/.github/workflows/native-core.yml
+```
+
+核对指定版本时，可追加 `--source-ref refs/tags/<tag>` 和 `--source-digest <commit>`。[GitHub 构建来源证明](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations)
+
+### macOS 安装与分发
+
+将 DMG 中的应用拖到“应用程序”。首次打开时，如果 macOS 阻止启动，可在确认下载来源后，前往“系统设置 → 隐私与安全性”选择“仍要打开”。[Apple 使用手册](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac)
+
+FFmpeg Full 调试包在应用内提供 FFmpeg、ffprobe 和运行库。工具路径优先使用明确配置，其次使用调试包内置工具，再查找 PATH 和 Homebrew。标准 DMG 可搭配 Homebrew 的 `ffmpeg-full` 和 `molten-vk` 使用。
+
+Xcode 可构建和归档应用。运行 `sh tools/build-macos.sh Release --dmg` 生成标准 DMG。安装 `ffmpeg-full` 和 `molten-vk` 后，可运行 `sh tools/build-macos.sh Release --dmg-full-tools` 给已构建的 Release 应用制作调试 DMG。调试包记录依赖版本和编译选项。分发时同时提供对应源码压缩包，含上游源码、Homebrew 配方、资源和补丁。FFmpeg 可执行程序按 GPL-3.0-or-later 分发。
 
 ## English
 
@@ -130,13 +155,17 @@ JIT 默认直接打包应用、中间代码、.NET 运行时、Windows App SDK�
 | Windows SDK BuildTools | 10.0.28000.2957 | Windows resources and manifests |
 | Windows API target | 10.0.26100.0 | Windows API contracts |
 | Visual Studio | 2026 18.12+ | Solution, debugging and packaging |
-| MSVC linker | 14.52.37029+ | Optional Native AOT builds |
+| MSVC | 19.52.37029+ | Shared C/C++ core and optional AOT |
+| Rust | 1.100.0 | Shared metadata modules |
+| CMake / Ninja | Pinned in `tools/native-build-tools.json` | Native builds |
 | libultrahdr / libjpeg-turbo | 2.0.2 / 3.2.1 | Ultra HDR JPEG encoding |
 | PySide6 | 6.12.0 | Optional icon-generation tool |
+| yyjson | 0.13.0 | JSON reading and writing in the shared native core, MIT license |
 
-Default JIT builds require the .NET SDK, PowerShell 7 and Windows tools for WinUI compilation:
+Application builds require the .NET SDK, PowerShell 7, Rustup and Visual Studio desktop C++ tools. Install the pinned native build tools before building the application:
 
 ```powershell
+./tools/Install-NativeBuildTools.ps1
 ./build.ps1
 ```
 
@@ -160,15 +189,16 @@ Each directory contains one `LumaRecode.exe`. Releases provide JIT single EXEs f
 
 The JIT selects instructions on the running device. When the x64 CPU and Windows support APX and neither `DOTNET_EnableAPX` nor `COMPlus_EnableAPX` is explicitly set, startup restarts the application with APX enabled in the child environment. ARM64 uses runtime feature detection and instruction selection.
 
-AOT Native targets the build CPU and requires a .NET SDK matching the system architecture. Explicit X64, Apx and Arm64 targets use fixed instruction profiles and support cross-compilation. The APX AOT entry checks CPU and Windows support before loading the application. ARM64 defaults to Software archive.
+AOT Native targets the build CPU and requires a .NET SDK matching the system architecture. Explicit X64, Apx and Arm64 targets use fixed instruction profiles and support cross-compilation. The APX AOT entry checks CPU and Windows support before loading the application.
 
-JIT cross-publishing does not need a C++ linker. AOT cross-compilation requires the corresponding [C++ build tools](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile). Intermediate files use `obj/<Compilation>/<Target>/` and `bin/<Compilation>/<Target>/`. Distribution licenses use `build-cache/licenses/<Compilation>/<Target>/`; AOT payloads use `dist/NativeAot/<Target>/`.
+Both JIT and AOT builds need target-architecture C++ and Rust tools for the shared engine. AOT cross-compilation also requires the corresponding [C++ build tools](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile). Intermediate files use `obj/<Compilation>/<Target>/` and `bin/<Compilation>/<Target>/`. Distribution licenses use `build-cache/licenses/<Compilation>/<Target>/`; AOT payloads use `dist/NativeAot/<Target>/`.
 
 ### Deployment options
 
 | Command | Artifact | Runtime |
 | --- | --- | --- |
 | `./build.ps1` | JIT single EXE | Required runtimes included |
+| `./build.ps1 -Deployment Portable` | Portable JIT ZIP | Runtimes alongside the application |
 | `./build.ps1 -Compilation Aot` | AOT single EXE | Required runtime components included |
 | `./build.ps1 -Deployment FrameworkDependent` | JIT ZIP | Install .NET 11 Runtime and Windows App Runtime 2.6 |
 
@@ -185,7 +215,7 @@ ARM64 uses NEON; x64 uses libjpeg-turbo x86 SIMD. Source versions, build setting
 
 ### Visual Studio
 
-Use Visual Studio 2026 18.12 or later with WinUI / C# desktop tools and .NET SDK 11.0.100. Add PowerShell 7's `pwsh` to `PATH`. AOT also requires C++ build tools for the target architecture.
+Use Visual Studio 2026 18.12 or later with WinUI / C# desktop tools, target-architecture C++ tools, .NET SDK 11.0.100 and Rustup. Add PowerShell 7's `pwsh` to `PATH`. The shared engine builds automatically with the application.
 
 Open `LumaRecode.sln` or `LumaRecode.slnx` and set `LumaRecode.App` as the startup project. Debug / x64 and Debug / ARM64 support debugging.
 
@@ -225,6 +255,8 @@ Optional AOT publication uses `Bundle/` to package the AOT application and depen
 
 Single-file publication uses `IncludeAllContentForSelfExtract` for disk-file compatibility. Cache and process measurements are described in [Performance](performance.md); commands are in the [CLI guide](cli/en.md).
 
+The portable ZIP loads dependencies directly from the extracted application directory, which is useful for frequent version changes or when managing temporary storage. GUI and CLI both use the extracted `LumaRecode.exe`.
+
 ### Dependency collection
 
 1. Restore locked dependencies for the current architecture and compilation mode.
@@ -233,3 +265,21 @@ Single-file publication uses `IncludeAllContentForSelfExtract` for disk-file com
 4. Include complete component licenses and provenance with the single EXE.
 
 See [LICENSE](../LICENSE), [NOTICE](../NOTICE) and [third-party components](../Assets/THIRD_PARTY.md).
+
+### Build provenance
+
+Run **Native core** manually in GitHub Actions to build the Windows x64 / ARM64 JIT applications, macOS ARM64 DMG, FFmpeg Full test build with corresponding sources, and shared SDKs. The workflow runs the regression checks, then attests and verifies each final distribution file. Verified files appear in the `lumarecode-distribution-<commit>` artifact.
+
+```powershell
+gh attestation verify <file> --repo MIKU552/LumaRecode --signer-workflow MIKU552/LumaRecode/.github/workflows/native-core.yml
+```
+
+To verify a specific release, add `--source-ref refs/tags/<tag>` and `--source-digest <commit>`. [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations)
+
+### macOS installation and distribution
+
+Drag the app from the DMG to Applications. If macOS blocks the first launch, verify the downloaded file and use **Open Anyway** in **System Settings → Privacy & Security**. [Apple User Guide](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac)
+
+The FFmpeg Full test build includes FFmpeg, ffprobe, and their runtime libraries. Explicit tool paths take precedence, followed by the bundled tools, PATH, and Homebrew. Users of the standard DMG can install Homebrew's `ffmpeg-full` and `molten-vk`.
+
+Xcode builds and archives the app. Run `sh tools/build-macos.sh Release --dmg` for the standard DMG. With `ffmpeg-full` and `molten-vk` installed, run `sh tools/build-macos.sh Release --dmg-full-tools` to package an existing Release app with the tools. The test build records its dependency versions and configure flags. Distribute it with the corresponding source archive, which contains upstream sources, Homebrew recipes, resources, and patches. The FFmpeg executables are distributed under GPL-3.0-or-later.

@@ -118,7 +118,7 @@ foreach ($taskFontRecord in $taskFontRecords) {
         throw "Bundled font or license checksum mismatch: $($taskFontRecord.file)"
     }
 }
-$taskManifest = [ordered]@{schema_version=2;project_license='MIT';app_version=$taskVersion;reviewed_on='2026-11-14';packages=$taskRecords.ToArray();implicit_runtime_packs=$taskRuntimeRecords.ToArray();dotnet_sdk='11.0.100';backend='native-dotnet';distribution_basis=@('Windows App SDK production package terms, section 3, for files placed with the application by NuGet','.NET Library License for designated Windows binaries and single-file runtime; MIT and notices for remaining files; Windows SDK terms where applicable','Windows SDK license and its Microsoft.Windows.SDK.NET.Ref REDIST list for unmodified WinRT projection binaries','Unmodified OpenOSV LUT under Apache-2.0 with its original LICENSE and NOTICE');third_party_rights_separate=$true}
+$taskManifest = [ordered]@{schema_version=2;project_license='MIT';app_version=$taskVersion;reviewed_on='2026-11-18';packages=$taskRecords.ToArray();implicit_runtime_packs=$taskRuntimeRecords.ToArray();dotnet_sdk='11.0.100';backend='shared-native';distribution_basis=@('Windows App SDK production package terms, section 3, for files placed with the application by NuGet','.NET Library License for designated Windows binaries and single-file runtime; MIT and notices for remaining files; Windows SDK terms where applicable','Windows SDK license and its Microsoft.Windows.SDK.NET.Ref REDIST list for unmodified WinRT projection binaries','Unmodified OpenOSV LUT under Apache-2.0 with its original LICENSE and NOTICE');third_party_rights_separate=$true}
 $taskManifest['fonts'] = @{license='OFL-1.1';sources='Fonts/manifest.json';families=@('Source Sans 3','Source Han Sans CN','Source Han Sans JP','Source Code Pro')}
 $taskNativeManifest = Get-Content -LiteralPath (Join-Path $taskRoot 'App/Native/manifest.json') -Raw | ConvertFrom-Json -AsHashtable
 $taskNativeRecord = $taskNativeManifest.binaries[$Architecture]
@@ -137,6 +137,16 @@ $taskManifest['native_codecs'] = @{
     components=$taskNativeManifest.components;licenses=$taskNativeManifest.licenses;notices=$taskNativeManifest.notices
 }
 $taskManifest['architecture'] = $Architecture
+$taskCoreDirectory = Join-Path $taskRoot "out/native-$Architecture-release/engine"
+$taskCoreBinary = Join-Path $taskCoreDirectory 'LumaRecodeCore.dll'
+if (!(Test-Path -LiteralPath $taskCoreBinary)) { throw 'Build the shared native core before collecting distribution evidence.' }
+$taskManifest['shared_core'] = @{
+    file='LumaRecodeCore.dll';sha256=(Get-FileHash -LiteralPath $taskCoreBinary -Algorithm SHA256).Hash.ToLowerInvariant()
+    build=(Get-Content -LiteralPath (Join-Path $taskCoreDirectory 'build-info.json') -Raw | ConvertFrom-Json -AsHashtable)
+    components=@('LumaRecode C/C++ engine (MIT)','Rust standard library (upstream notices)','yyjson (MIT)')
+    notices=@('Rust/manifest.json','Rust/COPYRIGHT-library.html','yyjson/manifest.json','yyjson/LICENSE','UltraHDR/MSVC-STL-LICENSE.txt')
+}
+$taskManifest.distribution_basis += 'Shared C/C++ engine under MIT; Rust standard library with upstream notices; yyjson under MIT; MSVC STL under Apache-2.0 WITH LLVM-exception'
 $taskManifest.distribution_basis += 'libultrahdr under MIT and Apache-2.0, image_io under Apache-2.0, modp_b64 under BSD-3-Clause; Adobe gain-map notice retained; libjpeg-turbo under IJG/BSD with original texts and acknowledgment; MSVC STL under Apache-2.0 WITH LLVM-exception'
 $taskManifest.distribution_basis += 'Unmodified Source Sans 3, Source Han Sans and Source Code Pro fonts under SIL OFL 1.1, with original copyrights and license texts'
 ConvertTo-CanonicalObject $taskManifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $taskOutput 'manifest.json') -Encoding utf8

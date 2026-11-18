@@ -5,11 +5,21 @@
 
 [简体中文](../../README.md) | [English](en.md) | 日本語 | [Español](es.md)
 
-C# / .NET で開発した Windows 11 向けの動画変換・色変換ツールです。ネイティブ WinUI 3 インターフェイスとコマンドラインを備え、FFmpeg による動画圧縮、カメラ Log から HDR / SDR への変換、HDR から SDR への変換を行います。
+Windows 11 と Apple Silicon 搭載の Mac 向けの動画変換・色変換ツールです。FFmpeg による変換を、各 OS のネイティブ画面またはコマンドラインから実行できます。
 
 [ダウンロード](https://github.com/MIKU552/LumaRecode/releases/latest) · [ドキュメント（中国語・英語）](../README.md#english) · [コマンドライン](../cli/ja.md) · [変更履歴（中国語・英語）](../../CHANGELOG.md#english)
 
-## 主な機能
+## macOS
+
+Apple Silicon 搭載の Mac と macOS 27 以降が必要です。DMG を開き、LumaRecode を「アプリケーション」へドラッグしてください。FFmpeg と ffprobe は PATH や Homebrew から検索でき、「設定」でパスを指定することもできます。
+
+FFmpeg Full テスト版には FFmpeg、ffprobe、libplacebo、MoltenVK が含まれます。通常版で Dolby Vision をレンダリングする場合は `brew install ffmpeg-full molten-vk` でインストールできます。[開発と配布（中国語・英語）](../dependencies.md#english)
+
+SwiftUI の画面で動画をプレビューし、フレーム単位でトリミングできます。ソフトウェアでのアーカイブ書き出しと、VideoToolbox でのクイック共有に対応します。標準の 10 ビット HLG 素材は Dolby Vision 8.4 に書き出せます。静止画は SDR JPEG、HDR HEIC、またはゲインマップ付き Adaptive HDR HEIC を選べます。[macOS のコマンドライン](../cli/ja.md#macos)
+
+SDR JPEG または Adaptive HDR HEIC と MOV を組み合わせて、Live Photos に書き出せます。カバーフレーム前後の約 3 秒が初期範囲で、フレーム番号で範囲を変更できます。
+
+## Windows 11
 
 - フレームプレビューとトリミング、HDR / SDR 画像、カバーフレームを指定した Android モーションフォト。
 - クイック共有・アーカイブ用プリセット。HEVC、AV1、H.264 と MP4 / MKV に対応。
@@ -29,14 +39,14 @@ C# / .NET で開発した Windows 11 向けの動画変換・色変換ツール�
 3. 動画をドロップするか「動画を選択」を押し、出力のダイナミックレンジ、プリセット、色変換を確認します。
 4. 保存先を指定し、「変換を開始」を押します。
 
-クイック共有は Intel QSV、アーカイブは CPU エンコードを使用します。
+クイック共有は利用可能なハードウェアエンコーダーを使用し、アーカイブは CPU でエンコードします。
 
 | ファイル | プラットフォームと要件 |
 | --- | --- |
 | `LumaRecode.exe` | X64。汎用 x64 命令セット構成 |
 | `LumaRecode-ARM64.exe` | Windows ARM64。アプリと画像コーデックは ARM64 ネイティブ |
 
-ARM64 の初期設定はアーカイブです。エンコード速度は外部 FFmpeg、ハードウェア、プリセットによって変わります。
+x64 と ARM64 の両方でハードウェアエンコーダーを調べます。対応するものがなければ、ソフトウェアアーカイブが既定となります。
 
 Dolby Vision / HDR10+ は、ソフトウェア HEVC で動的メタデータを保持する設定が初期値です。共有用にハードウェアで出力する場合は「標準 HDR」を選択します。対応する Dolby Vision プロファイルは単層の 5、8.1、8.4、10.1、10.4 です。ProRes RAW は FFmpeg の対応状況を確認し、カメラのホワイトバランス、色変換行列、ゲインで現像し、標準で HLG に出力します。対応形式は[色変換（中国語・英語）](../color-conversion.md#english)を参照してください。
 
@@ -63,7 +73,7 @@ JPEG と Ultra HDR JPEG には Android モーションフォト動画を追加�
 
 | 用途 | エンコーダー | 標準のコンテナー | 標準の音声処理 |
 | --- | --- | --- | --- |
-| クイック共有 | Intel QSV：HEVC / AV1 / H.264 | MP4 | HEVC / H.264 は AAC、AV1 は Opus |
+| クイック共有 | ハードウェア HEVC / AV1 / H.264（機器に依存） | MP4 | HEVC / H.264 は AAC、AV1 は Opus |
 | アーカイブ | x265 / SVT-AV1 / x264 | MKV | 元の音声トラックをコピー |
 
 コンテナー、サンプリング、ビット深度、カラーレンジ、音声形式は個別に選択できます。クイック共有の初期値は SDR が 8 ビット、HDR が 10 ビットです。アーカイブはエンコーダーの対応範囲内で元のビット深度を保持します。HEVC は 8 / 10 / 12 ビット、AVC と AV1 は 8 / 10 ビットに対応します。
@@ -80,7 +90,7 @@ SDR 素材は SDR 出力、HLG / PQ 素材は HDR 出力が初期値です。曲
 
 - Windows 11 x64 または ARM64。選択した版の命令セット要件を満たすこと。
 - 必要なエンコーダーとフィルターを含む FFmpeg / ffprobe。
-- クイック共有には対応する Intel QSV 環境。
+- クイック共有には、FFmpeg、GPU、ドライバーの対応が必要です。
 - Log 変換には `zscale` と `lut3d`。HDR / Log から SDR への変換には `libplacebo` と Vulkan。
 
 言語とテーマは初期状態でシステムに従います。中国語、英語、日本語、スペイン語のシステム言語に対応し、それ以外は英語になります。設定は `%LOCALAPPDATA%\LumaRecode\settings.json` に保存します。
@@ -105,11 +115,12 @@ PowerShell 7 で出力をパイプに接続して実行します。
 
 ## ソースからビルド
 
-.NET SDK 11.0.100 と PowerShell 7 が必要です。オプションの AOT ビルドには Visual Studio C++ ツールチェーンも必要です。
+.NET SDK 11.0.100、PowerShell 7、Rustup、Visual Studio のデスクトップ C++ ツールが必要です。
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
+./tools/Install-NativeBuildTools.ps1
 ./build.ps1
 ./build.ps1 -Target X64
 ./build.ps1 -Target X64 -Compilation Aot
@@ -139,7 +150,7 @@ licenses/  第三者のライセンス、通知、配布元の記録
 
 ## 開発とライセンス
 
-本プロジェクトの独自コードは、**Windows 版 Codex** で **[GPT-6.1 Sol（英語）](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** と **Extra high（`xhigh`）** 推論設定を使用して開発しました。**[MIKU552](https://github.com/MIKU552)** が要件を定義し、機材と素材を提供して実機検証を行っています。
+本プロジェクトの独自コードは **Windows 版 Codex** を使用し、開発初期は **GPT-6.1 Sol**、その後は **GPT-6.2 Sol** で開発しました。どちらも推論設定は **Extra high（`xhigh`）** です。 **[MIKU552](https://github.com/MIKU552)** が要件を定義し、機材と素材を提供して実機検証を行っています。
 
 独自のコード、ドキュメント、画像、生成したカメラ Log LUT には **[MIT License（英語）](../../LICENSE)** が適用されます。第三者の LUT、フォント、ランタイムのライセンスと配布元は [NOTICE（英語）](../../NOTICE) と[第三者コンポーネント（中国語・英語）](../../Assets/THIRD_PARTY.md#english)に記載しています。
 

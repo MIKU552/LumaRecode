@@ -1,0 +1,23 @@
+<Project>
+  <PropertyGroup>
+    <LumaNativeConfiguration Condition="'$(LumaNativeConfiguration)' == '' and '$(Configuration)' == 'Debug'">Debug</LumaNativeConfiguration>
+    <LumaNativeConfiguration Condition="'$(LumaNativeConfiguration)' == ''">Release</LumaNativeConfiguration>
+    <LumaNativeRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..'))</LumaNativeRoot>
+    <LumaNativeConfigurationLower>$([System.String]::Copy('$(LumaNativeConfiguration)').ToLowerInvariant())</LumaNativeConfigurationLower>
+    <LumaNativeFileName Condition="'$(OS)' == 'Windows_NT'">LumaRecodeCore.dll</LumaNativeFileName>
+    <LumaNativeFileName Condition="'$(OS)' != 'Windows_NT'">libLumaRecodeCore.dylib</LumaNativeFileName>
+    <LumaNativeLibrary>$(LumaNativeRoot)/out/native-$(LumaRecodeArchitecture)-$(LumaNativeConfigurationLower)/engine/$(LumaNativeFileName)</LumaNativeLibrary>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(LumaBuildNativeCore)' == 'true'">
+    <LumaNativeInput Include="$(LumaNativeRoot)/engine/**/*" Exclude="$(LumaNativeRoot)/engine/**/target/**" />
+    <LumaNativeInput Include="$(LumaNativeRoot)/CMakeLists.txt;$(LumaNativeRoot)/CMakePresets.json;$(LumaNativeRoot)/rust-toolchain.toml;$(LumaNativeRoot)/tools/Build-NativeCore.ps1;$(LumaNativeRoot)/tools/build-native-core.sh;$(LumaNativeRoot)/tools/native-build-tools.json" />
+    <Content Include="$(LumaNativeLibrary)" Link="$(LumaNativeFileName)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="BuildSharedNativeCore" BeforeTargets="PrepareForBuild" Inputs="@(LumaNativeInput)" Outputs="$(LumaNativeLibrary)"
+          Condition="'$(LumaBuildNativeCore)' == 'true' and '$(DesignTimeBuild)' != 'true'">
+    <Exec Condition="'$(OS)' == 'Windows_NT'" WorkingDirectory="$(LumaNativeRoot)" StdOutEncoding="utf-8" StdErrEncoding="utf-8"
+          Command="pwsh -NoProfile -File &quot;$(LumaNativeRoot)/tools/Build-NativeCore.ps1&quot; -Target &quot;$(LumaRecodeArchitecture)&quot; -Configuration &quot;$(LumaNativeConfiguration)&quot;" />
+    <Exec Condition="'$(OS)' != 'Windows_NT'" WorkingDirectory="$(LumaNativeRoot)"
+          Command="sh &quot;$(LumaNativeRoot)/tools/build-native-core.sh&quot; &quot;$(LumaNativeConfiguration)&quot;" />
+  </Target>
+</Project>

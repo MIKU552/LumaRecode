@@ -29,7 +29,7 @@ internal static class AboutDialog
         panel.Children.Add(Paragraph("面向 Windows 11 的视频转码与色彩转换工具，提供原生 WinUI 3 界面和完整命令行。"));
         var credits = new StackPanel { Spacing = 8 };
         credits.Children.Add(new TextBlock { Text = L.T("开发与核验"), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-        credits.Children.Add(Paragraph("全部自主代码由 Windows 版 Codex 使用 GPT-6.1 Sol（xhigh）完成，MIKU552 提出需求并进行实机核验。"));
+        credits.Children.Add(Paragraph("项目自主代码使用 Windows 版 Codex 开发，早期使用 GPT-6.1 Sol，后续使用 GPT-6.2 Sol，均为极高推理设置。MIKU552 提出需求并进行实机核验。"));
         panel.Children.Add(credits);
         var licensing = new StackPanel { Spacing = 8 };
         licensing.Children.Add(new TextBlock { Text = L.T("许可与第三方组件"), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });

@@ -4,6 +4,17 @@
 
 ## 简体中文
 
+### 5.0.0 Beta 1
+
+- 添加 macOS Apple Silicon 应用、Xcode 工程和命令行，支持预览、逐帧裁剪、VideoToolbox 和软件归档。
+- macOS 支持 HLG 转 Dolby Vision 8.4，以及 SDR JPEG、HDR HEIC、Adaptive HDR HEIC 和实况照片。
+- macOS 提供位深、色度采样、色彩范围和音轨选项，可把导出的实况照片添加到“照片”。FFmpeg Full 调试版内置 libplacebo 和 MoltenVK。
+- Windows 与 macOS 共用 C/C++ 核心。Rust 负责相机与 HDR 元数据解析，C ABI 提供素材探测、编码规划、时间轴、进程管理和输出校验。
+- Windows 按可用的 Intel QSV、NVIDIA NVENC、AMD AMF 和 Media Foundation 编码器提供快速分享预设。
+- Windows 图片和 Android Motion Photo 使用原生输出事务。硬件检测可以重跑，10 位试编码覆盖 HLG 和 PQ。
+- Windows 可构建自包含的便携 ZIP，工具路径查找移到首次布局后的后台任务。
+- GitHub Actions 构建 Windows x64 / ARM64、macOS ARM64 和共享 SDK，并为分发文件生成和验证构建来源证明。
+
 ### 4.4.3
 
 - 默认构建与正式发布改用自包含 JIT 单文件，提供 X64 和 ARM64 两种 EXE。
@@ -271,6 +282,17 @@
 - 支持素材自动识别与三组色彩转换。
 
 ## English
+
+### 5.0.0 Beta 1
+
+- Add the Apple Silicon macOS app, Xcode project, and CLI with preview, frame-accurate trimming, VideoToolbox, and software archive.
+- Export HLG as Dolby Vision 8.4 on macOS, or save frames as SDR JPEG, HDR HEIC, Adaptive HDR HEIC, and Live Photos.
+- Choose bit depth, chroma, color range, and audio on macOS, and add exported Live Photos to Photos. The FFmpeg Full test build includes libplacebo and MoltenVK.
+- Share the C/C++ engine between Windows and macOS. Rust parses camera and HDR metadata. The C ABI exposes inspection, encoding plans, timelines, process management, and output verification.
+- Show Windows quick-share presets for available Intel QSV, NVIDIA NVENC, AMD AMF, and Media Foundation encoders.
+- Publish Windows stills and Android Motion Photos through native output transactions. Hardware detection can be repeated and tests both HLG and PQ for 10-bit encoders.
+- Add a self-contained portable ZIP build on Windows and move tool discovery to a background task after initial layout.
+- Build Windows x64 / ARM64, macOS ARM64, and the shared SDK on GitHub Actions. Generate and verify provenance for the distribution files.
 
 ### 4.4.3
 

@@ -5,11 +5,21 @@
 
 简体中文 | [English](docs/readme/en.md) | [日本語](docs/readme/ja.md) | [Español](docs/readme/es.md)
 
-基于 C# / .NET 的 Windows 11 视频转码与色彩转换工具，提供原生 WinUI 3 界面和命令行，使用 FFmpeg 完成视频压缩、相机 Log 转 HDR / SDR，以及 HDR 转 SDR。
+面向 Windows 11 和 Apple Silicon Mac 的视频转码与色彩转换工具，提供原生界面及命令行，使用 FFmpeg 完成视频压缩和色彩转换。
 
 [下载](https://github.com/MIKU552/LumaRecode/releases/latest) · [文档](docs/README.md) · [命令行文档](docs/cli/zh-CN.md) · [更新记录](CHANGELOG.md)
 
-## 功能
+## macOS
+
+适用于 macOS 27 及以上的 Apple Silicon Mac。打开 DMG，将 LumaRecode 拖到“应用程序”。程序通过 PATH 或 Homebrew 查找 FFmpeg 和 ffprobe，也可在“设置”中指定路径。
+
+FFmpeg Full 调试包内置 FFmpeg、ffprobe、libplacebo 和 MoltenVK，可以直接运行。使用标准包时，可运行 `brew install ffmpeg-full molten-vk` 准备 Dolby Vision 渲染所需的工具。首次打开或调整工具路径见 [macOS 安装与分发](docs/dependencies.md#macos-安装与分发)。
+
+SwiftUI 工作区支持视频预览、逐帧裁剪、软件归档和 VideoToolbox 快速分享。普通 10 位 HLG 素材可选择 Dolby Vision 8.4 导出。帧导出支持 SDR JPEG、HDR HEIC 和带增益图的 Adaptive HDR HEIC。详见 [macOS 命令行](docs/cli/zh-CN.md#macos)。
+
+可将 SDR JPEG 或 Adaptive HDR HEIC 与 MOV 配对导出为实况照片。范围默认取封面附近约 3 秒，也可用帧号指定。
+
+## Windows 11
 
 - 逐帧预览与裁剪，支持自选封面帧、HDR / SDR 图片和 Android 动态照片。
 - 按快速分享与软件归档选择预设，支持 HEVC、AV1、H.264 和 MP4 / MKV。
@@ -29,14 +39,14 @@
 3. 拖入视频或点击“选择视频”，确认输出动态范围、编码预设和色彩转换。
 4. 选择保存位置，点击“开始转换”。
 
-“快速分享”使用 Intel QSV；“软件归档”使用 CPU 编码。
+“快速分享”使用可用的硬件编码器。“软件归档”使用 CPU 编码。
 
 | 下载文件 | 平台与要求 |
 | --- | --- |
 | `LumaRecode.exe` | X64，通用 x64 指令集配置 |
 | `LumaRecode-ARM64.exe` | Windows ARM64，原生 ARM64 应用与图片编解码库 |
 
-ARM64 默认使用软件归档。FFmpeg 的编码速度由外部 FFmpeg、硬件与所选预设决定。
+x64 和 ARM64 都会检测硬件编码器。没有合适的硬件编码选项时，默认使用软件归档。
 
 Dolby Vision / HDR10+ 素材默认使用软件 HEVC 保留动态元数据；“标准 HDR”可用于硬件快速分享。Dolby Vision 支持单层 Profile 5、8.1、8.4、10.1 和 10.4。ProRes RAW 在确认 FFmpeg 解码兼容性后，根据相机白平衡、色彩矩阵和增益显影，默认输出 HLG。格式与处理流程见[色彩转换](docs/color-conversion.md)。
 
@@ -63,7 +73,7 @@ JPEG 和 Ultra HDR JPEG 可加入 Android 动态照片视频。封面帧与视�
 
 | 用途 | 编码器 | 默认封装 | 默认音频 |
 | --- | --- | --- | --- |
-| 快速分享 | Intel QSV：HEVC / AV1 / H.264 | MP4 | HEVC、H.264 使用 AAC；AV1 使用 Opus |
+| 快速分享 | 硬件编码 HEVC / AV1 / H.264，取决于本机支持 | MP4 | HEVC、H.264 使用 AAC；AV1 使用 Opus |
 | 软件归档 | x265 / SVT-AV1 / x264 | MKV | 复制原音轨 |
 
 封装、采样、位深、色彩范围和音频可单独选择。快速分享默认输出 SDR 8 位、HDR 10 位。软件归档默认保留原片位深，按编码器支持的上限选择：HEVC 为 8 / 10 / 12 位，AVC 与 AV1 为 8 / 10 位。
@@ -80,7 +90,7 @@ SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线�
 
 - Windows 11 x64 或 ARM64，满足所选版本的指令集要求。
 - 用户提供的 FFmpeg / ffprobe，包含任务所需的编码器和滤镜。
-- 快速分享需要相应 Intel QSV 支持。
+- 快速分享需要外部 FFmpeg、显卡与驱动共同支持。
 - Log 转换需要 `zscale`、`lut3d`；HDR / Log 转 SDR 还需要 `libplacebo` 和 Vulkan。
 
 语言和主题默认跟随系统，支持中文、英语、日语和西班牙语系统；其他语言系统默认英文。设置保存在 `%LOCALAPPDATA%\LumaRecode\settings.json`。
@@ -105,11 +115,12 @@ SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线�
 
 ## 从源码构建
 
-需要 .NET SDK 11.0.100 和 PowerShell 7；可选 AOT 构建还需要 Visual Studio C++ 工具链。
+需要 .NET SDK 11.0.100、PowerShell 7、Rustup 和 Visual Studio 桌面 C++ 工具。
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
+./tools/Install-NativeBuildTools.ps1
 ./build.ps1
 ./build.ps1 -Target X64
 ./build.ps1 -Target X64 -Compilation Aot
@@ -139,7 +150,7 @@ licenses/  第三方许可、声明与来源清单
 
 ## 开发与许可
 
-项目自主代码由 **Windows 版 Codex** 使用 **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)**、**极高（xhigh）** 推理设置完成。**[MIKU552](https://github.com/MIKU552)** 负责需求、设备与素材，并进行实机核验。
+项目自主代码使用 **Windows 版 Codex** 开发。早期使用 **GPT-6.1 Sol**，后续使用 **GPT-6.2 Sol**，均采用极高（`xhigh`）推理设置。**[MIKU552](https://github.com/MIKU552)** 负责需求、设备与素材，并进行实机核验。
 
 自主代码、文档、图形及项目生成的相机 Log LUT 采用 **[MIT License](LICENSE)**。第三方 LUT、字体和运行时的许可与来源见 [NOTICE](NOTICE) 和[第三方组件](Assets/THIRD_PARTY.md)。
 

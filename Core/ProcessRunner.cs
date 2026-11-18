@@ -1,8 +1,6 @@
 using System.Buffers;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Text;
-using Microsoft.Win32.SafeHandles;
 
 namespace VideoConverter.Core;
 
@@ -13,74 +11,28 @@ public sealed record BinaryProcessResult(int ExitCode, byte[] Output, string Err
 /// <summary>Starts external tools, drains their pipes and owns cancellation and file-identity checks.</summary>
 public static class ProcessRunner
 {
-    /// <summary>Captures a bounded binary frame, drains stderr and joins the child on every exit path.</summary>
+    /// <summary>Captures through the native process owner, joining pipes and descendants before returning.</summary>
     public static async Task<BinaryProcessResult> CaptureBinaryAsync(string executable, IEnumerable<string> arguments,
         CancellationToken cancellation = default, int maximumBytes = 8 * 1024 * 1024, string? directory = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumBytes);
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellation, timeout.Token);
-        using var process = new Process { StartInfo = StartInfo(executable, arguments, directory) };
-        cancellation.ThrowIfCancellationRequested();
-        process.Start();
-        using var registration = lifetime.Token.Register(() => Stop(process));
-        var error = ReadTailAsync(process.StandardError, 8192);
-        try
-        {
-            byte[] storage = ArrayPool<byte>.Shared.Rent(Math.Min(262144, maximumBytes));
-            byte[] bytes;
-            int length = 0;
-            try
-            {
-                while (true)
-                {
-                    if (length == maximumBytes)
-                    {
-                        byte[] extra = new byte[1];
-                        if (await process.StandardOutput.BaseStream.ReadAsync(extra, lifetime.Token).ConfigureAwait(false) != 0)
-                        {
-                            throw new InvalidDataException("Preview output exceeds its buffer limit.");
-                        }
-                        break;
-                    }
-                    if (length == storage.Length)
-                    {
-                        byte[] larger = ArrayPool<byte>.Shared.Rent((int)Math.Min((long)storage.Length * 2, maximumBytes));
-                        storage.AsSpan(0, length).CopyTo(larger);
-                        ArrayPool<byte>.Shared.Return(storage);
-                        storage = larger;
-                    }
-                    int count = await process.StandardOutput.BaseStream.ReadAsync(storage.AsMemory(length,
-                        Math.Min(storage.Length, maximumBytes) - length), lifetime.Token).ConfigureAwait(false);
-                    if (count == 0)
-                    {
-                        break;
-                    }
-                    length += count;
-                }
-                bytes = storage.AsSpan(0, length).ToArray();
-            }
-            finally { ArrayPool<byte>.Shared.Return(storage); }
-            await process.WaitForExitAsync().ConfigureAwait(false);
-            cancellation.ThrowIfCancellationRequested();
-            if (timeout.IsCancellationRequested)
-            {
-                throw new TimeoutException("External tool timed out.");
-            }
-            return new(process.ExitCode, bytes, await error.ConfigureAwait(false));
-        }
-        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested && timeout.IsCancellationRequested)
-        {
-            throw new TimeoutException("External tool timed out.");
-        }
-        finally
-        {
-            Stop(process);
-            await process.WaitForExitAsync().ConfigureAwait(false);
-            await error.ConfigureAwait(false);
-        }
+        var result = await LumaRecode.Native.NativeProcess.RunAsync(new(Path.GetFullPath(executable), arguments.ToArray(),
+            directory is null ? null : Path.GetFullPath(directory), OutputCapacity: maximumBytes, TimeoutMilliseconds: 60000), cancellation).ConfigureAwait(false);
+        CheckNativeProcess(result, cancellation);
+        return new(result.ExitCode, result.Output, result.ErrorText.Trim());
     }
 
+    private static void CheckNativeProcess(LumaRecode.Native.NativeProcessResult result, CancellationToken cancellation)
+    {
+        // A normal nonzero tool exit is returned to its caller. Transport errors,
+        // resource limits and unconfirmed cleanup remain failures of the owner.
+        if (result.Status == LumaRecode.Native.NativeStatus.IoError && result.ChildExited && result.CleanupConfirmed)
+        {
+            return;
+        }
+
+        NativeBackend.Check(result.Status, result.Diagnostic, result.CleanupConfirmed, cancellation);
+    }
     /// <summary>Retains recent diagnostics while consuming the full pipe to prevent a blocked child.</summary>
     internal static async Task<string> ReadTailAsync(TextReader reader, int capacity)
     {
@@ -138,47 +90,19 @@ public static class ProcessRunner
         catch (System.ComponentModel.Win32Exception) when (process.HasExited) { }
     }
 
-    /// <summary>Captures a probe with independent elapsed-time and UTF-8 byte limits.</summary>
-    /// <remarks>Cancellation kills the child tree and waits for EOF, so a cancelled probe cannot outlive its task.</remarks>
+    /// <summary>Captures bounded UTF-8 metadata through the shared process owner.</summary>
     public static async Task<ProcessResult> CaptureAsync(string executable, IEnumerable<string> arguments,
         CancellationToken cancellation = default, int timeoutSeconds = 25, string? directory = null,
         int maximumBytes = MediaResourceLimits.TextOutputBytes)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumBytes);
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, timeout.Token);
-        using var process = new Process { StartInfo = StartInfo(executable, arguments, directory) };
-        cancellation.ThrowIfCancellationRequested();
-        process.Start();
-        using var registration = linked.Token.Register(() => Stop(process));
-        var stdout = ReadTextAsync(process.StandardOutput.BaseStream, maximumBytes, linked.Token);
-        var stderr = ReadTailAsync(process.StandardError, 8192);
-        try
-        {
-            // Observe reader failure before awaiting process exit: a tool may
-            // otherwise block forever on the pipe after its output is rejected.
-            var output = await stdout.ConfigureAwait(false);
-            await process.WaitForExitAsync().ConfigureAwait(false);
-            cancellation.ThrowIfCancellationRequested();
-            if (timeout.IsCancellationRequested)
-            {
-                throw new TimeoutException("External tool timed out.");
-            }
-            return new(process.ExitCode, output, await stderr.ConfigureAwait(false));
-        }
-        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested && timeout.IsCancellationRequested)
-        {
-            throw new TimeoutException("External tool timed out.");
-        }
-        finally
-        {
-            Stop(process);
-            await process.WaitForExitAsync().ConfigureAwait(false);
-            await stderr.ConfigureAwait(false);
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(timeoutSeconds);
+        var result = await LumaRecode.Native.NativeProcess.RunAsync(new(Path.GetFullPath(executable), arguments.ToArray(),
+            directory is null ? null : Path.GetFullPath(directory), OutputCapacity: maximumBytes,
+            TimeoutMilliseconds: checked((ulong)timeoutSeconds * 1000)), cancellation).ConfigureAwait(false);
+        CheckNativeProcess(result, cancellation);
+        return new(result.ExitCode, Encoding.UTF8.GetString(result.Output).TrimStart('\uFEFF'), result.ErrorText.Trim());
     }
-
-    /// <summary>Decodes UTF-8 incrementally; byte limits also apply to multibyte text and unterminated output.</summary>
     private static async Task<string> ReadTextAsync(Stream stream, int maximumBytes, CancellationToken cancellation)
     {
         byte[] buffer = new byte[8192];
@@ -233,11 +157,12 @@ public static class ProcessRunner
         return "";
     }
 
-    /// <summary>Compares both path spelling and Windows volume/file IDs to detect aliases and hard links.</summary>
-    /// <remarks>Used before opening output/log files; string equality alone cannot protect a hard-linked source.</remarks>
+    /// <summary>Compares file identities through the shared cross-platform filesystem implementation.</summary>
     public static bool SameFile(string left, string right)
     {
-        if (string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+        left = Path.GetFullPath(left);
+        right = Path.GetFullPath(right);
+        if (string.Equals(left, right, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
         {
             return true;
         }
@@ -247,31 +172,13 @@ public static class ProcessRunner
             return false;
         }
 
-        if (OperatingSystem.IsWindows())
+        var status = LumaRecode.Native.NativeOutputTransaction.FilesSame(left, right, out bool same, out var diagnostic);
+        if (status == LumaRecode.Native.NativeStatus.NotFound)
         {
-            using var a = File.OpenHandle(left, access: FileAccess.Read, share: FileShare.ReadWrite | FileShare.Delete);
-            using var b = File.OpenHandle(right, access: FileAccess.Read, share: FileShare.ReadWrite | FileShare.Delete);
-            if (!GetFileInformationByHandle(a, out var x) || !GetFileInformationByHandle(b, out var y))
-            {
-                throw new IOException("Unable to compare file identities.");
-            }
-
-            return x.Volume == y.Volume && x.IndexHigh == y.IndexHigh && x.IndexLow == y.IndexLow;
+            return false;
         }
-        return new FileInfo(left).ResolveLinkTarget(true)?.FullName == Path.GetFullPath(right)
-            || new FileInfo(right).ResolveLinkTarget(true)?.FullName == Path.GetFullPath(left);
-    }
 
-    [StructLayout(LayoutKind.Sequential)]
-    // Native BY_HANDLE_FILE_INFORMATION layout; the volume serial and 64-bit
-    // file index identify a file even when two directory entries have different names.
-    private struct FileInformation
-    {
-        public uint Attributes;
-        public System.Runtime.InteropServices.ComTypes.FILETIME Creation, Access, Write;
-        public uint Volume, SizeHigh, SizeLow, Links, IndexHigh, IndexLow;
+        NativeBackend.Check(status, diagnostic);
+        return same;
     }
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetFileInformationByHandle(SafeFileHandle file, out FileInformation information);
 }

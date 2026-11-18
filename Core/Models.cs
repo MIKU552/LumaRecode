@@ -48,7 +48,7 @@ public sealed record MediaInfo(string Path, JsonObject Video, JsonArray Frames, 
 public sealed record EncodeOptions(string Purpose = "share", string Codec = "hevc", string Output = "sdr",
     string Transform = "none", string? Profile = null, string Sampling = "auto", string Variant = "standard",
     string Audio = "auto", string SourceKind = "auto", bool CpuDecode = false, string Container = "auto",
-    string ColorRange = "auto", string BitDepth = "auto", string DynamicHdr = "preserve")
+    string ColorRange = "auto", string BitDepth = "auto", string DynamicHdr = "preserve", string Hardware = "qsv")
 {
     public string Suffix => "." + (Container == "auto" ? Purpose == "archive" || Audio == "flac" ? "mkv" : "mp4" : Container);
     public int Depth => int.Parse(BitDepth, CultureInfo.InvariantCulture);
@@ -68,16 +68,21 @@ public sealed record EncodeOptions(string Purpose = "share", string Codec = "hev
         ["container"] = Container,
         ["color_range"] = ColorRange,
         ["bit_depth"] = BitDepth,
-        ["dynamic_hdr"] = DynamicHdr
+        ["dynamic_hdr"] = DynamicHdr,
+        ["hardware"] = Hardware
     };
     public static EncodeOptions FromJson(JsonNode? node) => new(node.Text("purpose", "share"), node.Text("codec", "hevc"), node.Text("output", "sdr"),
         node.Text("transform", "none"), node?["profile"]?.ToString(), node.Text("sampling", "auto"), node.Text("variant", "standard"),
         node.Text("audio", "auto"), node.Text("source_kind", "auto"), node.Flag("cpu_decode"), node.Text("container", "auto"),
-        node.Text("color_range", "auto"), node.Text("bit_depth", "auto"), node.Text("dynamic_hdr", "preserve"));
+        node.Text("color_range", "auto"), node.Text("bit_depth", "auto"), node.Text("dynamic_hdr", "preserve"), node.Text("hardware", "qsv"));
 }
 
 /// <summary>A shell-free FFmpeg argument vector and the color tags required during output verification.</summary>
 public sealed record EncodingPlan(string[] Arguments, JsonObject Colors, EncodeOptions Options, bool QsvTimingCompatibility = false, string? WorkingDirectory = null)
 {
+    internal LumaRecode.Native.NativePlanRequest? NativeRequest
+    {
+        get; init;
+    }
     public bool UsesSoftwareDecoding => !Arguments.Contains("-hwaccel");
 }

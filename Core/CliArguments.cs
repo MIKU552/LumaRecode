@@ -16,6 +16,7 @@ public sealed class CliArguments
     public static readonly Dictionary<string, string[]> Choices = new()
     {
         ["purpose"] = ["share", "archive"],
+        ["hardware"] = ["auto", "qsv", "nvenc", "amf", "mf"],
         ["codec"] = ["hevc", "av1", "avc"],
         ["range"] = ["auto", "sdr", "hdr"],
         ["transform"] = ["auto", "none", "log-hdr", "log-sdr", "hdr-sdr"],

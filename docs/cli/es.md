@@ -50,7 +50,8 @@ Todos los comandos admiten `--help`. Los resultados de análisis, catálogos, di
 | Opción | Valores |
 | --- | --- |
 | `--preset` | `share-avc`, `share-hevc`, `share-av1`, `archive-avc`, `archive-hevc`, `archive-av1`, `archive-av1-fast` |
-| `--purpose` | `share` (Intel QSV), `archive` (CPU); x64 usa compartir, ARM64 usa archivo; las fuentes HDR dinámicas usan archivo por defecto |
+| `--purpose` | `share` (por hardware), `archive` (CPU). La opción predeterminada depende del equipo. Para conservar HDR dinámico se usa Archivo. |
+| `--hardware` | `auto` (predeterminado), `qsv`, `nvenc`, `amf`, `mf`. Solo para Compartir rápido. |
 | `--codec` | `hevc` (predeterminado), `av1`, `avc` |
 | `--range` / `--dynamic-range` | `auto` (predeterminado), `sdr`, `hdr` |
 | `--transform` | `auto` (predeterminado), `none`, `log-hdr`, `log-sdr`, `hdr-sdr` |
@@ -168,3 +169,18 @@ $LASTEXITCODE
 Consulta el código de salida del proceso o `$LASTEXITCODE` para conocer el resultado, y los campos JSON `code` para gestionar errores.
 
 Ctrl+C durante una ejecución interactiva interrumpe tanto la canalización de PowerShell como la conversión y elimina la salida temporal. Para recoger los eventos de cancelación y el código de salida, envía una señal de cancelación de consola mediante una API de procesos y espera a que termine. La cancelación cooperativa devuelve 130.
+
+## macOS
+
+Ejecuta el binario incluido en la aplicación. `probe`, `frames` y `doctor` devuelven JSON. El recorte incluye el último fotograma seleccionado. `image` admite `sdr` (JPEG), `hdr` (HEIC PQ) y `adaptive` (HEIC con mapa de ganancias). `dolbyvision84` requiere material HLG estándar de 10 bits y un codificador HEVC de VideoToolbox verificado.
+
+Con `--live-photo`, `-o` indica una carpeta nueva con la imagen y el MOV para importar juntos a Fotos.
+
+```sh
+luma=/Applications/LumaRecode.app/Contents/MacOS/LumaRecode
+"$luma" doctor
+"$luma" convert input.mov -o trimmed.mp4 --start-frame 2 --end-frame 60
+"$luma" convert hlg.mov -o dolby-vision.mp4 --range dolbyvision84
+"$luma" image hlg.mov -o frame.heic --frame 25 --format adaptive
+"$luma" image hlg.mov -o live-photo --frame 25 --format adaptive --live-photo --motion-first 1 --motion-last 60
+```

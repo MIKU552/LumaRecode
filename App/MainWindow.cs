@@ -20,7 +20,8 @@ public sealed partial class MainWindow : Window
     private readonly Dictionary<string, object> controls = new();
     private readonly List<(ComboBoxItem Item, string Original)> choiceLabels = new();
     private readonly Dictionary<string, RadioMenuFlyoutItem> languageItems = new();
-    private readonly UserSettings settings = UserSettings.Load();
+    private readonly UserSettings settings;
+    private readonly TaskCompletionSource initialTools = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Appearance appearance;
     private ConversionClient? activeJob;
     private readonly JobNotifications notifications;
@@ -76,8 +77,9 @@ public sealed partial class MainWindow : Window
     private int Depth => int.TryParse(Value(BitDepth), out var depth) ? depth : 8;
     private int SourceDepth => media.Integer("source_depth", 8);
 
-    public MainWindow()
+    public MainWindow(UserSettings settings)
     {
+        this.settings = settings;
         Title = L.T("映码 · LumaRecode");
         // Compiled XBF avoids runtime XML parsing and reflection over controls.
         // Appearance selects the appropriate native Mica host once the view exists.
@@ -121,34 +123,51 @@ public sealed partial class MainWindow : Window
         }
         WireEvents();
         InitializeFrameControls();
-        ResolveTools();
         Refresh();
-        root.Loaded += async (_, _) =>
-        {
-            dialogOpen = true;
-            try
-            {
-                if (!await LegalNotices.RequireAcceptanceAsync(root, settings, Relocalize))
-                {
-                    Close();
-                    return;
-                }
-            }
-            finally { dialogOpen = false; }
-            Reflow(root.ActualWidth);
-            if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe))
-            {
-                await ConfigureToolsAsync();
-            }
-
-            var args = Environment.GetCommandLineArgs();
-            if (args.Length > 1 && File.Exists(args[1]))
-            {
-                Input.Text = args[1];
-                await InspectAsync();
-            }
-        };
+        root.Loaded += OnLoaded;
         AppWindow.Closing += OnClosing;
+    }
+
+    private async void OnLoaded(object sender, RoutedEventArgs args)
+    {
+        root.Loaded -= OnLoaded;
+        Reflow(root.ActualWidth);
+        dialogOpen = true;
+        try
+        {
+            if (!await LegalNotices.RequireAcceptanceAsync(root, settings, Relocalize))
+            {
+                closing = true;
+                Close();
+                return;
+            }
+            // Searching PATH may touch slow or disconnected drives. Let WinUI
+            // paint the themed window while discovery runs off the UI thread.
+            var saved = new MediaTools(settings.Ffmpeg, settings.Ffprobe);
+            var tools = await Task.Run(() => new MediaTools(
+                ConversionClient.FindTool("ffmpeg", saved.Ffmpeg), ConversionClient.FindTool("ffprobe", saved.Ffprobe)));
+            if (closing)
+            {
+                return;
+            }
+            ffmpeg = tools.Ffmpeg;
+            ffprobe = tools.Ffprobe;
+        }
+        finally
+        {
+            dialogOpen = false;
+            initialTools.TrySetResult();
+        }
+        if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe))
+        {
+            await ConfigureToolsAsync();
+        }
+        var commandLine = Environment.GetCommandLineArgs();
+        if (!closing && commandLine.Length > 1 && File.Exists(commandLine[1]))
+        {
+            Input.Text = commandLine[1];
+            await InspectAsync();
+        }
     }
 
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
@@ -221,7 +240,7 @@ public sealed partial class MainWindow : Window
                 ClearMedia();
             }
         };
-        foreach (var name in new[] { "Variant", "Container", "Sampling", "ColorRange", "Profile", "DynamicMetadata" })
+        foreach (var name in new[] { "HardwareEncoder", "Variant", "Container", "Sampling", "ColorRange", "Profile", "DynamicMetadata" })
         {
             Control<ComboBox>(name).SelectionChanged += (_, _) => Refresh();
         }
@@ -409,11 +428,6 @@ public sealed partial class MainWindow : Window
     private string MediaText(string key, string fallback = "") => media.Text(key, fallback);
     private void SetStatus(string text) => Control<TextBlock>("Status").Text = L.T(text);
     private MediaTools ToolsObject() => new(ffmpeg, ffprobe);
-    private void ResolveTools()
-    {
-        ffmpeg = ConversionClient.FindTool("ffmpeg", settings.Ffmpeg);
-        ffprobe = ConversionClient.FindTool("ffprobe", settings.Ffprobe);
-    }
     // Hold the window open until cancellation has joined FFmpeg and cleaned
     // the temporary output. Close() is called by the completed job's finally block.
     private async void OnClosing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
@@ -425,6 +439,7 @@ public sealed partial class MainWindow : Window
             // A cancelled probe can still have a previously queued media event.
             closing = true;
             generation++;
+            hardwareProbeCancellation?.Cancel();
             foreach (var probe in probes)
             {
                 probe.Dispose();

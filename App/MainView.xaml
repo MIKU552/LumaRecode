@@ -145,6 +145,7 @@
               <ComboBox x:Name="Purpose" Header="用途" HorizontalAlignment="Stretch" AutomationProperties.Name="用途" />
               <ComboBox x:Name="Codec" Grid.Column="1" Header="视频编码" HorizontalAlignment="Stretch" AutomationProperties.Name="视频编码" />
             </Grid>
+            <ComboBox x:Name="HardwareEncoder" Header="硬件编码器" HorizontalAlignment="Stretch" Visibility="Collapsed" />
             <ComboBox x:Name="Variant" Header="质量档" HorizontalAlignment="Stretch" AutomationProperties.Name="质量档" />
             <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="8" Padding="16,14"><StackPanel Spacing="6"><TextBlock x:Name="PresetName" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock x:Name="PresetDetail" Style="{StaticResource Secondary}" /></StackPanel></Border>
           </StackPanel>
