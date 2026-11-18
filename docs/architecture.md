@@ -55,6 +55,8 @@ ARM64 省去 x86 专用 RAW 解码参数。Ultra HDR 的 P/Invoke 接口在各�
 
 VideoToolbox 的标准 HLG 输出使用 FFmpeg 的 `dovi_rpu=strip=1` 去除编码器可能写入的 Dolby Vision 元数据，并保留 HLG 基础层。保留源片静态 HDR 元数据的导出使用软件归档。输出核验检查色彩标签与元数据。[FFmpeg 比特流过滤器文档](https://ffmpeg.org/ffmpeg-bitstream-filters.html#dovi_005frpu)
 
+10 位及以上的普通 HLG 素材可单独选择 **Dolby Vision 8.4**。通过硬件检测时，该选项输出带 HLG 基础层的 10 位 HEVC MP4。导出时核验容器中的 Dolby Vision 配置和解码帧中的动态元数据。macOS 命令行为 `convert input.mov -o output.mp4 --range dolbyvision84`。
+
 ### Windows 硬件编码
 
 快速分享支持 Intel QSV、NVIDIA NVENC、AMD AMF 和 Windows Media Foundation。应用使用当前配置的 FFmpeg，以 320 × 192 合成视频逐项验证编码和 MP4 封装。界面只提供通过试跑且符合输出要求的组合。缺少合适的硬件编码器时默认使用软件归档。`doctor` 显示探测结果。
@@ -146,6 +148,8 @@ The app's `Contents/MacOS/LumaRecode` executable also provides `probe`, `frames`
 Quick share uses VideoToolbox through FFmpeg. The candidate profiles include 8-bit H.264 / HEVC SDR and 10-bit HEVC HLG / PQ. Each trial checks encoding, MP4 muxing, and color tags with a 320 × 192 synthetic clip. Both trials and exports require hardware encoding. The GUI lists the passing profiles for the selected output signal and offers a manual recheck. The CLI defaults to software archive. Use `--encoder auto` to prefer an available hardware profile, `--encoder videotoolbox` to require one, or `doctor` to see the trial results. Quality settings are defined per profile in the [encoding presets](../Assets/recommended-presets.json).
 
 The standard HLG path uses FFmpeg's `dovi_rpu=strip=1` to remove Dolby Vision metadata that VideoToolbox may insert and retain the HLG base layer. Exports that retain source static HDR metadata use software archive. Output verification checks the color tags and metadata. [FFmpeg bitstream filters](https://ffmpeg.org/ffmpeg-bitstream-filters.html#dovi_005frpu)
+
+**Dolby Vision 8.4** is an explicit export option for standard HLG footage at 10 bits or higher. On hardware that passes the capability check, it writes a 10-bit HEVC MP4 with an HLG base layer. Export verification checks the Dolby Vision configuration in the container and dynamic metadata on decoded frames. On macOS, use `convert input.mov -o output.mp4 --range dolbyvision84`.
 
 ### Windows hardware encoding
 

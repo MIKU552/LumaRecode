@@ -340,6 +340,17 @@ internal static class PlanChecks
             "Unlisted VideoToolbox AV1 encode path was accepted.");
         check(Plan(baseline, tools, hardwareSdr, new(Hardware: "unknown"), destination).Status != NativeStatus.Ok,
             "Unknown hardware backend was accepted.");
+        var dolbyExport = new EncodeOptions(Codec: "hevc", Hardware: "videotoolbox", Output: "hdr",
+            Container: "mp4", DynamicHdr: "generate_84");
+        var dolbyPlan = Plan(baseline, tools, hardwareHdr, dolbyExport, destination);
+        var dolbyArguments = Encoding.UTF8.GetString(dolbyPlan.Data);
+        check(dolbyPlan.Status == NativeStatus.Ok && dolbyArguments.Contains("dovi_rpu=compression=none", StringComparison.Ordinal) &&
+            !dolbyArguments.Contains("dovi_rpu=strip=1", StringComparison.Ordinal),
+            $"VideoToolbox Dolby Vision plan failed: {dolbyPlan.Diagnostic}");
+        check(Plan(baseline, tools, hardwareSdr, dolbyExport, destination).Status != NativeStatus.Ok &&
+            Plan(baseline, tools, hardwareHdr, dolbyExport with { Hardware = "nvenc" }, destination).Status != NativeStatus.Ok &&
+            Plan(baseline, tools, hardwareHdr, dolbyExport with { Container = "mkv" }, destination).Status != NativeStatus.Ok,
+            "Dolby Vision generation accepted an incompatible source, backend or container.");
         Verify(check, baseline, tools, sourcePath, destination);
         foreach (string output in new[] { "sdr", "hdr" })
         {

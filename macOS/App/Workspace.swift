@@ -28,6 +28,11 @@ final class Workspace {
     var busy: Bool { activity != nil }
     var isLog: Bool { options.sourceKind == "log" || (options.sourceKind == "auto" && media?.summary.kind == "log") }
     var isDynamicHDR: Bool { media?.summary.hdr10plus == true || media?.summary.hasDolbyVision == true }
+    var isDolbyVisionExport: Bool { options.output == "dolbyvision84" }
+    var canOfferDolbyVision: Bool {
+        guard let media, options.canGenerateDolbyVision(media.summary) else { return false }
+        return encoderCache?.trials.contains { $0.available && $0.format.signal == "dolbyvision84" } ?? false
+    }
     var hardwareCodecs: [String] {
         guard let media, let signal = options.videoToolboxSignal(media.summary) else { return [] }
         return (encoderCache?.trials ?? []).filter { $0.available && $0.format.signal == signal }.map(\.format.codec)
@@ -98,6 +103,15 @@ final class Workspace {
     }
 
     func updateEncoderChoice() {
+        if isDolbyVisionExport {
+            if canOfferDolbyVision {
+                options.codec = "hevc"
+                options.encoder = .videoToolbox
+                container = "mp4"
+                return
+            }
+            options.output = "hdr"
+        }
         guard options.encoder == .videoToolbox else { return }
         if hardwareCodecs.isEmpty {
             options.encoder = .software
@@ -330,6 +344,7 @@ struct WorkspaceView: View {
                     Text("Automatic").tag("auto")
                     Text("SDR").tag("sdr")
                     Text("HDR").tag("hdr")
+                    if model.canOfferDolbyVision { Text("Dolby Vision 8.4").tag("dolbyvision84") }
                 }
                 if model.isDynamicHDR && model.options.output != "sdr" {
                     Toggle("Convert to standard HDR", isOn: $model.options.standardHDR)
@@ -341,6 +356,7 @@ struct WorkspaceView: View {
                         Text("Quick share · VideoToolbox").tag(EncoderMode.videoToolbox)
                         Text("Software archive").tag(EncoderMode.software)
                     }
+                    .disabled(model.isDolbyVisionExport)
                 }
                 Picker("Video codec", selection: $model.options.codec) {
                     if model.options.encoder != .videoToolbox || model.hardwareCodecs.contains("hevc") {
@@ -351,10 +367,12 @@ struct WorkspaceView: View {
                         Text("H.264").tag("avc")
                     }
                 }
+                .disabled(model.isDolbyVisionExport)
                 Picker("Container", selection: $model.container) {
                     Text("MKV").tag("mkv")
                     Text("MP4").tag("mp4")
                 }
+                .disabled(model.isDolbyVisionExport)
                 Button("Check hardware encoders", action: model.recheckEncoders)
             }
             Section("Trim") {
@@ -375,6 +393,8 @@ struct WorkspaceView: View {
             model.updateEncoderChoice()
         }
         .onChange(of: model.hardwareCodecs) { _, _ in model.updateEncoderChoice() }
+        .onChange(of: model.options.output) { _, _ in model.updateEncoderChoice() }
+        .onChange(of: model.canOfferDolbyVision) { _, _ in model.updateEncoderChoice() }
     }
 
     private var footer: some View {

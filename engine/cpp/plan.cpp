@@ -149,7 +149,7 @@ class planner
     json_value *media, *choices, *presets, *motion_presets, *video, *pixel;
     std::vector<json_value *> side, audio;
     json_value *dovi = nullptr, *hardware_preset = nullptr;
-    bool hdr10plus = false, preserve = false;
+    bool hdr10plus = false, preserve = false, generate_dovi = false;
     std::string purpose, codec, output, transform, selected_profile, sampling, range, variant, audio_choice,
         kind;
     uint32_t depth = 0;
@@ -316,7 +316,19 @@ class planner
                 luma::flac_depth(json, track);
         }
         const auto dynamic = text(choices, "dynamic_hdr", "preserve");
-        require(dynamic == "preserve" || dynamic == "standard", "Unknown dynamic HDR policy.");
+        require(dynamic == "preserve" || dynamic == "standard" || dynamic == "generate_84",
+                "Unknown dynamic HDR policy.");
+        generate_dovi = dynamic == "generate_84";
+        if (generate_dovi)
+        {
+            require(hardware_preset != nullptr && hardware == "videotoolbox" &&
+                        text(hardware_preset, "encoder") == "hevc_videotoolbox" && codec == "hevc" &&
+                        text(media, "kind") == "hlg" && kind == "hlg" && dovi == nullptr && !hdr10plus &&
+                        text(video, "color_transfer") == "arib-std-b67" && source.bit_depth >= 10 &&
+                        output == "hdr" && transform == "none" && depth == 10 && sampling == "420" &&
+                        range == "limited" && container == "mp4" && request.preview_size == 0,
+                    "Dolby Vision 8.4 generation requires standard 10-bit HLG, VideoToolbox HEVC and MP4.");
+        }
         if (dovi != nullptr || hdr10plus)
         {
             require(source_kind == "auto" || source_kind == text(media, "kind"),
@@ -727,11 +739,11 @@ class planner
         if (dovi != nullptr && purpose == "archive" && (codec == "hevc" || codec == "av1"))
             add({"-dolbyvision", preserve ? "1" : "0"});
         // VideoToolbox can insert Dolby Vision metadata when encoding HLG.
-        // This path emits standard HLG, retaining the encoded base layer.
+        // The explicit profile 8.4 export carries that metadata into the MP4.
         if (hardware_preset != nullptr && text(config, "encoder") == "hevc_videotoolbox" &&
             text(colors, "color_transfer") == "arib-std-b67")
-            add({"-bsf:v", "dovi_rpu=strip=1"});
-        if (preserve)
+            add({"-bsf:v", generate_dovi ? "dovi_rpu=compression=none" : "dovi_rpu=strip=1"});
+        if (preserve || generate_dovi)
             add({"-strict", "unofficial"});
         for (size_t i = 0; i < 4; ++i)
             if (!luma::unspecified(text(colors, color_keys[i])) &&

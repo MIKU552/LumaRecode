@@ -137,7 +137,19 @@ void verify(luma::probe_json &json, json_value *plan, json_value *source, json_v
     const bool preserve = (before_dovi != nullptr || before_hdr != nullptr) &&
                           text(options, "dynamic_hdr") == "preserve" && output_kind == "hdr" &&
                           text(options, "transform") == "none";
-    if (preserve)
+    if (text(options, "dynamic_hdr") == "generate_84")
+    {
+        const auto after = first(json, after_side, "DOVI configuration record");
+        require(after != nullptr && integer(after, "dv_profile") == 8 &&
+                    integer(after, "dv_bl_signal_compatibility_id") == 4 &&
+                    integer(after, "rpu_present_flag") == 1 && integer(after, "bl_present_flag") == 1 &&
+                    integer(after, "el_present_flag") == 0 &&
+                    first(json, after_side, "Dolby Vision", true) != nullptr,
+                "Output is missing verified Dolby Vision 8.4 signalling or frame metadata.");
+        require(first(json, after_side, "HDR10+", true) == nullptr,
+                "Dolby Vision 8.4 output retained HDR10+ metadata.");
+    }
+    else if (preserve)
     {
         if (before_dovi != nullptr)
         {

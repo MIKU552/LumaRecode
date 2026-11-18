@@ -42,7 +42,13 @@ def main():
         trials = json.loads(call("doctor", "--ffmpeg", ffmpeg))
         assert {
             (item["format"]["codec"], item["format"]["signal"]) for item in trials
-        } == {("avc", "sdr"), ("hevc", "sdr"), ("hevc", "hlg"), ("hevc", "pq")}, trials
+        } == {
+            ("avc", "sdr"),
+            ("hevc", "sdr"),
+            ("hevc", "hlg"),
+            ("hevc", "pq"),
+            ("hevc", "dolbyvision84"),
+        }, trials
         blocked = folder / "ffmpeg-no-hardware"
         blocked.write_text(
             '#!/bin/sh\nfor part in "$@"; do\n'
@@ -59,6 +65,9 @@ def main():
             "unavailable in fixture" in item["diagnostic"] for item in rejected
         ), rejected
         hlg_trial = next(item for item in trials if item["format"]["signal"] == "hlg")
+        dovi_trial = next(
+            item for item in trials if item["format"]["signal"] == "dolbyvision84"
+        )
         assert (
             hlg_trial.get("diagnostic")
             != "Standard output retained dynamic HDR metadata."
@@ -166,6 +175,43 @@ def main():
                 ), inspected
                 assert json.loads(call("frames", hardware))["frame_count"] == 5
                 print(f"PASS real VideoToolbox: {codec} {kind}", flush=True)
+
+            dolby = folder / f"dolby-vision-{kind}.mp4"
+            dolby_export = (
+                "convert",
+                source,
+                "-o",
+                dolby,
+                "--ffmpeg",
+                ffmpeg,
+                "--range",
+                "dolbyvision84",
+                "--start-frame",
+                "2",
+                "--end-frame",
+                "6",
+            )
+            if kind == "hlg" and dovi_trial["available"]:
+                call(*dolby_export)
+                inspected = json.loads(call("probe", dolby))
+                config = inspected["dolby_vision"]
+                assert (
+                    config["dv_profile"] == 8
+                    and config["dv_bl_signal_compatibility_id"] == 4
+                ), config
+                assert (
+                    config["rpu_present_flag"] == 1 and config["el_present_flag"] == 0
+                ), config
+                assert (
+                    inspected["video"]["color_transfer"] == transfer
+                    and not inspected["hdr10plus"]
+                ), inspected
+                assert json.loads(call("frames", dolby))["frame_count"] == 5
+                print("PASS real VideoToolbox: HLG to Dolby Vision 8.4", flush=True)
+            else:
+                call(*dolby_export, status=1)
+                assert not dolby.exists()
+            assert not list(folder.glob(".lumarecode-*"))
 
         automatic = folder / "automatic.mkv"
         call(

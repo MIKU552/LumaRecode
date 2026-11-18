@@ -96,6 +96,11 @@ struct MediaSummary: Decodable, Sendable {
         let side_data_list: [SideData]?
     }
 
+    private struct PixelFormat: Decodable {
+        struct Component: Decodable { let bit_depth: Int }
+        let components: [Component]?
+    }
+
     struct Stream: Decodable, Sendable {
         let codec_name: String?
         let codec_type: String?
@@ -115,9 +120,12 @@ struct MediaSummary: Decodable, Sendable {
     let hdr10plus: Bool
     let hasDolbyVision: Bool
     let hasStaticHDR: Bool
+    let bitDepth: Int
 
     init(from decoder: Decoder) throws {
-        enum Key: String, CodingKey { case schema_version, kind, profile, duration, video, streams, frames, hdr10plus, dolby_vision }
+        enum Key: String, CodingKey {
+            case schema_version, kind, profile, duration, video, streams, frames, hdr10plus, dolby_vision, pixel
+        }
         let values = try decoder.container(keyedBy: Key.self)
         guard try values.decode(Int.self, forKey: .schema_version) == 1 else {
             throw EngineError(message: "Unsupported source snapshot schema.")
@@ -129,6 +137,7 @@ struct MediaSummary: Decodable, Sendable {
         streams = try values.decode([Stream].self, forKey: .streams)
         hdr10plus = try values.decode(Bool.self, forKey: .hdr10plus)
         hasDolbyVision = try !values.decodeNil(forKey: .dolby_vision)
+        bitDepth = try values.decodeIfPresent(PixelFormat.self, forKey: .pixel)?.components?.first?.bit_depth ?? 0
         let frames = try values.decode([Frame].self, forKey: .frames)
         func containsStaticHDR(_ side: [SideData]?) -> Bool {
             side?.contains {
@@ -217,7 +226,8 @@ struct VideoToolboxFormat: Equatable, Codable, Sendable {
 
     static let formats = [
         Self(codec: "hevc", signal: "sdr"), Self(codec: "avc", signal: "sdr"),
-        Self(codec: "hevc", signal: "hlg"), Self(codec: "hevc", signal: "pq")
+        Self(codec: "hevc", signal: "hlg"), Self(codec: "hevc", signal: "pq"),
+        Self(codec: "hevc", signal: "dolbyvision84")
     ]
 
     var depth: Int { signal == "sdr" ? 8 : 10 }
@@ -239,7 +249,13 @@ struct EncodingOptions: Sendable {
 
     func inputKind(_ media: MediaSummary) -> String { sourceKind == "auto" ? media.kind : sourceKind }
 
+    func canGenerateDolbyVision(_ media: MediaSummary) -> Bool {
+        inputKind(media) == "hlg" && media.kind == "hlg" && media.video.color_transfer == "arib-std-b67"
+            && media.bitDepth >= 10 && !media.hasDolbyVision && !media.hdr10plus
+    }
+
     func videoToolboxSignal(_ media: MediaSummary) -> String? {
+        if output == "dolbyvision84" { return canGenerateDolbyVision(media) ? output : nil }
         let kind = inputKind(media)
         if kind == "unknown" || media.kind == "raw" { return nil }
         if output == "sdr" || (output == "auto" && kind == "sdr") { return "sdr" }
@@ -261,7 +277,7 @@ struct EncodingOptions: Sendable {
         guard media.kind != "raw" else {
             throw EngineError(message: "ProRes RAW development is not available in this macOS build.")
         }
-        let target = output == "auto" ? (kind == "sdr" ? "sdr" : "hdr") : output
+        let target = output == "auto" ? (kind == "sdr" ? "sdr" : "hdr") : output == "dolbyvision84" ? "hdr" : output
         let transform: String
         switch kind {
         case "log": transform = target == "hdr" ? "log-hdr" : "log-sdr"
@@ -270,7 +286,8 @@ struct EncodingOptions: Sendable {
         }
         var fields = [
             "purpose": useVideoToolbox ? "share" : "archive", "codec": codec, "output": target, "source_kind": sourceKind,
-            "transform": transform, "dynamic_hdr": standardHDR ? "standard" : "preserve",
+            "transform": transform,
+            "dynamic_hdr": output == "dolbyvision84" ? "generate_84" : standardHDR ? "standard" : "preserve",
             "container": container
         ]
         if useVideoToolbox { fields["hardware"] = EncoderMode.videoToolbox.rawValue }
@@ -451,12 +468,16 @@ struct NativeEngine: Sendable {
         let signal = options.videoToolboxSignal(source.summary)
         let format = VideoToolboxFormat.formats.first { $0.codec == options.codec && $0.signal == signal }
         let hardware: Bool
-        if options.encoder != .software, let format {
+        let generateDolbyVision = options.output == "dolbyvision84"
+        if generateDolbyVision && (format == nil || container != "mp4") {
+            throw EngineError(message: String(localized: "Dolby Vision 8.4 requires standard HLG, HEVC and MP4."))
+        }
+        if options.encoder != .software || generateDolbyVision, let format {
             hardware = try (toolbox?.first { $0.format == format } ?? trialVideoToolbox(format, control: control)).available
         } else {
             hardware = false
         }
-        if options.encoder == .videoToolbox && !hardware {
+        if (options.encoder == .videoToolbox || generateDolbyVision) && !hardware {
             throw EngineError(message: "VideoToolbox is unavailable for this codec and output signal.")
         }
         let choices = try options.data(for: source.summary, container: container, useVideoToolbox: hardware)
@@ -528,7 +549,8 @@ struct NativeEngine: Sendable {
         let pixel = format.depth == 8 ? "yuv420p" : "yuv420p10le"
         let primaries = format.depth == 8 ? "bt709" : "bt2020"
         let matrix = format.depth == 8 ? "bt709" : "bt2020nc"
-        let transfer = format.signal == "sdr" ? "bt709" : format.signal == "hlg" ? "arib-std-b67" : "smpte2084"
+        let sourceSignal = format.signal == "dolbyvision84" ? "hlg" : format.signal
+        let transfer = sourceSignal == "sdr" ? "bt709" : sourceSignal == "hlg" ? "arib-std-b67" : "smpte2084"
         // Supply the same source descriptors as ordinary inspection. Only the
         // FFmpeg input is substituted with a generator after native planning.
         let video: [String: Any] = [
@@ -538,11 +560,12 @@ struct NativeEngine: Sendable {
         ]
         let source = try JSONSerialization.data(withJSONObject: [
             "schema_version": 1, "path": folder.appendingPathComponent("source.mkv").path, "video": video,
-            "streams": [video], "frames": [], "kind": format.signal, "duration": 1.0, "hdr10plus": false,
-            "dolby_vision": NSNull()
+            "streams": [video], "frames": [], "kind": sourceSignal, "duration": 1.0, "hdr10plus": false,
+            "dolby_vision": NSNull(), "pixel": ["components": [["bit_depth": format.depth]]]
         ])
         let summary = try JSONDecoder().decode(MediaSummary.self, from: source)
-        let choices = try EncodingOptions(codec: format.codec).data(for: summary, container: "mp4", useVideoToolbox: true)
+        let choices = try EncodingOptions(codec: format.codec, output: format.signal == "dolbyvision84" ? format.signal : "auto")
+            .data(for: summary, container: "mp4", useVideoToolbox: true)
         let plan = try makePlan(source: source, choices: choices, staging: utf8(destination.path), window: nil)
         defer { lr_plan_release(plan) }
         var command = try plannedCommand(plan)

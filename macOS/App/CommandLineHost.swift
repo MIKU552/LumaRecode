@@ -7,7 +7,7 @@ enum CommandLineHost {
       probe INPUT [--ffprobe PATH]
       frames INPUT [--ffprobe PATH]
       doctor [--ffmpeg PATH] [--ffprobe PATH]
-      convert INPUT -o OUTPUT [--codec hevc|av1|avc] [--range auto|sdr|hdr]
+      convert INPUT -o OUTPUT [--codec hevc|av1|avc] [--range auto|sdr|hdr|dolbyvision84]
         [--encoder software|auto|videotoolbox]
         [--input-kind auto|sdr|hlg|pq|log] [--profile pocket3|samsung|milog|applelog|applelog2]
         [--standard-hdr] [--start-frame N] [--end-frame N] [--overwrite]
@@ -145,12 +145,15 @@ enum CommandLineHost {
                 guard let mode = EncoderMode(rawValue: value) else { throw EngineError(message: "Invalid value for --encoder.") }
                 encoding.encoder = mode
             }
-            encoding.output = try choice("--range", allowed: ["auto", "sdr", "hdr"], defaultValue: "auto")
+            encoding.output = try choice("--range", allowed: ["auto", "sdr", "hdr", "dolbyvision84"], defaultValue: "auto")
+            encoding.standardHDR = flags.contains("--standard-hdr")
+            if encoding.output == "dolbyvision84" && (values["--encoder"] == "software" || encoding.standardHDR) {
+                throw EngineError(message: "Dolby Vision 8.4 requires VideoToolbox and its own output mode.")
+            }
             encoding.sourceKind = try choice("--input-kind", allowed: ["auto", "sdr", "hlg", "pq", "log"], defaultValue: "auto")
             if values["--profile"] != nil {
                 encoding.profile = try choice("--profile", allowed: ["pocket3", "samsung", "milog", "applelog", "applelog2"], defaultValue: "")
             }
-            encoding.standardHDR = flags.contains("--standard-hdr")
             let first = try frame("--start-frame")
             let last = try frame("--end-frame")
             if first != nil || last != nil { selection = FrameSelection(first: first ?? 1, last: last) }
