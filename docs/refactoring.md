@@ -51,7 +51,7 @@ Windows 使用 C#、.NET 11、WinUI 3，保留单 EXE 的 GUI / CLI。macOS 面�
 | P5 macOS | 原生工作区、预览、裁剪、转码、CLI 与系统交互 | 基础工作流程完整 |
 | P6 媒体功能 | HDR 图片、动态照片、动态 HDR 和 RAW | 格式结构及可执行验证通过 |
 | P7 优化 | 启动、内存、预览延迟、缓存、长任务与参数校准 | 同条件测量达到确定的预算 |
-| P8 发布准备 | 四语文档、许可、免费签名和分发包 | 整体验收与隐私检查完成 |
+| P8 发布准备 | 四语文档、许可、构建来源证明、平台签名与分发包 | 双平台产物来源核验、整体验收与隐私检查完成 |
 | P9 合并发布 | 保留提交历史合并、最终标签和 Release | 产物、来源和标签一致 |
 
 P1 原型和 P2 基础核心已完成。P3 将 Windows GUI / CLI 的素材探测、格式选项、时间轴、转码规划、进度与输出发布接入共享核心。`Core/` 保留宿主模型与任务编排；RAW 相机参数提取、动态 HDR 辅助文件和图片封装按 P6 迁移。
@@ -164,7 +164,15 @@ ffprobe 输出按行流式解析，单行最多 64 KiB；索引默认预算 512 
 
 缺少 GPU 的环境运行编译、规则、模拟能力和软件媒体检查。硬件检查只有真实初始化和执行后计为通过；没有条件的用例记录为未运行。
 
-Windows 保留自包含单 EXE，FFmpeg / ffprobe 由用户提供。macOS 使用免费 ad-hoc 签名，准备首次打开说明；Windows 接近发布时申请 SignPath Foundation 免费签名，按其流程批准正式签名。主许可为 MIT，第三方组件及静态链接内容保留各自声明。
+Windows 发布未签名的自包含单 EXE 便携版，FFmpeg / ffprobe 由用户提供。受信任的 Windows 代码签名作为后续可选事项，本轮不申请签名服务，也不作为重构验收条件。macOS 使用免费 ad-hoc 签名，准备首次打开说明。
+
+P8 为 Windows 和 macOS 所有需要分发的官方 Actions 产物生成 [GitHub 构建来源证明](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations)，覆盖开发包、正式发布和共享 SDK，并按架构与编译方式区分。先完成平台签名和封装，再对最终分发文件生成证明；macOS 的 `.app` 以归档文件交付时，对归档文件出具证明。验证下载文件与预期仓库、工作流及提交的关联后再发布，用户可使用 `gh attestation verify` 核验。来源证明与 macOS ad-hoc 签名并用，不替代操作系统的发布者信任或应用审核。
+
+官方来源证明仅由受信任的代码来源与工作流出具，使用作业级最小 OIDC 和证明写入权限。外部贡献的 PR 等不受信任构建执行编译与检查；需要正式分发时，由受信任工作流重新构建、验证并生成证明。
+
+Microsoft Store / MSIX 商店分发留作功能完善后的独立事项，不纳入本轮重构范围。
+
+主许可为 MIT，第三方组件及静态链接内容保留各自声明。
 
 阶段结果和架构调整集中维护在本文、现有兼容性说明与测试数据中。源码、构建日志和分发包检查个人路径、凭据、素材及无关文件。
 
@@ -217,7 +225,7 @@ Keep one public C ABI. Internal boundaries can use validated C interfaces or typ
 | P5 macOS | Native workspace, preview, trimming, transcoding, CLI and system integration | Complete basic workflows |
 | P6 Media features | HDR images, motion photos, dynamic HDR and RAW | Format structure and executable checks pass |
 | P7 Optimization | Startup, memory, preview latency, caches, long tasks and tuning | Controlled measurements meet established budgets |
-| P8 Release preparation | Four-language docs, licenses, free signing and distribution | Full acceptance and privacy checks complete |
+| P8 Release preparation | Four-language docs, licenses, build provenance, platform signing and packages | Both platforms' artifact provenance, acceptance and privacy checks complete |
 | P9 Merge and release | History-preserving merge, final tag and Release | Artifacts, provenance and tag agree |
 
 P1 prototypes and the P2 foundational core are complete. P3 connects Windows GUI / CLI source inspection, format choices, timelines, encoding plans, progress and output publication to the shared engine. `Core/` retains host models and orchestration; RAW camera parameter extraction, dynamic HDR auxiliary files and image packaging migrate in P6.
@@ -330,6 +338,14 @@ File checks cover hard links, competing publishers, seal states, source and stag
 
 GPU-free environments run builds, policies, capability simulations and software media checks. Hardware checks pass only after real initialization and execution. Unavailable cases are recorded as not run.
 
-Windows retains self-contained single-EXE delivery; users provide FFmpeg/ffprobe. macOS uses free ad-hoc signing with first-open instructions. Apply for SignPath Foundation signing near the Windows release and approve signing through its required process. The project remains MIT; third-party and statically linked components retain their notices.
+Windows ships an unsigned, self-contained portable EXE; users provide FFmpeg/ffprobe. Trusted Windows code signing remains an optional future task. This refactor does not apply for a signing service or require trusted Windows signing for acceptance. macOS uses free ad-hoc signing with first-open instructions.
+
+P8 adds [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations) to all official Windows and macOS Actions artifacts intended for distribution, including development builds, releases and shared SDKs, identified by architecture and compilation mode. Complete platform signing and packaging before attesting the final distribution files; when a macOS `.app` ships as an archive, attest that archive. Verify the downloaded files against the expected repository, workflow and commit before publication. Users can verify them with `gh attestation verify`. Provenance coexists with macOS ad-hoc signing and does not replace operating-system publisher trust or application review.
+
+Official attestations are issued only for trusted code origins and workflows, using minimal job-scoped OIDC and attestation-write permissions. Untrusted builds, including external contribution PRs, run compilation and checks. Artifacts intended for official distribution are rebuilt, verified and attested by a trusted workflow.
+
+Microsoft Store / MSIX Store distribution remains a separate task after further feature development, outside this refactor's scope.
+
+The project remains MIT; third-party and statically linked components retain their notices.
 
 Keep stage results and architecture changes in this guide, existing compatibility docs and test data. Check source, logs and packages for personal paths, credentials, footage and unrelated files.
