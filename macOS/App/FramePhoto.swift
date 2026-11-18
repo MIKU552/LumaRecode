@@ -21,7 +21,7 @@ enum PhotoFormat: String, CaseIterable, Identifiable, Sendable {
         value.lowercased() == fileExtension || self == .sdr && value.lowercased() == "jpeg"
     }
 
-    func write(to destination: URL, frame: URL, transfer: String, control: JobControl) throws {
+    func write(to destination: URL, frame: URL, transfer: String, liveIdentifier: String?, control: JobControl) throws {
         let sourceName = transfer == "arib-std-b67" ? CGColorSpace.itur_2100_HLG
             : transfer == "smpte2084" ? CGColorSpace.itur_2100_PQ : CGColorSpace.sRGB
         guard let source = CGColorSpace(name: sourceName), let srgb = CGColorSpace(name: CGColorSpace.sRGB),
@@ -32,7 +32,10 @@ enum PhotoFormat: String, CaseIterable, Identifiable, Sendable {
             guard let image = CIImage(contentsOf: frame, options: [.colorSpace: source, .toneMapHDRtoSDR: sdr]) else {
                 throw EngineError(message: "Cannot read the extracted frame.")
             }
-            return image
+            guard let liveIdentifier else { return image }
+            var properties = image.properties
+            properties[kCGImagePropertyMakerAppleDictionary as String] = ["17": liveIdentifier]
+            return image.settingProperties(properties)
         }
         let context = CIContext(options: [.cacheIntermediates: false])
         try control.check()
@@ -55,6 +58,13 @@ enum PhotoFormat: String, CaseIterable, Identifiable, Sendable {
         if self == .adaptive,
            CGImageSourceCopyAuxiliaryDataInfoAtIndex(result, 0, kCGImageAuxiliaryDataTypeISOGainMap) == nil {
             throw EngineError(message: "The exported photo is missing its HDR gain map.")
+        }
+        if let liveIdentifier {
+            let properties = CGImageSourceCopyPropertiesAtIndex(result, 0, nil) as? [String: Any]
+            let makerNote = properties?[kCGImagePropertyMakerAppleDictionary as String] as? [String: Any]
+            guard makerNote?["17"] as? String == liveIdentifier else {
+                throw EngineError(message: "The exported still is missing its Live Photo identifier.")
+            }
         }
         if self == .hdr {
             let properties = CGImageSourceCopyPropertiesAtIndex(result, 0, nil) as? [String: Any]

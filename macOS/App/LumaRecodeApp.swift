@@ -4,11 +4,11 @@ import UniformTypeIdentifiers
 
 @main
 enum LumaRecodeMain {
-    @MainActor static func main() {
+    @MainActor static func main() async {
         let arguments = Array(CommandLine.arguments.dropFirst())
         if let command = arguments.first, !command.hasPrefix("-psn_"),
            !command.hasPrefix("-NS"), !command.hasPrefix("-Apple") {
-            exit(CommandLineHost.run(arguments))
+            exit(await CommandLineHost.run(arguments))
         }
         LumaRecodeApp.main()
     }

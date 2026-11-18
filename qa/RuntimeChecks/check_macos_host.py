@@ -270,6 +270,52 @@ def main():
                 )
                 assert json.loads(call("probe", output_sdr))["kind"] == "sdr"
                 print(f"PASS macOS software tone mapping: {kind} to SDR", flush=True)
+            if kind != "pq":
+                pair = folder / f"live-photo-{kind}"
+                fmt, ext = ("sdr", "jpg") if kind == "sdr" else ("adaptive", "heic")
+                live = (
+                    "image",
+                    source,
+                    "-o",
+                    pair,
+                    "--frame",
+                    "4",
+                    "--format",
+                    fmt,
+                    "--live-photo",
+                    "--motion-first",
+                    "2",
+                    "--motion-last",
+                    "8",
+                    "--ffmpeg",
+                    ffmpeg,
+                )
+                call(*live)
+                still = pair / f"{pair.name}.{ext}"
+                movie = pair / f"{pair.name}.mov"
+                assert set(pair.iterdir()) == {still, movie}, list(pair.iterdir())
+                assert json.loads(call("frames", movie))["frame_count"] == 7
+                tags = subprocess.check_output(
+                    [
+                        ffprobe,
+                        "-v",
+                        "error",
+                        "-show_entries",
+                        "format_tags",
+                        "-of",
+                        "json",
+                        str(movie),
+                    ],
+                    text=True,
+                    encoding="utf-8",
+                    timeout=20,
+                )
+                assert "com.apple.quicktime.content.identifier" in tags
+                original = hashlib.sha256(movie.read_bytes()).digest()
+                call(*live, status=1)
+                assert hashlib.sha256(movie.read_bytes()).digest() == original
+                assert not list(folder.glob(".lumarecode-*"))
+                print(f"PASS macOS Photos framework: {kind} Live Photo", flush=True)
 
         automatic = folder / "automatic.mkv"
         call(

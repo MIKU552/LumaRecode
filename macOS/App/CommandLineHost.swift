@@ -9,6 +9,7 @@ enum CommandLineHost {
       doctor [--ffmpeg PATH] [--ffprobe PATH]
       image INPUT -o OUTPUT --frame N [--format sdr|hdr|adaptive] [--overwrite]
         [--input-kind auto|sdr|hlg|pq|log] [--profile pocket3|samsung|milog|applelog|applelog2]
+        [--live-photo [--motion-first N --motion-last N]]
         [--ffmpeg PATH] [--ffprobe PATH]
       convert INPUT -o OUTPUT [--codec hevc|av1|avc] [--range auto|sdr|hdr|dolbyvision84]
         [--encoder software|auto|videotoolbox]
@@ -18,7 +19,7 @@ enum CommandLineHost {
     Frame ranges are one-based with an inclusive end. Use .mkv or .mp4 for OUTPUT.
     """
 
-    static func run(_ arguments: [String]) -> Int32 {
+    static func run(_ arguments: [String]) async -> Int32 {
         if arguments == ["--help"] || arguments == ["-h"] {
             print(usage)
             return 0
@@ -64,11 +65,15 @@ enum CommandLineHost {
                 print("{\"frame_count\":\(index.count)}")
             default:
                 guard let output = parsed.output else { throw EngineError(message: "Missing output path.") }
-                let overwrite = try confirmOverwrite(output, allowed: parsed.flags.contains("--overwrite"), control: control)
-                if let photo = parsed.photo {
+                if let photo = parsed.photo, parsed.flags.contains("--live-photo") {
+                    try await engine.exportLivePhoto(source, to: output, format: photo.format, frame: photo.frame,
+                                                     options: parsed.encoding, range: parsed.selection, control: control)
+                } else if let photo = parsed.photo {
+                    let overwrite = try confirmOverwrite(output, allowed: parsed.flags.contains("--overwrite"), control: control)
                     try engine.exportPhoto(source, to: output, format: photo.format, frame: photo.frame,
                                            options: parsed.encoding, overwrite: overwrite, control: control)
                 } else {
+                    let overwrite = try confirmOverwrite(output, allowed: parsed.flags.contains("--overwrite"), control: control)
                     try engine.convert(source, to: output, options: parsed.encoding, overwrite: overwrite,
                                        selection: parsed.selection, control: control)
                 }
@@ -142,7 +147,10 @@ enum CommandLineHost {
                 accepted.formUnion(["--codec", "--encoder", "--range", "--start-frame", "--end-frame"])
                 switches.insert("--standard-hdr")
             }
-            if command == "image" { accepted.formUnion(["--frame", "--format"]) }
+            if command == "image" {
+                accepted.formUnion(["--frame", "--format", "--motion-first", "--motion-last"])
+                switches.insert("--live-photo")
+            }
             var remaining = words.dropFirst(input == nil ? 1 : 2).makeIterator()
             while let word = remaining.next() {
                 if switches.contains(word), flags.insert(word).inserted {
@@ -166,6 +174,18 @@ enum CommandLineHost {
                     throw EngineError(message: "Invalid value for --format.")
                 }
                 guard let selected = try frame("--frame") else { throw EngineError(message: "Specify --frame N.") }
+                let first = try frame("--motion-first")
+                let last = try frame("--motion-last")
+                let live = flags.contains("--live-photo")
+                if first != nil || last != nil {
+                    guard live, let first, let last else {
+                        throw EngineError(message: "Specify both motion frames with --live-photo.")
+                    }
+                    selection = FrameSelection(first: first, last: last)
+                }
+                if live && flags.contains("--overwrite") {
+                    throw EngineError(message: "Use a new output folder for the Live Photo pair.")
+                }
                 photo = (format, selected)
                 return
             }

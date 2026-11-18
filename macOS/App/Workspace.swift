@@ -20,6 +20,9 @@ final class Workspace {
     var showPhotoControls = false
     var photoFrame = "1"
     var photoFormat = PhotoFormat.sdr
+    var includeLivePhoto = false
+    var motionFirst = ""
+    var motionLast = ""
     var activity: Activity?
     var progress = 0.0
     var output: URL?
@@ -69,6 +72,9 @@ final class Workspace {
         showPhotoControls = false
         photoFrame = "1"
         photoFormat = .sdr
+        includeLivePhoto = false
+        motionFirst = ""
+        motionLast = ""
         options = EncodingOptions()
         container = "mkv"
         run(.inspect) { control in
@@ -169,22 +175,40 @@ final class Workspace {
         }
         let format = photoFormat
         let options = self.options
+        let live = includeLivePhoto && format != .hdr
+        var motionRange: FrameSelection?
+        if live && (!motionFirst.isEmpty || !motionLast.isEmpty) {
+            guard let first = UInt64(motionFirst), let last = UInt64(motionLast),
+                  first > 0, first <= frame, last >= frame, last <= frames.count else {
+                failure = String(localized: "Enter a Live Photo range that contains the cover frame.")
+                return
+            }
+            motionRange = FrameSelection(first: first, last: last)
+        }
+        let range = motionRange
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
         panel.directoryURL = media.url.deletingLastPathComponent()
-        panel.nameFieldStringValue = media.url.deletingPathExtension().lastPathComponent + "-frame-\(frame)." + format.fileExtension
-        panel.allowedContentTypes = [format.type]
+        let basename = media.url.deletingPathExtension().lastPathComponent + "-frame-\(frame)"
+        panel.nameFieldStringValue = live ? basename + "-live" : basename + "." + format.fileExtension
+        if !live { panel.allowedContentTypes = [format.type] }
         panel.isExtensionHidden = false
         let consent = SaveConsent(fileExtension: format.fileExtension)
-        panel.delegate = consent
+        if !live { panel.delegate = consent }
         present(panel) { [weak self, consent] url in
             guard let self else { return }
             let overwrite = consent.existing == url.standardizedFileURL
             self.player?.pause()
             self.output = nil
             self.run(.photo) { control in
-                try Self.engine().exportPhoto(media, to: url, format: format, frame: frame, options: options,
-                                              overwrite: overwrite, index: frames, control: control)
+                let engine = try Self.engine()
+                if live {
+                    try await engine.exportLivePhoto(media, to: url, format: format, frame: frame, options: options,
+                                                     range: range, index: frames, control: control)
+                } else {
+                    try engine.exportPhoto(media, to: url, format: format, frame: frame, options: options,
+                                           overwrite: overwrite, index: frames, control: control)
+                }
             } finished: { _ in
                 self.output = url
             }
@@ -251,7 +275,7 @@ final class Workspace {
 
     private func run<T: Sendable>(
         _ activity: Activity,
-        work: @escaping @Sendable (JobControl) throws -> T,
+        work: @escaping @Sendable (JobControl) async throws -> T,
         finished: @escaping (T) -> Void
     ) {
         guard !busy, !terminating else { return }
@@ -260,7 +284,10 @@ final class Workspace {
         self.failure = nil
         self.control = control
         task = Task {
-            let result = await Task.detached(priority: .userInitiated) { Result { try work(control) } }.value
+            let result = await Task.detached(priority: .userInitiated) {
+                do { return Result<T, Error>.success(try await work(control)) }
+                catch { return .failure(error) }
+            }.value
             self.activity = nil
             self.control = nil
             self.task = nil
@@ -484,6 +511,13 @@ struct WorkspaceView: View {
                             if model.supportsHDRPhoto {
                                 Text(PhotoFormat.hdr.title).tag(PhotoFormat.hdr)
                                 Text(PhotoFormat.adaptive.title).tag(PhotoFormat.adaptive)
+                            }
+                        }
+                        if model.photoFormat != .hdr {
+                            Toggle("Include Live Photo", isOn: $model.includeLivePhoto)
+                            if model.includeLivePhoto {
+                                TextField("First motion frame", text: $model.motionFirst, prompt: Text("Automatic"))
+                                TextField("Last motion frame", text: $model.motionLast, prompt: Text("Automatic"))
                             }
                         }
                         Button("Save Photo…", action: model.savePhoto)

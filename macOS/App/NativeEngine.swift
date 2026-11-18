@@ -1,4 +1,6 @@
 import CLumaRecode
+import CoreMedia
+import Darwin
 import Foundation
 
 struct EngineError: LocalizedError {
@@ -25,13 +27,25 @@ final class JobControl: @unchecked Sendable {
     }
 
     func run<T>(_ halt: @escaping () -> Void, _ body: () throws -> T) throws -> T {
+        try begin(halt)
+        defer { finish() }
+        return try body()
+    }
+
+    func runAsync<T>(_ halt: @escaping () -> Void, _ body: () async throws -> T) async throws -> T {
+        try begin(halt)
+        defer { finish() }
+        return try await body()
+    }
+
+    private func begin(_ halt: @escaping () -> Void) throws {
         try lock.withLock {
             if cancelled { throw CancellationError() }
             abort = halt
         }
-        defer { lock.withLock { abort = nil } }
-        return try body()
     }
+
+    private func finish() { lock.withLock { abort = nil } }
 }
 
 private func nativeError() -> lr_error {
@@ -212,6 +226,17 @@ final class FrameIndex: @unchecked Sendable {
                   "Cannot resolve the selected frames.")
         return window
     }
+
+    func liveRange(around frame: UInt64) throws -> FrameSelection {
+        let cover = try resolve(FrameSelection(first: frame, last: frame))
+        let first = try resolve(FrameSelection(first: 1, last: 1))
+        let position = cover.start_seconds - first.start_seconds
+        var start: UInt64 = 0
+        var end: UInt64 = 0
+        try check(lr_timeline_at_or_after(handle, max(0, position - 1.5), &start), nil, "Cannot find the first Live Photo frame.")
+        try check(lr_timeline_at_or_after(handle, position + 1.5, &end), nil, "Cannot find the last Live Photo frame.")
+        return FrameSelection(first: min(start + 1, frame), last: max(frame, end))
+    }
 }
 
 enum EncoderMode: String, Sendable {
@@ -246,6 +271,7 @@ struct EncodingOptions: Sendable {
     var profile: String?
     var standardHDR = false
     var encoder: EncoderMode = .software
+    var liveClip = false
 
     func inputKind(_ media: MediaSummary) -> String { sourceKind == "auto" ? media.kind : sourceKind }
     func supportsHDRPhoto(_ media: MediaSummary) -> Bool { ["hlg", "pq", "log"].contains(inputKind(media)) }
@@ -292,6 +318,11 @@ struct EncodingOptions: Sendable {
             "container": container, "cpu_tone_map": "1"
         ]
         if useVideoToolbox { fields["hardware"] = EncoderMode.videoToolbox.rawValue }
+        if liveClip {
+            fields["audio"] = "aac"
+            fields["sampling"] = "420"
+            fields["color_range"] = "limited"
+        }
         if kind == "log" {
             guard let curve = profile ?? media.profile else { throw EngineError(message: "Choose the camera Log curve.") }
             fields["profile"] = curve
@@ -510,7 +541,7 @@ struct NativeEngine: Sendable {
 
     func exportPhoto(
         _ source: MediaSource, to destination: URL, format: PhotoFormat, frame: UInt64, options: EncodingOptions,
-        overwrite: Bool, index: FrameIndex? = nil, control: JobControl
+        overwrite: Bool, index: FrameIndex? = nil, liveIdentifier: String? = nil, control: JobControl
     ) throws {
         guard format.matchesExtension(destination.pathExtension) else {
             throw EngineError(message: "The file extension does not match the photo format.")
@@ -524,8 +555,72 @@ struct NativeEngine: Sendable {
             let image = stagedURL.deletingLastPathComponent().appendingPathComponent("still.png")
             defer { if cleanup { try? FileManager.default.removeItem(at: image) } }
             let transfer = try renderStill(source, to: image, options: options, window: window, control: control, cleanup: &cleanup)
-            try format.write(to: stagedURL, frame: image, transfer: transfer, control: control)
+            try format.write(to: stagedURL, frame: image, transfer: transfer, liveIdentifier: liveIdentifier, control: control)
         }
+    }
+
+    func exportLivePhoto(
+        _ source: MediaSource, to destination: URL, format: PhotoFormat, frame: UInt64, options: EncodingOptions,
+        range: FrameSelection?, index: FrameIndex? = nil, control: JobControl
+    ) async throws {
+        guard format != .hdr else { throw EngineError(message: "Choose SDR JPEG or Adaptive HDR HEIC for a Live Photo.") }
+        try control.check()
+        try source.identity.check(source.url)
+        let index = try index ?? loadFrames(source, control: control)
+        let range = try range ?? index.liveRange(around: frame)
+        let window = try index.resolve(range)
+        guard frame >= range.first, frame <= window.end else {
+            throw EngineError(message: "The cover frame must be inside the Live Photo range.")
+        }
+        let destination = destination.standardizedFileURL
+        guard !FileManager.default.fileExists(atPath: destination.path) else {
+            throw EngineError(message: "Use a new output folder for the Live Photo pair.")
+        }
+        let identifier = UUID().uuidString
+        let parent = destination.deletingLastPathComponent()
+        let folder = parent.appendingPathComponent(".lumarecode-live-" + identifier, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false,
+                                                attributes: [.posixPermissions: 0o700])
+        let name = destination.lastPathComponent
+        let still = folder.appendingPathComponent(name + "." + format.fileExtension)
+        let video = folder.appendingPathComponent(name + ".mov")
+        let clip = folder.appendingPathComponent("encoded-" + identifier + ".mp4")
+        var committed = false
+        defer {
+            if !committed {
+                // A nested transaction keeps its own directory when a child
+                // could not be reaped. Only remove the three known files.
+                for file in [clip, still, video] { try? FileManager.default.removeItem(at: file) }
+                _ = rmdir(folder.path)
+            }
+        }
+        try exportPhoto(source, to: still, format: format, frame: frame, options: options,
+                        overwrite: false, index: index, liveIdentifier: identifier, control: control)
+        var motion = options
+        motion.output = format == .sdr ? "sdr" : "hdr"
+        motion.codec = format == .sdr ? "avc" : "hevc"
+        motion.standardHDR = true
+        motion.liveClip = true
+        motion.encoder = .auto
+        try convert(source, to: clip, options: motion, overwrite: false, index: index, selection: range, control: control)
+        let encoded = try inspect(clip, control: control)
+        let clock = try loadFrames(encoded, control: control)
+        let coverFrame = frame - range.first + 1
+        let cover = try clock.resolve(FrameSelection(first: coverFrame, last: coverFrame))
+        let origin = try clock.resolve(FrameSelection(first: 1, last: 1)).start_seconds
+        let coverTime = CMTimeRange(start: CMTime(seconds: cover.start_seconds - origin, preferredTimescale: 600_000),
+                                    duration: CMTime(seconds: cover.end_seconds - cover.start_seconds, preferredTimescale: 600_000))
+        try await LivePhoto.writeMovie(from: clip, to: video, identifier: identifier, cover: coverTime, control: control)
+        try await LivePhoto.verify(still: still, movie: video, control: control)
+        try FileManager.default.removeItem(at: clip)
+        try control.check()
+        try source.identity.check(source.url)
+        // Publish both Apple resources together. Exclusive rename protects a
+        // folder another app created while the photo was being prepared.
+        guard renamex_np(folder.path, destination.path, UInt32(RENAME_EXCL)) == 0 else {
+            throw EngineError(message: "Cannot publish the Live Photo folder. Choose a new folder name.")
+        }
+        committed = true
     }
 
     private func encodeVideo(
