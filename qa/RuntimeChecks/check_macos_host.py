@@ -79,7 +79,7 @@ def main():
         if os.environ.get("LUMA_REQUIRE_VIDEO_TOOLBOX_DOVI"):
             assert dovi_trial["available"], dovi_trial
         if dovi_trial["available"]:
-            large = folder / "4k-hlg.mp4"
+            large = folder / "4k-hlg.mkv"
             subprocess.run(
                 [
                     ffmpeg,
@@ -97,21 +97,13 @@ def main():
                     "30",
                     "-shortest",
                     "-c:v",
-                    "hevc_videotoolbox",
-                    "-allow_sw",
-                    "0",
+                    "libx265",
+                    "-preset",
+                    "ultrafast",
                     "-pix_fmt",
-                    "p010le",
-                    "-profile:v",
-                    "main10",
-                    "-color_primaries",
-                    "bt2020",
-                    "-colorspace",
-                    "bt2020nc",
-                    "-color_trc",
-                    "arib-std-b67",
-                    "-bsf:v",
-                    "dovi_rpu=strip=1",
+                    "yuv420p10le",
+                    "-x265-params",
+                    "log-level=error:pools=4:colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc",
                     "-c:a",
                     "aac",
                     str(large),
@@ -120,6 +112,11 @@ def main():
                 capture_output=True,
                 timeout=60,
             )
+            source = json.loads(call("probe", large))
+            assert (
+                source["kind"] == "hlg" and source["video"]["pix_fmt"] == "yuv420p10le"
+            ), source
+            assert source["dolby_vision"] is None and not source["hdr10plus"], source
             delivery = folder / "4k-dolbyvision.mp4"
             call(
                 "convert",
