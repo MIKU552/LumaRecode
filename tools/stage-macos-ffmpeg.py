@@ -127,8 +127,14 @@ def main() -> None:
         for file in keg.iterdir():
             if file.is_file() and file.name.upper().startswith(("LICENSE", "COPYING", "COPYRIGHT", "NOTICE", "AUTHORS")):
                 shutil.copy2(file, destination)
-    environment = dict(os.environ, LUMA_BREW_RECIPES=json.dumps(recipes), LUMA_FFMPEG_SOURCES=str(sources))
-    subprocess.run(["brew", "ruby", str(scripts / "collect-brew-sources.rb")], env=environment, check=True)
+    # Homebrew strips custom environment variables. The input contains local
+    # paths and is removed before creating the published source archive.
+    recipe_list = scripts / "installed-recipes.json"
+    recipe_list.write_text(json.dumps(recipes))
+    try:
+        subprocess.run(["brew", "ruby", str(scripts / "collect-brew-sources.rb")], check=True)
+    finally:
+        recipe_list.unlink()
     shutil.copy2(target / "BUILDINFO.txt", sources)
 
 

@@ -13,6 +13,8 @@ Herramienta de transcodificación de vídeo y conversión de color para Windows 
 
 Requiere un Mac con Apple Silicon y macOS 27 o posterior. Abre el DMG y arrastra LumaRecode a Aplicaciones. La app busca FFmpeg y ffprobe en PATH o en Homebrew. También puedes indicar sus rutas en Ajustes.
 
+La edición de prueba FFmpeg Full incluye FFmpeg, ffprobe, libplacebo y MoltenVK. Para procesar Dolby Vision con la edición estándar, instala las herramientas con `brew install ffmpeg-full molten-vk`. Consulta [Desarrollo y distribución (chino e inglés)](../dependencies.md#english).
+
 La interfaz SwiftUI permite previsualizar y recortar vídeo por fotogramas, archivarlo por software y compartirlo mediante VideoToolbox. El material HLG estándar de 10 bits puede exportarse como Dolby Vision 8.4. Los fotogramas se guardan como JPEG SDR, HEIC HDR o HEIC con HDR adaptativo y mapa de ganancias. Consulta la [guía de comandos para macOS](../cli/es.md#macos).
 
 Exporta JPEG SDR o HEIC con HDR adaptativo junto con un MOV para crear una Live Photo. El clip abarca unos tres segundos alrededor de la portada de forma predeterminada y admite límites por fotograma.

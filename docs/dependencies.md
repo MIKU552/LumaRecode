@@ -127,13 +127,21 @@ JIT 默认直接打包应用、中间代码、.NET 运行时、Windows App SDK�
 
 ### 构建来源证明
 
-从 GitHub Actions 手动运行 **Native core** 可生成 Windows x64 / ARM64 JIT、macOS ARM64 DMG 和共享 SDK 的分发文件。工作流先完成构建及回归测试，再为每个最终文件签发并验证来源证明。通过验证的文件位于 `lumarecode-distribution-<commit>` 产物中。
+从 GitHub Actions 手动运行 **Native core** 可生成 Windows x64 / ARM64 JIT、macOS ARM64 DMG、FFmpeg Full 调试包与对应源码，以及共享 SDK。工作流先完成构建及回归测试，再为每个最终文件签发并验证来源证明。通过验证的文件位于 `lumarecode-distribution-<commit>` 产物中。
 
 ```powershell
 gh attestation verify <file> --repo MIKU552/LumaRecode --signer-workflow MIKU552/LumaRecode/.github/workflows/native-core.yml
 ```
 
 核对指定版本时，可追加 `--source-ref refs/tags/<tag>` 和 `--source-digest <commit>`。[GitHub 构建来源证明](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations)
+
+### macOS 安装与分发
+
+将 DMG 中的应用拖到“应用程序”。首次打开时，如果 macOS 阻止启动，可在确认下载来源后，前往“系统设置 → 隐私与安全性”选择“仍要打开”。[Apple 使用手册](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac)
+
+FFmpeg Full 调试包在应用内提供 FFmpeg、ffprobe 和运行库。工具路径优先使用明确配置，其次使用调试包内置工具，再查找 PATH 和 Homebrew。标准 DMG 可搭配 Homebrew 的 `ffmpeg-full` 和 `molten-vk` 使用。
+
+Xcode 可构建和归档应用。运行 `sh tools/build-macos.sh Release --dmg` 生成标准 DMG。安装 `ffmpeg-full` 和 `molten-vk` 后，可运行 `sh tools/build-macos.sh Release --dmg-full-tools` 给已构建的 Release 应用制作调试 DMG。调试包记录依赖版本和编译选项。分发时同时提供对应源码压缩包，含上游源码、Homebrew 配方、资源和补丁。FFmpeg 可执行程序按 GPL-3.0-or-later 分发。
 
 ## English
 
@@ -260,10 +268,18 @@ See [LICENSE](../LICENSE), [NOTICE](../NOTICE) and [third-party components](../A
 
 ### Build provenance
 
-Run **Native core** manually in GitHub Actions to build the Windows x64 / ARM64 JIT applications, macOS ARM64 DMG, and shared SDKs. The workflow runs the regression checks, then attests and verifies each final distribution file. Verified files appear in the `lumarecode-distribution-<commit>` artifact.
+Run **Native core** manually in GitHub Actions to build the Windows x64 / ARM64 JIT applications, macOS ARM64 DMG, FFmpeg Full test build with corresponding sources, and shared SDKs. The workflow runs the regression checks, then attests and verifies each final distribution file. Verified files appear in the `lumarecode-distribution-<commit>` artifact.
 
 ```powershell
 gh attestation verify <file> --repo MIKU552/LumaRecode --signer-workflow MIKU552/LumaRecode/.github/workflows/native-core.yml
 ```
 
 To verify a specific release, add `--source-ref refs/tags/<tag>` and `--source-digest <commit>`. [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations)
+
+### macOS installation and distribution
+
+Drag the app from the DMG to Applications. If macOS blocks the first launch, verify the downloaded file and use **Open Anyway** in **System Settings → Privacy & Security**. [Apple User Guide](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac)
+
+The FFmpeg Full test build includes FFmpeg, ffprobe, and their runtime libraries. Explicit tool paths take precedence, followed by the bundled tools, PATH, and Homebrew. Users of the standard DMG can install Homebrew's `ffmpeg-full` and `molten-vk`.
+
+Xcode builds and archives the app. Run `sh tools/build-macos.sh Release --dmg` for the standard DMG. With `ffmpeg-full` and `molten-vk` installed, run `sh tools/build-macos.sh Release --dmg-full-tools` to package an existing Release app with the tools. The test build records its dependency versions and configure flags. Distribute it with the corresponding source archive, which contains upstream sources, Homebrew recipes, resources, and patches. The FFmpeg executables are distributed under GPL-3.0-or-later.

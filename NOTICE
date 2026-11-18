@@ -18,7 +18,10 @@ highlight mapping. Their generator is tools/generate_hlg_luts.py.
 The Windows distribution includes Microsoft runtime components.
 Their licenses and notices are included in licenses/.
 
-FFmpeg and ffprobe are supplied by the user and run as separate processes.
+FFmpeg and ffprobe run as separate processes. The optional macOS FFmpeg Full
+package includes a GPL-3.0-or-later FFmpeg build from Homebrew. See the bundled
+FFmpeg/BUILDINFO.txt, FFmpeg/Licenses, and the corresponding source archive
+provided with that download. Standard packages use user-provided tools.
 
 Source Sans 3, Source Han Sans and Source Code Pro are bundled unmodified
 under the SIL Open Font License 1.1. Their original license texts,

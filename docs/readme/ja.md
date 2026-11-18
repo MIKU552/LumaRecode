@@ -13,6 +13,8 @@ Windows 11 と Apple Silicon 搭載の Mac 向けの動画変換・色変換ツ�
 
 Apple Silicon 搭載の Mac と macOS 27 以降が必要です。DMG を開き、LumaRecode を「アプリケーション」へドラッグしてください。FFmpeg と ffprobe は PATH や Homebrew から検索でき、「設定」でパスを指定することもできます。
 
+FFmpeg Full テスト版には FFmpeg、ffprobe、libplacebo、MoltenVK が含まれます。通常版で Dolby Vision をレンダリングする場合は `brew install ffmpeg-full molten-vk` でインストールできます。[開発と配布（中国語・英語）](../dependencies.md#english)
+
 SwiftUI の画面で動画をプレビューし、フレーム単位でトリミングできます。ソフトウェアでのアーカイブ書き出しと、VideoToolbox でのクイック共有に対応します。標準の 10 ビット HLG 素材は Dolby Vision 8.4 に書き出せます。静止画は SDR JPEG、HDR HEIC、またはゲインマップ付き Adaptive HDR HEIC を選べます。[macOS のコマンドライン](../cli/ja.md#macos)
 
 SDR JPEG または Adaptive HDR HEIC と MOV を組み合わせて、Live Photos に書き出せます。カバーフレーム前後の約 3 秒が初期範囲で、フレーム番号で範囲を変更できます。

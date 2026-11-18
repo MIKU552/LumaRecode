@@ -228,6 +228,13 @@ final class FrameIndex: @unchecked Sendable {
         return window
     }
 
+    func timestamp(at index: UInt64) throws -> Int64 {
+        var point = lr_frame_point()
+        try check(lr_timeline_copy_points(handle, index, 1, &point, UInt64(MemoryLayout<lr_frame_point>.size)),
+                  nil, "Cannot read the selected source timestamp.")
+        return point.pts
+    }
+
     func liveRange(around frame: UInt64) throws -> FrameSelection {
         let cover = try resolve(FrameSelection(first: frame, last: frame))
         let first = try resolve(FrameSelection(first: 1, last: 1))
@@ -516,16 +523,17 @@ struct NativeEngine: Sendable {
             throw EngineError(message: "VideoToolbox is unavailable for this codec and output signal.")
         }
         let choices = try options.data(for: source.summary, container: container, useVideoToolbox: hardware)
-        let window = try selection.map { selection -> lr_frame_window in
-            let resolvedIndex = try index ?? loadFrames(source, control: control)
-            return try resolvedIndex.resolve(selection)
+        let trim = try selection.map { selection in
+            let resolved = try index ?? loadFrames(source, control: control)
+            return (index: resolved, window: try resolved.resolve(selection))
         }
+        let window = trim?.window
         try withOutput(source, to: destination, overwrite: overwrite, control: control) { stagedURL, cleanup in
-            // Until selected-frame metadata can be checked against the exact
-            // input PTS, preservation can verify only a first-frame start.
+            var verificationSource = source.snapshot
             if source.summary.hasDolbyVision && !options.standardHDR && options.output != "sdr",
-               let window, window.start != 0 {
-                throw EngineError(message: "Preserving Dolby Vision currently requires starting at the first frame. Select Standard HDR or SDR for other start frames.")
+               let trim, trim.window.start != 0 {
+                verificationSource = try firstSelectedFrame(source, index: trim.index, window: trim.window,
+                                                            control: control, cleanup: &cleanup)
             }
             let plan = try makePlan(source: source.snapshot, choices: choices, staging: utf8(stagedURL.path), window: window)
             defer { lr_plan_release(plan) }
@@ -537,7 +545,7 @@ struct NativeEngine: Sendable {
             }
             let checked = try inspect(stagedURL, control: control, cleanup: &cleanup)
             try control.check()
-            try verify(plan, source: source.snapshot, encoded: checked.snapshot)
+            try verify(plan, source: verificationSource, encoded: checked.snapshot)
             if let window {
                 let encodedFrames = try loadFrames(checked, control: control, cleanup: &cleanup)
                 guard encodedFrames.count == window.end - window.start else {
@@ -546,6 +554,36 @@ struct NativeEngine: Sendable {
             }
         }
         progress(1)
+    }
+
+    private func firstSelectedFrame(
+        _ source: MediaSource, index: FrameIndex, window: lr_frame_window,
+        control: JobControl, cleanup: inout Bool
+    ) throws -> Data {
+        guard let stream = source.summary.video.index else {
+            throw EngineError(message: "Missing the source video stream index.")
+        }
+        let timestamp = try index.timestamp(at: window.start)
+        let interval = "\(window.start_seconds)%\(window.start_seconds + 1)"
+        let command = PlannedCommand(arguments: [
+            tools.ffprobe.path, "-v", "error", "-select_streams", String(stream), "-read_intervals", interval,
+            "-show_frames", "-of", "json", source.url.path
+        ], working_directory: nil, sidecars: [], colors: nil)
+        let data = try runEncoder(command, control: control, cleanup: &cleanup, timeout: 25_000, captureOutput: true) { _ in }
+        func object(_ json: Data) throws -> [String: Any] {
+            try JSONSerialization.jsonObject(with: json) as? [String: Any] ?? [:]
+        }
+        let frames = try object(data)["frames"] as? [[String: Any]] ?? []
+        let matches = frames.filter { frame in
+            (frame["best_effort_timestamp"] as? NSNumber)?.int64Value == timestamp
+                || (frame["best_effort_timestamp"] as? String).flatMap(Int64.init) == timestamp
+        }
+        guard matches.count == 1, let first = matches.first else {
+            throw EngineError(message: "Cannot verify the dynamic HDR metadata of the selected start frame.")
+        }
+        var reference = try object(source.snapshot)
+        reference["frames"] = [first]
+        return try JSONSerialization.data(withJSONObject: reference)
     }
 
     func exportPhoto(
@@ -860,15 +898,16 @@ struct NativeEngine: Sendable {
         return plan
     }
 
-    private func runEncoder(
+    @discardableResult private func runEncoder(
         _ command: PlannedCommand, control: JobControl, cleanup: inout Bool, timeout: UInt64 = 0,
+        captureOutput: Bool = false,
         progress: @escaping (Double) -> Void
-    ) throws {
+    ) throws -> Data {
         guard let executable = command.arguments.first else { throw EngineError(message: "The encoding plan is empty.") }
         var options = lr_process_options()
         try check(lr_process_options_init(&options, UInt64(MemoryLayout<lr_process_options>.size)), nil,
                   "Cannot initialize FFmpeg.")
-        options.stdout_mode = LR_CAPTURE_DISCARD
+        options.stdout_mode = captureOutput ? LR_CAPTURE_FULL : LR_CAPTURE_DISCARD
         options.timeout_ms = timeout
         var handle: OpaquePointer?
         var error = nativeError()
@@ -886,8 +925,8 @@ struct NativeEngine: Sendable {
         guard let handle else { throw EngineError(message: "Missing FFmpeg process handle.") }
         defer { lr_process_release(handle) }
         let reader = ProgressReader(progress)
-        try control.run({ _ = lr_process_cancel(handle) }) {
-            let run = withExtendedLifetime(reader) {
+        return try control.run({ _ = lr_process_cancel(handle) }) {
+            let run = captureOutput ? lr_process_run(handle, &error) : withExtendedLifetime(reader) {
                 lr_process_run_streaming(handle, { context, stream, bytes, count in
                     if stream == LR_STREAM_STDOUT, let context {
                         Unmanaged<ProgressReader>.fromOpaque(context).takeUnretainedValue()
@@ -909,6 +948,9 @@ struct NativeEngine: Sendable {
                 throw EngineError(message: message)
             }
             try check(run, error, "FFmpeg failed.")
+            return try captureOutput ? copyBytes(limit: 8 * 1024 * 1024) {
+                lr_process_copy_output(handle, LR_STREAM_STDOUT, $0, $1, $2)
+            } : Data()
         }
     }
 }

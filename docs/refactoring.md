@@ -54,7 +54,7 @@ Windows 使用 C#、.NET 11、WinUI 3，保留单 EXE 的 GUI / CLI。macOS 面�
 | P8 发布准备 | 四语文档、许可、构建来源证明、平台签名与分发包 | 双平台产物来源核验、整体验收与隐私检查完成 |
 | P9 合并发布 | 保留提交历史合并、最终标签和 Release | 产物、来源和标签一致 |
 
-P1 原型和 P2 基础核心已完成。P3 将 Windows GUI / CLI 的素材探测、格式选项、时间轴、转码规划、进度与输出发布接入共享核心。`Core/` 保留宿主模型与任务编排；RAW 相机参数提取、动态 HDR 辅助文件和图片封装按 P6 迁移。
+Windows 和 macOS 的素材探测、时间轴、转码规划、进程和视频发布已接入共享核心。Windows 的 HEVC HDR10+ 使用原生解析器，图片及 Android Motion Photo 使用原生输出事务。macOS 已支持 SwiftUI 工作区、逐帧裁剪、HDR HEIC、Adaptive HDR、Live Photo 和 HLG 转 Dolby Vision 8.4。5.0 Beta 从 `next` 分发。macOS 的 ProRes RAW 显影、HDR10+ 元数据保留、多厂商设备验证，以及首屏和缓存的进一步测量仍待完成。
 
 ### 构建入口
 
@@ -84,7 +84,7 @@ cmake --build out/c-data
 ctest --test-dir out/c-data --output-on-failure
 ```
 
-两端最终提供可完成应用编译与打包的 Visual Studio / Xcode 工程，与脚本和 Actions 共用构建定义。Windows 默认 JIT，保留可选 AOT；C / C++ / Rust 及 FFmpeg 各自管理 CPU 基线和运行时派发。
+Visual Studio 解决方案可直接构建分发包。Xcode 构建和归档应用，DMG 由脚本生成。Windows 默认 JIT，保留可选 AOT；C / C++ / Rust 及 FFmpeg 各自管理 CPU 基线和运行时派发。[开发与分发](dependencies.md)
 
 现有 Visual Studio 解决方案已加入 `Interop` 和 `NativeCoreChecks` 项目。原生核心可通过 Visual Studio 的“打开文件夹”加载根目录 `CMakePresets.json`。[`engine/examples/format.c`](../engine/examples/format.c) 展示 C 调用，使用调用方持有的结构获取归档输出格式。
 
@@ -228,7 +228,7 @@ Keep one public C ABI. Internal boundaries can use validated C interfaces or typ
 | P8 Release preparation | Four-language docs, licenses, build provenance, platform signing and packages | Both platforms' artifact provenance, acceptance and privacy checks complete |
 | P9 Merge and release | History-preserving merge, final tag and Release | Artifacts, provenance and tag agree |
 
-P1 prototypes and the P2 foundational core are complete. P3 connects Windows GUI / CLI source inspection, format choices, timelines, encoding plans, progress and output publication to the shared engine. `Core/` retains host models and orchestration; RAW camera parameter extraction, dynamic HDR auxiliary files and image packaging migrate in P6.
+Windows and macOS share source inspection, timelines, encoding plans, process execution, and video publication. Windows HEVC HDR10+ uses the native parser, and stills and Android Motion Photos use native output transactions. macOS provides a SwiftUI workspace, frame-accurate trimming, HDR HEIC, Adaptive HDR, Live Photo, and HLG to Dolby Vision 8.4. The 5.0 beta is distributed from `next`. macOS ProRes RAW development and HDR10+ preservation remain open, along with broader hardware validation and measurements for first paint and cache usage.
 
 ### Build entry points
 
@@ -258,7 +258,7 @@ cmake --build out/c-data
 ctest --test-dir out/c-data --output-on-failure
 ```
 
-Both platforms will provide Visual Studio/Xcode projects covering complete application builds and packaging, using the same definitions as scripts and Actions. Windows defaults to JIT with optional AOT. C/C++, Rust and FFmpeg manage their CPU baselines and runtime dispatch independently.
+The Visual Studio solution builds the distribution package. Xcode builds and archives the app, and the packaging script creates the DMG. Windows defaults to JIT with optional AOT. C/C++, Rust and FFmpeg manage their CPU baselines and runtime dispatch independently. [Development and distribution](dependencies.md#english)
 
 The existing Visual Studio solutions include `Interop` and `NativeCoreChecks`. Use Visual Studio's Open Folder command with the root `CMakePresets.json` for the native core. [`engine/examples/format.c`](../engine/examples/format.c) demonstrates a C caller resolving archive output using caller-owned structures.
 

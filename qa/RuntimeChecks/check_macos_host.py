@@ -22,6 +22,10 @@ def main():
     ffmpeg = os.environ.get("LUMA_TEST_FFMPEG") or shutil.which("ffmpeg")
     ffprobe = os.environ.get("LUMA_TEST_FFPROBE") or shutil.which("ffprobe")
     assert exe.is_file() and ffmpeg and ffprobe
+    config = Path(__file__).resolve().parents[2] / "macOS/LumaRecode.xcconfig"
+    version = next(line.split("=", 1)[1].strip() for line in config.read_text().splitlines()
+                   if line.startswith("LUMARECODE_DISPLAY_VERSION ="))
+    assert subprocess.check_output([str(exe), "--version"], text=True).strip() == version
 
     def call(*words, status=0):
         result = subprocess.run(
@@ -274,6 +278,14 @@ def main():
                     and not inspected["hdr10plus"]
                 ), inspected
                 assert json.loads(call("frames", dolby))["frame_count"] == 5
+                preserved = folder / "dolby-preserved.mp4"
+                call(
+                    "convert", dolby, "-o", preserved, "--ffmpeg", ffmpeg,
+                    "--encoder", "software", "--start-frame", "2", "--end-frame", "4",
+                )
+                preserved_info = json.loads(call("probe", preserved))
+                assert preserved_info["dolby_vision"]["dv_bl_signal_compatibility_id"] == 4
+                assert json.loads(call("frames", preserved))["frame_count"] == 3
                 print("PASS real VideoToolbox: HLG to Dolby Vision 8.4", flush=True)
             else:
                 call(*dolby_export, status=1)

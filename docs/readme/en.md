@@ -13,6 +13,8 @@ LumaRecode is a video transcoder and color conversion tool for Windows 11 and Ap
 
 Requires an Apple Silicon Mac with macOS 27 or later. Open the DMG and drag LumaRecode into Applications. The app finds FFmpeg and ffprobe through PATH or Homebrew. You can also set their paths in Settings.
 
+The FFmpeg Full test build includes FFmpeg, ffprobe, libplacebo, and MoltenVK. For Dolby Vision rendering with the standard build, install the tools with `brew install ffmpeg-full molten-vk`. See [macOS installation and distribution](../dependencies.md#macos-installation-and-distribution) for first launch and tool selection.
+
 The SwiftUI workspace supports video preview, frame-accurate trimming, software archive, and VideoToolbox quick share. Standard 10-bit HLG footage can be exported as Dolby Vision 8.4. Individual frames can be saved as SDR JPEG, HDR HEIC, or Adaptive HDR HEIC with a gain map. See the [macOS CLI guide](../cli/en.md#macos).
 
 Export SDR JPEG or Adaptive HDR HEIC as a Live Photo paired with a MOV. The clip defaults to about three seconds around the cover, with optional frame boundaries.

@@ -50,10 +50,12 @@ public static partial class HardwareEncoders
                 });
                 continue;
             }
-            results.Add(candidate with
+            string status = await TryEncodeAsync(engine, tools, candidate, candidate.Depth == 10 ? "hlg" : "sdr", cancellation).ConfigureAwait(false);
+            if (status == "available" && candidate.Depth == 10)
             {
-                Status = await TryEncodeAsync(engine, tools, candidate, cancellation).ConfigureAwait(false)
-            });
+                status = await TryEncodeAsync(engine, tools, candidate, "pq", cancellation).ConfigureAwait(false);
+            }
+            results.Add(candidate with { Status = status });
         }
         return [.. results];
     }
@@ -85,7 +87,7 @@ public static partial class HardwareEncoders
         config["hardware"]!.AsObject().Where(item => item.Value.Text("platform", "windows") == "windows");
 
     private static async Task<string> TryEncodeAsync(Transcoder engine, MediaTools tools, HardwareEncoder candidate,
-        CancellationToken cancellation)
+        string signal, CancellationToken cancellation)
     {
         bool hdr = candidate.Depth == 10;
         string range = hdr ? "hdr" : "sdr";
@@ -101,9 +103,9 @@ public static partial class HardwareEncoders
             ["color_range"] = "tv",
             ["color_space"] = hdr ? "bt2020nc" : "bt709",
             ["color_primaries"] = hdr ? "bt2020" : "bt709",
-            ["color_transfer"] = hdr ? "arib-std-b67" : "bt709"
+            ["color_transfer"] = signal switch { "hlg" => "arib-std-b67", "pq" => "smpte2084", _ => "bt709" }
         };
-        var synthetic = new MediaInfo(path, video, [], [], hdr ? "hlg" : "sdr", null, "", 1, [], []);
+        var synthetic = new MediaInfo(path, video, [], [], signal, null, "", 1, [], []);
         var options = new EncodeOptions(Codec: candidate.Codec, Output: range, CpuDecode: true,
             BitDepth: candidate.Depth.ToString(CultureInfo.InvariantCulture), Hardware: candidate.Backend);
         var plan = engine.Plan(tools, synthetic, options, path);

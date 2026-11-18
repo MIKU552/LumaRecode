@@ -13,6 +13,8 @@
 
 适用于 macOS 27 及以上的 Apple Silicon Mac。打开 DMG，将 LumaRecode 拖到“应用程序”。程序通过 PATH 或 Homebrew 查找 FFmpeg 和 ffprobe，也可在“设置”中指定路径。
 
+FFmpeg Full 调试包内置 FFmpeg、ffprobe、libplacebo 和 MoltenVK，可以直接运行。使用标准包时，可运行 `brew install ffmpeg-full molten-vk` 准备 Dolby Vision 渲染所需的工具。首次打开或调整工具路径见 [macOS 安装与分发](docs/dependencies.md#macos-安装与分发)。
+
 SwiftUI 工作区支持视频预览、逐帧裁剪、软件归档和 VideoToolbox 快速分享。普通 10 位 HLG 素材可选择 Dolby Vision 8.4 导出。帧导出支持 SDR JPEG、HDR HEIC 和带增益图的 Adaptive HDR HEIC。详见 [macOS 命令行](docs/cli/zh-CN.md#macos)。
 
 可将 SDR JPEG 或 Adaptive HDR HEIC 与 MOV 配对导出为实况照片。范围默认取封面附近约 3 秒，也可用帧号指定。

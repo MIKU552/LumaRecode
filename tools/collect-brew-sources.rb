@@ -16,8 +16,9 @@ def copy_resource(resource, destination)
   end
 end
 
-root = Pathname.new(ENV.fetch("LUMA_FFMPEG_SOURCES"))
-JSON.parse(ENV.fetch("LUMA_BREW_RECIPES")).each do |name, recipe|
+script_directory = Pathname.new(__dir__)
+root = script_directory.parent
+JSON.parse((script_directory / "installed-recipes.json").read).each do |name, recipe|
   formula = Formulary.factory(recipe)
   destination = root / name
   FileUtils.mkdir_p(destination)
