@@ -116,6 +116,7 @@ struct MediaSummary: Decodable, Sendable {
     }
 
     struct Stream: Decodable, Sendable {
+        let index: Int?
         let codec_name: String?
         let codec_type: String?
         let pix_fmt: String?
@@ -274,6 +275,7 @@ struct EncodingOptions: Sendable {
     var liveClip = false
 
     func inputKind(_ media: MediaSummary) -> String { sourceKind == "auto" ? media.kind : sourceKind }
+    func supportsHDRVideo(_ media: MediaSummary) -> Bool { ["hlg", "pq", "log"].contains(inputKind(media)) }
     func supportsHDRPhoto(_ media: MediaSummary) -> Bool { ["hlg", "pq", "log"].contains(inputKind(media)) }
 
     func canGenerateDolbyVision(_ media: MediaSummary) -> Bool {
@@ -298,8 +300,8 @@ struct EncodingOptions: Sendable {
         guard kind != "unknown" else {
             throw EngineError(message: "Choose the source color profile.")
         }
-        guard !media.hdr10plus && !media.hasDolbyVision || standardHDR || output == "sdr" else {
-            throw EngineError(message: "Select Standard HDR or SDR to convert this dynamic HDR source.")
+        guard !media.hdr10plus || standardHDR || output == "sdr" else {
+            throw EngineError(message: "Select Standard HDR or SDR to convert this HDR10+ source.")
         }
         guard media.kind != "raw" else {
             throw EngineError(message: "ProRes RAW development is not available in this macOS build.")
@@ -519,6 +521,12 @@ struct NativeEngine: Sendable {
             return try resolvedIndex.resolve(selection)
         }
         try withOutput(source, to: destination, overwrite: overwrite, control: control) { stagedURL, cleanup in
+            // Until selected-frame metadata can be checked against the exact
+            // input PTS, preservation can verify only a first-frame start.
+            if source.summary.hasDolbyVision && !options.standardHDR && options.output != "sdr",
+               let window, window.start != 0 {
+                throw EngineError(message: "Preserving Dolby Vision currently requires starting at the first frame. Select Standard HDR or SDR for other start frames.")
+            }
             let plan = try makePlan(source: source.snapshot, choices: choices, staging: utf8(stagedURL.path), window: window)
             defer { lr_plan_release(plan) }
             let command = try plannedCommand(plan)
@@ -649,17 +657,36 @@ struct NativeEngine: Sendable {
         try runEncoder(remux, control: control, cleanup: &cleanup, timeout: timeout) { _ in }
     }
 
+    func previewStill(_ source: MediaSource, options: EncodingOptions, window: lr_frame_window?, control: JobControl) throws -> Data {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("LumaRecode-preview-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false,
+                                                attributes: [.posixPermissions: 0o700])
+        let still = folder.appendingPathComponent("preview.png")
+        var cleanup = true
+        defer {
+            if cleanup {
+                try? FileManager.default.removeItem(at: still)
+                _ = rmdir(folder.path)
+            }
+        }
+        _ = try renderStill(source, to: still, options: options, window: window,
+                            control: control, cleanup: &cleanup, preview: true)
+        try source.identity.check(source.url)
+        return try Data(contentsOf: still)
+    }
+
     private func renderStill(
-        _ source: MediaSource, to destination: URL, options: EncodingOptions, window: lr_frame_window,
-        control: JobControl, cleanup: inout Bool
+        _ source: MediaSource, to destination: URL, options: EncodingOptions, window: lr_frame_window?,
+        control: JobControl, cleanup: inout Bool, preview: Bool = false
     ) throws -> String {
         var render = options
-        let hdr = render.supportsHDRPhoto(source.summary)
+        let hdr = !preview && render.supportsHDRPhoto(source.summary)
         render.output = hdr ? "hdr" : "sdr"
         render.codec = "hevc"
         render.standardHDR = true
         let choices = try render.data(for: source.summary, container: "mkv", useVideoToolbox: false)
-        let plan = try makePlan(source: source.snapshot, choices: choices, staging: utf8(destination.path), window: window)
+        let plan = try makePlan(source: source.snapshot, choices: choices, staging: utf8(destination.path), window: window,
+                                previewSize: preview ? 960 : 0)
         defer { lr_plan_release(plan) }
         let command = try plannedCommand(plan)
         let args = command.arguments
@@ -680,7 +707,7 @@ struct NativeEngine: Sendable {
             ], working_directory: command.working_directory, sidecars: [], colors: nil
         )
         try source.identity.check(source.url)
-        try runEncoder(still, control: control, cleanup: &cleanup) { _ in }
+        try runEncoder(still, control: control, cleanup: &cleanup, timeout: preview ? 20_000 : 0) { _ in }
         return command.colors?.color_transfer ?? "bt709"
     }
 
@@ -804,11 +831,12 @@ struct NativeEngine: Sendable {
         return try JSONDecoder().decode(PlannedCommand.self, from: json)
     }
 
-    private func makePlan(source: Data, choices: Data, staging: Data, window: lr_frame_window?) throws -> OpaquePointer {
+    private func makePlan(source: Data, choices: Data, staging: Data, window: lr_frame_window?, previewSize: UInt32 = 0) throws -> OpaquePointer {
         guard let executable = tools.ffmpeg else { throw EngineError(message: "FFmpeg is required for conversion.") }
         var options = lr_plan_options()
         try check(lr_plan_options_init(&options, UInt64(MemoryLayout<lr_plan_options>.size)), nil,
                   "Cannot initialize encoding options.")
+        options.preview_size = previewSize
         var plan: OpaquePointer?
         var error = nativeError()
         let status = withViews([source, choices, presets, motionPresets, utf8(executable.path), staging, utf8(assets.path)]) { views in
@@ -874,7 +902,11 @@ struct NativeEngine: Sendable {
             if run == LR_IO_ERROR, let detail = try? copyBytes(limit: 1024 * 1024, {
                 lr_process_copy_output(handle, LR_STREAM_STDERR, $0, $1, $2)
             }), !detail.isEmpty {
-                throw EngineError(message: String(decoding: detail, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines))
+                let message = String(decoding: detail, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+                if message.contains("No such filter: 'libplacebo'") || message.contains("Vulkan device creation failed") {
+                    throw EngineError(message: "Dolby Vision rendering needs FFmpeg with a working libplacebo Vulkan backend. Use the FFmpeg Full disk image or configure ffmpeg-full and MoltenVK.\n" + message)
+                }
+                throw EngineError(message: message)
             }
             try check(run, error, "FFmpeg failed.")
         }

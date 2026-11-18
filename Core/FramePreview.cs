@@ -22,6 +22,7 @@ public sealed class FramePreview(Transcoder engine)
         arguments.AddRange(["-map", "0:" + source.Video.Text("index"), "-an", "-sn", "-dn", "-map_metadata", "-1", "-vf", filter,
             "-frames:v", "1", "-fps_mode", "passthrough", "-c:v", "png", "-compression_level", "3", "-f", "image2pipe", "pipe:1"]);
         DirectoryInfo? scratch = null;
+        bool cleanupConfirmed = true;
         try
         {
             if (source.Raw is not null)
@@ -37,6 +38,23 @@ public sealed class FramePreview(Transcoder engine)
             }
             return result.Output;
         }
-        finally { scratch?.Delete(recursive: true); }
+        catch (NativeCleanupException)
+        {
+            cleanupConfirmed = false;
+            throw;
+        }
+        finally
+        {
+            if (cleanupConfirmed && scratch is not null)
+            {
+                try
+                {
+                    File.Delete(Path.Combine(scratch.FullName, "raw-calibration.cmd"));
+                    scratch.Delete();
+                }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+        }
     }
 }

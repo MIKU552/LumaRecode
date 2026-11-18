@@ -1,9 +1,9 @@
 using System.Buffers.Binary;
-using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using LumaRecode.Native;
 
 namespace VideoConverter.Core;
 
@@ -208,47 +208,55 @@ public static class RawDevelopment
             args.AddRange(["-read_intervals", "%+" + N(seconds.Value + 0.1)]);
         }
         args.Add(media.Path);
-        using var process = new Process { StartInfo = ProcessRunner.StartInfo(tools.Ffprobe, args) };
         cancellation.ThrowIfCancellationRequested();
-        process.Start();
-        using var registration = cancellation.Register(() => ProcessRunner.Stop(process));
-        var errors = ProcessRunner.ReadTailAsync(process.StandardError, 8192);
         using var file = File.OpenRead(media.Path);
-        await using var writer = new StreamWriter(destination, false, new UTF8Encoding(false));
+        using var writer = new StreamWriter(destination, false, new UTF8Encoding(false));
         var initial = media.Video["_raw"]!.AsObject();
         var timeBase = media.Video.Text("time_base").Split('/');
         long numerator = long.Parse(timeBase[0], CultureInfo.InvariantCulture), denominator = long.Parse(timeBase[1], CultureInfo.InvariantCulture);
         string previous = "";
-        var lines = new BoundedLineReader(process.StandardOutput);
-        try
+        var lines = new Utf8LineConsumer(line =>
         {
-            while (await lines.ReadLineAsync(cancellation) is { } line)
-            {
-                var fields = line.Split('|').Select(p => p.Split('=', 2)).Where(p => p.Length == 2).ToDictionary(p => p[0], p => p[1]);
-                var raw = ReadHeader(file, long.Parse(fields["pos"], CultureInfo.InvariantCulture), long.Parse(fields["size"], CultureInfo.InvariantCulture));
-                if (raw.Integer("width") != initial.Integer("width") || raw.Integer("height") != initial.Integer("height")
-                    || !JsonNode.DeepEquals(raw["crop"], initial["crop"]))
-                {
-                    throw new InvalidDataException("ProRes RAW 素材在录像中改变了画面尺寸或裁切。");
-                }
-                string coefficients = string.Join(',', Coefficients(raw).Select(p => "colorchannelmixer@raw " + p.Replace('=', ' ')));
-                if (coefficients == previous)
-                {
-                    continue;
-                }
-                double sourceTime = (double)long.Parse(fields["pts"], CultureInfo.InvariantCulture) * numerator / denominator;
-                double time = previous.Length == 0 ? 0 : Math.Max(0, sourceTime
-                    - (window is { SeekFrame: > 0 } ? window.SeekSeconds : JsonFields.Number(media.Video.Text("start_time"))));
-                await writer.WriteLineAsync(N(time) + " " + coefficients + ";");
-                previous = coefficients;
-            }
-            await process.WaitForExitAsync(cancellation);
             cancellation.ThrowIfCancellationRequested();
-            if (process.ExitCode != 0)
+            if (line.Length == 0)
             {
-                throw new InvalidDataException("无法读取 ProRes RAW 帧参数：" + await errors);
+                return;
             }
+
+            var fields = line.Split('|').Select(p => p.Split('=', 2)).Where(p => p.Length == 2).ToDictionary(p => p[0], p => p[1]);
+            var raw = ReadHeader(file, long.Parse(fields["pos"], CultureInfo.InvariantCulture), long.Parse(fields["size"], CultureInfo.InvariantCulture));
+            if (raw.Integer("width") != initial.Integer("width") || raw.Integer("height") != initial.Integer("height")
+                || !JsonNode.DeepEquals(raw["crop"], initial["crop"]))
+            {
+                throw new InvalidDataException("ProRes RAW 素材在录像中改变了画面尺寸或裁切。");
+            }
+            string coefficients = string.Join(',', Coefficients(raw).Select(p => "colorchannelmixer@raw " + p.Replace('=', ' ')));
+            if (coefficients == previous)
+            {
+                return;
+            }
+
+            double sourceTime = (double)long.Parse(fields["pts"], CultureInfo.InvariantCulture) * numerator / denominator;
+            double time = previous.Length == 0 ? 0 : Math.Max(0, sourceTime
+                - (window is { SeekFrame: > 0 } ? window.SeekSeconds : JsonFields.Number(media.Video.Text("start_time"))));
+            writer.WriteLine(N(time) + " " + coefficients + ";");
+            previous = coefficients;
+        });
+        var result = await NativeProcess.RunStreamingAsync(
+            new(tools.Ffprobe, args, OutputMode: NativeCaptureMode.Discard, TimeoutMilliseconds: 0),
+            (stream, bytes) =>
+            {
+                if (stream == 1)
+                {
+                    lines.Feed(bytes);
+                }
+            }, cancellation).ConfigureAwait(false);
+        NativeBackend.Check(result.ChildExited && result.Status == NativeStatus.IoError ? NativeStatus.Ok : result.Status,
+            result.Diagnostic, result.CleanupConfirmed, cancellation);
+        if (result.ExitCode != 0)
+        {
+            throw new InvalidDataException("无法读取 ProRes RAW 帧参数：" + result.ErrorText);
         }
-        finally { ProcessRunner.Stop(process); await process.WaitForExitAsync(); await errors; }
+        lines.Feed([], flush: true);
     }
 }

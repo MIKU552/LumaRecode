@@ -1,16 +1,18 @@
 import AppKit
 import AVKit
+import CLumaRecode
 import Observation
 import SwiftUI
 import UniformTypeIdentifiers
 
 @MainActor @Observable
 final class Workspace {
-    enum Activity { case inspect, index, checkEncoders, encode, photo }
+    enum Activity { case inspect, index, checkEncoders, encode, photo, photoLibrary }
     private typealias EncoderCache = (signature: MediaTools.Signature, trials: [VideoToolboxTrial])
 
     var media: MediaSource?
     var player: AVPlayer?
+    var fallbackPreview: NSImage?
     var frames: FrameIndex?
     var options = EncodingOptions()
     var container = "mkv"
@@ -25,7 +27,10 @@ final class Workspace {
     var motionLast = ""
     var activity: Activity?
     var progress = 0.0
-    var output: URL?
+    var output: URL? {
+        didSet { livePhotoFormat = nil }
+    }
+    var livePhotoFormat: PhotoFormat?
     var failure: String?
     private var encoderCache: EncoderCache?
     private var control: JobControl?
@@ -33,12 +38,20 @@ final class Workspace {
     private var previewLoad: Task<Void, Never>?
     private var previewSeek: Task<Void, Never>?
     private var pendingSeek: CMTime?
+    private var pendingStill: lr_frame_window?
+    private var stillRequested = false
+    private var stillControl: JobControl?
     private var task: Task<Void, Never>?
 
     var busy: Bool { activity != nil }
     var isLog: Bool { options.sourceKind == "log" || (options.sourceKind == "auto" && media?.summary.kind == "log") }
     var isDynamicHDR: Bool { media?.summary.hdr10plus == true || media?.summary.hasDolbyVision == true }
     var supportsHDRPhoto: Bool { media.map { options.supportsHDRPhoto($0.summary) } ?? false }
+    var supportsHDRVideo: Bool { media.map { options.supportsHDRVideo($0.summary) } ?? false }
+    var canExportVideo: Bool {
+        guard let media, media.summary.kind != "raw" else { return false }
+        return !media.summary.hdr10plus || options.output == "sdr" || options.standardHDR
+    }
     var isDolbyVisionExport: Bool { options.output == "dolbyvision84" }
     var canOfferDolbyVision: Bool {
         guard let media, options.canGenerateDolbyVision(media.summary) else { return false }
@@ -63,6 +76,7 @@ final class Workspace {
         previewLoad?.cancel()
         cancelPreviewSeek()
         player = nil
+        fallbackPreview = nil
         media = nil
         frames = nil
         output = nil
@@ -89,8 +103,13 @@ final class Workspace {
         self.media = media
         let asset = AVURLAsset(url: media.url)
         previewLoad = Task { @MainActor [weak self] in
-            guard (try? await asset.load(.isPlayable)) == true, !Task.isCancelled else { return }
-            self?.player = AVPlayer(playerItem: AVPlayerItem(asset: asset))
+            let playable = (try? await asset.load(.isPlayable)) == true
+            guard let self, !Task.isCancelled else { return }
+            if playable {
+                self.player = AVPlayer(playerItem: AVPlayerItem(asset: asset))
+            } else {
+                self.previewStill(media, window: nil)
+            }
         }
     }
 
@@ -125,6 +144,9 @@ final class Workspace {
     }
 
     func updateEncoderChoice() {
+        if options.output == "hdr", !supportsHDRVideo {
+            options.output = "auto"
+        }
         if isDolbyVisionExport {
             if canOfferDolbyVision {
                 options.codec = "hevc"
@@ -143,7 +165,7 @@ final class Workspace {
     }
 
     func chooseDestination() {
-        guard !busy, let media else { return }
+        guard !busy, canExportVideo, let media else { return }
         let selection: FrameSelection?
         if limitFrames {
             guard let frames, let first = UInt64(firstFrame), let last = UInt64(lastFrame),
@@ -211,8 +233,19 @@ final class Workspace {
                 }
             } finished: { _ in
                 self.output = url
+                self.livePhotoFormat = live ? format : nil
             }
         }
+    }
+
+    func addLivePhotoToLibrary() {
+        guard let folder = output, let format = livePhotoFormat else { return }
+        let stem = folder.lastPathComponent
+        let still = folder.appendingPathComponent(stem + "." + format.fileExtension)
+        let movie = folder.appendingPathComponent(stem + ".mov")
+        run(.photoLibrary) { _ in
+            try await LivePhoto.addToLibrary(still: still, movie: movie)
+        } finished: { _ in self.livePhotoFormat = nil }
     }
 
     func cancel() { control?.cancel() }
@@ -226,9 +259,13 @@ final class Workspace {
     }
 
     func previewPhotoFrame() {
-        guard let player, let frames, let frame = UInt64(photoFrame), frame > 0, frame <= frames.count,
+        guard let frames, let frame = UInt64(photoFrame), frame > 0, frame <= frames.count,
               let target = try? frames.resolve(FrameSelection(first: frame, last: frame)),
               let first = try? frames.resolve(FrameSelection(first: 1, last: 1)) else { return }
+        guard let player else {
+            if let media { previewStill(media, window: target) }
+            return
+        }
         let position = max(0, target.start_seconds - first.start_seconds)
         pendingSeek = CMTime(seconds: position, preferredTimescale: 600_000)
         guard previewSeek == nil else { return }
@@ -244,9 +281,42 @@ final class Workspace {
         }
     }
 
+    private func previewStill(_ media: MediaSource, window: lr_frame_window?) {
+        guard media.summary.kind != "raw" else { return }
+        // Keep one decoder active and replace a queued slider position with
+        // the latest one. Cancelling also waits for the native child to exit.
+        pendingStill = window
+        stillRequested = true
+        stillControl?.cancel()
+        guard previewSeek == nil else { return }
+        previewSeek = Task { @MainActor [weak self] in
+            while !Task.isCancelled, let self, self.stillRequested {
+                let target = self.pendingStill
+                let options = self.options
+                let control = JobControl()
+                self.stillRequested = false
+                self.stillControl = control
+                let data = await Task.detached(priority: .utility) {
+                    try? Self.engine().previewStill(media, options: options, window: target, control: control)
+                }.value
+                if !Task.isCancelled && !self.stillRequested, let data {
+                    self.fallbackPreview = NSImage(data: data)
+                }
+            }
+            if !Task.isCancelled {
+                self?.stillControl = nil
+                self?.previewSeek = nil
+            }
+        }
+    }
+
     private func cancelPreviewSeek() {
         previewSeek?.cancel()
         player?.currentItem?.cancelPendingSeeks()
+        stillControl?.cancel()
+        stillControl = nil
+        pendingStill = nil
+        stillRequested = false
         previewSeek = nil
         pendingSeek = nil
     }
@@ -404,6 +474,9 @@ struct WorkspaceView: View {
                 if let player = model.player {
                     VideoPlayer(player: player)
                         .accessibilityLabel("Source preview")
+                } else if let image = model.fallbackPreview {
+                    Image(nsImage: image).resizable().scaledToFit()
+                        .accessibilityLabel("Source preview")
                 } else {
                     ContentUnavailableView("Preview unavailable", systemImage: "play.rectangle",
                                            description: Text("You can still convert this file."))
@@ -450,7 +523,7 @@ struct WorkspaceView: View {
                 Picker("Output range", selection: $model.options.output) {
                     Text("Automatic").tag("auto")
                     Text("SDR").tag("sdr")
-                    Text("HDR").tag("hdr")
+                    if model.supportsHDRVideo { Text("HDR").tag("hdr") }
                     if model.canOfferDolbyVision { Text("Dolby Vision 8.4").tag("dolbyvision84") }
                 }
                 if model.isDynamicHDR && model.options.output != "sdr" {
@@ -536,6 +609,7 @@ struct WorkspaceView: View {
         }
         .onChange(of: model.hardwareCodecs) { _, _ in model.updateEncoderChoice() }
         .onChange(of: model.options.output) { _, _ in model.updateEncoderChoice() }
+        .onChange(of: model.supportsHDRVideo) { _, _ in model.updateEncoderChoice() }
         .onChange(of: model.canOfferDolbyVision) { _, _ in model.updateEncoderChoice() }
         .onChange(of: model.supportsHDRPhoto) { _, supported in
             if !supported { model.photoFormat = .sdr }
@@ -552,18 +626,24 @@ struct WorkspaceView: View {
                 case .checkEncoders: ProgressView("Checking hardware encoders…")
                 case .encode: ProgressView(value: model.progress) { Text("Encoding video…") }
                 case .photo: ProgressView("Exporting photo…")
+                case .photoLibrary: ProgressView("Adding to Photos…")
                 case nil:
                     if let output = model.output {
                         Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([output]) }
                     }
+                    if model.livePhotoFormat != nil {
+                        Button("Add to Photos", action: model.addLivePhotoToLibrary)
+                    }
                 }
                 Spacer()
-                if model.busy {
+                if model.activity == .photoLibrary {
+                    EmptyView()
+                } else if model.busy {
                     Button("Cancel", action: model.cancel)
                 } else {
                     Button("Export Video…", action: model.chooseDestination)
                         .buttonStyle(.borderedProminent)
-                        .disabled(model.media == nil)
+                        .disabled(!model.canExportVideo)
                 }
             }
             .padding(.horizontal, 20)

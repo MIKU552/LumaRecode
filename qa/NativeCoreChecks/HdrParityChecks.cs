@@ -1,19 +1,12 @@
-using System.Reflection;
+using System.Globalization;
+using System.Text;
 using System.Text.Json.Nodes;
 using LumaRecode.Native;
-using VideoConverter.Core;
 
 internal static class HdrParityChecks
 {
-    private delegate string PayloadReader(ReadOnlySpan<byte> bytes);
-
     internal static async Task RunAsync(Action<bool, string> check)
     {
-        // Developer-only differential adapter. The baseline's span parser is
-        // invoked directly; production interop uses generated imports only.
-        var type = typeof(Transcoder).Assembly.GetType("VideoConverter.Core.Hdr10PlusBitstream")!;
-        var reader = type.GetMethod("ParseT35", BindingFlags.NonPublic | BindingFlags.Static)!
-            .CreateDelegate<PayloadReader>();
         foreach (bool curve in new[] { false, true })
         {
             var original = Fixture(curve);
@@ -36,7 +29,7 @@ internal static class HdrParityChecks
                 JsonObject? expected = null;
                 try
                 {
-                    using var input = new StringReader(reader(bytes) + "\n");
+                    using var input = new StringReader(ParseBaseline(bytes) + "\n");
                     using var output = new MemoryStream();
                     await VideoConverter.Core.Hdr10PlusMetadata.ExportAsync(input, output);
                     expected = JsonNode.Parse(output.ToArray())!["SceneInfo"]![0]!.AsObject();
@@ -155,5 +148,94 @@ internal static class HdrParityChecks
             bytes.Add((byte)(pending << (8 - used)));
         }
         return [.. bytes];
+    }
+
+    private static string ParseBaseline(ReadOnlySpan<byte> payload)
+    {
+        var bits = new Bits(payload[6..]);
+        // Emit the same numeric interchange used by ffprobe's compact writer.
+        // Validation and x265 JSON serialization are shared with AV1 inputs.
+        var line = new StringBuilder("frame|side_data_type=HDR Dynamic Metadata SMPTE2094-40 (HDR10+)");
+        void Field(string key, int value, int denominator = 1)
+        {
+            line.Append('|').Append(key).Append('=').Append(value.ToString(CultureInfo.InvariantCulture));
+            if (denominator != 1)
+            {
+                line.Append('/').Append(denominator.ToString(CultureInfo.InvariantCulture));
+            }
+        }
+        Field("application version", bits.Read(8));
+        int windows = bits.Read(2);
+        if (windows != 1)
+        {
+            throw new InvalidDataException("Invalid HDR10+ payload.");
+        }
+        Field("num_windows", windows);
+        Field("targeted_system_display_maximum_luminance", bits.Read(27));
+        if (bits.Read(1) != 0)
+        {
+            throw new InvalidDataException("Invalid HDR10+ payload.");
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            Field("maxscl", bits.Read(17), 100000);
+        }
+        Field("average_maxrgb", bits.Read(17), 100000);
+        int count = bits.Read(4);
+        Field("num_distribution_maxrgb_percentiles", count);
+        for (int i = 0; i < count; i++)
+        {
+            Field("distribution_maxrgb_percentage", bits.Read(7));
+            Field("distribution_maxrgb_percentile", bits.Read(17), 100000);
+        }
+        Field("fraction_bright_pixels", bits.Read(10), 1000);
+        if (bits.Read(1) != 0)
+        {
+            throw new InvalidDataException("Invalid HDR10+ payload.");
+        }
+        if (bits.Read(1) != 0)
+        {
+            Field("knee_point_x", bits.Read(12), 4095);
+            Field("knee_point_y", bits.Read(12), 4095);
+            count = bits.Read(4);
+            Field("num_bezier_curve_anchors", count);
+            for (int i = 0; i < count; i++)
+            {
+                Field("bezier_curve_anchors", bits.Read(10), 1023);
+            }
+        }
+        if (bits.Read(1) != 0)
+        {
+            throw new InvalidDataException("Invalid HDR10+ payload.");
+        }
+        while (bits.Remaining > 0)
+        {
+            if (bits.Read(1) != 0)
+            {
+                throw new InvalidDataException("Invalid HDR10+ payload.");
+            }
+        }
+        return line.ToString();
+    }
+
+    private ref struct Bits
+    {
+        private readonly ReadOnlySpan<byte> bytes;
+        private int position;
+        public Bits(ReadOnlySpan<byte> value) => bytes = value;
+        public readonly int Remaining => bytes.Length * 8 - position;
+        public int Read(int count)
+        {
+            if (count > Remaining)
+            {
+                throw new InvalidDataException("Invalid HDR10+ payload.");
+            }
+            int value = 0;
+            for (int i = 0; i < count; i++, position++)
+            {
+                value = value << 1 | (bytes[position / 8] >> (7 - position % 8) & 1);
+            }
+            return value;
+        }
     }
 }

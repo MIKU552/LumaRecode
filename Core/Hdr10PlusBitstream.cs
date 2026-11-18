@@ -285,13 +285,17 @@ internal static class Hdr10PlusBitstream
         return metadata;
     }
 
-    private static string ParseT35(ReadOnlySpan<byte> payload)
+    private static unsafe string ParseT35(ReadOnlySpan<byte> payload)
     {
-        var bits = new Bits(payload[6..]);
-        // Emit the same numeric interchange used by ffprobe's compact writer.
-        // Validation and x265 JSON serialization are shared with AV1 inputs.
+        if (LumaRecode.Native.NativeCore.ParseHdr10Plus(payload, out var metadata, out _) != LumaRecode.Native.NativeStatus.Ok)
+        {
+            throw Invalid();
+        }
+
+        // Match ffprobe's compact side-data representation so HEVC and AV1
+        // share the same streaming validation and x265 JSON writer.
         var line = new StringBuilder("frame|side_data_type=HDR Dynamic Metadata SMPTE2094-40 (HDR10+)");
-        void Field(string key, int value, int denominator = 1)
+        void Field(string key, uint value, int denominator = 1)
         {
             line.Append('|').Append(key).Append('=').Append(value.ToString(CultureInfo.InvariantCulture));
             if (denominator != 1)
@@ -299,78 +303,33 @@ internal static class Hdr10PlusBitstream
                 line.Append('/').Append(denominator.ToString(CultureInfo.InvariantCulture));
             }
         }
-        Field("application version", bits.Read(8));
-        int windows = bits.Read(2);
-        if (windows != 1)
+
+        Field("application version", metadata.ApplicationVersion);
+        Field("num_windows", metadata.NumberOfWindows);
+        Field("targeted_system_display_maximum_luminance", metadata.TargetedDisplayLuminance);
+        for (int index = 0; index < 3; index++)
         {
-            throw Invalid();
+            Field("maxscl", metadata.MaxScl[index], 100000);
         }
-        Field("num_windows", windows);
-        Field("targeted_system_display_maximum_luminance", bits.Read(27));
-        if (bits.Read(1) != 0)
+        Field("average_maxrgb", metadata.AverageRgb, 100000);
+        Field("num_distribution_maxrgb_percentiles", metadata.DistributionCount);
+        for (int index = 0; index < metadata.DistributionCount; index++)
         {
-            throw Invalid();
+            Field("distribution_maxrgb_percentage", metadata.DistributionIndices[index]);
+            Field("distribution_maxrgb_percentile", metadata.DistributionValues[index], 100000);
         }
-        for (int i = 0; i < 3; i++)
+        // The native parser accepts only zero for the unsupported fraction.
+        Field("fraction_bright_pixels", 0, 1000);
+        if (metadata.ToneMapping != 0)
         {
-            Field("maxscl", bits.Read(17), 100000);
-        }
-        Field("average_maxrgb", bits.Read(17), 100000);
-        int count = bits.Read(4);
-        Field("num_distribution_maxrgb_percentiles", count);
-        for (int i = 0; i < count; i++)
-        {
-            Field("distribution_maxrgb_percentage", bits.Read(7));
-            Field("distribution_maxrgb_percentile", bits.Read(17), 100000);
-        }
-        Field("fraction_bright_pixels", bits.Read(10), 1000);
-        if (bits.Read(1) != 0)
-        {
-            throw Invalid();
-        }
-        if (bits.Read(1) != 0)
-        {
-            Field("knee_point_x", bits.Read(12), 4095);
-            Field("knee_point_y", bits.Read(12), 4095);
-            count = bits.Read(4);
-            Field("num_bezier_curve_anchors", count);
-            for (int i = 0; i < count; i++)
+            Field("knee_point_x", metadata.KneePointX, 4095);
+            Field("knee_point_y", metadata.KneePointY, 4095);
+            Field("num_bezier_curve_anchors", metadata.AnchorCount);
+            for (int index = 0; index < metadata.AnchorCount; index++)
             {
-                Field("bezier_curve_anchors", bits.Read(10), 1023);
-            }
-        }
-        if (bits.Read(1) != 0)
-        {
-            throw Invalid();
-        }
-        while (bits.Remaining > 0)
-        {
-            if (bits.Read(1) != 0)
-            {
-                throw Invalid();
+                Field("bezier_curve_anchors", metadata.Anchors[index], 1023);
             }
         }
         return line.ToString();
-    }
-
-    private ref struct Bits
-    {
-        private readonly ReadOnlySpan<byte> bytes;
-        private int position;
-        public Bits(ReadOnlySpan<byte> value) => bytes = value;
-        public readonly int Remaining => bytes.Length * 8 - position;
-        public int Read(int count)
-        {
-            if (count > Remaining)
-            {
-                throw Invalid();
-            }
-            int value = 0;
-            for (int i = 0; i < count; i++, position++)
-            {
-                value = value << 1 | (bytes[position / 8] >> (7 - position % 8) & 1);
-            }
-            return value;
-        }
     }
 }

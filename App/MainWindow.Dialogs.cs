@@ -60,6 +60,10 @@ public sealed partial class MainWindow
         var notice = new InfoBar { IsClosable = false, Severity = InfoBarSeverity.Error, IsOpen = false };
         panel.Children.Add(notice);
         var dialog = UiTypography.Prepare(new ContentDialog { Title = L.T("工具路径"), Content = panel, PrimaryButtonText = L.T("检测并保存"), CloseButtonText = L.T("取消"), XamlRoot = root.XamlRoot, RequestedTheme = root.RequestedTheme });
+        if (sourceMedia is not null && ffmpeg.Length > 0 && ffprobe.Length > 0)
+        {
+            dialog.SecondaryButtonText = L.T("重新检测硬件编码器");
+        }
         dialog.PrimaryButtonClick += async (_, e) =>
         {
             var deferral = e.GetDeferral();
@@ -82,11 +86,33 @@ public sealed partial class MainWindow
             catch (Exception error) { e.Cancel = true; notice.Message = L.T(error.Message); notice.IsOpen = true; }
             finally { dialog.IsPrimaryButtonEnabled = true; deferral.Complete(); }
         };
+        ContentDialogResult result;
         try
         {
-            await dialog.ShowAsync();
+            result = await dialog.ShowAsync();
         }
         finally { dialogOpen = false; Refresh(); }
+        if (!closing && result == ContentDialogResult.Secondary)
+        {
+            hardwareProbeTools = null;
+            probing = true;
+            Refresh();
+            try
+            {
+                await InspectHardwareAsync();
+                SetStatus("已识别素材，默认选项已就绪");
+            }
+            catch (OperationCanceledException) when (closing) { }
+            finally
+            {
+                probing = false;
+                if (!closing)
+                {
+                    Refresh();
+                }
+            }
+            return;
+        }
         if (!closing && sourceMedia is not null && hardwareProbeTools is null)
         {
             // Decoder support and format descriptors belong to the selected

@@ -8,6 +8,7 @@ public sealed partial class MainWindow
 {
     private HardwareEncoder[] hardwareEncoders = [];
     private MediaTools? hardwareProbeTools;
+    private (DateTime Encoder, DateTime Probe) hardwareToolVersions;
     private CancellationTokenSource? hardwareProbeCancellation;
     private ComboBox HardwareChoice => Control<ComboBox>("HardwareEncoder");
     private string SelectedHardware => Value(HardwareChoice) is { Length: > 0 } selected ? selected : "qsv";
@@ -15,7 +16,8 @@ public sealed partial class MainWindow
     private async Task InspectHardwareAsync()
     {
         var tools = ToolsObject();
-        if (hardwareProbeTools == tools)
+        var versions = (File.GetLastWriteTimeUtc(tools.Ffmpeg), File.GetLastWriteTimeUtc(tools.Ffprobe));
+        if (hardwareProbeTools == tools && hardwareToolVersions == versions)
         {
             return;
         }
@@ -27,6 +29,7 @@ public sealed partial class MainWindow
             SetStatus("正在检测硬件编码器…");
             hardwareEncoders = await HardwareEncoders.ProbeAsync(ConversionClient.Engine, tools, cancellation.Token);
             hardwareProbeTools = tools;
+            hardwareToolVersions = versions;
             if (!closing)
             {
                 SetStatus("正在读取相机元数据…");

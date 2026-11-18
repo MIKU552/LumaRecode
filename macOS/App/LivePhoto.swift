@@ -5,6 +5,18 @@ import Photos
 enum LivePhoto {
     static let stillImageTime = AVMetadataIdentifier(rawValue: "mdta/com.apple.quicktime.still-image-time")
 
+    static func addToLibrary(still: URL, movie: URL) async throws {
+        let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+        guard status == .authorized else {
+            throw EngineError(message: String(localized: "Allow LumaRecode to add photos in System Settings."))
+        }
+        try await PHPhotoLibrary.shared().performChanges {
+            let asset = PHAssetCreationRequest.forAsset()
+            asset.addResource(with: .photo, fileURL: still, options: nil)
+            asset.addResource(with: .pairedVideo, fileURL: movie, options: nil)
+        }
+    }
+
     // A writer and reader can move compressed samples directly between
     // containers. Separate track pumps keep the writer's interleaving bounded.
     private final class TrackPump: @unchecked Sendable {
