@@ -200,7 +200,7 @@ final class FrameIndex: @unchecked Sendable {
 
     deinit { lr_timeline_release(handle) }
 
-    fileprivate func resolve(_ selection: FrameSelection) throws -> lr_frame_window {
+    func resolve(_ selection: FrameSelection) throws -> lr_frame_window {
         let last = selection.last ?? count
         guard selection.first > 0, selection.first <= last, last <= count else {
             throw EngineError(message: "Select a frame range within 1…\(count).")
@@ -289,7 +289,7 @@ struct EncodingOptions: Sendable {
             "purpose": useVideoToolbox ? "share" : "archive", "codec": codec, "output": target, "source_kind": sourceKind,
             "transform": transform,
             "dynamic_hdr": output == "dolbyvision84" ? "generate_84" : standardHDR ? "standard" : "preserve",
-            "container": container
+            "container": container, "cpu_tone_map": "1"
         ]
         if useVideoToolbox { fields["hardware"] = EncoderMode.videoToolbox.rawValue }
         if kind == "log" {
@@ -521,18 +521,10 @@ struct NativeEngine: Sendable {
         let index = try index ?? loadFrames(source, control: control)
         let window = try index.resolve(FrameSelection(first: frame, last: frame))
         try withOutput(source, to: destination.standardizedFileURL, overwrite: overwrite, control: control) { stagedURL, cleanup in
-            let parent = stagedURL.deletingLastPathComponent()
-            let sdr = parent.appendingPathComponent("still-sdr.png")
-            let hdr = parent.appendingPathComponent("still-hdr.png")
-            defer {
-                if cleanup {
-                    try? FileManager.default.removeItem(at: sdr)
-                    try? FileManager.default.removeItem(at: hdr)
-                }
-            }
-            if format != .hdr { try renderStill(source, to: sdr, hdr: false, options: options, window: window, control: control, cleanup: &cleanup) }
-            if format != .sdr { try renderStill(source, to: hdr, hdr: true, options: options, window: window, control: control, cleanup: &cleanup) }
-            try format.write(to: stagedURL, sdr: sdr, hdr: hdr, control: control)
+            let image = stagedURL.deletingLastPathComponent().appendingPathComponent("still.png")
+            defer { if cleanup { try? FileManager.default.removeItem(at: image) } }
+            let transfer = try renderStill(source, to: image, options: options, window: window, control: control, cleanup: &cleanup)
+            try format.write(to: stagedURL, frame: image, transfer: transfer, control: control)
         }
     }
 
@@ -557,15 +549,16 @@ struct NativeEngine: Sendable {
             "-i", intermediate.path, "-map", "0", "-c", "copy",
             "-bsf:v", "dovi_rpu=compression=none", "-strict", "unofficial", "-tag:v", "hvc1",
             "-movflags", "+faststart+write_colr", destination.path
-        ], working_directory: command.working_directory, sidecars: [])
+        ], working_directory: command.working_directory, sidecars: [], colors: nil)
         try runEncoder(remux, control: control, cleanup: &cleanup, timeout: timeout) { _ in }
     }
 
     private func renderStill(
-        _ source: MediaSource, to destination: URL, hdr: Bool, options: EncodingOptions, window: lr_frame_window,
+        _ source: MediaSource, to destination: URL, options: EncodingOptions, window: lr_frame_window,
         control: JobControl, cleanup: inout Bool
-    ) throws {
+    ) throws -> String {
         var render = options
+        let hdr = render.supportsHDRPhoto(source.summary)
         render.output = hdr ? "hdr" : "sdr"
         render.codec = "hevc"
         render.standardHDR = true
@@ -581,17 +574,18 @@ struct NativeEngine: Sendable {
         // Use the conversion planner's frame selection, orientation and camera
         // color pipeline, then hand Core Image an RGB intermediate at full precision.
         let rgb = hdr
-            ? "libplacebo=format=yuv444p16le:colorspace=bt2020nc:color_primaries=bt2020:color_trc=smpte2084:range=full:apply_dolbyvision=0,zscale=matrix=gbr:range=full"
+            ? "zscale=primaries=bt2020:matrix=gbr:range=full"
             : "zscale=primaries=bt709:transfer=iec61966-2-1:matrix=gbr:range=full"
         let still = PlannedCommand(
             arguments: Array(args.prefix(input + 2)) + [
                 "-map", args[map + 1], "-an", "-sn", "-dn", "-map_metadata", "-1",
                 "-vf", args[filter + 1] + "," + rgb + ",format=gbrp16le,format=rgb48be",
                 "-frames:v", "1", "-c:v", "png", "-f", "image2", "-update", "1", destination.path
-            ], working_directory: command.working_directory, sidecars: []
+            ], working_directory: command.working_directory, sidecars: [], colors: nil
         )
         try source.identity.check(source.url)
         try runEncoder(still, control: control, cleanup: &cleanup) { _ in }
+        return command.colors?.color_transfer ?? "bt709"
     }
 
     // Video and still export both verify staged files before publishing them.
@@ -702,9 +696,11 @@ struct NativeEngine: Sendable {
     }
 
     private struct PlannedCommand: Decodable {
+        struct Colors: Decodable { let color_transfer: String? }
         var arguments: [String]
         let working_directory: String?
         let sidecars: [String]
+        let colors: Colors?
     }
 
     private func plannedCommand(_ plan: OpaquePointer) throws -> PlannedCommand {

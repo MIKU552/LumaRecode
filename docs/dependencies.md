@@ -57,6 +57,7 @@ JIT 与 AOT 均需为共享原生核心安装目标架构的 C++ 和 Rust 工具
 | 命令 | 产物 | 运行时 |
 | --- | --- | --- |
 | `./build.ps1` | JIT 单文件 EXE | 内置所需运行时 |
+| `./build.ps1 -Deployment Portable` | JIT 便携 ZIP | 运行时随程序放在同一目录 |
 | `./build.ps1 -Compilation Aot` | AOT 单文件 EXE | 内置所需运行组件 |
 | `./build.ps1 -Deployment FrameworkDependent` | JIT ZIP | 用户安装 .NET 11 Runtime、Windows App Runtime 2.6 |
 
@@ -112,6 +113,8 @@ JIT 默认直接打包应用、中间代码、.NET 运行时、Windows App SDK�
 可选 AOT 构建通过 `Bundle/` 打包 AOT 主程序和依赖。GUI 入口启动主体后退出；CLI 入口保留标准句柄和工作目录，等待任务结束并返回退出码。APX JIT 启动引导也采用同样的句柄与退出码传递。
 
 单文件使用 `IncludeAllContentForSelfExtract` 保留磁盘文件兼容性。缓存与进程的性能测量见[性能优化](performance.md)，命令行说明见 [CLI 手册](cli/zh-CN.md)。
+
+便携 ZIP 解压后直接从程序目录加载依赖，适用于频繁切换版本或需要控制临时目录占用的环境。GUI 和 CLI 共用解压目录中的 `LumaRecode.exe`。
 
 ### 依赖收集
 
@@ -187,6 +190,7 @@ Both JIT and AOT builds need target-architecture C++ and Rust tools for the shar
 | Command | Artifact | Runtime |
 | --- | --- | --- |
 | `./build.ps1` | JIT single EXE | Required runtimes included |
+| `./build.ps1 -Deployment Portable` | Portable JIT ZIP | Runtimes alongside the application |
 | `./build.ps1 -Compilation Aot` | AOT single EXE | Required runtime components included |
 | `./build.ps1 -Deployment FrameworkDependent` | JIT ZIP | Install .NET 11 Runtime and Windows App Runtime 2.6 |
 
@@ -242,6 +246,8 @@ JIT publication directly bundles the application, IL, .NET runtime, Windows App 
 Optional AOT publication uses `Bundle/` to package the AOT application and dependencies. The GUI entry exits after starting the application. The CLI entry preserves standard handles and the working directory, waits for completion and returns the exit code. APX JIT startup uses the same handle and exit-code forwarding.
 
 Single-file publication uses `IncludeAllContentForSelfExtract` for disk-file compatibility. Cache and process measurements are described in [Performance](performance.md); commands are in the [CLI guide](cli/en.md).
+
+The portable ZIP loads dependencies directly from the extracted application directory, which is useful for frequent version changes or when managing temporary storage. GUI and CLI both use the extracted `LumaRecode.exe`.
 
 ### Dependency collection
 

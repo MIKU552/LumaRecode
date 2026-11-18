@@ -9,7 +9,7 @@ ARM64 AOT cross-compilation requires the Visual Studio C++ ARM64 toolchain.
 #>
 param(
     [ValidateSet('Native','X64','Apx','Arm64')][string]$Target = 'Native',
-    [ValidateSet('SelfContained','FrameworkDependent')][string]$Deployment = 'SelfContained',
+    [ValidateSet('SelfContained','Portable','FrameworkDependent')][string]$Deployment = 'SelfContained',
     [ValidateSet('Jit','Aot')][string]$Compilation = 'Jit',
     [switch]$UseEnvironmentalNativeTools
 )
@@ -26,7 +26,8 @@ try {
     $taskIsa = $taskPlan.InstructionSet
     $taskRid = $taskPlan.RuntimeIdentifier
     $taskBundled = $Deployment -eq 'SelfContained'
-    $taskAot = $taskBundled -and $Compilation -eq 'Aot'
+    $taskIncludeRuntime = $Deployment -ne 'FrameworkDependent'
+    $taskAot = $Compilation -eq 'Aot'
     if ($taskPlan.ResolvedTarget -eq 'Apx' -and -not $taskAot) { throw 'The APX target requires self-contained Native AOT.' }
     if ($Target -eq 'Native' -and $taskAot) {
         # The AOT compiler cannot infer another architecture's native extensions.
@@ -80,7 +81,7 @@ try {
     $taskPublish = @('publish','App/VideoConverter.WinUI.csproj','--no-restore','-c','Release','-o',$taskAppOutput,
         "-p:PublishAot=$($taskAot.ToString().ToLowerInvariant())","-p:LumaLicenseDirectory=$taskLegal") + $taskCommon
     foreach ($taskName in @('SelfContained','WindowsAppSDKSelfContained')) {
-        $taskPublish += "-p:$taskName=$($taskBundled.ToString().ToLowerInvariant())"
+        $taskPublish += "-p:$taskName=$($taskIncludeRuntime.ToString().ToLowerInvariant())"
     }
     foreach ($taskName in @('PublishSingleFile','IncludeAllContentForSelfExtract','EnableCompressionInSingleFile')) {
         $taskPublish += "-p:$taskName=$(($taskBundled -and -not $taskAot).ToString().ToLowerInvariant())"
@@ -95,8 +96,9 @@ try {
     $taskVersion = ([xml](Get-Content -LiteralPath 'App/VideoConverter.WinUI.csproj' -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
     if ($taskBundled) { Write-Output "Built $Target ($taskRid): $taskOutput/LumaRecode.exe" }
     else {
-        $taskZip = Join-Path $taskRoot "dist/LumaRecode-$taskVersion-$taskRid-framework-dependent.zip"
+        $taskKind = if ($taskIncludeRuntime) { 'portable' } else { 'framework-dependent' }
+        $taskZip = Join-Path $taskRoot "dist/LumaRecode-$taskVersion-$taskRid-$taskKind.zip"
         Compress-Archive -Path "$taskOutput/*" -DestinationPath $taskZip -Force
-        Write-Output "Built framework-dependent ZIP: $taskZip"
+        Write-Output "Built $taskKind ZIP: $taskZip"
     }
 } finally { Pop-Location }

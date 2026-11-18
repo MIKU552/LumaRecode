@@ -256,6 +256,20 @@ def main():
             print(
                 f"PASS macOS still exports: {kind} ({', '.join(formats)})", flush=True
             )
+            if kind != "sdr":
+                output_sdr = folder / f"from-{kind}-to-sdr.mp4"
+                call(
+                    "convert",
+                    source,
+                    "-o",
+                    output_sdr,
+                    "--range",
+                    "sdr",
+                    "--ffmpeg",
+                    ffmpeg,
+                )
+                assert json.loads(call("probe", output_sdr))["kind"] == "sdr"
+                print(f"PASS macOS software tone mapping: {kind} to SDR", flush=True)
 
         automatic = folder / "automatic.mkv"
         call(

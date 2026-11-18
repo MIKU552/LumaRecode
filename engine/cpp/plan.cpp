@@ -522,9 +522,9 @@ class planner
         const bool rgb = luma::media_rgb(json, media), render_dolby = dovi != nullptr && !preserve;
         if (rgb)
             put(video, "color_space", "gbr");
-        auto colors = output == "sdr"                  ? color(false)
-                      : kind == "log" || kind == "raw" ? color(true)
-                                                       : json.object();
+        auto colors = output == "sdr"                                   ? color(false)
+                      : kind == "log" || kind == "raw" || generate_dovi ? color(true)
+                                                                        : json.object();
         if (yyjson_mut_obj_size(colors) == 0)
             for (const auto key : color_keys)
                 json.put(colors, key,
@@ -623,12 +623,22 @@ class planner
             filters.push_back(frame_tags(video));
         }
         if (transform == "hdr-sdr" || transform == "log-sdr" || (kind == "raw" && output == "sdr"))
-            filters.push_back("libplacebo=format=yuv444p16le:colorspace=bt709:color_primaries=bt709:color_"
-                              "trc=bt709:range=" +
-                              std::string(range == "full" ? "pc" : "tv") +
-                              ":tonemapping=bt.2390:apply_dolbyvision=" + (render_dolby ? "1" : "0") +
-                              ",sidedata=delete:type=MASTERING_DISPLAY_METADATA,sidedata=delete:type=CONTENT_"
-                              "LIGHT_LEVEL,sidedata=delete:type=DYNAMIC_HDR_PLUS");
+        {
+            if (luma::flag_field(json, choices, "cpu_tone_map") && !render_dolby && kind != "raw")
+                filters.push_back(
+                    "zscale=transfer=linear:npl=100,format=gbrpf32le,tonemap=tonemap=mobius:desat=0,"
+                    "zscale=primaries=bt709:transfer=bt709:matrix=bt709:range=" +
+                    range + ",format=yuv444p16le");
+            else
+                filters.push_back(
+                    "libplacebo=format=yuv444p16le:colorspace=bt709:color_primaries=bt709:color_"
+                    "trc=bt709:range=" +
+                    std::string(range == "full" ? "pc" : "tv") +
+                    ":tonemapping=bt.2390:apply_dolbyvision=" + (render_dolby ? "1" : "0"));
+            filters.emplace_back(
+                "sidedata=delete:type=MASTERING_DISPLAY_METADATA,sidedata=delete:type=CONTENT_"
+                "LIGHT_LEVEL,sidedata=delete:type=DYNAMIC_HDR_PLUS");
+        }
         if ((dovi != nullptr || hdr10plus) && !preserve)
             filters.emplace_back("sidedata=delete:type=DOVI_RPU_BUFFER,sidedata=delete:type=DOVI_METADATA,"
                                  "sidedata=delete:type=DYNAMIC_HDR_PLUS");

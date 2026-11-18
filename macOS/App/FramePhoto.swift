@@ -21,13 +21,15 @@ enum PhotoFormat: String, CaseIterable, Identifiable, Sendable {
         value.lowercased() == fileExtension || self == .sdr && value.lowercased() == "jpeg"
     }
 
-    func write(to destination: URL, sdr: URL, hdr: URL, control: JobControl) throws {
-        guard let srgb = CGColorSpace(name: CGColorSpace.sRGB),
+    func write(to destination: URL, frame: URL, transfer: String, control: JobControl) throws {
+        let sourceName = transfer == "arib-std-b67" ? CGColorSpace.itur_2100_HLG
+            : transfer == "smpte2084" ? CGColorSpace.itur_2100_PQ : CGColorSpace.sRGB
+        guard let source = CGColorSpace(name: sourceName), let srgb = CGColorSpace(name: CGColorSpace.sRGB),
               let pq = CGColorSpace(name: CGColorSpace.itur_2100_PQ) else {
             throw EngineError(message: "Cannot initialize the output color spaces.")
         }
-        func load(_ url: URL, space: CGColorSpace) throws -> CIImage {
-            guard let image = CIImage(contentsOf: url, options: [.colorSpace: space, .expandToHDR: space == pq]) else {
+        func load(sdr: Bool) throws -> CIImage {
+            guard let image = CIImage(contentsOf: frame, options: [.colorSpace: source, .toneMapHDRtoSDR: sdr]) else {
                 throw EngineError(message: "Cannot read the extracted frame.")
             }
             return image
@@ -36,12 +38,12 @@ enum PhotoFormat: String, CaseIterable, Identifiable, Sendable {
         try control.check()
         switch self {
         case .sdr:
-            try context.writeJPEGRepresentation(of: load(sdr, space: srgb), to: destination, colorSpace: srgb)
+            try context.writeJPEGRepresentation(of: load(sdr: true), to: destination, colorSpace: srgb)
         case .hdr:
-            try context.writeHEIF10Representation(of: load(hdr, space: pq), to: destination, colorSpace: pq)
+            try context.writeHEIF10Representation(of: load(sdr: false), to: destination, colorSpace: pq)
         case .adaptive:
-            let base = try load(sdr, space: srgb)
-            let alternate = try load(hdr, space: pq)
+            let base = try load(sdr: true)
+            let alternate = try load(sdr: false)
             try context.writeHEIFRepresentation(of: base, to: destination, format: .RGBA8, colorSpace: srgb,
                                                 options: [.hdrImage: alternate])
         }

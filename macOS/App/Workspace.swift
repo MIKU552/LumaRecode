@@ -26,7 +26,11 @@ final class Workspace {
     var failure: String?
     private var encoderCache: EncoderCache?
     private var control: JobControl?
-    private(set) var task: Task<Void, Never>?
+    private var terminating = false
+    private var previewLoad: Task<Void, Never>?
+    private var previewSeek: Task<Void, Never>?
+    private var pendingSeek: CMTime?
+    private var task: Task<Void, Never>?
 
     var busy: Bool { activity != nil }
     var isLog: Bool { options.sourceKind == "log" || (options.sourceKind == "auto" && media?.summary.kind == "log") }
@@ -53,6 +57,8 @@ final class Workspace {
     func open(_ url: URL) {
         guard !busy, url.isFileURL else { return }
         player?.pause()
+        previewLoad?.cancel()
+        cancelPreviewSeek()
         player = nil
         media = nil
         frames = nil
@@ -65,27 +71,19 @@ final class Workspace {
         photoFormat = .sdr
         options = EncodingOptions()
         container = "mkv"
-        let cached = encoderCache
         run(.inspect) { control in
-            let media = try Self.engine(requireEncoder: false).inspect(url, control: control)
-            let encoders = try Self.inspectEncoders(cached: cached, control: control)
-            return (media, encoders)
-        } finished: { media, encoders in
-            self.encoderCache = encoders
+            try Self.engine(requireEncoder: false).inspect(url, control: control)
+        } finished: { media in
             self.show(media)
-            if let codec = self.hardwareCodecs.first {
-                self.options.codec = codec
-                self.options.encoder = .videoToolbox
-                self.container = "mp4"
-            }
+            self.checkEncoders(force: false, selectDefault: true)
         }
     }
 
     private func show(_ media: MediaSource) {
         self.media = media
         let asset = AVURLAsset(url: media.url)
-        Task { @MainActor [weak self] in
-            guard (try? await asset.load(.isPlayable)) == true, self?.media?.url == media.url else { return }
+        previewLoad = Task { @MainActor [weak self] in
+            guard (try? await asset.load(.isPlayable)) == true, !Task.isCancelled else { return }
             self?.player = AVPlayer(playerItem: AVPlayerItem(asset: asset))
         }
     }
@@ -101,11 +99,22 @@ final class Workspace {
     }
 
     func recheckEncoders() {
+        checkEncoders(force: true, selectDefault: false)
+    }
+
+    private func checkEncoders(force: Bool, selectDefault: Bool) {
+        let cached = force ? nil : encoderCache
         run(.checkEncoders) { control in
-            try Self.inspectEncoders(cached: nil, control: control)
+            try Self.inspectEncoders(cached: cached, control: control)
         } finished: { cache in
             self.encoderCache = cache
-            self.updateEncoderChoice()
+            if selectDefault, let codec = self.hardwareCodecs.first {
+                self.options.codec = codec
+                self.options.encoder = .videoToolbox
+                self.container = "mp4"
+            } else {
+                self.updateEncoderChoice()
+            }
         }
     }
 
@@ -184,6 +193,40 @@ final class Workspace {
 
     func cancel() { control?.cancel() }
 
+    func prepareToTerminate() -> Task<Void, Never>? {
+        terminating = true
+        previewLoad?.cancel()
+        cancelPreviewSeek()
+        cancel()
+        return task
+    }
+
+    func previewPhotoFrame() {
+        guard let player, let frames, let frame = UInt64(photoFrame), frame > 0, frame <= frames.count,
+              let target = try? frames.resolve(FrameSelection(first: frame, last: frame)),
+              let first = try? frames.resolve(FrameSelection(first: 1, last: 1)) else { return }
+        let position = max(0, target.start_seconds - first.start_seconds)
+        pendingSeek = CMTime(seconds: position, preferredTimescale: 600_000)
+        guard previewSeek == nil else { return }
+        player.pause()
+        // AVPlayer decodes at most one seek at a time. During a drag only the
+        // latest pending target survives to the next iteration.
+        previewSeek = Task { @MainActor [weak self] in
+            while !Task.isCancelled, let self, let target = self.pendingSeek {
+                self.pendingSeek = nil
+                await player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
+            }
+            if !Task.isCancelled { self?.previewSeek = nil }
+        }
+    }
+
+    private func cancelPreviewSeek() {
+        previewSeek?.cancel()
+        player?.currentItem?.cancelPendingSeeks()
+        previewSeek = nil
+        pendingSeek = nil
+    }
+
     private func convert(_ media: MediaSource, to url: URL, overwrite: Bool, selection: FrameSelection?) {
         let options = self.options
         let frames = self.frames
@@ -211,13 +254,17 @@ final class Workspace {
         work: @escaping @Sendable (JobControl) throws -> T,
         finished: @escaping (T) -> Void
     ) {
-        guard !busy else { return }
+        guard !busy, !terminating else { return }
         let control = JobControl()
         self.activity = activity
         self.failure = nil
         self.control = control
         task = Task {
             let result = await Task.detached(priority: .userInitiated) { Result { try work(control) } }.value
+            self.activity = nil
+            self.control = nil
+            self.task = nil
+            guard !self.terminating else { return }
             switch result {
             case .success(let value): finished(value)
             case .failure(is CancellationError):
@@ -226,9 +273,6 @@ final class Workspace {
                 if activity == .index { limitFrames = false }
                 failure = error.localizedDescription
             }
-            self.activity = nil
-            self.control = nil
-            self.task = nil
         }
     }
 
@@ -425,6 +469,15 @@ struct WorkspaceView: View {
                 DisclosureGroup("Export a frame", isExpanded: $model.showPhotoControls) {
                     if let frames = model.frames {
                         TextField("Frame number", text: $model.photoFrame)
+                            .onSubmit(model.previewPhotoFrame)
+                        if model.player != nil, frames.count > 1 {
+                            Slider(value: Binding(
+                                get: { Double(min(frames.count, max(1, UInt64(model.photoFrame) ?? 1))) },
+                                set: { model.photoFrame = String(UInt64($0)); model.previewPhotoFrame() }
+                            ), in: 1...Double(frames.count), step: 1) {
+                                Text("Frame number")
+                            }
+                        }
                         Text("\(frames.count) frames").foregroundStyle(.secondary)
                         Picker("Photo format", selection: $model.photoFormat) {
                             Text(PhotoFormat.sdr.title).tag(PhotoFormat.sdr)

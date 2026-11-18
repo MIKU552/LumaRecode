@@ -19,8 +19,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
     weak var workspace: Workspace?
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let workspace, let task = workspace.task else { return .terminateNow }
-        workspace.cancel()
+        guard let task = workspace?.prepareToTerminate() else { return .terminateNow }
         Task {
             await task.value
             sender.reply(toApplicationShouldTerminate: true)
