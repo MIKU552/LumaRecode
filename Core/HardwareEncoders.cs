@@ -106,11 +106,15 @@ public static partial class HardwareEncoders
         var plan = engine.Plan(tools, synthetic, options, path);
         var start = Array.IndexOf(plan.Arguments, "-vf");
         var end = Array.IndexOf(plan.Arguments, "-fps_mode:v");
+        string[] tag = candidate.Codec == "hevc" ? ["-tag:v", "hvc1"] : [];
+        // Exercise the MP4 header as well as the encoder. Fragmented output can
+        // be discarded through the Windows null device without a probe file.
         string[] arguments =
         [
             "-hide_banner", "-nostdin", "-v", "error", "-xerror", "-nostats", "-progress", "pipe:1",
             "-f", "lavfi", "-i", $"testsrc2=size=320x192:rate=30,format={pixel}",
-            .. plan.Arguments[start..end], "-an", "-frames:v", "8", "-f", "null", "-"
+            .. plan.Arguments[start..end], "-an", "-frames:v", "8", .. tag,
+            "-movflags", "+frag_keyframe+empty_moov+write_colr", "-f", "mp4", "-y", "NUL"
         ];
         try
         {

@@ -44,8 +44,8 @@ typedef struct lr_process_snapshot
     uint32_t abi_version;
     uint32_t state;
     lr_status status;
-    /* Defaults to -1. Use lr_process_get_exit_code to distinguish a normal
-     * Windows exit of 0xffffffff. POSIX signal exits use 128+signal. */
+    /* Defaults to -1. Use lr_process_get_exit_code to distinguish a valid
+     * exit of -1. POSIX signal exits use 128+signal. */
     int32_t exit_code;
     /* File transactions require CONFIRMED before publishing or removing work. */
     uint32_t cleanup_state;

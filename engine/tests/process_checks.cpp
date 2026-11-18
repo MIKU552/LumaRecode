@@ -192,7 +192,9 @@ void check_arguments(const std::filesystem::path &helper, const std::filesystem:
 #ifdef _WIN32
     CHECK(lr_process_get_exit_code(negative.get(), &code) == LR_OK && code == -1);
 #else
-    CHECK(lr_process_get_exit_code(negative.get(), &code) == LR_OK && code == 255);
+    // waitid may retain exit status bits beyond the low byte (as on Darwin).
+    CHECK(lr_process_get_exit_code(negative.get(), &code) == LR_OK &&
+          (static_cast<uint32_t>(code) & 0xff) == 255);
 #endif
     auto missing = create(root / "missing-executable", {});
     CHECK(lr_process_run(missing.get(), &error) == LR_IO_ERROR);

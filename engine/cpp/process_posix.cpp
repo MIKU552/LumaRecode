@@ -9,6 +9,7 @@
 
 #include <array>
 #include <cerrno>
+#include <optional>
 #include <utility>
 
 #ifdef __APPLE__
@@ -62,7 +63,7 @@ void checked(int status, const char *operation)
 }
 
 #ifdef __APPLE__
-bool group_has_no_live_members(pid_t group, int observed_leader_exit)
+bool group_has_no_live_members(pid_t group, bool observed_leader_exit)
 {
     // Darwin excludes zombies when delivering a group signal and can return
     // EPERM when only zombies remain. Confirm quiescence before accepting that
@@ -79,7 +80,7 @@ bool group_has_no_live_members(pid_t group, int observed_leader_exit)
     for (size_t index = 0; index < static_cast<size_t>(member_count); ++index)
     {
         const auto pid = members[index];
-        if (pid <= 0 || (pid == group && observed_leader_exit >= 0))
+        if (pid <= 0 || (pid == group && observed_leader_exit))
         {
             continue;
         }
@@ -173,7 +174,8 @@ class child_group
             const auto code = errno;
             bool quiescent = code == ESRCH;
 #ifdef __APPLE__
-            quiescent = quiescent || (code == EPERM && group_has_no_live_members(pid, observed_exit));
+            quiescent =
+                quiescent || (code == EPERM && group_has_no_live_members(pid, observed_exit.has_value()));
 #endif
             if (!quiescent)
             {
@@ -227,7 +229,7 @@ class child_group
         return false;
     }
     pid_t pid = -1;
-    int observed_exit = -1;
+    std::optional<int> observed_exit;
 };
 
 bool drain(descriptor &pipe, uint32_t stream, luma::process_sink &sink, bool stopping = false)
@@ -345,7 +347,7 @@ void luma::execute_child(const process_request &request, process_sink &sink)
         }
         // Preserve the terminal event before killing remaining group members.
         // Cleanup and reaping must not reinterpret the completed leader's exit.
-        sink.exited(child.observed_exit);
+        sink.exited(*child.observed_exit);
         child.stop_and_join();
         const auto cleanup = std::chrono::steady_clock::now();
         while (output.read || errors.read)
