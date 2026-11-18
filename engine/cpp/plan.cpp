@@ -750,7 +750,24 @@ class planner
             add({"-dolbyvision", preserve ? "1" : "0"});
         // VideoToolbox can insert Dolby Vision metadata when encoding HLG.
         // Profile 8.4 is remuxed separately once demuxing exposes the coded
-        // yuv420p10le format to the Dolby Vision bitstream filter.
+        // yuv420p10le format to the Dolby Vision bitstream filter. Record the
+        // nominal rate in the HEVC headers so that filter can select the Dolby
+        // level from the pixel rate. Preserve the actual container timestamps.
+        if (generate_dovi)
+        {
+            const auto rate = nominal > 0 && nominal <= 240 ? nominal : fps;
+            auto headers = "hevc_metadata=tick_rate=" + number(rate, 6) + ":num_ticks_poc_diff_one=0";
+            const auto samples = double(integer(video, "width")) * integer(video, "height");
+            const auto samples_per_second = samples * rate;
+            if (samples <= 8912896 && samples_per_second > 267386880 && samples_per_second <= 534773760)
+            {
+                // Main-tier HEVC 5.1 covers 4K60. VideoToolbox's automatic
+                // level can advertise 5.0 when the input starts in VFR mode.
+                headers += ":level=5.1";
+                add({"-maxrate:v", "40M"});
+            }
+            add({"-bsf:v", headers});
+        }
         if (hardware_preset != nullptr && text(config, "encoder") == "hevc_videotoolbox" &&
             text(colors, "color_transfer") == "arib-std-b67" && !generate_dovi)
             add({"-bsf:v", "dovi_rpu=strip=1"});

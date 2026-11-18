@@ -10,6 +10,7 @@ import signal
 import subprocess
 import tempfile
 import time
+from fractions import Fraction
 from pathlib import Path
 
 
@@ -130,12 +131,13 @@ def main():
             )
             checked = json.loads(call("probe", delivery))
             video = checked["video"]
-            assert (video["width"], video["height"], video["avg_frame_rate"]) == (
-                3840,
-                2160,
-                "60/1",
-            ), video
-            assert checked["dolby_vision"]["dv_bl_signal_compatibility_id"] == 4
+            assert (video["width"], video["height"]) == (3840, 2160), video
+            assert abs(Fraction(video["avg_frame_rate"]) - 60) < 0.1, video
+            config = checked["dolby_vision"]
+            assert (
+                config["dv_bl_signal_compatibility_id"] == 4 and config["dv_level"] == 9
+            ), config
+            assert video["level"] >= 153, video
             assert any(
                 stream.get("codec_name") == "aac" for stream in checked["streams"]
             ), checked
