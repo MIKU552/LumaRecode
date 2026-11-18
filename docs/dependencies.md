@@ -122,6 +122,16 @@ JIT 默认直接打包应用、中间代码、.NET 运行时、Windows App SDK�
 
 项目许可见 [LICENSE](../LICENSE)、[NOTICE](../NOTICE)和[第三方组件](../Assets/THIRD_PARTY.md)。
 
+### 构建来源证明
+
+从 GitHub Actions 手动运行 **Native core** 可生成 Windows x64 / ARM64 JIT、macOS ARM64 DMG 和共享 SDK 的分发文件。工作流先完成构建及回归测试，再为每个最终文件签发并验证来源证明。通过验证的文件位于 `lumarecode-distribution-<commit>` 产物中。
+
+```powershell
+gh attestation verify <file> --repo MIKU552/LumaRecode --signer-workflow MIKU552/LumaRecode/.github/workflows/native-core.yml
+```
+
+核对指定版本时，可追加 `--source-ref refs/tags/<tag>` 和 `--source-digest <commit>`。[GitHub 构建来源证明](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations)
+
 ## English
 
 ### Development environment
@@ -241,3 +251,13 @@ Single-file publication uses `IncludeAllContentForSelfExtract` for disk-file com
 4. Include complete component licenses and provenance with the single EXE.
 
 See [LICENSE](../LICENSE), [NOTICE](../NOTICE) and [third-party components](../Assets/THIRD_PARTY.md).
+
+### Build provenance
+
+Run **Native core** manually in GitHub Actions to build the Windows x64 / ARM64 JIT applications, macOS ARM64 DMG, and shared SDKs. The workflow runs the regression checks, then attests and verifies each final distribution file. Verified files appear in the `lumarecode-distribution-<commit>` artifact.
+
+```powershell
+gh attestation verify <file> --repo MIKU552/LumaRecode --signer-workflow MIKU552/LumaRecode/.github/workflows/native-core.yml
+```
+
+To verify a specific release, add `--source-ref refs/tags/<tag>` and `--source-digest <commit>`. [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations)
