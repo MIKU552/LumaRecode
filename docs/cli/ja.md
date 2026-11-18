@@ -174,10 +174,13 @@ $LASTEXITCODE
 
 アプリ内の実行ファイルを使います。`probe`、`frames`、`doctor` は JSON を返します。範囲の終了フレームは出力に含まれます。静止画の形式は `sdr`（JPEG）、`hdr`（PQ HEIC）、`adaptive`（ゲインマップ付き HEIC）です。`dolbyvision84` を使うには標準の 10 ビット HLG 素材と、動作確認済みの VideoToolbox HEVC エンコーダーが必要です。
 
+`--live-photo` を使う場合、`-o` に新規フォルダを指定します。フォルダ内の静止画と MOV を「写真」に一緒に読み込めます。
+
 ```sh
 luma=/Applications/LumaRecode.app/Contents/MacOS/LumaRecode
 "$luma" doctor
 "$luma" convert input.mov -o trimmed.mp4 --start-frame 2 --end-frame 60
 "$luma" convert hlg.mov -o dolby-vision.mp4 --range dolbyvision84
 "$luma" image hlg.mov -o frame.heic --frame 25 --format adaptive
+"$luma" image hlg.mov -o live-photo --frame 25 --format adaptive --live-photo --motion-first 1 --motion-last 60
 ```

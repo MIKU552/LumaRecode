@@ -59,6 +59,8 @@ VideoToolbox 的标准 HLG 输出使用 FFmpeg 的 `dovi_rpu=strip=1` 去除编�
 
 逐帧导出复用时间轴和色彩处理，macOS 通过 Core Image 写入 SDR JPEG、10 位 PQ HEIC 和带 ISO 增益图的 Adaptive HDR HEIC。单张图片使用与视频相同的输出事务。CLI 用法为 `image input.mov -o frame.heic --frame 120 --format adaptive`，帧号从 1 开始。
 
+实况照片用同一时间轴定位封面和短片范围。AVFoundation 写入 MOV 的配对标识和封面时间，Photos 成功读取静态图与 MOV 后再发布配对文件夹。
+
 ### Windows 硬件编码
 
 快速分享支持 Intel QSV、NVIDIA NVENC、AMD AMF 和 Windows Media Foundation。应用使用当前配置的 FFmpeg，以 320 × 192 合成视频逐项验证编码和 MP4 封装。界面只提供通过试跑且符合输出要求的组合。缺少合适的硬件编码器时默认使用软件归档。`doctor` 显示探测结果。
@@ -154,6 +156,8 @@ The standard HLG path uses FFmpeg's `dovi_rpu=strip=1` to remove Dolby Vision me
 **Dolby Vision 8.4** is an explicit export option for standard HLG footage at 10 bits or higher. On hardware that passes the capability check, it writes a 10-bit HEVC MP4 with an HLG base layer. Export verification checks the Dolby Vision configuration in the container and dynamic metadata on decoded frames. On macOS, use `convert input.mov -o output.mp4 --range dolbyvision84`.
 
 Frame export reuses the shared timeline and color processing. On macOS, Core Image writes SDR JPEG, 10-bit PQ HEIC, and Adaptive HDR HEIC with an ISO gain map. Still and video exports use the same output transaction. For example, run `image input.mov -o frame.heic --frame 120 --format adaptive`. Frame numbers are one-based.
+
+Live Photos use the same timeline for the cover and motion range. AVFoundation writes the matching identifier and cover time into the MOV. The app publishes the pair as a folder after Photos reads both resources successfully.
 
 ### Windows hardware encoding
 

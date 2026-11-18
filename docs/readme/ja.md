@@ -9,7 +9,15 @@ Windows 11 と Apple Silicon 搭載の Mac 向けの動画変換・色変換ツ�
 
 [ダウンロード](https://github.com/MIKU552/LumaRecode/releases/latest) · [ドキュメント（中国語・英語）](../README.md#english) · [コマンドライン](../cli/ja.md) · [変更履歴（中国語・英語）](../../CHANGELOG.md#english)
 
-## 主な機能
+## macOS
+
+Apple Silicon 搭載の Mac と macOS 27 以降が必要です。DMG を開き、LumaRecode を「アプリケーション」へドラッグしてください。FFmpeg と ffprobe は PATH や Homebrew から検索でき、「設定」でパスを指定することもできます。
+
+SwiftUI の画面で動画をプレビューし、フレーム単位でトリミングできます。ソフトウェアでのアーカイブ書き出しと、VideoToolbox でのクイック共有に対応します。標準の 10 ビット HLG 素材は Dolby Vision 8.4 に書き出せます。静止画は SDR JPEG、HDR HEIC、またはゲインマップ付き Adaptive HDR HEIC を選べます。[macOS のコマンドライン](../cli/ja.md#macos)
+
+SDR JPEG または Adaptive HDR HEIC と MOV を組み合わせて、Live Photos に書き出せます。カバーフレーム前後の約 3 秒が初期範囲で、フレーム番号で範囲を変更できます。
+
+## Windows 11
 
 - フレームプレビューとトリミング、HDR / SDR 画像、カバーフレームを指定した Android モーションフォト。
 - クイック共有・アーカイブ用プリセット。HEVC、AV1、H.264 と MP4 / MKV に対応。
@@ -39,12 +47,6 @@ Windows 11 と Apple Silicon 搭載の Mac 向けの動画変換・色変換ツ�
 x64 と ARM64 の両方でハードウェアエンコーダーを調べます。対応するものがなければ、ソフトウェアアーカイブが既定となります。
 
 Dolby Vision / HDR10+ は、ソフトウェア HEVC で動的メタデータを保持する設定が初期値です。共有用にハードウェアで出力する場合は「標準 HDR」を選択します。対応する Dolby Vision プロファイルは単層の 5、8.1、8.4、10.1、10.4 です。ProRes RAW は FFmpeg の対応状況を確認し、カメラのホワイトバランス、色変換行列、ゲインで現像し、標準で HLG に出力します。対応形式は[色変換（中国語・英語）](../color-conversion.md#english)を参照してください。
-
-## macOS
-
-Apple Silicon 搭載の Mac と macOS 27 以降が必要です。DMG を開き、LumaRecode を「アプリケーション」へドラッグしてください。FFmpeg と ffprobe は PATH や Homebrew から検索でき、「設定」でパスを指定することもできます。
-
-SwiftUI の画面で動画をプレビューし、フレーム単位でトリミングできます。ソフトウェアでのアーカイブ書き出しと、VideoToolbox でのクイック共有に対応します。標準の 10 ビット HLG 素材は Dolby Vision 8.4 に書き出せます。静止画は SDR JPEG、HDR HEIC、またはゲインマップ付き Adaptive HDR HEIC を選べます。[macOS のコマンドライン](../cli/ja.md#macos)
 
 ## プレビュー・トリミング・画像
 

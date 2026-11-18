@@ -9,7 +9,15 @@ Herramienta de transcodificación de vídeo y conversión de color para Windows 
 
 [Descargar](https://github.com/MIKU552/LumaRecode/releases/latest) · [Documentación (chino e inglés)](../README.md#english) · [Línea de comandos](../cli/es.md) · [Historial de cambios (chino e inglés)](../../CHANGELOG.md#english)
 
-## Funciones
+## macOS
+
+Requiere un Mac con Apple Silicon y macOS 27 o posterior. Abre el DMG y arrastra LumaRecode a Aplicaciones. La app busca FFmpeg y ffprobe en PATH o en Homebrew. También puedes indicar sus rutas en Ajustes.
+
+La interfaz SwiftUI permite previsualizar y recortar vídeo por fotogramas, archivarlo por software y compartirlo mediante VideoToolbox. El material HLG estándar de 10 bits puede exportarse como Dolby Vision 8.4. Los fotogramas se guardan como JPEG SDR, HEIC HDR o HEIC con HDR adaptativo y mapa de ganancias. Consulta la [guía de comandos para macOS](../cli/es.md#macos).
+
+Exporta JPEG SDR o HEIC con HDR adaptativo junto con un MOV para crear una Live Photo. El clip abarca unos tres segundos alrededor de la portada de forma predeterminada y admite límites por fotograma.
+
+## Windows 11
 
 - Vista previa y recorte por fotogramas, imágenes HDR / SDR y fotos en movimiento de Android con portada seleccionada.
 - Preajustes de Compartir rápido y Archivo por software para HEVC, AV1 y H.264, con salida MP4 / MKV.
@@ -39,12 +47,6 @@ Compartir rápido usa un codificador por hardware disponible. Archivo por softwa
 Tanto x64 como ARM64 comprueban los codificadores por hardware. Si no hay ninguno compatible, se usa Archivo por software de forma predeterminada.
 
 Las fuentes Dolby Vision / HDR10+ usan HEVC por software para conservar los metadatos dinámicos de forma predeterminada. Elige HDR estándar para compartir con codificación por hardware. Se admiten los perfiles Dolby Vision de una sola capa 5, 8.1, 8.4, 10.1 y 10.4. ProRes RAW comprueba la compatibilidad de FFmpeg y se revela con el balance de blancos, la matriz de color y la ganancia de cámara, con salida HLG predeterminada. Consulta los formatos compatibles en [Conversión de color (chino e inglés)](../color-conversion.md#english).
-
-## macOS
-
-Requiere un Mac con Apple Silicon y macOS 27 o posterior. Abre el DMG y arrastra LumaRecode a Aplicaciones. La app busca FFmpeg y ffprobe en PATH o en Homebrew. También puedes indicar sus rutas en Ajustes.
-
-La interfaz SwiftUI permite previsualizar y recortar vídeo por fotogramas, archivarlo por software y compartirlo mediante VideoToolbox. El material HLG estándar de 10 bits puede exportarse como Dolby Vision 8.4. Los fotogramas se guardan como JPEG SDR, HEIC HDR o HEIC con HDR adaptativo y mapa de ganancias. Consulta la [guía de comandos para macOS](../cli/es.md#macos).
 
 ## Vista previa, recorte e imágenes
 

@@ -9,6 +9,14 @@
 
 [下载](https://github.com/MIKU552/LumaRecode/releases/latest) · [文档](docs/README.md) · [命令行文档](docs/cli/zh-CN.md) · [更新记录](CHANGELOG.md)
 
+## macOS
+
+适用于 macOS 27 及以上的 Apple Silicon Mac。打开 DMG，将 LumaRecode 拖到“应用程序”。程序通过 PATH 或 Homebrew 查找 FFmpeg 和 ffprobe，也可在“设置”中指定路径。
+
+SwiftUI 工作区支持视频预览、逐帧裁剪、软件归档和 VideoToolbox 快速分享。普通 10 位 HLG 素材可选择 Dolby Vision 8.4 导出。帧导出支持 SDR JPEG、HDR HEIC 和带增益图的 Adaptive HDR HEIC。详见 [macOS 命令行](docs/cli/zh-CN.md#macos)。
+
+可将 SDR JPEG 或 Adaptive HDR HEIC 与 MOV 配对导出为实况照片。范围默认取封面附近约 3 秒，也可用帧号指定。
+
 ## Windows 11
 
 - 逐帧预览与裁剪，支持自选封面帧、HDR / SDR 图片和 Android 动态照片。
@@ -39,12 +47,6 @@
 x64 和 ARM64 都会检测硬件编码器。没有合适的硬件编码选项时，默认使用软件归档。
 
 Dolby Vision / HDR10+ 素材默认使用软件 HEVC 保留动态元数据；“标准 HDR”可用于硬件快速分享。Dolby Vision 支持单层 Profile 5、8.1、8.4、10.1 和 10.4。ProRes RAW 在确认 FFmpeg 解码兼容性后，根据相机白平衡、色彩矩阵和增益显影，默认输出 HLG。格式与处理流程见[色彩转换](docs/color-conversion.md)。
-
-## macOS
-
-适用于 macOS 27 及以上的 Apple Silicon Mac。打开 DMG，将 LumaRecode 拖到“应用程序”。程序通过 PATH 或 Homebrew 查找 FFmpeg 和 ffprobe，也可在“设置”中指定路径。
-
-SwiftUI 工作区支持视频预览、逐帧裁剪、软件归档和 VideoToolbox 快速分享。普通 10 位 HLG 素材可选择 Dolby Vision 8.4 导出。帧导出支持 SDR JPEG、HDR HEIC 和带增益图的 Adaptive HDR HEIC。详见 [macOS 命令行](docs/cli/zh-CN.md#macos)。
 
 ## 预览、裁剪与图片
 

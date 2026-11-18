@@ -185,10 +185,13 @@ $LASTEXITCODE
 
 通过应用包中的可执行文件运行命令。`probe`、`frames` 和 `doctor` 输出 JSON。结束帧计入裁剪范围。`image` 格式为 `sdr`（JPEG）、`hdr`（PQ HEIC）或 `adaptive`（带增益图的 HEIC）。`dolbyvision84` 要求普通 10 位 HLG 素材及通过检测的 VideoToolbox HEVC 编码器。
 
+使用 `--live-photo` 时，`-o` 为新建的文件夹，其中包含用于成对导入“照片”的静态图和 MOV。
+
 ```sh
 luma=/Applications/LumaRecode.app/Contents/MacOS/LumaRecode
 "$luma" doctor
 "$luma" convert input.mov -o trimmed.mp4 --start-frame 2 --end-frame 60
 "$luma" convert hlg.mov -o dolby-vision.mp4 --range dolbyvision84
 "$luma" image hlg.mov -o frame.heic --frame 25 --format adaptive
+"$luma" image hlg.mov -o live-photo --frame 25 --format adaptive --live-photo --motion-first 1 --motion-last 60
 ```

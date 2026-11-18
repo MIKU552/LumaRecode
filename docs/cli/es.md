@@ -174,10 +174,13 @@ Ctrl+C durante una ejecución interactiva interrumpe tanto la canalización de P
 
 Ejecuta el binario incluido en la aplicación. `probe`, `frames` y `doctor` devuelven JSON. El recorte incluye el último fotograma seleccionado. `image` admite `sdr` (JPEG), `hdr` (HEIC PQ) y `adaptive` (HEIC con mapa de ganancias). `dolbyvision84` requiere material HLG estándar de 10 bits y un codificador HEVC de VideoToolbox verificado.
 
+Con `--live-photo`, `-o` indica una carpeta nueva con la imagen y el MOV para importar juntos a Fotos.
+
 ```sh
 luma=/Applications/LumaRecode.app/Contents/MacOS/LumaRecode
 "$luma" doctor
 "$luma" convert input.mov -o trimmed.mp4 --start-frame 2 --end-frame 60
 "$luma" convert hlg.mov -o dolby-vision.mp4 --range dolbyvision84
 "$luma" image hlg.mov -o frame.heic --frame 25 --format adaptive
+"$luma" image hlg.mov -o live-photo --frame 25 --format adaptive --live-photo --motion-first 1 --motion-last 60
 ```

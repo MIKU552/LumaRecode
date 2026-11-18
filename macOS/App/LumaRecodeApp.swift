@@ -40,6 +40,15 @@ struct LumaRecodeApp: App {
                 .onOpenURL { workspace.open($0) }
         }
         .defaultSize(width: 1060, height: 690)
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Licenses") {
+                    if let resources = Bundle.main.resourceURL {
+                        NSWorkspace.shared.open(resources.appendingPathComponent("Licenses", isDirectory: true))
+                    }
+                }
+            }
+        }
 
         Settings { ToolSettings() }
     }

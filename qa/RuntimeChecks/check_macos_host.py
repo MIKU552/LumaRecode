@@ -78,6 +78,72 @@ def main():
         )
         if os.environ.get("LUMA_REQUIRE_VIDEO_TOOLBOX_DOVI"):
             assert dovi_trial["available"], dovi_trial
+        if dovi_trial["available"]:
+            large = folder / "4k-hlg.mp4"
+            subprocess.run(
+                [
+                    ffmpeg,
+                    "-v",
+                    "error",
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "testsrc2=size=3840x2160:rate=60",
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "sine=frequency=440:sample_rate=48000",
+                    "-frames:v",
+                    "30",
+                    "-shortest",
+                    "-c:v",
+                    "hevc_videotoolbox",
+                    "-allow_sw",
+                    "0",
+                    "-pix_fmt",
+                    "p010le",
+                    "-profile:v",
+                    "main10",
+                    "-color_primaries",
+                    "bt2020",
+                    "-colorspace",
+                    "bt2020nc",
+                    "-color_trc",
+                    "arib-std-b67",
+                    "-bsf:v",
+                    "dovi_rpu=strip=1",
+                    "-c:a",
+                    "aac",
+                    str(large),
+                ],
+                check=True,
+                capture_output=True,
+                timeout=60,
+            )
+            delivery = folder / "4k-dolbyvision.mp4"
+            call(
+                "convert",
+                large,
+                "-o",
+                delivery,
+                "--ffmpeg",
+                ffmpeg,
+                "--range",
+                "dolbyvision84",
+            )
+            checked = json.loads(call("probe", delivery))
+            video = checked["video"]
+            assert (video["width"], video["height"], video["avg_frame_rate"]) == (
+                3840,
+                2160,
+                "60/1",
+            ), video
+            assert checked["dolby_vision"]["dv_bl_signal_compatibility_id"] == 4
+            assert any(
+                stream.get("codec_name") == "aac" for stream in checked["streams"]
+            ), checked
+            assert json.loads(call("frames", delivery))["frame_count"] == 30
+            print("PASS 4K60 Dolby Vision 8.4 with AAC", flush=True)
         for kind, transfer, pixel in [
             ("sdr", "bt709", "yuv420p"),
             ("hlg", "arib-std-b67", "yuv420p10le"),
@@ -314,6 +380,24 @@ def main():
                 original = hashlib.sha256(movie.read_bytes()).digest()
                 call(*live, status=1)
                 assert hashlib.sha256(movie.read_bytes()).digest() == original
+                invalid = folder / f"invalid-live-{kind}"
+                call(
+                    "image",
+                    source,
+                    "-o",
+                    invalid,
+                    "--frame",
+                    "1",
+                    "--live-photo",
+                    "--motion-first",
+                    "2",
+                    "--motion-last",
+                    "8",
+                    "--ffmpeg",
+                    ffmpeg,
+                    status=1,
+                )
+                assert not invalid.exists()
                 assert not list(folder.glob(".lumarecode-*"))
                 print(f"PASS macOS Photos framework: {kind} Live Photo", flush=True)
 
@@ -432,6 +516,20 @@ def main():
         assert hashlib.sha256(output.read_bytes()).digest() == old_hash
         assert not list(folder.glob(".lumarecode-*"))
         print("PASS macOS host: interrupt, cleanup, and retained output", flush=True)
+
+        # Launch with no arguments to exercise the actual SwiftUI entry point.
+        # The runner can catch launch-time crashes. Visual inspection is separate.
+        with subprocess.Popen(
+            [str(exe)], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ) as gui:
+            try:
+                time.sleep(2)
+                assert gui.poll() is None, gui.communicate()
+            finally:
+                if gui.poll() is None:
+                    gui.terminate()
+                    gui.communicate(timeout=10)
+        print("PASS macOS GUI launch", flush=True)
 
 
 if __name__ == "__main__":

@@ -97,14 +97,23 @@ enum LivePhoto {
         // Validate the two generated resources with the same framework that
         // loads Live Photos for playback. This operation needs no library access.
         let request = PhotoRequest()
-        try await control.runAsync({ request.cancel() }) {
+        try await control.runAsync({ request.complete(.failure(CancellationError()), stop: true) }) {
+            let timeout = Task {
+                do {
+                    try await Task.sleep(for: .seconds(20))
+                    request.complete(.failure(EngineError(message: "Photos did not respond while validating the Live Photo.")),
+                                     stop: true)
+                } catch { return }
+            }
+            defer { timeout.cancel() }
             try await withCheckedThrowingContinuation { (completion: CheckedContinuation<Void, Error>) in
+                guard request.wait(with: completion) else { return }
                 let id = PHLivePhoto.request(withResourceFileURLs: [still, movie], placeholderImage: nil, targetSize: .zero,
                                              contentMode: .aspectFit) { photo, info in
                     if info[PHLivePhotoInfoIsDegradedKey] as? Bool == true { return }
-                    if let error = info[PHLivePhotoInfoErrorKey] as? Error { completion.resume(throwing: error) }
-                    else if photo != nil { completion.resume() }
-                    else { completion.resume(throwing: EngineError(message: "Photos could not open the Live Photo pair.")) }
+                    if let error = info[PHLivePhotoInfoErrorKey] as? Error { request.complete(.failure(error)) }
+                    else if photo != nil { request.complete(.success(())) }
+                    else { request.complete(.failure(EngineError(message: "Photos could not open the Live Photo pair."))) }
                 }
                 request.set(id)
             }
@@ -114,16 +123,34 @@ enum LivePhoto {
     private final class PhotoRequest: @unchecked Sendable {
         private let lock = NSLock()
         private var id: PHLivePhotoRequestID?
-        private var cancelled = false
+        private var shouldStop = false
+        private var response: Result<Void, Error>?
+        private var waiter: CheckedContinuation<Void, Error>?
+
+        func wait(with continuation: CheckedContinuation<Void, Error>) -> Bool {
+            let completed = lock.withLock {
+                if response == nil { waiter = continuation }
+                return response
+            }
+            if let completed { continuation.resume(with: completed) }
+            return completed == nil
+        }
 
         func set(_ id: PHLivePhotoRequestID) {
-            let stop = lock.withLock { self.id = id; return cancelled }
+            let stop = lock.withLock { self.id = id; return shouldStop }
             if stop { PHLivePhoto.cancelRequest(withRequestID: id) }
         }
 
-        func cancel() {
-            let active = lock.withLock { cancelled = true; return id }
+        func complete(_ result: Result<Void, Error>, stop: Bool = false) {
+            let (continuation, active) = lock.withLock { () -> (CheckedContinuation<Void, Error>?, PHLivePhotoRequestID?) in
+                guard response == nil else { return (nil, nil) }
+                response = result
+                shouldStop = stop
+                defer { waiter = nil }
+                return (waiter, stop ? id : nil)
+            }
             if let active { PHLivePhoto.cancelRequest(withRequestID: active) }
+            continuation?.resume(with: result)
         }
     }
 }

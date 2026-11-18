@@ -174,10 +174,13 @@ Interactive Ctrl+C interrupts both the PowerShell pipeline and the conversion jo
 
 Run the executable inside the app bundle. `probe`, `frames`, and `doctor` return JSON. Frame ranges include the last frame. Use `image --format sdr` for JPEG, `hdr` for PQ HEIC, or `adaptive` for HEIC with a gain map. `dolbyvision84` requires standard 10-bit HLG and a working VideoToolbox HEVC encoder.
 
+With `--live-photo`, `-o` is a new folder containing a still and a MOV to import together into Photos.
+
 ```sh
 luma=/Applications/LumaRecode.app/Contents/MacOS/LumaRecode
 "$luma" doctor
 "$luma" convert input.mov -o trimmed.mp4 --start-frame 2 --end-frame 60
 "$luma" convert hlg.mov -o dolby-vision.mp4 --range dolbyvision84
 "$luma" image hlg.mov -o frame.heic --frame 25 --format adaptive
+"$luma" image hlg.mov -o live-photo --frame 25 --format adaptive --live-photo --motion-first 1 --motion-last 60
 ```

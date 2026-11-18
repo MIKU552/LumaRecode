@@ -37,10 +37,7 @@ if [ "$task_mode" != app ]; then
     ditto "$task_app" "$task_package/source/LumaRecode.app"
     ln -s /Applications "$task_package/source/Applications"
     task_image="$task_package/compressed.dmg"
-    if ! diskutil image create from --format ULFO --volumeName LumaRecode "$task_package/source" "$task_image"; then
-        task_image="$task_package/deflate.dmg"
-        diskutil image create from --format UDZO --volumeName LumaRecode "$task_package/source" "$task_image"
-    fi
+    diskutil image create from --format UDZO --volumeName LumaRecode "$task_package/source" "$task_image"
     diskutil image attach --readOnly --mountPoint "$task_mount" "$task_image"
     task_mounted=yes
     codesign --verify --deep --strict "$task_mount/LumaRecode.app"
