@@ -180,3 +180,15 @@ $LASTEXITCODE
 脚本通过进程退出码或 `$LASTEXITCODE` 读取结果，通过 JSON 的 `code` 字段处理错误。
 
 交互式 Ctrl+C 同时中断 PowerShell 管道和转换任务，并清理临时输出。需要读取取消事件和退出码时，使用进程 API 发送控制台取消信号并等待程序退出；协作取消返回 130。
+
+## macOS
+
+通过应用包中的可执行文件运行命令。`probe`、`frames` 和 `doctor` 输出 JSON。结束帧计入裁剪范围。`image` 格式为 `sdr`（JPEG）、`hdr`（PQ HEIC）或 `adaptive`（带增益图的 HEIC）。`dolbyvision84` 要求普通 10 位 HLG 素材及通过检测的 VideoToolbox HEVC 编码器。
+
+```sh
+luma=/Applications/LumaRecode.app/Contents/MacOS/LumaRecode
+"$luma" doctor
+"$luma" convert input.mov -o trimmed.mp4 --start-frame 2 --end-frame 60
+"$luma" convert hlg.mov -o dolby-vision.mp4 --range dolbyvision84
+"$luma" image hlg.mov -o frame.heic --frame 25 --format adaptive
+```

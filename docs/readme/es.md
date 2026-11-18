@@ -5,7 +5,7 @@
 
 [简体中文](../../README.md) | [English](en.md) | [日本語](ja.md) | Español
 
-Herramienta de transcodificación de vídeo y conversión de color para Windows 11. LumaRecode ofrece una interfaz nativa WinUI 3 y una línea de comandos para FFmpeg, con compresión de vídeo, conversión de Log de cámara a HDR / SDR y de HDR a SDR.
+Herramienta de transcodificación de vídeo y conversión de color para Windows 11 y Mac con Apple Silicon. LumaRecode ejecuta FFmpeg desde una interfaz nativa o desde la línea de comandos.
 
 [Descargar](https://github.com/MIKU552/LumaRecode/releases/latest) · [Documentación (chino e inglés)](../README.md#english) · [Línea de comandos](../cli/es.md) · [Historial de cambios (chino e inglés)](../../CHANGELOG.md#english)
 
@@ -39,6 +39,12 @@ Compartir rápido usa un codificador por hardware disponible. Archivo por softwa
 Tanto x64 como ARM64 comprueban los codificadores por hardware. Si no hay ninguno compatible, se usa Archivo por software de forma predeterminada.
 
 Las fuentes Dolby Vision / HDR10+ usan HEVC por software para conservar los metadatos dinámicos de forma predeterminada. Elige HDR estándar para compartir con codificación por hardware. Se admiten los perfiles Dolby Vision de una sola capa 5, 8.1, 8.4, 10.1 y 10.4. ProRes RAW comprueba la compatibilidad de FFmpeg y se revela con el balance de blancos, la matriz de color y la ganancia de cámara, con salida HLG predeterminada. Consulta los formatos compatibles en [Conversión de color (chino e inglés)](../color-conversion.md#english).
+
+## macOS
+
+Requiere un Mac con Apple Silicon y macOS 27 o posterior. Abre el DMG y arrastra LumaRecode a Aplicaciones. La app busca FFmpeg y ffprobe en PATH o en Homebrew. También puedes indicar sus rutas en Ajustes.
+
+La interfaz SwiftUI permite previsualizar y recortar vídeo por fotogramas, archivarlo por software y compartirlo mediante VideoToolbox. El material HLG estándar de 10 bits puede exportarse como Dolby Vision 8.4. Los fotogramas se guardan como JPEG SDR, HEIC HDR o HEIC con HDR adaptativo y mapa de ganancias. Consulta la [guía de comandos para macOS](../cli/es.md#macos).
 
 ## Vista previa, recorte e imágenes
 

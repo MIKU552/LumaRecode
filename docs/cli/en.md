@@ -169,3 +169,15 @@ $LASTEXITCODE
 Read the process exit code or `$LASTEXITCODE` for the result, and JSON `code` fields for error handling.
 
 Interactive Ctrl+C interrupts both the PowerShell pipeline and the conversion job and cleans up temporary output. To read cancellation events and the exit code, send a console cancellation signal through a process API and wait for the program to exit. Cooperative cancellation returns 130.
+
+## macOS
+
+Run the executable inside the app bundle. `probe`, `frames`, and `doctor` return JSON. Frame ranges include the last frame. Use `image --format sdr` for JPEG, `hdr` for PQ HEIC, or `adaptive` for HEIC with a gain map. `dolbyvision84` requires standard 10-bit HLG and a working VideoToolbox HEVC encoder.
+
+```sh
+luma=/Applications/LumaRecode.app/Contents/MacOS/LumaRecode
+"$luma" doctor
+"$luma" convert input.mov -o trimmed.mp4 --start-frame 2 --end-frame 60
+"$luma" convert hlg.mov -o dolby-vision.mp4 --range dolbyvision84
+"$luma" image hlg.mov -o frame.heic --frame 25 --format adaptive
+```

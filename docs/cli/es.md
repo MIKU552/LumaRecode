@@ -169,3 +169,15 @@ $LASTEXITCODE
 Consulta el código de salida del proceso o `$LASTEXITCODE` para conocer el resultado, y los campos JSON `code` para gestionar errores.
 
 Ctrl+C durante una ejecución interactiva interrumpe tanto la canalización de PowerShell como la conversión y elimina la salida temporal. Para recoger los eventos de cancelación y el código de salida, envía una señal de cancelación de consola mediante una API de procesos y espera a que termine. La cancelación cooperativa devuelve 130.
+
+## macOS
+
+Ejecuta el binario incluido en la aplicación. `probe`, `frames` y `doctor` devuelven JSON. El recorte incluye el último fotograma seleccionado. `image` admite `sdr` (JPEG), `hdr` (HEIC PQ) y `adaptive` (HEIC con mapa de ganancias). `dolbyvision84` requiere material HLG estándar de 10 bits y un codificador HEVC de VideoToolbox verificado.
+
+```sh
+luma=/Applications/LumaRecode.app/Contents/MacOS/LumaRecode
+"$luma" doctor
+"$luma" convert input.mov -o trimmed.mp4 --start-frame 2 --end-frame 60
+"$luma" convert hlg.mov -o dolby-vision.mp4 --range dolbyvision84
+"$luma" image hlg.mov -o frame.heic --frame 25 --format adaptive
+```

@@ -73,7 +73,8 @@ public sealed partial class MainWindow
     /// <summary>Probes one source asynchronously and applies only the current generation's results.</summary>
     private async Task InspectAsync(bool force = false)
     {
-        if (activeJob is not null || probing)
+        await initialTools.Task;
+        if (closing || activeJob is not null || probing)
         {
             return;
         }

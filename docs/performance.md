@@ -41,6 +41,12 @@ LumaRecode 使用 WinUI 3 和 C# / .NET，默认以 JIT 发布，保留 Native A
 
 长片检查使用 12 小时、60 fps 的 2,592,000 条时间戳记录，最终快照为 62,208,000 字节；另读取 1,000,000 行、共 100,000,000 字符的模拟元数据流。复现命令见 [QA 指南](../qa/README.md)。
 
+### Windows 启动与解包
+
+主窗口使用已加载的设置绘制首屏，FFmpeg 和 ffprobe 的路径查找在后台执行。单文件 EXE 的首次运行会将运行时解包到 .NET 缓存。便携 ZIP 从程序目录读取依赖。
+
+2026-11-18，在 Core Ultra X7 358H 的 Windows x64 上，对两种构建分别运行一次空缓存的 `--version`，再运行五次取中位数。单文件 EXE 首次为 1,226 ms、随后的中位数为 233 ms，写入 234.4 MiB 缓存。便携版为 204 ms 和 202 ms，未创建解包缓存。这组数据测量命令行进程的启动和退出。
+
 ### 逐帧预览
 
 2026-11-14，Core Ultra X7 358H / Arc B390、FFmpeg 9.0.2、.NET 11 Release。三条 Pocket 3 素材均为 3840×2160、29.97 fps 的静态屏幕图案。依次请求第 0、30、60、90 帧；旧实现运行一轮，新实现运行三轮。
@@ -157,6 +163,12 @@ Captured text from short tasks and streamed metadata from long recordings use se
 Indexes grow with record count and structure size; resolution, bitrate and compressed file size do not enter the calculation. HDR10+ JSON is written to disk per frame, with metadata streams checked one line at a time. Exceeding a budget stops the job, joins its child processes and reports the reason.
 
 The long-recording check indexes 2,592,000 timestamp records representing 12 hours at 60 fps, producing a 62,208,000-byte snapshot. A separate check reads 1,000,000 simulated metadata lines totaling 100,000,000 characters. Commands are in the [QA guide](../qa/README.md#english).
+
+### Windows startup and extraction
+
+The main window uses the loaded settings for its initial layout while FFmpeg and ffprobe discovery runs in the background. The first run of the single EXE extracts the runtime into the .NET cache. The portable ZIP reads dependencies from the application directory.
+
+On 2026-11-18, on Windows x64 with a Core Ultra X7 358H, each build ran `--version` once with an empty extraction cache and five more times for a warm median. The single EXE took 1,226 ms on the first run and 233 ms warm, and wrote 234.4 MiB of cache. The portable build took 204 ms on the first run and 202 ms warm without creating an extraction cache. These measurements cover CLI process startup and exit.
 
 ### Frame preview
 

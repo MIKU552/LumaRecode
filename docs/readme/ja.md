@@ -5,7 +5,7 @@
 
 [简体中文](../../README.md) | [English](en.md) | 日本語 | [Español](es.md)
 
-Windows 11 向けの動画変換・色変換ツールです。ネイティブ WinUI 3 インターフェイスとコマンドラインを備え、FFmpeg による動画圧縮、カメラ Log から HDR / SDR への変換、HDR から SDR への変換を行います。
+Windows 11 と Apple Silicon 搭載の Mac 向けの動画変換・色変換ツールです。FFmpeg による変換を、各 OS のネイティブ画面またはコマンドラインから実行できます。
 
 [ダウンロード](https://github.com/MIKU552/LumaRecode/releases/latest) · [ドキュメント（中国語・英語）](../README.md#english) · [コマンドライン](../cli/ja.md) · [変更履歴（中国語・英語）](../../CHANGELOG.md#english)
 
@@ -39,6 +39,12 @@ Windows 11 向けの動画変換・色変換ツールです。ネイティブ Wi
 x64 と ARM64 の両方でハードウェアエンコーダーを調べます。対応するものがなければ、ソフトウェアアーカイブが既定となります。
 
 Dolby Vision / HDR10+ は、ソフトウェア HEVC で動的メタデータを保持する設定が初期値です。共有用にハードウェアで出力する場合は「標準 HDR」を選択します。対応する Dolby Vision プロファイルは単層の 5、8.1、8.4、10.1、10.4 です。ProRes RAW は FFmpeg の対応状況を確認し、カメラのホワイトバランス、色変換行列、ゲインで現像し、標準で HLG に出力します。対応形式は[色変換（中国語・英語）](../color-conversion.md#english)を参照してください。
+
+## macOS
+
+Apple Silicon 搭載の Mac と macOS 27 以降が必要です。DMG を開き、LumaRecode を「アプリケーション」へドラッグしてください。FFmpeg と ffprobe は PATH や Homebrew から検索でき、「設定」でパスを指定することもできます。
+
+SwiftUI の画面で動画をプレビューし、フレーム単位でトリミングできます。ソフトウェアでのアーカイブ書き出しと、VideoToolbox でのクイック共有に対応します。標準の 10 ビット HLG 素材は Dolby Vision 8.4 に書き出せます。静止画は SDR JPEG、HDR HEIC、またはゲインマップ付き Adaptive HDR HEIC を選べます。[macOS のコマンドライン](../cli/ja.md#macos)
 
 ## プレビュー・トリミング・画像
 

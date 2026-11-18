@@ -5,7 +5,7 @@
 
 [简体中文](../../README.md) | English | [日本語](ja.md) | [Español](es.md)
 
-Video transcoding and color conversion for Windows 11. LumaRecode provides a native WinUI 3 interface and a command line for FFmpeg, with video compression, camera Log to HDR / SDR, and HDR to SDR workflows.
+LumaRecode is a video transcoder and color conversion tool for Windows 11 and Apple Silicon Macs, with native interfaces and command-line access to FFmpeg.
 
 [Download](https://github.com/MIKU552/LumaRecode/releases/latest) · [Documentation](../README.md#english) · [Command line](../cli/en.md) · [Changelog](../../CHANGELOG.md#english)
 
@@ -39,6 +39,12 @@ Quick share uses an available hardware encoder. Software archive uses the CPU.
 Both x64 and ARM64 check for hardware encoding. Software archive is the default when no compatible hardware encoder is available.
 
 Dolby Vision / HDR10+ sources default to software HEVC with dynamic metadata preservation. Select Standard HDR for hardware quick sharing. Supported Dolby Vision profiles are single-layer 5, 8.1, 8.4, 10.1 and 10.4. ProRes RAW checks FFmpeg decoder compatibility, then develops with camera white balance, color matrix and gain, with HLG output by default. See [Color conversion](../color-conversion.md#english) for formats and processing paths.
+
+## macOS
+
+Requires an Apple Silicon Mac with macOS 27 or later. Open the DMG and drag LumaRecode into Applications. The app finds FFmpeg and ffprobe through PATH or Homebrew. You can also set their paths in Settings.
+
+The SwiftUI workspace supports video preview, frame-accurate trimming, software archive, and VideoToolbox quick share. Standard 10-bit HLG footage can be exported as Dolby Vision 8.4. Individual frames can be saved as SDR JPEG, HDR HEIC, or Adaptive HDR HEIC with a gain map. See the [macOS CLI guide](../cli/en.md#macos).
 
 ## Preview, trimming and images
 
