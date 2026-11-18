@@ -25,7 +25,8 @@ enum CommandLineHost {
             return 0
         }
         if arguments == ["--version"] {
-            print(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Development")
+            print(Bundle.main.object(forInfoDictionaryKey: "LumaRecodeDisplayVersion") as? String
+                  ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Development")
             return 0
         }
         let parsed: Options

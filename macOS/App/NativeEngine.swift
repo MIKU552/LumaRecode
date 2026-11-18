@@ -351,9 +351,10 @@ struct MediaTools: Sendable {
 
     static func discover(ffmpeg: String? = nil, ffprobe: String? = nil, requireEncoder: Bool = true) throws -> MediaTools {
         let environment = ProcessInfo.processInfo.environment
-        let systemPaths = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]
+        let systemPaths = ["/opt/homebrew/opt/ffmpeg-full/bin", "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]
         let entries = (environment["PATH"] ?? "").split(separator: ":").map(String.init)
-        let paths = (entries + systemPaths).filter { $0.hasPrefix("/") }
+        let bundled = Bundle.main.resourceURL?.appendingPathComponent("FFmpeg/bin", isDirectory: true).path
+        let paths = ([bundled].compactMap { $0 } + entries + systemPaths).filter { $0.hasPrefix("/") }
 
         func find(_ name: String, _ selected: String?) throws -> URL {
             let configured = selected ?? environment["LUMARECODE_" + name.uppercased()]
