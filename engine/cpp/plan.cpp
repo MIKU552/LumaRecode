@@ -726,6 +726,11 @@ class planner
         }
         if (dovi != nullptr && purpose == "archive" && (codec == "hevc" || codec == "av1"))
             add({"-dolbyvision", preserve ? "1" : "0"});
+        // VideoToolbox can insert Dolby Vision metadata when encoding HLG.
+        // This path emits standard HLG, retaining the encoded base layer.
+        if (hardware_preset != nullptr && text(config, "encoder") == "hevc_videotoolbox" &&
+            text(colors, "color_transfer") == "arib-std-b67")
+            add({"-bsf:v", "dovi_rpu=strip=1"});
         if (preserve)
             add({"-strict", "unofficial"});
         for (size_t i = 0; i < 4; ++i)

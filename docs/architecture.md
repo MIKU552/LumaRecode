@@ -53,6 +53,8 @@ ARM64 省去 x86 专用 RAW 解码参数。Ultra HDR 的 P/Invoke 接口在各�
 
 快速分享通过 FFmpeg 调用 VideoToolbox，候选档位覆盖 8 位 H.264 / HEVC SDR 和 10 位 HEVC HLG / PQ。每个档位以 320 × 192 合成视频验证实际编码、MP4 封装和色彩标签，试跑与正式导出均要求硬件编码。GUI 按输出信号显示通过的档位，可手动重新检测。CLI 默认使用软件归档，`--encoder auto` 优先使用通过检测的硬件档位，`--encoder videotoolbox` 显式要求硬件可用。`doctor` 返回各档位的检测结果。质量值按档位独立调校，当前取值见 [编码预设](../Assets/recommended-presets.json)。
 
+VideoToolbox 的标准 HLG 输出使用 FFmpeg 的 `dovi_rpu=strip=1` 去除编码器可能写入的 Dolby Vision 元数据，并保留 HLG 基础层。输出核验同时检查色彩标签与动态元数据。[FFmpeg 比特流过滤器文档](https://ffmpeg.org/ffmpeg-bitstream-filters.html#dovi_005frpu)
+
 ### Windows 硬件编码
 
 快速分享支持 Intel QSV、NVIDIA NVENC、AMD AMF 和 Windows Media Foundation。应用使用当前配置的 FFmpeg，以 320 × 192 合成视频逐项验证编码和 MP4 封装。界面只提供通过试跑且符合输出要求的组合。缺少合适的硬件编码器时默认使用软件归档。`doctor` 显示探测结果。
@@ -142,6 +144,8 @@ Open the LumaRecode scheme in Xcode to build the app. From the shell, run `sh to
 The app's `Contents/MacOS/LumaRecode` executable also provides `probe`, `frames`, `convert`, and `doctor`. Software archive supports SDR, HLG, PQ, and camera Log with a selected curve. HDR10+ and Dolby Vision footage can be converted to standard HDR or SDR. Encoding capabilities depend on the external FFmpeg build.
 
 Quick share uses VideoToolbox through FFmpeg. The candidate profiles include 8-bit H.264 / HEVC SDR and 10-bit HEVC HLG / PQ. Each trial checks encoding, MP4 muxing, and color tags with a 320 × 192 synthetic clip. Both trials and exports require hardware encoding. The GUI lists the passing profiles for the selected output signal and offers a manual recheck. The CLI defaults to software archive. Use `--encoder auto` to prefer an available hardware profile, `--encoder videotoolbox` to require one, or `doctor` to see the trial results. Quality settings are defined per profile in the [encoding presets](../Assets/recommended-presets.json).
+
+The standard HLG path uses FFmpeg's `dovi_rpu=strip=1` to remove Dolby Vision metadata that VideoToolbox may insert and retain the HLG base layer. Output verification checks the color tags and dynamic metadata. [FFmpeg bitstream filters](https://ffmpeg.org/ffmpeg-bitstream-filters.html#dovi_005frpu)
 
 ### Windows hardware encoding
 

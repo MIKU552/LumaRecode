@@ -331,6 +331,8 @@ internal static class PlanChecks
                 !args.Contains("-hwaccel") && !args.Contains("-low_power") && !args.Contains("-global_quality:v") &&
                 args[Array.IndexOf(args, "-vf") + 1].Contains(depth == "10" ? "format=p010le" : "format=nv12", StringComparison.Ordinal),
                 $"Hardware plan mixed encoder arguments for {backend}/{codec}/{depth}.");
+            check(args.Contains("dovi_rpu=strip=1") == (backend == "videotoolbox" && depth == "10"),
+                $"Unexpected HLG metadata handling for {backend}/{codec}/{depth}.");
         }
         check(Plan(baseline, tools, hardwareHdr, new(Output: "hdr", Hardware: "mf"), destination).Status != NativeStatus.Ok,
             "Unlisted Media Foundation Main 10 path was accepted.");

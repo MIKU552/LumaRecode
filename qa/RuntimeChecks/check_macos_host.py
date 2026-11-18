@@ -58,6 +58,11 @@ def main():
         assert all(
             "unavailable in fixture" in item["diagnostic"] for item in rejected
         ), rejected
+        hlg_trial = next(item for item in trials if item["format"]["signal"] == "hlg")
+        assert (
+            hlg_trial.get("diagnostic")
+            != "Standard output retained dynamic HDR metadata."
+        ), hlg_trial
         print(
             f"VideoToolbox engine trials: {json.dumps(trials, ensure_ascii=False)}",
             flush=True,
@@ -150,11 +155,15 @@ def main():
                     "--end-frame",
                     "6",
                 )
-                encoded = json.loads(call("probe", hardware))["video"]
+                inspected = json.loads(call("probe", hardware))
+                encoded = inspected["video"]
                 assert (
                     encoded["pix_fmt"] == pixel
                     and encoded["color_transfer"] == transfer
                 ), encoded
+                assert (
+                    inspected["dolby_vision"] is None and not inspected["hdr10plus"]
+                ), inspected
                 assert json.loads(call("frames", hardware))["frame_count"] == 5
                 print(f"PASS real VideoToolbox: {codec} {kind}", flush=True)
 
