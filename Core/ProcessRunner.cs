@@ -26,7 +26,7 @@ public static class ProcessRunner
     {
         // A normal nonzero tool exit is returned to its caller. Transport errors,
         // resource limits and unconfirmed cleanup remain failures of the owner.
-        if (result.Status == LumaRecode.Native.NativeStatus.IoError && result.ExitCode != -1 && result.CleanupConfirmed)
+        if (result.Status == LumaRecode.Native.NativeStatus.IoError && result.ChildExited)
         {
             return;
         }

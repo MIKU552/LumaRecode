@@ -50,7 +50,8 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | 选项 | 值 / 默认行为 |
 | --- | --- |
 | `--preset` | `share-avc`、`share-hevc`、`share-av1`、`archive-avc`、`archive-hevc`、`archive-av1`、`archive-av1-fast` |
-| `--purpose` | `share` / `archive`；x64 默认 Intel QSV 快速分享，ARM64 默认软件归档；动态 HDR 素材默认归档 |
+| `--purpose` | `share`（硬件编码）、`archive`（CPU）。默认按可用编码器选择。保留动态 HDR 时使用归档。 |
+| `--hardware` | `auto`（默认）、`qsv`、`nvenc`、`amf`、`mf`。用于快速分享。 |
 | `--codec` | `hevc` / `av1` / `avc`；默认 `hevc` |
 | `--range` / `--dynamic-range` | `auto` / `sdr` / `hdr`；默认按素材动态范围选择 |
 | `--transform` | `auto` / `none` / `log-hdr` / `log-sdr` / `hdr-sdr` |

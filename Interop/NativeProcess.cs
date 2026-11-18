@@ -19,7 +19,8 @@ public sealed record NativeProcessOptions(string Executable, IReadOnlyList<strin
 
 /// <summary>Final native status, exact output bytes and the retained diagnostic tail.</summary>
 public sealed record NativeProcessResult(NativeStatus Status, int ExitCode, byte[] Output, byte[] Error,
-    ulong ElapsedMilliseconds, ulong OutputBytesSeen, ulong ErrorBytesSeen, string Diagnostic, bool CleanupConfirmed)
+    ulong ElapsedMilliseconds, ulong OutputBytesSeen, ulong ErrorBytesSeen, string Diagnostic, bool CleanupConfirmed,
+    bool ChildExited)
 {
     public string ErrorText => Encoding.UTF8.GetString(Error);
 }
@@ -186,7 +187,8 @@ public static partial class NativeProcess
         return new NativeProcessResult(status, snapshot.ExitCode,
             Copy(handle, 1, snapshot.OutputRetained), Copy(handle, 2, snapshot.ErrorRetained),
             snapshot.ElapsedMilliseconds, snapshot.OutputSeen, snapshot.ErrorSeen,
-            NativeCore.ReadDiagnostic(in error), snapshot.CleanupState == 1);
+            NativeCore.ReadDiagnostic(in error), snapshot.CleanupState == 1,
+            status == NativeStatus.Ok || (status == NativeStatus.IoError && GetExitCode(handle, out _) == NativeStatus.Ok));
     }
 
     private static unsafe byte[] Copy(ProcessHandle handle, uint stream, ulong count)
@@ -256,6 +258,8 @@ public static partial class NativeProcess
     private static partial NativeStatus Cancel(ProcessHandle handle);
     [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_process_get_snapshot")]
     private static partial NativeStatus GetSnapshot(ProcessHandle handle, ref ProcessSnapshot result);
+    [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_process_get_exit_code")]
+    private static partial NativeStatus GetExitCode(ProcessHandle handle, out int result);
     [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_process_copy_output")]
     private static unsafe partial NativeStatus CopyOutput(ProcessHandle handle, uint stream, byte* destination,
         ulong capacity, out ulong required);

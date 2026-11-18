@@ -186,6 +186,7 @@ struct lr_process final : luma::process_sink
     std::atomic_bool cancelled = false;
     bool child_started = false;
     bool cleanup_confirmed = false;
+    bool completed = false;
     clock_type::time_point started_at;
     lr_process_snapshot snapshot;
     lr_process_output_callback callback = nullptr;
@@ -261,6 +262,7 @@ extern "C" lr_status lr_process_run_streaming(lr_process *process, lr_process_ou
             process->callback_context = context;
         }
         lr_status status = LR_OK;
+        bool completed = false;
         std::array<char, 768> message{};
         const auto set_message = [&](const char *text)
         {
@@ -279,6 +281,7 @@ extern "C" lr_status lr_process_run_streaming(lr_process *process, lr_process_ou
                 std::snprintf(message.data(), message.size(), "External process exited with code %d.",
                               process->snapshot.exit_code);
             }
+            completed = true;
         }
         catch (const luma::process_failure &failure)
         {
@@ -306,6 +309,7 @@ extern "C" lr_status lr_process_run_streaming(lr_process *process, lr_process_ou
                           " Cleanup could not be confirmed; preserve task files.");
         }
         process->snapshot.state = LR_PROCESS_FINISHED;
+        process->completed = completed;
         process->snapshot.status = status;
         process->snapshot.cleanup_state = cleanup_confirmed ? LR_CLEANUP_CONFIRMED : LR_CLEANUP_FAILED;
         process->snapshot.elapsed_ms = process->elapsed();
@@ -351,6 +355,29 @@ extern "C" lr_status lr_process_get_snapshot(lr_process *process, lr_process_sna
         result->stderr_seen = process->errors.seen;
         result->stdout_retained = process->output.size;
         result->stderr_retained = process->errors.size;
+        return LR_OK;
+    }
+    catch (...)
+    {
+        return LR_INTERNAL_ERROR;
+    }
+}
+
+extern "C" lr_status lr_process_get_exit_code(lr_process *process, int32_t *result)
+{
+    if (process == nullptr || result == nullptr)
+    {
+        return LR_INVALID_ARGUMENT;
+    }
+    try
+    {
+        std::lock_guard lock(process->mutex);
+        if (process->snapshot.state != LR_PROCESS_FINISHED ||
+            process->snapshot.cleanup_state != LR_CLEANUP_CONFIRMED || !process->completed)
+        {
+            return LR_NOT_FOUND;
+        }
+        *result = process->snapshot.exit_code;
         return LR_OK;
     }
     catch (...)

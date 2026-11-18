@@ -148,7 +148,7 @@ class planner
     luma::probe_json json;
     json_value *media, *choices, *presets, *motion_presets, *video, *pixel;
     std::vector<json_value *> side, audio;
-    json_value *dovi = nullptr;
+    json_value *dovi = nullptr, *hardware_preset = nullptr;
     bool hdr10plus = false, preserve = false;
     std::string purpose, codec, output, transform, selected_profile, sampling, range, variant, audio_choice,
         kind;
@@ -299,6 +299,16 @@ class planner
         sampling = luma::sampling_name(format.sampling);
         depth = format.bit_depth;
         range = format.color_range == LR_RANGE_FULL ? "full" : "limited";
+        const auto hardware = text(choices, "hardware", "qsv");
+        if (purpose == "share" && hardware != "qsv")
+        {
+            require((request.flags & LR_PLAN_MOTION_PHOTO) == 0, "Motion Photo hardware encoding uses QSV.");
+            hardware_preset = member(member(member(member(presets, "hardware"), hardware.c_str()), "codecs"),
+                                     codec.c_str());
+            require(yyjson_mut_is_arr(
+                        member(member(hardware_preset, "arguments"), std::to_string(depth).c_str())),
+                    "Selected hardware encoder does not support this codec or bit depth.");
+        }
         if (audio_choice == "flac")
         {
             require(container != "mp4" && !audio.empty(), "FLAC requires audio and an MKV container.");
@@ -511,7 +521,8 @@ class planner
         if (text(colors, "color_space") == "gbr")
             put(colors, "color_space", output == "hdr" ? "bt2020nc" : "bt709");
         put(colors, "color_range", range == "full" ? "pc" : "tv");
-        auto config = motion              ? member(member(motion_presets, purpose.c_str()), codec.c_str())
+        auto config = hardware_preset != nullptr ? hardware_preset
+                      : motion            ? member(member(motion_presets, purpose.c_str()), codec.c_str())
                       : variant == "fast" ? member(presets, "archive_fast_av1")
                                           : member(member(presets, purpose.c_str()), codec.c_str());
         require(yyjson_mut_is_obj(config), "Selected encoder preset is missing.");
@@ -520,13 +531,14 @@ class planner
             conversion = conversion || text(video, key) != text(colors, key);
         for (const auto entry : side)
             display_transform = display_transform || text(entry, "side_data_type") == "Display Matrix";
-        bool software = transform != "none" || purpose == "archive" ||
-                        luma::flag_field(json, choices, "cpu_decode") || conversion || display_transform ||
-                        dovi != nullptr || hdr10plus || window != nullptr || motion || kind == "raw";
+        const bool qsv = purpose == "share" && hardware_preset == nullptr;
+        bool software = !qsv || transform != "none" || luma::flag_field(json, choices, "cpu_decode") ||
+                        conversion || display_transform || dovi != nullptr || hdr10plus ||
+                        window != nullptr || motion || kind == "raw";
         const auto average = luma::probe_number(text(video, "avg_frame_rate")),
                    nominal = luma::probe_number(text(video, "r_frame_rate"));
         const bool timing =
-            purpose == "share" &&
+            qsv &&
             ((request.flags & LR_PLAN_QSV_TIMING) != 0 ||
              (average > 0 && nominal > 0 && std::abs(average - nominal) > std::max(.01, nominal * .001)));
         if (timing && depth != source.bit_depth)
@@ -628,16 +640,33 @@ class planner
                 if (!luma::unspecified(text(colors, color_keys[i])))
                     conversion_parts.push_back(std::string(targets[i]) + "=" + text(colors, color_keys[i]));
             filters.push_back("zscale=" + join(conversion_parts, ":"));
-            filters.push_back("format=" + (purpose == "share" && depth == 10 ? "p010le" : pixel_format()));
+            const auto encoder_pixel = purpose == "share" && depth == 10 ? "p010le"
+                                       : hardware_preset != nullptr      ? "nv12"
+                                                                         : pixel_format();
+            filters.push_back("format=" + encoder_pixel);
             filters.push_back(frame_tags(colors));
         }
         if (motion && motion_size != "source")
             filters.push_back(motion_scale(motion_size));
         if (window != nullptr)
             filters.emplace_back("setpts=PTS-STARTPTS");
-        add({"-vf", join(filters, ","), "-c:v", text(config, "encoder"), "-preset", text(config, "preset")});
+        add({"-vf", join(filters, ","), "-c:v", text(config, "encoder")});
+        if (hardware_preset == nullptr)
+            add({"-preset", text(config, "preset")});
         const auto fps = average > 0 ? average : nominal > 0 ? nominal : 30;
-        if (purpose == "share")
+        if (hardware_preset != nullptr)
+        {
+            const auto arguments = member(member(config, "arguments"), std::to_string(depth).c_str());
+            const auto length = yyjson_mut_arr_size(arguments);
+            require(length > 0 && length % 2 == 0, "Invalid hardware encoder arguments.");
+            size_t index, count;
+            json_value *value;
+            yyjson_mut_arr_foreach(arguments, index, count, value) args.push_back(json.text(value));
+            add({"-g", number(std::clamp(round_even(2 * fps), 1.0, 240.0))});
+            if (codec == "hevc" && text(config, "encoder") != "hevc_mf")
+                add({"-profile:v", depth == 10 ? "main10" : "main"});
+        }
+        else if (qsv)
         {
             add({"-global_quality:v", text(config, "quality"), "-low_power",
                  (request.flags & LR_PLAN_AUTO_LOW_POWER) != 0 ? "-1" : "1", "-async_depth",

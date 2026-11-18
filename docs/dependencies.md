@@ -48,7 +48,7 @@ NuGet 按架构和编译方式使用锁文件：JIT 使用 `packages.lock.json` 
 
 JIT 在运行设备上选择指令集。x64 的 CPU 与 Windows 均支持 APX，且 `DOTNET_EnableAPX` / `COMPlus_EnableAPX` 未显式设置时，启动阶段以子进程环境启用 APX 后重新进入应用。ARM64 使用运行时的特性检测和指令选择。
 
-AOT 的 Native 目标按构建 CPU 优化，需要与系统架构相同的 .NET SDK。显式 X64、Apx、Arm64 使用固定指令集，支持交叉编译。APX AOT 入口在加载主体前检查 CPU 和 Windows 支持。ARM64 默认选择软件归档。
+AOT 的 Native 目标按构建 CPU 优化，需要与系统架构相同的 .NET SDK。显式 X64、Apx、Arm64 使用固定指令集，支持交叉编译。APX AOT 入口在加载主体前检查 CPU 和 Windows 支持。
 
 JIT 与 AOT 均需为共享原生核心安装目标架构的 C++ 和 Rust 工具。AOT 交叉编译另需对应架构的 [C++ 构建工具](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile)。中间目录为 `obj/<Compilation>/<Target>/` 和 `bin/<Compilation>/<Target>/`，分发许可清单位于 `build-cache/licenses/<Compilation>/<Target>/`，AOT 载荷位于 `dist/NativeAot/<Target>/`。
 
@@ -168,7 +168,7 @@ Each directory contains one `LumaRecode.exe`. Releases provide JIT single EXEs f
 
 The JIT selects instructions on the running device. When the x64 CPU and Windows support APX and neither `DOTNET_EnableAPX` nor `COMPlus_EnableAPX` is explicitly set, startup restarts the application with APX enabled in the child environment. ARM64 uses runtime feature detection and instruction selection.
 
-AOT Native targets the build CPU and requires a .NET SDK matching the system architecture. Explicit X64, Apx and Arm64 targets use fixed instruction profiles and support cross-compilation. The APX AOT entry checks CPU and Windows support before loading the application. ARM64 defaults to Software archive.
+AOT Native targets the build CPU and requires a .NET SDK matching the system architecture. Explicit X64, Apx and Arm64 targets use fixed instruction profiles and support cross-compilation. The APX AOT entry checks CPU and Windows support before loading the application.
 
 Both JIT and AOT builds need target-architecture C++ and Rust tools for the shared engine. AOT cross-compilation also requires the corresponding [C++ build tools](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile). Intermediate files use `obj/<Compilation>/<Target>/` and `bin/<Compilation>/<Target>/`. Distribution licenses use `build-cache/licenses/<Compilation>/<Target>/`; AOT payloads use `dist/NativeAot/<Target>/`.
 

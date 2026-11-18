@@ -14,7 +14,6 @@ public sealed partial class MainWindow
         }
 
         dialogOpen = true;
-        var previousTools = ToolsObject();
         var panel = new StackPanel { Spacing = 16, MinWidth = 460 };
         panel.Children.Add(new TextBlock { Text = L.T("自动查找 PATH，也可以选择自己的 FFmpeg 和 ffprobe。"), TextWrapping = TextWrapping.Wrap });
         var fields = new Dictionary<string, TextBox>();
@@ -74,6 +73,7 @@ public sealed partial class MainWindow
 
                 ffmpeg = fields["ffmpeg"].Text.Trim('"', ' ');
                 ffprobe = fields["ffprobe"].Text.Trim('"', ' ');
+                hardwareProbeTools = null;
                 settings.Ffmpeg = ffmpeg;
                 settings.Ffprobe = ffprobe;
                 settings.Save();
@@ -87,7 +87,7 @@ public sealed partial class MainWindow
             await dialog.ShowAsync();
         }
         finally { dialogOpen = false; Refresh(); }
-        if (!closing && sourceMedia is not null && previousTools != ToolsObject())
+        if (!closing && sourceMedia is not null && hardwareProbeTools is null)
         {
             // Decoder support and format descriptors belong to the selected
             // tool build. Re-inspect rather than retaining the old snapshot.

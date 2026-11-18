@@ -67,6 +67,10 @@ int helper(const std::vector<std::string> &arguments)
         std::fputs("failure-reason", stderr);
         return 17;
     }
+    else if (mode == "fail-negative")
+    {
+        return -1;
+    }
     else if (mode == "cwd")
     {
         const auto path = utf8_path(std::filesystem::current_path());

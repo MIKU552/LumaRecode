@@ -29,14 +29,14 @@ Herramienta de transcodificación de vídeo y conversión de color para Windows 
 3. Arrastra un vídeo o pulsa **Elegir vídeo** y comprueba el rango dinámico, el preajuste y la conversión de color.
 4. Elige la ruta de salida y pulsa **Iniciar conversión**.
 
-Compartir rápido usa Intel QSV. Archivo por software usa la CPU.
+Compartir rápido usa un codificador por hardware disponible. Archivo por software usa la CPU.
 
 | Archivo | Plataforma y requisitos |
 | --- | --- |
 | `LumaRecode.exe` | X64, con un perfil de instrucciones x64 común |
 | `LumaRecode-ARM64.exe` | Windows ARM64, con aplicación y códec de imagen nativos ARM64 |
 
-ARM64 usa Archivo por software de forma predeterminada. La velocidad de codificación depende del FFmpeg externo, del hardware y del preajuste.
+Tanto x64 como ARM64 comprueban los codificadores por hardware. Si no hay ninguno compatible, se usa Archivo por software de forma predeterminada.
 
 Las fuentes Dolby Vision / HDR10+ usan HEVC por software para conservar los metadatos dinámicos de forma predeterminada. Elige HDR estándar para compartir con codificación por hardware. Se admiten los perfiles Dolby Vision de una sola capa 5, 8.1, 8.4, 10.1 y 10.4. ProRes RAW comprueba la compatibilidad de FFmpeg y se revela con el balance de blancos, la matriz de color y la ganancia de cámara, con salida HLG predeterminada. Consulta los formatos compatibles en [Conversión de color (chino e inglés)](../color-conversion.md#english).
 
@@ -63,7 +63,7 @@ El vídeo conserva la resolución original de forma predeterminada, con límites
 
 | Uso | Codificadores | Contenedor predeterminado | Audio predeterminado |
 | --- | --- | --- | --- |
-| Compartir rápido | Intel QSV: HEVC / AV1 / H.264 | MP4 | AAC para HEVC / H.264; Opus para AV1 |
+| Compartir rápido | HEVC / AV1 / H.264 por hardware, según el equipo | MP4 | AAC para HEVC / H.264; Opus para AV1 |
 | Archivo por software | x265 / SVT-AV1 / x264 | MKV | Copiar las pistas originales |
 
 Puedes elegir por separado el contenedor, el submuestreo, la profundidad de bits, el rango de color y el audio. Compartir rápido usa por defecto SDR de 8 bits o HDR de 10 bits. Archivo por software conserva la profundidad del original dentro de los límites del codificador: 8 / 10 / 12 bits para HEVC y 8 / 10 bits para AVC y AV1.
@@ -80,7 +80,7 @@ El vídeo se vuelve a codificar con el preajuste elegido; el audio puede copiars
 
 - Windows 11 x64 o ARM64, con las instrucciones requeridas por la variante elegida.
 - FFmpeg / ffprobe con los codificadores y filtros necesarios, aportados por el usuario.
-- Compatibilidad con Intel QSV para Compartir rápido.
+- Compartir rápido requiere compatibilidad de FFmpeg, de la GPU y de su controlador.
 - `zscale` y `lut3d` para la conversión de Log; `libplacebo` y Vulkan para HDR / Log a SDR.
 
 El idioma y el tema siguen al sistema de forma predeterminada. Se reconocen sistemas en chino, inglés, japonés y español; los demás usan inglés. Los ajustes se guardan en `%LOCALAPPDATA%\LumaRecode\settings.json`.
@@ -140,7 +140,7 @@ licenses/  Licencias, avisos y procedencia de componentes de terceros
 
 ## Desarrollo y licencia
 
-El código original del proyecto se desarrolló con **Codex para Windows**, usando **[GPT-6.1 Sol (inglés)](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** y el nivel de razonamiento **Extra high (`xhigh`)**. **[MIKU552](https://github.com/MIKU552)** define los requisitos, aporta el equipo y el material, y verifica la aplicación en dispositivos reales.
+El código original del proyecto se desarrolló con **Codex para Windows**, con **GPT-6.1 Sol** en el desarrollo inicial y **GPT-6.2 Sol** en el trabajo posterior, ambos con razonamiento **Extra high (`xhigh`)**. **[MIKU552](https://github.com/MIKU552)** define los requisitos, aporta el equipo y el material, y verifica la aplicación en dispositivos reales.
 
 El código, la documentación, los gráficos originales y las LUT de Log de cámara generadas por el proyecto usan la **[licencia MIT (inglés)](../../LICENSE)**. Las licencias y procedencia de las LUT, fuentes y entornos de ejecución de terceros figuran en [NOTICE (inglés)](../../NOTICE) y en [componentes de terceros (chino e inglés)](../../Assets/THIRD_PARTY.md#english).
 

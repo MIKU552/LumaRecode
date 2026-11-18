@@ -221,7 +221,7 @@ public sealed partial class MainWindow : Window
                 ClearMedia();
             }
         };
-        foreach (var name in new[] { "Variant", "Container", "Sampling", "ColorRange", "Profile", "DynamicMetadata" })
+        foreach (var name in new[] { "HardwareEncoder", "Variant", "Container", "Sampling", "ColorRange", "Profile", "DynamicMetadata" })
         {
             Control<ComboBox>(name).SelectionChanged += (_, _) => Refresh();
         }
@@ -425,6 +425,7 @@ public sealed partial class MainWindow : Window
             // A cancelled probe can still have a previously queued media event.
             closing = true;
             generation++;
+            hardwareProbeCancellation?.Cancel();
             foreach (var probe in probes)
             {
                 probe.Dispose();

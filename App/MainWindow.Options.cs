@@ -13,7 +13,7 @@ public sealed partial class MainWindow
     private void FillChoices()
     {
         Choices(InputKind, ("auto", L.T("自动识别")), ("sdr", L.T("手动指定 · SDR")), ("hlg", L.T("手动指定 · HLG HDR")), ("pq", L.T("手动指定 · PQ HDR")), ("log", L.T("手动指定 · Log")));
-        Choices(Purpose, ("share", L.T("快速分享 · Intel 硬件")), ("archive", L.T("软件归档 · CPU")));
+        Choices(Purpose, ("share", L.T("快速分享 · 硬件编码")), ("archive", L.T("软件归档 · CPU")));
         Choices(Codec, ("hevc", "HEVC"), ("av1", "AV1"), ("avc", "H.264 / AVC"));
         Choices(Variant, ("standard", L.T("标准实测档")), ("fast", L.T("AV1 更快备用档")));
         Choices(Container, ("auto", L.T("自动 · 按用途选择")), ("mp4", "MP4"), ("mkv", "MKV"));
@@ -24,7 +24,7 @@ public sealed partial class MainWindow
         Choices(BitDepth, ("8", L.T("8 位")), ("10", L.T("10 位")), ("12", L.T("12 位")));
         Choices(ColorRange, ("source", L.T("保持原范围")), ("limited", L.T("Limited · 有限范围")), ("full", L.T("Full · 全范围")));
         Choices(Audio, ("copy", L.T("复制原音轨")), ("aac", "AAC · 256 kbps"), ("opus", "Opus · 192 kbps"), ("flac", L.T("FLAC · 无损")));
-        Select(Purpose, PlatformDefaults.Purpose);
+        Select(Purpose, "archive");
         ApplyPurposeDefaults();
     }
     private void ApplyDefaultAudio()
@@ -50,6 +50,14 @@ public sealed partial class MainWindow
     }
     private string DescribePreset()
     {
+        if (Value(Purpose) == "share" && SelectedHardware != "qsv")
+        {
+            var presetForBackend = encodingConfig.GetProperty("hardware").GetProperty(SelectedHardware)
+                .GetProperty("codecs").GetProperty(Value(Codec));
+            return presetForBackend.GetProperty("encoder").GetString() + " · " +
+                string.Join(' ', presetForBackend.GetProperty("arguments").GetProperty(Depth.ToString(CultureInfo.InvariantCulture)).EnumerateArray().Select(value => value.GetString()));
+        }
+
         var preset = Value(Variant) == "fast" ? encodingConfig.GetProperty("archive_fast_av1") : encodingConfig.GetProperty(Value(Purpose)).GetProperty(Value(Codec));
         var encoder = preset.GetProperty("encoder").GetString() switch
         {
@@ -109,13 +117,19 @@ public sealed partial class MainWindow
     private string SourceColorRange() => MediaFlag("range_inferred") && Value(Profile) == "milog" && Value(Transform).StartsWith("log-") ? "full" : MediaText("source_color_range", "limited");
     private string[] SourceSamplingChoices() => media?["allowed_sampling"] is JsonArray values
         ? values.Select(value => value?.ToString() ?? "").ToArray() : ["420"];
-    private int[] AllowedDepths() => OutputPolicy.DepthChoices(SourceDepth, Value(Purpose), Value(Codec), Hdr ? "hdr" : "sdr");
+    private int[] AllowedDepths()
+    {
+        var depths = OutputPolicy.DepthChoices(SourceDepth, Value(Purpose), Value(Codec), Hdr ? "hdr" : "sdr");
+        return Value(Purpose) == "share" && media is not null
+            ? depths.Where(depth => HasHardware(Value(Codec), depth, SelectedHardware)).ToArray() : depths;
+    }
     private void UpdateDepthChoices()
     {
         var allowed = AllowedDepths();
         foreach (var item in BitDepth.Items.OfType<ComboBoxItem>())
         {
             item.IsEnabled = allowed.Contains(int.Parse((string)item.Tag));
+            item.Visibility = Value(Purpose) == "share" && !item.IsEnabled ? Visibility.Collapsed : Visibility.Visible;
         }
 
         if (allowed.Length == 0)
@@ -125,7 +139,7 @@ public sealed partial class MainWindow
         }
         if (depthUsesDefault || !allowed.Contains(Depth))
         {
-            Select(BitDepth, (Value(Purpose) == "archive" ? allowed.Max() : Hdr ? 10 : 8).ToString(CultureInfo.InvariantCulture));
+            Select(BitDepth, (Value(Purpose) == "archive" ? allowed.Max() : allowed.Min()).ToString(CultureInfo.InvariantCulture));
         }
     }
     /// <summary>Applies compatible choices, output naming and start-button availability as one guarded update.</summary>
@@ -169,12 +183,15 @@ public sealed partial class MainWindow
                 Select(BitDepth, "10");
                 Select(ColorRange, "source");
             }
-            Purpose.Items.OfType<ComboBoxItem>().First().IsEnabled = !preserve;
+            RefreshHardwareChoices(preserve);
             Control<TextBlock>("DynamicNote").Text = L.T(preserve ? "软件编码保留逐帧动态元数据。" : "输出标准 HLG / PQ。");
             UpdateDepthChoices();
             foreach (var item in Codec.Items.OfType<ComboBoxItem>())
             {
-                item.IsEnabled = (!Hdr || (string)item.Tag != "avc") && (!preserve || (string)item.Tag == "hevc" || (string)item.Tag == "av1" && !MediaFlag("hdr10plus") && media?["dolby_vision"].Integer("dv_profile") != 5);
+                var codecAllowed = (!Hdr || (string)item.Tag != "avc") && (!preserve || (string)item.Tag == "hevc" || (string)item.Tag == "av1" && !MediaFlag("hdr10plus") && media?["dolby_vision"].Integer("dv_profile") != 5);
+                var hardwareAllowed = Value(Purpose) != "share" || media is null || HasHardwareCodec((string)item.Tag, SelectedHardware);
+                item.IsEnabled = codecAllowed && hardwareAllowed;
+                item.Visibility = hardwareAllowed ? Visibility.Visible : Visibility.Collapsed;
             }
 
             var fullSampling = Value(Purpose) == "archive" && Value(Codec) != "av1";

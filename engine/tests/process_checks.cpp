@@ -185,9 +185,19 @@ void check_arguments(const std::filesystem::path &helper, const std::filesystem:
     CHECK(lr_process_run(failed.get(), &error) == LR_IO_ERROR);
     CHECK(snapshot(failed.get()).exit_code == 17 && text(failed.get(), LR_STREAM_STDERR) == "failure-reason");
     CHECK(error.code == LR_IO_ERROR && std::strstr(error.message, "17") != nullptr);
+    auto negative = create(helper, {"fail-negative"});
+    int32_t code = 0;
+    CHECK(lr_process_get_exit_code(negative.get(), &code) == LR_NOT_FOUND);
+    CHECK(lr_process_run(negative.get(), &error) == LR_IO_ERROR);
+#ifdef _WIN32
+    CHECK(lr_process_get_exit_code(negative.get(), &code) == LR_OK && code == -1);
+#else
+    CHECK(lr_process_get_exit_code(negative.get(), &code) == LR_OK && code == 255);
+#endif
     auto missing = create(root / "missing-executable", {});
     CHECK(lr_process_run(missing.get(), &error) == LR_IO_ERROR);
     CHECK(snapshot(missing.get()).state == LR_PROCESS_FINISHED);
+    CHECK(lr_process_get_exit_code(missing.get(), &code) == LR_NOT_FOUND);
 }
 
 void check_cancellation(const std::filesystem::path &helper, const std::filesystem::path &root)

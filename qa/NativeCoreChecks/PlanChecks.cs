@@ -303,6 +303,36 @@ internal static class PlanChecks
         }
 
         Flac(check, sourcePath);
+        var hardwareSdr = Source(sourcePath, "sdr", null);
+        var hardwareHdr = Source(sourcePath, "hlg", null);
+        foreach (var (backend, codec, depth, encoder, selector, value) in new[]
+        {
+            ("nvenc", "hevc", "10", "hevc_nvenc", "-rc", "vbr"),
+            ("nvenc", "av1", "10", "av1_nvenc", "-preset", "p4"),
+            ("amf", "hevc", "8", "hevc_amf", "-rc", "qvbr"),
+            ("amf", "av1", "10", "av1_amf", "-rc", "cqp"),
+            ("amf", "hevc", "10", "hevc_amf", "-bitdepth", "10"),
+            ("mf", "avc", "8", "h264_mf", "-hw_encoding", "1")
+        })
+        {
+            var result = Plan(baseline, tools, depth == "10" ? hardwareHdr : hardwareSdr,
+                new(Codec: codec, Hardware: backend, BitDepth: depth, Output: depth == "10" ? "hdr" : "sdr"), destination);
+            if (result.Status != NativeStatus.Ok)
+            {
+                check(false, $"Hardware planning failed for {backend}/{codec}/{depth}: {result.Diagnostic}");
+                continue;
+            }
+            var args = JsonNode.Parse(result.Data)!["arguments"]!.AsArray().Select(node => node!.GetValue<string>()).ToArray();
+            int option = Array.IndexOf(args, selector);
+            check(args[Array.IndexOf(args, "-c:v") + 1] == encoder && option >= 0 && args[option + 1] == value &&
+                !args.Contains("-hwaccel") && !args.Contains("-low_power") && !args.Contains("-global_quality:v") &&
+                args[Array.IndexOf(args, "-vf") + 1].Contains(depth == "10" ? "format=p010le" : "format=nv12", StringComparison.Ordinal),
+                $"Hardware plan mixed encoder arguments for {backend}/{codec}/{depth}.");
+        }
+        check(Plan(baseline, tools, hardwareHdr, new(Output: "hdr", Hardware: "mf"), destination).Status != NativeStatus.Ok,
+            "Unlisted Media Foundation Main 10 path was accepted.");
+        check(Plan(baseline, tools, hardwareSdr, new(Hardware: "unknown"), destination).Status != NativeStatus.Ok,
+            "Unknown hardware backend was accepted.");
         Verify(check, baseline, tools, sourcePath, destination);
         foreach (string output in new[] { "sdr", "hdr" })
         {

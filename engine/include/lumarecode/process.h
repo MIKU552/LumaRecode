@@ -44,7 +44,8 @@ typedef struct lr_process_snapshot
     uint32_t abi_version;
     uint32_t state;
     lr_status status;
-    /* -1 until an exit code is available. POSIX signal exits use 128+signal. */
+    /* Defaults to -1. Use lr_process_get_exit_code to distinguish a normal
+     * Windows exit of 0xffffffff. POSIX signal exits use 128+signal. */
     int32_t exit_code;
     /* File transactions require CONFIRMED before publishing or removing work. */
     uint32_t cleanup_state;
@@ -81,6 +82,9 @@ LR_API lr_status lr_process_run_streaming(lr_process *process, lr_process_output
                                           void *context, lr_error *error);
 LR_API lr_status lr_process_cancel(lr_process *process);
 LR_API lr_status lr_process_get_snapshot(lr_process *process, lr_process_snapshot *result);
+/* LR_OK only if the child exited and the invocation completed with confirmed
+ * cleanup. LR_NOT_FOUND covers launch, I/O, timeout and cancellation failures. */
+LR_API lr_status lr_process_get_exit_code(lr_process *process, int32_t *result);
 /* Byte snapshots preserve binary data; no terminator is added. required receives
  * the current retained size, including on BUFFER_TOO_SMALL. Destination bytes
  * are unchanged on failure. Reads and cancellation may overlap run(). */

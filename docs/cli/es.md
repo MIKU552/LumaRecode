@@ -50,7 +50,8 @@ Todos los comandos admiten `--help`. Los resultados de análisis, catálogos, di
 | Opción | Valores |
 | --- | --- |
 | `--preset` | `share-avc`, `share-hevc`, `share-av1`, `archive-avc`, `archive-hevc`, `archive-av1`, `archive-av1-fast` |
-| `--purpose` | `share` (Intel QSV), `archive` (CPU); x64 usa compartir, ARM64 usa archivo; las fuentes HDR dinámicas usan archivo por defecto |
+| `--purpose` | `share` (por hardware), `archive` (CPU). La opción predeterminada depende del equipo. Para conservar HDR dinámico se usa Archivo. |
+| `--hardware` | `auto` (predeterminado), `qsv`, `nvenc`, `amf`, `mf`. Solo para Compartir rápido. |
 | `--codec` | `hevc` (predeterminado), `av1`, `avc` |
 | `--range` / `--dynamic-range` | `auto` (predeterminado), `sdr`, `hdr` |
 | `--transform` | `auto` (predeterminado), `none`, `log-hdr`, `log-sdr`, `hdr-sdr` |

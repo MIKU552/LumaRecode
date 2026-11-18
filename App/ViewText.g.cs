@@ -59,6 +59,7 @@ internal static class ViewText
         ("Purpose", "AutomationProperties.Name", "用途"),
         ("Codec", "Header", "视频编码"),
         ("Codec", "AutomationProperties.Name", "视频编码"),
+        ("HardwareEncoder", "Header", "硬件编码器"),
         ("Variant", "Header", "质量档"),
         ("Variant", "AutomationProperties.Name", "质量档"),
         ("LocalizedElement32", "Text", "色彩转换"),

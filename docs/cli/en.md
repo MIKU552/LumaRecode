@@ -50,7 +50,8 @@ Every command supports `--help`. Probe/catalog/doctor/license results are JSON. 
 | Option | Values |
 | --- | --- |
 | `--preset` | `share-avc`, `share-hevc`, `share-av1`, `archive-avc`, `archive-hevc`, `archive-av1`, `archive-av1-fast` |
-| `--purpose` | `share` (Intel QSV), `archive` (CPU); x64 defaults to share, ARM64 to archive; dynamic HDR sources default to archive |
+| `--purpose` | `share` (hardware), `archive` (CPU). The default follows available encoders. Preserving dynamic HDR uses archive. |
+| `--hardware` | `auto` (default), `qsv`, `nvenc`, `amf`, `mf`. Applies to Quick share. |
 | `--codec` | `hevc` (default), `av1`, `avc` |
 | `--range` / `--dynamic-range` | `auto` (default), `sdr`, `hdr` |
 | `--transform` | `auto` (default), `none`, `log-hdr`, `log-sdr`, `hdr-sdr` |

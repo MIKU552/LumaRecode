@@ -41,7 +41,13 @@ MediaProbe → OutputPolicy / Transcoder.Plan → 要求检查 → FFmpeg
 
 动态 HDR 保留、标准色彩转换和 RAW 显影由各自的规则决定处理路径。`Hdr10PlusBitstream` 优先读取 HEVC 压缩包中的 SEI，时间轴存在歧义时交由解码帧元数据处理。`RawDevelopment` 将逐帧相机参数写入 FFmpeg 校准命令。
 
-`PlatformDefaults` 统一 GUI 与 CLI 的架构默认值：ARM64 默认软件归档，并省去 x86 专用 RAW 解码参数。Ultra HDR 的 P/Invoke 接口在各架构保持一致，发布过程选择对应的原生 DLL。
+ARM64 省去 x86 专用 RAW 解码参数。Ultra HDR 的 P/Invoke 接口在各架构保持一致，发布过程选择对应的原生 DLL。
+
+### Windows 硬件编码
+
+快速分享支持 Intel QSV、NVIDIA NVENC、AMD AMF 和 Windows Media Foundation。应用调用当前配置的 FFmpeg，逐项试跑已列出的编码器与位深。界面只提供通过试跑且符合输出要求的组合。缺少合适的硬件编码器时默认使用软件归档。`doctor` 显示探测结果。试跑使用 320 × 192 的合成视频。
+
+NVENC 使用 VBR CQ。AMF 的 8 位档使用 QVBR，10 位档使用 CQP，且关闭预分析。Media Foundation 试跑强制使用硬件，提供 8 位 H.264 和 HEVC。新增档位的质量参数是调校起点，目前实机验证覆盖 Intel。各后端参数与驱动的具体差异见 [NVIDIA FFmpeg 指南](https://docs.nvidia.com/video-technologies/video-codec-sdk/13.1/ffmpeg-with-nvidia-gpu/)、[AMD AMF 调校指南](https://github.com/GPUOpen-LibrariesAndSDKs/AMF/wiki/AMF-Encoder-Settings-and-Tuning-in-FFmpeg)、[AMF P010 兼容性报告](https://github.com/GPUOpen-LibrariesAndSDKs/AMF/issues/591)及 [FFmpeg Media Foundation 实现](https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/mfenc.c)。
 
 ### 构建与打包
 
@@ -115,7 +121,13 @@ Encoding writes into a private job directory beside the destination. Verificatio
 
 Dynamic HDR preservation, standard color conversion and RAW development each select their processing path through their own policies. `Hdr10PlusBitstream` reads HEVC SEI from compressed packets first and uses decoded-frame metadata for ambiguous timelines. `RawDevelopment` writes per-frame camera calibration into FFmpeg commands.
 
-`PlatformDefaults` provides common GUI / CLI architecture defaults: ARM64 starts with Software archive and omits the x86-specific RAW decoder workaround. Ultra HDR uses the same P/Invoke interface on each architecture; publishing selects the matching native DLL.
+ARM64 omits the x86-specific RAW decoder workaround. Ultra HDR uses the same P/Invoke interface on each architecture. Publishing selects the matching native DLL.
+
+### Windows hardware encoding
+
+Quick share supports Intel QSV, NVIDIA NVENC, AMD AMF, and Windows Media Foundation. LumaRecode tests the encoder and bit-depth combinations listed by the configured FFmpeg. The GUI offers the combinations that pass and match the output settings. Software archive is the default when no suitable hardware encoder is available. The `doctor` command reports the results. Trials use 320 × 192 synthetic video.
+
+NVENC uses VBR CQ. AMF uses QVBR at 8-bit and CQP with pre-analysis disabled at 10-bit. Media Foundation trials require hardware encoding and cover 8-bit H.264 and HEVC. Preset quality values are starting points for tuning. Device testing currently covers Intel. See the [NVIDIA FFmpeg guide](https://docs.nvidia.com/video-technologies/video-codec-sdk/13.1/ffmpeg-with-nvidia-gpu/), [AMD AMF tuning guide](https://github.com/GPUOpen-LibrariesAndSDKs/AMF/wiki/AMF-Encoder-Settings-and-Tuning-in-FFmpeg), [AMF P010 compatibility report](https://github.com/GPUOpen-LibrariesAndSDKs/AMF/issues/591), and [FFmpeg Media Foundation implementation](https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/mfenc.c).
 
 ### Building and packaging
 

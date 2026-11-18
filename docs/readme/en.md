@@ -29,14 +29,14 @@ Video transcoding and color conversion for Windows 11. LumaRecode provides a nat
 3. Drop a video or choose **Choose video**, then confirm the output range, preset, and color conversion.
 4. Choose the output path and select **Start conversion**.
 
-Quick share uses Intel QSV. Software archive uses CPU encoding.
+Quick share uses an available hardware encoder. Software archive uses the CPU.
 
 | Download | Platform and requirements |
 | --- | --- |
 | `LumaRecode.exe` | X64, using the common x64 instruction-set profile |
 | `LumaRecode-ARM64.exe` | Windows ARM64, with a native ARM64 app and image codec |
 
-ARM64 defaults to Software archive. Encoding speed depends on the external FFmpeg build, hardware and selected preset.
+Both x64 and ARM64 check for hardware encoding. Software archive is the default when no compatible hardware encoder is available.
 
 Dolby Vision / HDR10+ sources default to software HEVC with dynamic metadata preservation. Select Standard HDR for hardware quick sharing. Supported Dolby Vision profiles are single-layer 5, 8.1, 8.4, 10.1 and 10.4. ProRes RAW checks FFmpeg decoder compatibility, then develops with camera white balance, color matrix and gain, with HLG output by default. See [Color conversion](../color-conversion.md#english) for formats and processing paths.
 
@@ -63,7 +63,7 @@ Motion video keeps the source resolution by default, with optional 1080p and 720
 
 | Purpose | Encoders | Default container | Default audio |
 | --- | --- | --- | --- |
-| Quick share | Intel QSV: HEVC / AV1 / H.264 | MP4 | AAC for HEVC / H.264; Opus for AV1 |
+| Quick share | Hardware HEVC / AV1 / H.264, depending on the device | MP4 | AAC for HEVC / H.264; Opus for AV1 |
 | Software archive | x265 / SVT-AV1 / x264 | MKV | Copy source tracks |
 
 Container, chroma sampling, bit depth, color range, and audio can be selected separately. Quick share defaults to 8-bit SDR and 10-bit HDR. Software archive keeps source bit depth within encoder limits: 8 / 10 / 12 bits for HEVC and 8 / 10 bits for AVC and AV1.
@@ -80,7 +80,7 @@ Video is re-encoded with the selected preset; audio can be copied or transcoded.
 
 - Windows 11 x64 or ARM64, with the instructions required by the selected variant.
 - User-provided FFmpeg / ffprobe with the required encoders and filters.
-- Intel QSV support for Quick share.
+- Quick share requires encoding support in FFmpeg, the GPU and its driver.
 - `zscale` and `lut3d` for Log conversion; `libplacebo` and Vulkan for HDR / Log to SDR.
 
 Language and theme follow the system by default. Chinese, English, Japanese and Spanish system languages are recognized; other languages default to English. Settings are stored at `%LOCALAPPDATA%\LumaRecode\settings.json`.
@@ -140,7 +140,7 @@ licenses/  Third-party licenses, notices, and provenance
 
 ## Development and license
 
-Original project code was developed with **Codex for Windows**, using **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** with **Extra high (`xhigh`)** reasoning. **[MIKU552](https://github.com/MIKU552)** defines requirements, supplies hardware and footage, and verifies the application.
+Original project code was developed with **Codex for Windows** using **GPT-6.1 Sol** for early development and **GPT-6.2 Sol** for later work, both with **Extra high (`xhigh`)** reasoning. **[MIKU552](https://github.com/MIKU552)** defines requirements, supplies hardware and footage, and verifies the application.
 
 Original code, documentation, graphics, and generated camera Log LUTs use the **[MIT License](../../LICENSE)**. Licenses and sources for third-party LUTs, fonts, and runtimes are listed in [NOTICE](../../NOTICE) and [third-party components](../../Assets/THIRD_PARTY.md#english).
 

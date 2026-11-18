@@ -385,7 +385,16 @@ public sealed partial class MainWindow
         Control<Grid>("VideoTrimFields").Visibility = TrimVideo ? Visibility.Visible : Visibility.Collapsed;
         Control<Grid>("MotionFields").Visibility = photo && MotionImage ? Visibility.Visible : Visibility.Collapsed;
         Control<ComboBox>("MotionEncoder").Visibility = photo && MotionImage ? Visibility.Visible : Visibility.Collapsed;
-        Control<ComboBox>("MotionEncoder").IsEnabled = enabled;
+        var motionEncoder = Control<ComboBox>("MotionEncoder");
+        motionEncoder.IsEnabled = enabled;
+        bool motionHdr = Value(Control<ComboBox>("ImageFormat")) == "ultrahdr";
+        var qsvMotion = (ComboBoxItem)motionEncoder.Items[1];
+        qsvMotion.IsEnabled = HasHardware(motionHdr ? "hevc" : "avc", motionHdr ? 10 : 8, "qsv");
+        qsvMotion.Visibility = qsvMotion.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
+        if (!qsvMotion.IsEnabled && Value(motionEncoder) == "share")
+        {
+            Select(motionEncoder, "archive");
+        }
         Control<ComboBox>("MotionResolution").Visibility = photo && MotionImage ? Visibility.Visible : Visibility.Collapsed;
         Control<ComboBox>("MotionResolution").IsEnabled = enabled;
         Control<TextBlock>("MotionEncoderDetail").Visibility = photo && MotionImage ? Visibility.Visible : Visibility.Collapsed;

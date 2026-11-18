@@ -128,7 +128,7 @@ public sealed partial class Transcoder
     /// <remarks>Hardware availability is determined when FFmpeg initializes the actual job.</remarks>
     public async Task CheckRequirementsAsync(MediaTools tools, EncodeOptions options, EncodingPlan plan, CancellationToken cancellation, ToolReportCache? reports = null)
     {
-        string encoder = Config[options.Purpose]![options.Codec].Text("encoder");
+        string encoder = plan.Arguments[Array.IndexOf(plan.Arguments, "-vf") + 3];
         Task<ProcessResult> Report(string[] arguments) => reports is null
             ? ProcessRunner.CaptureAsync(tools.Ffmpeg, arguments, cancellation, 15)
             : reports.CaptureAsync(tools.Ffmpeg, arguments, cancellation);
@@ -225,7 +225,7 @@ public sealed partial class Transcoder
                     trial = await NativeProcess.RunAsync(new(tools.Ffmpeg, ["-hide_banner","-nostdin","-v","error","-xerror","-n","-i",media.Path,
                         "-map","0:a","-vn","-sn","-dn","-map_metadata","-1","-c:a","copy","-t","0.08","-f","mp4",
                         "-movflags","frag_keyframe+empty_moov","pipe:1"], OutputMode: NativeCaptureMode.Discard, TimeoutMilliseconds: 20000), cancellation);
-                    NativeBackend.Check(trial.Status == NativeStatus.IoError && trial.ExitCode != -1 ? NativeStatus.Ok : trial.Status,
+                    NativeBackend.Check(trial.ChildExited ? NativeStatus.Ok : trial.Status,
                         trial.Diagnostic, trial.CleanupConfirmed, cancellation);
                 }
                 catch (TimeoutException) { throw new InvalidDataException("MP4 原音轨兼容性检测超时。请选择 AAC 音轨或 MKV 封装。"); }
@@ -238,7 +238,7 @@ public sealed partial class Transcoder
             var duration = window?.Duration ?? (seconds is { } limit && media.Duration > 0 ? Math.Min(limit, media.Duration) : seconds ?? media.Duration);
             var attempt = await EncodeAsync(plan, emit, duration, cancellation);
             bool autoLowPower = false;
-            while (attempt.ExitCode != 0 && options.Purpose == "share")
+            while (attempt.ExitCode != 0 && options is { Purpose: "share", Hardware: "qsv" })
             {
                 cancellation.ThrowIfCancellationRequested();
                 bool hardwareDecode = plan.Arguments.Contains("-hwaccel");
@@ -406,7 +406,7 @@ public sealed partial class Transcoder
             cancellation.ThrowIfCancellationRequested();
             (stream == 1 ? output : diagnostic).Feed(bytes);
         }, cancellation).ConfigureAwait(false);
-        NativeBackend.Check(result.Status == NativeStatus.IoError && result.ExitCode != -1 ? NativeStatus.Ok : result.Status,
+        NativeBackend.Check(result.ChildExited ? NativeStatus.Ok : result.Status,
             result.Diagnostic, result.CleanupConfirmed, cancellation);
         output.Feed([], flush: true);
         diagnostic.Feed([], flush: true);

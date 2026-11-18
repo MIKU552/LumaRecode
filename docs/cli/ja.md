@@ -50,7 +50,8 @@
 | オプション | 値 |
 | --- | --- |
 | `--preset` | `share-avc`, `share-hevc`, `share-av1`, `archive-avc`, `archive-hevc`, `archive-av1`, `archive-av1-fast` |
-| `--purpose` | `share`（Intel QSV）/ `archive`（CPU）。x64 は共有、ARM64 はアーカイブが初期値。動的 HDR 素材はアーカイブを使用 |
+| `--purpose` | `share`（ハードウェア）、`archive`（CPU）。既定値は利用可能な方式に従います。ダイナミック HDR の保持はアーカイブを使用します。 |
+| `--hardware` | `auto`（既定）、`qsv`、`nvenc`、`amf`、`mf`。クイック共有用。 |
 | `--codec` | `hevc`（標準）、`av1`, `avc` |
 | `--range` / `--dynamic-range` | `auto`（標準）、`sdr`, `hdr` |
 | `--transform` | `auto`（標準）、`none`, `log-hdr`, `log-sdr`, `hdr-sdr` |

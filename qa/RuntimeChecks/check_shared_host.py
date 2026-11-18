@@ -38,7 +38,7 @@ def main():
             capture_output=True,
             text=True,
             encoding="utf-8",
-            timeout=90,
+            timeout=120,
         )
         assert result.returncode == status, (
             result.returncode,
@@ -47,6 +47,14 @@ def main():
         )
         assert not result.stderr, result.stderr
         return result.stdout
+
+    hardware = json.loads(call("doctor"))["hardware_encoders"]
+    assert {row["backend"] for row in hardware} == {"qsv", "nvenc", "amf", "mf"}
+    assert all(
+        row["status"] in {"available", "not_listed", "trial_failed", "timed_out"}
+        for row in hardware
+    )
+    print("PASS packaged hardware detection", flush=True)
 
     with tempfile.TemporaryDirectory(prefix="lumarecode-host-") as temporary:
         folder = Path(temporary)
@@ -87,6 +95,24 @@ def main():
             original = hashlib.sha256(source.read_bytes()).hexdigest()
             media = json.loads(call("probe", source))
             assert media["kind"] == kind and media["video"]["codec_name"] == "hevc"
+            if kind == "sdr":
+                plan = json.loads(call("plan", source).splitlines()[0])["data"][
+                    "options"
+                ]
+                available = [
+                    row
+                    for row in hardware
+                    if row["status"] == "available" and row["bit_depth"] == 8
+                ]
+                if available:
+                    assert plan["purpose"] == "share" and any(
+                        row["backend"] == plan["hardware"]
+                        and row["codec"] == plan["codec"]
+                        and row["bit_depth"] == int(plan["bit_depth"])
+                        for row in available
+                    ), plan
+                else:
+                    assert plan["purpose"] == "archive", plan
             output = folder / f"{kind}-output.mkv"
             events = [
                 json.loads(line)
