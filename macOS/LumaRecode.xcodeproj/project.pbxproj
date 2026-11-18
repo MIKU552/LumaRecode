@@ -1,0 +1,128 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+		01AB00000000000000000001 = {
+			isa = PBXProject;
+			attributes = { LastUpgradeCheck = 2720; };
+			buildConfigurationList = 01AB00000000000000000002;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base, "zh-Hans", ja, es);
+			mainGroup = 01AB00000000000000000005;
+			productRefGroup = 01AB00000000000000000007;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (01AB00000000000000000010);
+		};
+		01AB00000000000000000002 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (01AB00000000000000000003, 01AB00000000000000000004);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		01AB00000000000000000003 = { isa = XCBuildConfiguration; name = Debug; buildSettings = {}; };
+		01AB00000000000000000004 = { isa = XCBuildConfiguration; name = Release; buildSettings = {}; };
+		01AB00000000000000000005 = {
+			isa = PBXGroup;
+			children = (01AB00000000000000000006, 01AB00000000000000000009, 01AB00000000000000000007);
+			sourceTree = "<group>";
+		};
+		01AB00000000000000000006 = {
+			isa = PBXGroup;
+			path = App;
+			children = (
+				01AB00000000000000000021, 01AB00000000000000000022, 01AB00000000000000000023,
+				01AB00000000000000000024, 01AB00000000000000000025,
+			);
+			sourceTree = "<group>";
+		};
+		01AB00000000000000000007 = {
+			isa = PBXGroup;
+			name = Products;
+			children = (01AB00000000000000000008);
+			sourceTree = "<group>";
+		};
+		01AB00000000000000000008 = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.application;
+			path = LumaRecode.app;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		01AB00000000000000000009 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.xcconfig;
+			path = LumaRecode.xcconfig;
+			sourceTree = "<group>";
+		};
+		01AB00000000000000000010 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 01AB00000000000000000011;
+			buildPhases = (01AB00000000000000000014, 01AB00000000000000000015, 01AB00000000000000000016);
+			buildRules = ();
+			dependencies = ();
+			name = LumaRecode;
+			productName = LumaRecode;
+			productReference = 01AB00000000000000000008;
+			productType = "com.apple.product-type.application";
+		};
+		01AB00000000000000000011 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (01AB00000000000000000012, 01AB00000000000000000013);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		01AB00000000000000000012 = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 01AB00000000000000000009;
+			buildSettings = { SWIFT_OPTIMIZATION_LEVEL = "-Onone"; };
+			name = Debug;
+		};
+		01AB00000000000000000013 = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 01AB00000000000000000009;
+			buildSettings = { SWIFT_COMPILATION_MODE = wholemodule; };
+			name = Release;
+		};
+		01AB00000000000000000014 = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = ();
+			name = "Build and Stage Shared Core";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libLumaRecodeCore.dylib",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/LumaRecode.icns",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "sh \"$SRCROOT/../tools/stage-macos-app.sh\"\n";
+		};
+		01AB00000000000000000015 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (01AB00000000000000000031, 01AB00000000000000000032, 01AB00000000000000000033, 01AB00000000000000000034);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		01AB00000000000000000016 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (01AB00000000000000000035);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		01AB00000000000000000021 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LumaRecodeApp.swift; sourceTree = "<group>"; };
+		01AB00000000000000000022 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workspace.swift; sourceTree = "<group>"; };
+		01AB00000000000000000023 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeEngine.swift; sourceTree = "<group>"; };
+		01AB00000000000000000024 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandLineHost.swift; sourceTree = "<group>"; };
+		01AB00000000000000000025 = { isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		01AB00000000000000000031 = { isa = PBXBuildFile; fileRef = 01AB00000000000000000021; };
+		01AB00000000000000000032 = { isa = PBXBuildFile; fileRef = 01AB00000000000000000022; };
+		01AB00000000000000000033 = { isa = PBXBuildFile; fileRef = 01AB00000000000000000023; };
+		01AB00000000000000000034 = { isa = PBXBuildFile; fileRef = 01AB00000000000000000024; };
+		01AB00000000000000000035 = { isa = PBXBuildFile; fileRef = 01AB00000000000000000025; };
+	};
+	rootObject = 01AB00000000000000000001;
+}

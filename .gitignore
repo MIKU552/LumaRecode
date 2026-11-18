@@ -24,6 +24,7 @@
 !/Brand/
 !/qa/
 !/engine/
+!/macOS/
 !/Interop/
 !/CMakeLists.txt
 !/CMakePresets.json
@@ -50,6 +51,9 @@
 **/bin/
 **/obj/
 **/__pycache__/
+**/xcuserdata/
+*.xcuserstate
+.DS_Store
 *.py[cod]
 *.user
 *.suo

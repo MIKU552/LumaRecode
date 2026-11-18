@@ -117,6 +117,22 @@ jobs:
           retention-days: 14
           if-no-files-found: error
           path: dist/SelfContained/LumaRecode.exe
+      - name: Build macOS application
+        if: runner.os == 'macOS'
+        run: |
+          xcrun swift --version
+          sh tools/build-macos.sh Release --dmg
+      - name: macOS application regression checks
+        if: runner.os == 'macOS'
+        run: python3 qa/RuntimeChecks/check_macos_host.py --app out/macos-build/Build/Products/Release/LumaRecode.app
+      - name: macOS development application
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lumarecode-macos-arm64-development
+          retention-days: 14
+          if-no-files-found: error
+          path: out/macos-build/LumaRecode-ARM64.dmg
       - name: SDK artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
