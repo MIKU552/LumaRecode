@@ -5,7 +5,7 @@
 
 简体中文 | [English](docs/readme/en.md) | [日本語](docs/readme/ja.md) | [Español](docs/readme/es.md)
 
-基于 C# / .NET 的 Windows 11 视频转码与色彩转换工具，提供原生 WinUI 3 界面和命令行，使用 FFmpeg 完成视频压缩、相机 Log 转 HDR / SDR，以及 HDR 转 SDR。
+面向 Windows 11 的视频转码与色彩转换工具，提供原生 WinUI 3 界面和命令行，使用 FFmpeg 完成视频压缩、相机 Log 转 HDR / SDR，以及 HDR 转 SDR。
 
 [下载](https://github.com/MIKU552/LumaRecode/releases/latest) · [文档](docs/README.md) · [命令行文档](docs/cli/zh-CN.md) · [更新记录](CHANGELOG.md)
 
@@ -105,11 +105,12 @@ SDR 素材默认输出 SDR，HLG / PQ 素材默认保留 HDR，已识别曲线�
 
 ## 从源码构建
 
-需要 .NET SDK 11.0.100 和 PowerShell 7；可选 AOT 构建还需要 Visual Studio C++ 工具链。
+需要 .NET SDK 11.0.100、PowerShell 7、Rustup 和 Visual Studio 桌面 C++ 工具。
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
+./tools/Install-NativeBuildTools.ps1
 ./build.ps1
 ./build.ps1 -Target X64
 ./build.ps1 -Target X64 -Compilation Aot

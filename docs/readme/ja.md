@@ -5,7 +5,7 @@
 
 [简体中文](../../README.md) | [English](en.md) | 日本語 | [Español](es.md)
 
-C# / .NET で開発した Windows 11 向けの動画変換・色変換ツールです。ネイティブ WinUI 3 インターフェイスとコマンドラインを備え、FFmpeg による動画圧縮、カメラ Log から HDR / SDR への変換、HDR から SDR への変換を行います。
+Windows 11 向けの動画変換・色変換ツールです。ネイティブ WinUI 3 インターフェイスとコマンドラインを備え、FFmpeg による動画圧縮、カメラ Log から HDR / SDR への変換、HDR から SDR への変換を行います。
 
 [ダウンロード](https://github.com/MIKU552/LumaRecode/releases/latest) · [ドキュメント（中国語・英語）](../README.md#english) · [コマンドライン](../cli/ja.md) · [変更履歴（中国語・英語）](../../CHANGELOG.md#english)
 
@@ -105,11 +105,12 @@ PowerShell 7 で出力をパイプに接続して実行します。
 
 ## ソースからビルド
 
-.NET SDK 11.0.100 と PowerShell 7 が必要です。オプションの AOT ビルドには Visual Studio C++ ツールチェーンも必要です。
+.NET SDK 11.0.100、PowerShell 7、Rustup、Visual Studio のデスクトップ C++ ツールが必要です。
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
+./tools/Install-NativeBuildTools.ps1
 ./build.ps1
 ./build.ps1 -Target X64
 ./build.ps1 -Target X64 -Compilation Aot

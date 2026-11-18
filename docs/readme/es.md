@@ -5,7 +5,7 @@
 
 [简体中文](../../README.md) | [English](en.md) | [日本語](ja.md) | Español
 
-Herramienta de transcodificación de vídeo y conversión de color para Windows 11, desarrollada con C# y .NET. LumaRecode ofrece una interfaz nativa WinUI 3 y una línea de comandos para FFmpeg, con compresión de vídeo, conversión de Log de cámara a HDR / SDR y de HDR a SDR.
+Herramienta de transcodificación de vídeo y conversión de color para Windows 11. LumaRecode ofrece una interfaz nativa WinUI 3 y una línea de comandos para FFmpeg, con compresión de vídeo, conversión de Log de cámara a HDR / SDR y de HDR a SDR.
 
 [Descargar](https://github.com/MIKU552/LumaRecode/releases/latest) · [Documentación (chino e inglés)](../README.md#english) · [Línea de comandos](../cli/es.md) · [Historial de cambios (chino e inglés)](../../CHANGELOG.md#english)
 
@@ -105,11 +105,12 @@ Antes del primer uso desatendido, consulta las condiciones de los componentes co
 
 ## Compilar desde el código fuente
 
-Requiere .NET SDK 11.0.100 y PowerShell 7. Las compilaciones AOT opcionales también necesitan las herramientas C++ de Visual Studio.
+Requiere .NET SDK 11.0.100, PowerShell 7, Rustup y las herramientas de escritorio C++ de Visual Studio.
 
 ```powershell
 git clone https://github.com/MIKU552/LumaRecode.git
 cd LumaRecode
+./tools/Install-NativeBuildTools.ps1
 ./build.ps1
 ./build.ps1 -Target X64
 ./build.ps1 -Target X64 -Compilation Aot

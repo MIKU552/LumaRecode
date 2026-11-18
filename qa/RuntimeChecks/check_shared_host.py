@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -14,12 +15,15 @@ def main():
     parser.add_argument("--exe", type=Path, required=True)
     args = parser.parse_args()
     exe = args.exe.resolve()
-    ffmpeg = shutil.which("ffmpeg")
-    assert exe.is_file() and ffmpeg
+    ffmpeg = os.environ.get("LUMA_TEST_FFMPEG") or shutil.which("ffmpeg")
+    ffprobe = os.environ.get("LUMA_TEST_FFPROBE") or shutil.which("ffprobe")
+    assert exe.is_file(), exe
+    assert ffmpeg and ffprobe, "Install FFmpeg/ffprobe or set LUMA_TEST_FFMPEG/LUMA_TEST_FFPROBE."
 
     def call(*words, status=0):
         result = subprocess.run(
-            [str(exe), *map(str, words), "--no-settings", "--accept-terms", "--json"],
+            [str(exe), *map(str, words), "--no-settings", "--accept-terms", "--json",
+             "--ffmpeg", ffmpeg, "--ffprobe", ffprobe],
             capture_output=True, text=True, encoding="utf-8", timeout=90,
         )
         assert result.returncode == status, (result.returncode, result.stdout, result.stderr)
