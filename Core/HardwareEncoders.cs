@@ -69,7 +69,7 @@ public static partial class HardwareEncoders
                 yield return new("qsv", "Intel QSV", codec, name, 10, "");
             }
         }
-        foreach (var (backend, entry) in config["hardware"]!.AsObject())
+        foreach (var (backend, entry) in WindowsPresets(config))
         {
             foreach (var (codec, preset) in entry!["codecs"]!.AsObject())
             {
@@ -80,6 +80,9 @@ public static partial class HardwareEncoders
             }
         }
     }
+
+    internal static IEnumerable<KeyValuePair<string, JsonNode?>> WindowsPresets(JsonObject config) =>
+        config["hardware"]!.AsObject().Where(item => item.Value.Text("platform", "windows") == "windows");
 
     private static async Task<string> TryEncodeAsync(Transcoder engine, MediaTools tools, HardwareEncoder candidate,
         CancellationToken cancellation)

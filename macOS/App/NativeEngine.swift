@@ -188,15 +188,50 @@ final class FrameIndex: @unchecked Sendable {
     }
 }
 
+enum EncoderMode: String, Sendable {
+    case software
+    case auto
+    case videoToolbox = "videotoolbox"
+}
+
+struct VideoToolboxFormat: Equatable, Codable, Sendable {
+    let codec: String
+    let signal: String
+
+    static let formats = [
+        Self(codec: "hevc", signal: "sdr"), Self(codec: "avc", signal: "sdr"),
+        Self(codec: "hevc", signal: "hlg"), Self(codec: "hevc", signal: "pq")
+    ]
+
+    var depth: Int { signal == "sdr" ? 8 : 10 }
+}
+
+struct VideoToolboxTrial: Codable, Sendable {
+    let format: VideoToolboxFormat
+    let available: Bool
+    let diagnostic: String?
+}
+
 struct EncodingOptions: Sendable {
     var codec = "hevc"
     var output = "auto"
     var sourceKind = "auto"
     var profile: String?
     var standardHDR = false
+    var encoder: EncoderMode = .software
 
-    fileprivate func data(for media: MediaSummary, container: String) throws -> Data {
-        let kind = sourceKind == "auto" ? media.kind : sourceKind
+    func inputKind(_ media: MediaSummary) -> String { sourceKind == "auto" ? media.kind : sourceKind }
+
+    func outputSignal(_ media: MediaSummary) -> String? {
+        let kind = inputKind(media)
+        if kind == "unknown" || media.kind == "raw" { return nil }
+        if output == "sdr" || (output == "auto" && kind == "sdr") { return "sdr" }
+        guard kind != "sdr", standardHDR || (!media.hdr10plus && !media.hasDolbyVision) else { return nil }
+        return kind == "pq" ? "pq" : "hlg"
+    }
+
+    fileprivate func data(for media: MediaSummary, container: String, useVideoToolbox: Bool) throws -> Data {
+        let kind = inputKind(media)
         guard kind != "unknown" else {
             throw EngineError(message: "Choose the source color profile.")
         }
@@ -214,10 +249,11 @@ struct EncodingOptions: Sendable {
         default: transform = "none"
         }
         var fields = [
-            "purpose": "archive", "codec": codec, "output": target, "source_kind": sourceKind,
+            "purpose": useVideoToolbox ? "share" : "archive", "codec": codec, "output": target, "source_kind": sourceKind,
             "transform": transform, "dynamic_hdr": standardHDR ? "standard" : "preserve",
             "container": container
         ]
+        if useVideoToolbox { fields["hardware"] = EncoderMode.videoToolbox.rawValue }
         if kind == "log" {
             guard let curve = profile ?? media.profile else { throw EngineError(message: "Choose the camera Log curve.") }
             fields["profile"] = curve
@@ -229,6 +265,20 @@ struct EncodingOptions: Sendable {
 struct MediaTools: Sendable {
     let ffmpeg: URL?
     let ffprobe: URL
+
+    // Cache only a successful discovery for these exact executable files.
+    struct Signature: Equatable, Sendable {
+        fileprivate let ffmpeg: URL
+        fileprivate let ffprobe: URL
+        fileprivate let encoderIdentity: SourceIdentity
+        fileprivate let probeIdentity: SourceIdentity
+    }
+
+    var signature: Signature? {
+        guard let ffmpeg, let encoderIdentity = try? SourceIdentity(ffmpeg),
+              let probeIdentity = try? SourceIdentity(ffprobe) else { return nil }
+        return Signature(ffmpeg: ffmpeg, ffprobe: ffprobe, encoderIdentity: encoderIdentity, probeIdentity: probeIdentity)
+    }
 
     static func discover(ffmpeg: String? = nil, ffprobe: String? = nil, requireEncoder: Bool = true) throws -> MediaTools {
         let environment = ProcessInfo.processInfo.environment
@@ -370,7 +420,7 @@ struct NativeEngine: Sendable {
 
     func convert(
         _ source: MediaSource, to destination: URL, options: EncodingOptions, overwrite: Bool,
-        index: FrameIndex? = nil, selection: FrameSelection? = nil, control: JobControl,
+        index: FrameIndex? = nil, selection: FrameSelection? = nil, toolbox: [VideoToolboxTrial]? = nil, control: JobControl,
         progress: @escaping (Double) -> Void = { _ in }
     ) throws {
         try control.check()
@@ -378,7 +428,19 @@ struct NativeEngine: Sendable {
         let container = destination.pathExtension.lowercased()
         guard ["mkv", "mp4"].contains(container) else { throw EngineError(message: "Use an .mkv or .mp4 output path.") }
         try source.identity.check(source.url)
-        let choices = try options.data(for: source.summary, container: container)
+        let formats = VideoToolboxFormat.formats.filter {
+            $0.codec == options.codec && $0.signal == options.outputSignal(source.summary)
+        }
+        let hardware: Bool
+        if options.encoder != .software, let format = formats.first {
+            hardware = try (toolbox?.first { $0.format == format } ?? trialVideoToolbox(format, control: control)).available
+        } else {
+            hardware = false
+        }
+        if options.encoder == .videoToolbox && !hardware {
+            throw EngineError(message: "VideoToolbox is unavailable for this codec and output signal.")
+        }
+        let choices = try options.data(for: source.summary, container: container, useVideoToolbox: hardware)
         let window = try selection.map { selection -> lr_frame_window in
             let resolvedIndex = try index ?? loadFrames(source, control: control)
             return try resolvedIndex.resolve(selection)
@@ -406,8 +468,7 @@ struct NativeEngine: Sendable {
         let staging = try copyBytes(limit: 500_000) { lr_output_copy_path(transaction, LR_OUTPUT_PATH_STAGING, $0, $1, $2) }
         let plan = try makePlan(source: source.snapshot, choices: choices, staging: staging, window: window)
         defer { lr_plan_release(plan) }
-        let planJSON = try copyBytes(limit: 1024 * 1024) { lr_plan_copy_json(plan, $0, $1, $2) }
-        let command = try JSONDecoder().decode(PlannedCommand.self, from: planJSON)
+        let command = try plannedCommand(plan)
         guard command.sidecars.isEmpty else { throw EngineError(message: "This conversion requires an unsupported media sidecar.") }
         let total = window.map { $0.end_seconds - $0.start_seconds } ?? source.summary.duration
         try runEncoder(command, control: control, cleanup: &cleanup) { position in
@@ -416,10 +477,7 @@ struct NativeEngine: Sendable {
         let stagedURL = URL(fileURLWithPath: String(decoding: staging, as: UTF8.self))
         let checked = try inspect(stagedURL, control: control, cleanup: &cleanup)
         try control.check()
-        let checkedStatus = withViews([source.snapshot, checked.snapshot]) { views in
-            lr_plan_verify_output(plan, views[0], views[1], &error)
-        }
-        try check(checkedStatus, error, "The encoded file failed verification.")
+        try verify(plan, source: source.snapshot, encoded: checked.snapshot)
         if let window {
             let encodedFrames = try loadFrames(checked, control: control, cleanup: &cleanup)
             guard encodedFrames.count == window.end - window.start else {
@@ -433,10 +491,80 @@ struct NativeEngine: Sendable {
         progress(1)
     }
 
+    func videoToolboxTrials(control: JobControl) throws -> [VideoToolboxTrial] {
+        // Sequential trials avoid competing for hardware encoder sessions.
+        try VideoToolboxFormat.formats.map { try trialVideoToolbox($0, control: control) }
+    }
+
+    private func trialVideoToolbox(_ format: VideoToolboxFormat, control: JobControl) throws -> VideoToolboxTrial {
+        try control.check()
+        let folder = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
+            .appendingPathComponent("lumarecode-videotoolbox-" + UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false,
+                                                attributes: [.posixPermissions: 0o700])
+        var cleanup = true
+        defer { if cleanup { try? FileManager.default.removeItem(at: folder) } }
+
+        let destination = folder.appendingPathComponent("trial.mp4")
+        let pixel = format.depth == 8 ? "yuv420p" : "yuv420p10le"
+        let primaries = format.depth == 8 ? "bt709" : "bt2020"
+        let matrix = format.depth == 8 ? "bt709" : "bt2020nc"
+        let transfer = format.signal == "sdr" ? "bt709" : format.signal == "hlg" ? "arib-std-b67" : "smpte2084"
+        // Supply the same source descriptors as ordinary inspection. Only the
+        // FFmpeg input is substituted with a generator after native planning.
+        let video: [String: Any] = [
+            "index": 0, "codec_type": "video", "codec_name": "rawvideo", "pix_fmt": pixel, "width": 320, "height": 192,
+            "avg_frame_rate": "30/1", "color_range": "tv", "color_space": matrix, "color_primaries": primaries,
+            "color_transfer": transfer
+        ]
+        let source = try JSONSerialization.data(withJSONObject: [
+            "schema_version": 1, "path": folder.appendingPathComponent("source.mkv").path, "video": video,
+            "streams": [video], "frames": [], "kind": format.signal, "duration": 1.0, "hdr10plus": false,
+            "dolby_vision": NSNull()
+        ])
+        let summary = try JSONDecoder().decode(MediaSummary.self, from: source)
+        let choices = try EncodingOptions(codec: format.codec).data(for: summary, container: "mp4", useVideoToolbox: true)
+        let plan = try makePlan(source: source, choices: choices, staging: utf8(destination.path), window: nil)
+        defer { lr_plan_release(plan) }
+        var command = try plannedCommand(plan)
+        guard let input = command.arguments.firstIndex(of: "-i"), input + 1 < command.arguments.count else {
+            throw EngineError(message: "The VideoToolbox trial has no input argument.")
+        }
+        command.arguments.replaceSubrange(input...input + 1, with: [
+            "-f", "lavfi", "-i", "testsrc2=size=320x192:rate=30,format=\(pixel)"
+        ])
+        command.arguments.insert(contentsOf: ["-frames:v", "8"], at: command.arguments.count - 1)
+        do {
+            try runEncoder(command, control: control, cleanup: &cleanup, timeout: 6000) { _ in }
+            let encoded = try inspect(destination, control: control, cleanup: &cleanup)
+            try verify(plan, source: source, encoded: encoded.snapshot)
+            return VideoToolboxTrial(format: format, available: true, diagnostic: nil)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // A failed encoder is a normal capability result. An unconfirmed
+            // child must instead end probing and keep its working directory.
+            if !cleanup { throw error }
+            return VideoToolboxTrial(format: format, available: false,
+                                     diagnostic: String(error.localizedDescription.prefix(2000)))
+        }
+    }
+
+    private func verify(_ plan: OpaquePointer, source: Data, encoded: Data) throws {
+        var error = nativeError()
+        let status = withViews([source, encoded]) { views in lr_plan_verify_output(plan, views[0], views[1], &error) }
+        try check(status, error, "The encoded file failed verification.")
+    }
+
     private struct PlannedCommand: Decodable {
-        let arguments: [String]
+        var arguments: [String]
         let working_directory: String?
         let sidecars: [String]
+    }
+
+    private func plannedCommand(_ plan: OpaquePointer) throws -> PlannedCommand {
+        let json = try copyBytes(limit: 1024 * 1024) { lr_plan_copy_json(plan, $0, $1, $2) }
+        return try JSONDecoder().decode(PlannedCommand.self, from: json)
     }
 
     private func makePlan(source: Data, choices: Data, staging: Data, window: lr_frame_window?) throws -> OpaquePointer {
@@ -468,14 +596,15 @@ struct NativeEngine: Sendable {
     }
 
     private func runEncoder(
-        _ command: PlannedCommand, control: JobControl, cleanup: inout Bool, progress: @escaping (Double) -> Void
+        _ command: PlannedCommand, control: JobControl, cleanup: inout Bool, timeout: UInt64 = 0,
+        progress: @escaping (Double) -> Void
     ) throws {
         guard let executable = command.arguments.first else { throw EngineError(message: "The encoding plan is empty.") }
         var options = lr_process_options()
         try check(lr_process_options_init(&options, UInt64(MemoryLayout<lr_process_options>.size)), nil,
                   "Cannot initialize FFmpeg.")
         options.stdout_mode = LR_CAPTURE_DISCARD
-        options.timeout_ms = 0
+        options.timeout_ms = timeout
         var handle: OpaquePointer?
         var error = nativeError()
         let argv = command.arguments.dropFirst().map(utf8)

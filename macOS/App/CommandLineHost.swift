@@ -6,7 +6,9 @@ enum CommandLineHost {
     LumaRecode for macOS
       probe INPUT [--ffprobe PATH]
       frames INPUT [--ffprobe PATH]
+      doctor [--ffmpeg PATH] [--ffprobe PATH]
       convert INPUT -o OUTPUT [--codec hevc|av1|avc] [--range auto|sdr|hdr]
+        [--encoder software|auto|videotoolbox]
         [--input-kind auto|sdr|hlg|pq|log] [--profile pocket3|samsung|milog|applelog|applelog2]
         [--standard-hdr] [--start-frame N] [--end-frame N] [--overwrite]
         [--ffmpeg PATH] [--ffprobe PATH]
@@ -40,9 +42,16 @@ enum CommandLineHost {
         defer { interrupt.cancel() }
         do {
             let tools = try MediaTools.discover(ffmpeg: parsed.values["--ffmpeg"], ffprobe: parsed.values["--ffprobe"],
-                                                requireEncoder: parsed.command == "convert")
+                                                requireEncoder: parsed.command == "convert" || parsed.command == "doctor")
             let engine = try NativeEngine(tools: tools, assets: NativeEngine.bundledAssets)
-            let source = try engine.inspect(parsed.input, control: control)
+            if parsed.command == "doctor" {
+                let trials = try engine.videoToolboxTrials(control: control)
+                FileHandle.standardOutput.write(try JSONEncoder().encode(trials))
+                print("")
+                return 0
+            }
+            guard let input = parsed.input else { throw EngineError(message: "Missing input path.") }
+            let source = try engine.inspect(input, control: control)
             switch parsed.command {
             case "probe":
                 FileHandle.standardOutput.write(source.snapshot)
@@ -95,7 +104,7 @@ enum CommandLineHost {
 
     private struct Options {
         let command: String
-        let input: URL
+        let input: URL?
         var values: [String: String] = [:]
         var flags: Set<String> = []
         var output: URL?
@@ -103,14 +112,21 @@ enum CommandLineHost {
         var encoding = EncodingOptions()
 
         init(_ words: [String]) throws {
-            guard words.count >= 2, ["probe", "frames", "convert"].contains(words[0]), !words[1].hasPrefix("-") else {
-                throw EngineError(message: "Specify a command and input path.")
+            guard let command = words.first, ["probe", "frames", "convert", "doctor"].contains(command) else {
+                throw EngineError(message: "Specify a command.")
             }
-            command = words[0]
-            input = URL(fileURLWithPath: words[1]).standardizedFileURL
-            let common: Set<String> = ["--ffprobe"]
-            let conversion: Set<String> = ["-o", "--ffmpeg", "--codec", "--range", "--input-kind", "--profile", "--start-frame", "--end-frame"]
-            var remaining = words.dropFirst(2).makeIterator()
+            self.command = command
+            if command == "doctor" {
+                input = nil
+            } else {
+                guard words.count >= 2, !words[1].hasPrefix("-") else { throw EngineError(message: "Specify an input path.") }
+                input = URL(fileURLWithPath: words[1]).standardizedFileURL
+            }
+            let common: Set<String> = command == "doctor" ? ["--ffmpeg", "--ffprobe"] : ["--ffprobe"]
+            let conversion: Set<String> = [
+                "-o", "--ffmpeg", "--codec", "--encoder", "--range", "--input-kind", "--profile", "--start-frame", "--end-frame"
+            ]
+            var remaining = words.dropFirst(input == nil ? 1 : 2).makeIterator()
             while let word = remaining.next() {
                 if command == "convert", ["--standard-hdr", "--overwrite"].contains(word), flags.insert(word).inserted {
                     continue
@@ -125,6 +141,10 @@ enum CommandLineHost {
             guard let path = values["-o"] else { throw EngineError(message: "Conversion requires -o OUTPUT.") }
             output = URL(fileURLWithPath: path).standardizedFileURL
             encoding.codec = try choice("--codec", allowed: ["hevc", "av1", "avc"], defaultValue: "hevc")
+            if let value = values["--encoder"] {
+                guard let mode = EncoderMode(rawValue: value) else { throw EngineError(message: "Invalid value for --encoder.") }
+                encoding.encoder = mode
+            }
             encoding.output = try choice("--range", allowed: ["auto", "sdr", "hdr"], defaultValue: "auto")
             encoding.sourceKind = try choice("--input-kind", allowed: ["auto", "sdr", "hlg", "pq", "log"], defaultValue: "auto")
             if values["--profile"] != nil {

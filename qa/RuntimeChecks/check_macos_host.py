@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import shlex
 import shutil
 import signal
 import subprocess
@@ -38,6 +39,29 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="lumarecode-macos-") as temporary:
         folder = Path(temporary)
+        trials = json.loads(call("doctor", "--ffmpeg", ffmpeg))
+        assert {
+            (item["format"]["codec"], item["format"]["signal"]) for item in trials
+        } == {("avc", "sdr"), ("hevc", "sdr"), ("hevc", "hlg"), ("hevc", "pq")}, trials
+        blocked = folder / "ffmpeg-no-hardware"
+        blocked.write_text(
+            '#!/bin/sh\nfor part in "$@"; do\n'
+            '  case "$part" in *_videotoolbox) echo "VideoToolbox unavailable in fixture" >&2; exit 1 ;; esac\n'
+            f'done\nexec {shlex.quote(ffmpeg)} "$@"\n',
+            encoding="utf-8",
+        )
+        blocked.chmod(0o755)
+        rejected = json.loads(call("doctor", "--ffmpeg", blocked))
+        assert len(rejected) == len(trials) and all(
+            not item["available"] for item in rejected
+        ), rejected
+        assert all(
+            "unavailable in fixture" in item["diagnostic"] for item in rejected
+        ), rejected
+        print(
+            f"VideoToolbox engine trials: {json.dumps(trials, ensure_ascii=False)}",
+            flush=True,
+        )
         for kind, transfer, pixel in [
             ("sdr", "bt709", "yuv420p"),
             ("hlg", "arib-std-b67", "yuv420p10le"),
@@ -54,7 +78,7 @@ def main():
                     "-f",
                     "lavfi",
                     "-i",
-                    "testsrc2=size=128x72:rate=24",
+                    "testsrc2=size=320x192:rate=24",
                     "-frames:v",
                     "16",
                     "-c:v",
@@ -105,6 +129,57 @@ def main():
                 f"PASS macOS host: {kind}, trim, tagged output, and overwrite",
                 flush=True,
             )
+            for item in trials:
+                if item["format"]["signal"] != kind or not item["available"]:
+                    continue
+                codec = item["format"]["codec"]
+                hardware = folder / f"videotoolbox-{codec}-{kind}.mp4"
+                call(
+                    "convert",
+                    source,
+                    "-o",
+                    hardware,
+                    "--ffmpeg",
+                    ffmpeg,
+                    "--encoder",
+                    "videotoolbox",
+                    "--codec",
+                    codec,
+                    "--start-frame",
+                    "2",
+                    "--end-frame",
+                    "6",
+                )
+                encoded = json.loads(call("probe", hardware))["video"]
+                assert (
+                    encoded["pix_fmt"] == pixel
+                    and encoded["color_transfer"] == transfer
+                ), encoded
+                assert json.loads(call("frames", hardware))["frame_count"] == 5
+                print(f"PASS real VideoToolbox: {codec} {kind}", flush=True)
+
+        automatic = folder / "automatic.mkv"
+        call(
+            "convert", source, "-o", automatic, "--ffmpeg", blocked, "--encoder", "auto"
+        )
+        assert json.loads(call("probe", automatic))["kind"] == "pq"
+        unavailable = folder / "unavailable.mp4"
+        call(
+            "convert",
+            source,
+            "-o",
+            unavailable,
+            "--ffmpeg",
+            blocked,
+            "--encoder",
+            "videotoolbox",
+            status=1,
+        )
+        assert not unavailable.exists() and not list(folder.glob(".lumarecode-*"))
+        print(
+            "PASS VideoToolbox unavailability, software fallback, and explicit hardware rejection",
+            flush=True,
+        )
 
         old_hash = hashlib.sha256(output.read_bytes()).digest()
         marker = folder / "running"

@@ -111,6 +111,50 @@
         }
       }
     },
+    "Check hardware encoders": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "检测硬件编码器"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ハードウェアエンコーダーを確認"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobar codificadores por hardware"
+          }
+        }
+      }
+    },
+    "Checking hardware encoders…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在检测硬件编码器…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ハードウェアエンコーダーを確認中…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando codificadores por hardware…"
+          }
+        }
+      }
+    },
     "Color": {
       "localizations": {
         "zh-Hans": {
@@ -217,6 +261,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codificación"
+          }
+        }
+      }
+    },
+    "Encoding mode": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编码模式"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エンコードモード"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo de codificación"
           }
         }
       }
@@ -529,6 +595,28 @@
         }
       }
     },
+    "Quick share · VideoToolbox": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速分享 · VideoToolbox"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クイック共有 · VideoToolbox"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartir rápido · VideoToolbox"
+          }
+        }
+      }
+    },
     "Reading footage…": {
       "localizations": {
         "zh-Hans": {
@@ -591,6 +679,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mostrar en Finder"
+          }
+        }
+      }
+    },
+    "Software archive": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "软件归档"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ソフトウェアアーカイブ"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivo por software"
           }
         }
       }

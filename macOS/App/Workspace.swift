@@ -6,7 +6,8 @@ import UniformTypeIdentifiers
 
 @MainActor @Observable
 final class Workspace {
-    enum Activity { case inspect, index, encode }
+    enum Activity { case inspect, index, checkEncoders, encode }
+    private typealias EncoderCache = (signature: MediaTools.Signature, trials: [VideoToolboxTrial])
 
     var media: MediaSource?
     var player: AVPlayer?
@@ -20,12 +21,17 @@ final class Workspace {
     var progress = 0.0
     var output: URL?
     var failure: String?
+    private var encoderCache: EncoderCache?
     private var control: JobControl?
     private(set) var task: Task<Void, Never>?
 
     var busy: Bool { activity != nil }
     var isLog: Bool { options.sourceKind == "log" || (options.sourceKind == "auto" && media?.summary.kind == "log") }
     var isDynamicHDR: Bool { media?.summary.hdr10plus == true || media?.summary.hasDolbyVision == true }
+    var hardwareCodecs: [String] {
+        guard let media, let signal = options.outputSignal(media.summary) else { return [] }
+        return (encoderCache?.trials ?? []).filter { $0.available && $0.format.signal == signal }.map(\.format.codec)
+    }
 
     func chooseSource() {
         guard !busy else { return }
@@ -46,10 +52,20 @@ final class Workspace {
         firstFrame = "1"
         lastFrame = ""
         options = EncodingOptions()
+        container = "mkv"
+        let cached = encoderCache
         run(.inspect) { control in
-            try Self.engine(requireEncoder: false).inspect(url, control: control)
-        } finished: { media in
+            let media = try Self.engine(requireEncoder: false).inspect(url, control: control)
+            let encoders = try Self.inspectEncoders(cached: cached, control: control)
+            return (media, encoders)
+        } finished: { media, encoders in
+            self.encoderCache = encoders
             self.show(media)
+            if let codec = self.hardwareCodecs.first {
+                self.options.codec = codec
+                self.options.encoder = .videoToolbox
+                self.container = "mp4"
+            }
         }
     }
 
@@ -69,6 +85,24 @@ final class Workspace {
         } finished: { frames in
             self.frames = frames
             self.lastFrame = String(frames.count)
+        }
+    }
+
+    func recheckEncoders() {
+        run(.checkEncoders) { control in
+            try Self.inspectEncoders(cached: nil, control: control)
+        } finished: { cache in
+            self.encoderCache = cache
+            self.updateEncoderChoice()
+        }
+    }
+
+    func updateEncoderChoice() {
+        guard options.encoder == .videoToolbox else { return }
+        if hardwareCodecs.isEmpty {
+            options.encoder = .software
+        } else if !hardwareCodecs.contains(options.codec), let first = hardwareCodecs.first {
+            options.codec = first
         }
     }
 
@@ -103,12 +137,15 @@ final class Workspace {
     private func convert(_ media: MediaSource, to url: URL, overwrite: Bool, selection: FrameSelection?) {
         let options = self.options
         let frames = self.frames
+        let cached = self.encoderCache
         player?.pause()
         output = nil
         progress = 0
         run(.encode) { [weak self] control in
-            try Self.engine().convert(media, to: url, options: options, overwrite: overwrite, index: frames,
-                                      selection: selection, control: control) { fraction in
+            let engine = try Self.engine()
+            let trials = cached?.signature == engine.tools.signature ? cached?.trials : nil
+            try engine.convert(media, to: url, options: options, overwrite: overwrite, index: frames,
+                               selection: selection, toolbox: trials, control: control) { fraction in
                 Task { @MainActor [weak self] in
                     guard let self, self.control === control else { return }
                     self.progress = fraction
@@ -150,6 +187,13 @@ final class Workspace {
         let tools = try MediaTools.discover(ffmpeg: defaults.string(forKey: "ffmpeg"), ffprobe: defaults.string(forKey: "ffprobe"),
                                             requireEncoder: requireEncoder)
         return try NativeEngine(tools: tools, assets: NativeEngine.bundledAssets)
+    }
+
+    private nonisolated static func inspectEncoders(cached: EncoderCache?, control: JobControl) throws -> EncoderCache? {
+        guard let engine = try? engine(), let signature = engine.tools.signature else { return nil }
+        if cached?.signature == signature { return cached }
+        let trials = try engine.videoToolboxTrials(control: control)
+        return (signature, trials)
     }
 
     private func present(_ panel: NSSavePanel, selected: @escaping (URL) -> Void) {
@@ -292,15 +336,26 @@ struct WorkspaceView: View {
                 }
             }
             Section("Encoding") {
+                if !model.hardwareCodecs.isEmpty {
+                    Picker("Encoding mode", selection: $model.options.encoder) {
+                        Text("Quick share · VideoToolbox").tag(EncoderMode.videoToolbox)
+                        Text("Software archive").tag(EncoderMode.software)
+                    }
+                }
                 Picker("Video codec", selection: $model.options.codec) {
-                    Text("HEVC").tag("hevc")
-                    Text("AV1").tag("av1")
-                    Text("H.264").tag("avc")
+                    if model.options.encoder != .videoToolbox || model.hardwareCodecs.contains("hevc") {
+                        Text("HEVC").tag("hevc")
+                    }
+                    if model.options.encoder != .videoToolbox { Text("AV1").tag("av1") }
+                    if model.options.encoder != .videoToolbox || model.hardwareCodecs.contains("avc") {
+                        Text("H.264").tag("avc")
+                    }
                 }
                 Picker("Container", selection: $model.container) {
                     Text("MKV").tag("mkv")
                     Text("MP4").tag("mp4")
                 }
+                Button("Check hardware encoders", action: model.recheckEncoders)
             }
             Section("Trim") {
                 Toggle("Select a frame range", isOn: $model.limitFrames)
@@ -315,6 +370,11 @@ struct WorkspaceView: View {
         }
         .formStyle(.grouped)
         .disabled(model.busy)
+        .onChange(of: model.options.encoder) { _, encoder in
+            model.container = encoder == .videoToolbox ? "mp4" : "mkv"
+            model.updateEncoderChoice()
+        }
+        .onChange(of: model.hardwareCodecs) { _, _ in model.updateEncoderChoice() }
     }
 
     private var footer: some View {
@@ -324,6 +384,7 @@ struct WorkspaceView: View {
                 switch model.activity {
                 case .inspect: ProgressView().controlSize(.small)
                 case .index: ProgressView("Indexing frames…")
+                case .checkEncoders: ProgressView("Checking hardware encoders…")
                 case .encode: ProgressView(value: model.progress) { Text("Encoding video…") }
                 case nil:
                     if let output = model.output {

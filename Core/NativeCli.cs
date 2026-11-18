@@ -254,7 +254,9 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
             }
             if (args.Command == "presets")
             {
-                Output(new JsonObject { ["schema_version"] = 1, ["presets"] = Presets(), ["motion_photo"] = engine.MotionConfig.DeepClone(), ["hardware"] = engine.Config["hardware"]?.DeepClone() });
+                var hardwarePresets = new JsonObject(HardwareEncoders.WindowsPresets(engine.Config)
+                    .Select(item => KeyValuePair.Create(item.Key, item.Value?.DeepClone())));
+                Output(new JsonObject { ["schema_version"] = 1, ["presets"] = Presets(), ["motion_photo"] = engine.MotionConfig.DeepClone(), ["hardware"] = hardwarePresets });
                 return 0;
             }
             if (args.Command == "profiles")

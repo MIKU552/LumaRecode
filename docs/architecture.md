@@ -49,7 +49,9 @@ ARM64 省去 x86 专用 RAW 解码参数。Ultra HDR 的 P/Invoke 接口在各�
 
 打开 Xcode 的 LumaRecode scheme 可直接构建应用。终端执行 `sh tools/build-macos.sh Release --dmg` 可生成 ad-hoc 签名的应用和开发 DMG。工具链使用 Xcode 27.2、Rustup、CMake 和 Ninja。运行时从设置、环境或 Homebrew 查找 FFmpeg 和 ffprobe。
 
-应用的 `Contents/MacOS/LumaRecode` 同时提供 `probe`、`frames` 和 `convert`。软件归档支持 SDR、HLG、PQ 和已选曲线的相机 Log。HDR10+ 和 Dolby Vision 素材可转换为标准 HDR 或 SDR。编码能力取决于外部 FFmpeg。
+应用的 `Contents/MacOS/LumaRecode` 同时提供 `probe`、`frames`、`convert` 和 `doctor`。软件归档支持 SDR、HLG、PQ 和已选曲线的相机 Log。HDR10+ 和 Dolby Vision 素材可转换为标准 HDR 或 SDR。编码能力取决于外部 FFmpeg。
+
+快速分享通过 FFmpeg 调用 VideoToolbox，候选档位覆盖 8 位 H.264 / HEVC SDR 和 10 位 HEVC HLG / PQ。每个档位以 320 × 192 合成视频验证实际编码、MP4 封装和色彩标签，试跑与正式导出均要求硬件编码。GUI 按输出信号显示通过的档位，可手动重新检测。CLI 默认使用软件归档，`--encoder auto` 优先使用通过检测的硬件档位，`--encoder videotoolbox` 显式要求硬件可用。`doctor` 返回各档位的检测结果。质量值按档位独立调校，当前取值见 [编码预设](../Assets/recommended-presets.json)。
 
 ### Windows 硬件编码
 
@@ -137,7 +139,9 @@ ARM64 omits the x86-specific RAW decoder workaround. Ultra HDR uses the same P/I
 
 Open the LumaRecode scheme in Xcode to build the app. From the shell, run `sh tools/build-macos.sh Release --dmg` to make the ad-hoc-signed app and development DMG. The toolchain uses Xcode 27.2, Rustup, CMake, and Ninja. At runtime, the app finds FFmpeg and ffprobe through settings, the environment, or Homebrew.
 
-The app's `Contents/MacOS/LumaRecode` executable also provides `probe`, `frames`, and `convert`. Software archive supports SDR, HLG, PQ, and camera Log with a selected curve. HDR10+ and Dolby Vision footage can be converted to standard HDR or SDR. Encoding capabilities depend on the external FFmpeg build.
+The app's `Contents/MacOS/LumaRecode` executable also provides `probe`, `frames`, `convert`, and `doctor`. Software archive supports SDR, HLG, PQ, and camera Log with a selected curve. HDR10+ and Dolby Vision footage can be converted to standard HDR or SDR. Encoding capabilities depend on the external FFmpeg build.
+
+Quick share uses VideoToolbox through FFmpeg. The candidate profiles include 8-bit H.264 / HEVC SDR and 10-bit HEVC HLG / PQ. Each trial checks encoding, MP4 muxing, and color tags with a 320 × 192 synthetic clip. Both trials and exports require hardware encoding. The GUI lists the passing profiles for the selected output signal and offers a manual recheck. The CLI defaults to software archive. Use `--encoder auto` to prefer an available hardware profile, `--encoder videotoolbox` to require one, or `doctor` to see the trial results. Quality settings are defined per profile in the [encoding presets](../Assets/recommended-presets.json).
 
 ### Windows hardware encoding
 

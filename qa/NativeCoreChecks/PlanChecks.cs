@@ -312,7 +312,10 @@ internal static class PlanChecks
             ("amf", "hevc", "8", "hevc_amf", "-rc", "qvbr"),
             ("amf", "av1", "10", "av1_amf", "-rc", "cqp"),
             ("amf", "hevc", "10", "hevc_amf", "-bitdepth", "10"),
-            ("mf", "avc", "8", "h264_mf", "-hw_encoding", "1")
+            ("mf", "avc", "8", "h264_mf", "-hw_encoding", "1"),
+            ("videotoolbox", "avc", "8", "h264_videotoolbox", "-allow_sw", "0"),
+            ("videotoolbox", "hevc", "8", "hevc_videotoolbox", "-q:v", "65"),
+            ("videotoolbox", "hevc", "10", "hevc_videotoolbox", "-allow_sw", "0")
         })
         {
             var result = Plan(baseline, tools, depth == "10" ? hardwareHdr : hardwareSdr,
@@ -331,6 +334,8 @@ internal static class PlanChecks
         }
         check(Plan(baseline, tools, hardwareHdr, new(Output: "hdr", Hardware: "mf"), destination).Status != NativeStatus.Ok,
             "Unlisted Media Foundation Main 10 path was accepted.");
+        check(Plan(baseline, tools, hardwareSdr, new(Codec: "av1", Hardware: "videotoolbox"), destination).Status != NativeStatus.Ok,
+            "Unlisted VideoToolbox AV1 encode path was accepted.");
         check(Plan(baseline, tools, hardwareSdr, new(Hardware: "unknown"), destination).Status != NativeStatus.Ok,
             "Unknown hardware backend was accepted.");
         Verify(check, baseline, tools, sourcePath, destination);

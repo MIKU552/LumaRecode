@@ -119,6 +119,25 @@
         }
       }
     },
+    "videotoolbox": {
+      "label": "Apple VideoToolbox",
+      "platform": "macos",
+      "codecs": {
+        "avc": {
+          "encoder": "h264_videotoolbox",
+          "arguments": {
+            "8": ["-allow_sw", "0", "-q:v", "70"]
+          }
+        },
+        "hevc": {
+          "encoder": "hevc_videotoolbox",
+          "arguments": {
+            "8": ["-allow_sw", "0", "-q:v", "65"],
+            "10": ["-allow_sw", "0", "-q:v", "68"]
+          }
+        }
+      }
+    },
     "mf": {
       "label": "Media Foundation",
       "codecs": {
