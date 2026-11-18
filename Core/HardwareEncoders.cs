@@ -55,7 +55,10 @@ public static partial class HardwareEncoders
             {
                 status = await TryEncodeAsync(engine, tools, candidate, "pq", cancellation).ConfigureAwait(false);
             }
-            results.Add(candidate with { Status = status });
+            results.Add(candidate with
+            {
+                Status = status
+            });
         }
         return [.. results];
     }

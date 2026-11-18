@@ -13,6 +13,8 @@ enum CommandLineHost {
         [--ffmpeg PATH] [--ffprobe PATH]
       convert INPUT -o OUTPUT [--codec hevc|av1|avc] [--range auto|sdr|hdr|dolbyvision84]
         [--encoder software|auto|videotoolbox]
+        [--bit-depth 8|10|12] [--sampling 420|422|444|gray]
+        [--color-range limited|full] [--audio copy|aac|opus|flac]
         [--input-kind auto|sdr|hlg|pq|log] [--profile pocket3|samsung|milog|applelog|applelog2]
         [--standard-hdr] [--start-frame N] [--end-frame N] [--overwrite]
         [--ffmpeg PATH] [--ffprobe PATH]
@@ -145,7 +147,8 @@ enum CommandLineHost {
                 switches.insert("--overwrite")
             }
             if command == "convert" {
-                accepted.formUnion(["--codec", "--encoder", "--range", "--start-frame", "--end-frame"])
+                accepted.formUnion(["--codec", "--encoder", "--range", "--start-frame", "--end-frame",
+                                    "--bit-depth", "--sampling", "--color-range", "--audio"])
                 switches.insert("--standard-hdr")
             }
             if command == "image" {
@@ -196,6 +199,10 @@ enum CommandLineHost {
                 encoding.encoder = mode
             }
             encoding.output = try choice("--range", allowed: ["auto", "sdr", "hdr", "dolbyvision84"], defaultValue: "auto")
+            encoding.bitDepth = try choice("--bit-depth", allowed: ["auto", "8", "10", "12"], defaultValue: "auto")
+            encoding.sampling = try choice("--sampling", allowed: ["auto", "420", "422", "444", "gray"], defaultValue: "auto")
+            encoding.colorRange = try choice("--color-range", allowed: ["auto", "limited", "full"], defaultValue: "auto")
+            encoding.audio = try choice("--audio", allowed: ["auto", "copy", "aac", "opus", "flac"], defaultValue: "auto")
             encoding.standardHDR = flags.contains("--standard-hdr")
             if encoding.output == "dolbyvision84" && (values["--encoder"] == "software" || encoding.standardHDR) {
                 throw EngineError(message: "Dolby Vision 8.4 requires VideoToolbox and its own output mode.")

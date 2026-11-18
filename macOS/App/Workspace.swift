@@ -53,6 +53,40 @@ final class Workspace {
         return !media.summary.hdr10plus || options.output == "sdr" || options.standardHDR
     }
     var isDolbyVisionExport: Bool { options.output == "dolbyvision84" }
+    var preserveDynamicHDR: Bool { isDynamicHDR && options.output != "sdr" && !options.standardHDR }
+    var formatChoices: lr_format_choices? { media.flatMap { options.formatChoices(for: $0) } }
+    var depthChoices: [String] {
+        guard let formatChoices else { return [] }
+        return [8, 10, 12].filter { formatChoices.depth_mask & (1 << $0) != 0 }.map(String.init)
+    }
+    var samplingChoices: [String] {
+        guard let formatChoices else { return [] }
+        return [(LR_SAMPLING_420, "420"), (LR_SAMPLING_422, "422"), (LR_SAMPLING_444, "444"), (LR_SAMPLING_GRAY, "gray")]
+            .filter { formatChoices.sampling_mask & (1 << $0.0) != 0 }.map { $0.1 }
+    }
+    var defaultSampling: String {
+        switch formatChoices?.default_sampling {
+        case LR_SAMPLING_422: "422"
+        case LR_SAMPLING_444: "444"
+        case LR_SAMPLING_GRAY: "gray"
+        default: "420"
+        }
+    }
+    var defaultColorRange: String {
+        options.encoder == .software && media?.format.color_range == LR_RANGE_FULL ? "full" : "limited"
+    }
+    var audioChoices: [String] {
+        var choices = limitFrames ? ["aac"] : ["copy", "aac"]
+        if container == "mkv" {
+            choices.append("opus")
+            if media?.canEncodeFlac == true { choices.append("flac") }
+        }
+        return choices
+    }
+    var defaultAudio: String {
+        if limitFrames { return audioChoices.contains("flac") ? "flac" : "aac" }
+        return options.encoder == .software ? "copy" : "aac"
+    }
     var canOfferDolbyVision: Bool {
         guard let media, options.canGenerateDolbyVision(media.summary) else { return false }
         return encoderCache?.trials.contains { $0.available && $0.format.signal == "dolbyvision84" } ?? false
@@ -322,7 +356,17 @@ final class Workspace {
     }
 
     private func convert(_ media: MediaSource, to url: URL, overwrite: Bool, selection: FrameSelection?) {
-        let options = self.options
+        var selected = options
+        if isDolbyVisionExport || preserveDynamicHDR {
+            selected.bitDepth = "auto"
+            selected.sampling = "auto"
+            selected.colorRange = "auto"
+        } else {
+            if !depthChoices.contains(selected.bitDepth) { selected.bitDepth = "auto" }
+            if !samplingChoices.contains(selected.sampling) { selected.sampling = "auto" }
+        }
+        if !audioChoices.contains(selected.audio) { selected.audio = "auto" }
+        let options = selected
         let frames = self.frames
         let cached = self.encoderCache
         player?.pause()
@@ -555,6 +599,32 @@ struct WorkspaceView: View {
                 .disabled(model.isDolbyVisionExport)
                 Button("Check hardware encoders", action: model.recheckEncoders)
             }
+            if let choices = model.formatChoices, !model.isDolbyVisionExport, !model.preserveDynamicHDR {
+                Section("Output format") {
+                    Picker("Bit depth", selection: choice($model.options.bitDepth, choices: model.depthChoices,
+                                                          fallback: String(choices.default_depth))) {
+                        ForEach(model.depthChoices, id: \.self) { value in Text(value).tag(value) }
+                    }
+                    Picker("Chroma subsampling", selection: choice($model.options.sampling, choices: model.samplingChoices,
+                                                                   fallback: model.defaultSampling)) {
+                        ForEach(model.samplingChoices, id: \.self) { value in
+                            Text(value == "gray" ? String(localized: "Monochrome") : value.map(String.init).joined(separator: ":")).tag(value)
+                        }
+                    }
+                    Picker("Color range", selection: choice($model.options.colorRange, choices: ["limited", "full"],
+                                                            fallback: model.defaultColorRange)) {
+                        Text("Limited").tag("limited")
+                        Text("Full").tag("full")
+                    }
+                }
+            }
+            if model.media?.summary.streams.contains(where: { $0.codec_type == "audio" }) == true {
+                Picker("Audio", selection: choice($model.options.audio, choices: model.audioChoices, fallback: model.defaultAudio)) {
+                    ForEach(model.audioChoices, id: \.self) { value in
+                        Text(value == "copy" ? String(localized: "Copy original") : value.uppercased()).tag(value)
+                    }
+                }
+            }
             Section("Trim") {
                 Toggle("Select a frame range", isOn: $model.limitFrames)
                     .onChange(of: model.limitFrames) { _, selected in if selected { model.indexFrames() } }
@@ -570,7 +640,7 @@ struct WorkspaceView: View {
                     if let frames = model.frames {
                         TextField("Frame number", text: $model.photoFrame)
                             .onSubmit(model.previewPhotoFrame)
-                        if model.player != nil, frames.count > 1 {
+                        if model.player != nil || model.fallbackPreview != nil, frames.count > 1 {
                             Slider(value: Binding(
                                 get: { Double(min(frames.count, max(1, UInt64(model.photoFrame) ?? 1))) },
                                 set: { model.photoFrame = String(UInt64($0)); model.previewPhotoFrame() }
@@ -614,6 +684,11 @@ struct WorkspaceView: View {
         .onChange(of: model.supportsHDRPhoto) { _, supported in
             if !supported { model.photoFormat = .sdr }
         }
+    }
+
+    private func choice(_ binding: Binding<String>, choices: [String], fallback: String) -> Binding<String> {
+        Binding(get: { choices.contains(binding.wrappedValue) ? binding.wrappedValue : fallback },
+                set: { binding.wrappedValue = $0 })
     }
 
     private var footer: some View {

@@ -167,6 +167,8 @@ struct MediaSource: Sendable {
     let url: URL
     let snapshot: Data
     let summary: MediaSummary
+    let format: lr_source_format
+    let canEncodeFlac: Bool
     fileprivate let identity: SourceIdentity
 }
 
@@ -280,10 +282,27 @@ struct EncodingOptions: Sendable {
     var standardHDR = false
     var encoder: EncoderMode = .software
     var liveClip = false
+    var bitDepth = "auto"
+    var sampling = "auto"
+    var colorRange = "auto"
+    var audio = "auto"
 
     func inputKind(_ media: MediaSummary) -> String { sourceKind == "auto" ? media.kind : sourceKind }
     func supportsHDRVideo(_ media: MediaSummary) -> Bool { ["hlg", "pq", "log"].contains(inputKind(media)) }
-    func supportsHDRPhoto(_ media: MediaSummary) -> Bool { ["hlg", "pq", "log"].contains(inputKind(media)) }
+    func supportsHDRPhoto(_ media: MediaSummary) -> Bool { supportsHDRVideo(media) }
+
+    func formatChoices(for media: MediaSource) -> lr_format_choices? {
+        var source = media.format
+        let purpose = encoder == .videoToolbox ? LR_PURPOSE_SHARE : LR_PURPOSE_ARCHIVE
+        let selected = codec == "avc" ? LR_CODEC_AVC : codec == "av1" ? LR_CODEC_AV1 : LR_CODEC_HEVC
+        let hdr = output == "hdr" || output == "dolbyvision84" || (output == "auto" && supportsHDRVideo(media.summary))
+        var choices = lr_format_choices()
+        let size = UInt64(MemoryLayout<lr_format_choices>.size)
+        guard lr_format_choices_init(&choices, size) == LR_OK,
+              lr_get_format_choices(&source, purpose, selected, hdr ? LR_DYNAMIC_RANGE_HDR : LR_DYNAMIC_RANGE_SDR,
+                                    &choices, nil) == LR_OK else { return nil }
+        return choices
+    }
 
     func canGenerateDolbyVision(_ media: MediaSummary) -> Bool {
         inputKind(media) == "hlg" && media.kind == "hlg" && media.video.color_transfer == "arib-std-b67"
@@ -324,7 +343,8 @@ struct EncodingOptions: Sendable {
             "purpose": useVideoToolbox ? "share" : "archive", "codec": codec, "output": target, "source_kind": sourceKind,
             "transform": transform,
             "dynamic_hdr": output == "dolbyvision84" ? "generate_84" : standardHDR ? "standard" : "preserve",
-            "container": container, "cpu_tone_map": "1"
+            "container": container, "cpu_tone_map": "1", "bit_depth": bitDepth,
+            "sampling": sampling, "color_range": colorRange, "audio": audio
         ]
         if useVideoToolbox { fields["hardware"] = EncoderMode.videoToolbox.rawValue }
         if liveClip {
@@ -456,9 +476,28 @@ struct NativeEngine: Sendable {
             try check(executed, error, "Source inspection failed.")
         }
         let data = try copyBytes(limit: 64 * 1024 * 1024) { lr_probe_copy_json(handle, $0, $1, $2) }
+        let summary = try JSONDecoder().decode(MediaSummary.self, from: data)
+        var format = lr_source_format()
+        try check(lr_source_format_init(&format, UInt64(MemoryLayout<lr_source_format>.size)), nil,
+                  "Cannot initialize source format.")
+        let formatStatus = withViews([data]) { lr_media_source_format($0[0], LR_RANGE_AUTO, &format, &error) }
+        try check(formatStatus, error, "Cannot determine source precision.")
+        let canEncodeFlac = try Self.canEncodeFlac(data, summary: summary)
         try identity.check(url)
-        return try MediaSource(url: url, snapshot: data, summary: JSONDecoder().decode(MediaSummary.self, from: data),
-                               identity: identity)
+        return MediaSource(url: url, snapshot: data, summary: summary, format: format, canEncodeFlac: canEncodeFlac,
+                           identity: identity)
+    }
+
+    private static func canEncodeFlac(_ snapshot: Data, summary: MediaSummary) throws -> Bool {
+        guard summary.streams.contains(where: { $0.codec_type == "audio" }),
+              let object = try JSONSerialization.jsonObject(with: snapshot) as? [String: Any],
+              let streams = object["streams"] as? [[String: Any]] else { return false }
+        for stream in streams where stream["codec_type"] as? String == "audio" {
+            let data = try JSONSerialization.data(withJSONObject: stream)
+            var depth: UInt32 = 0
+            if withViews([data], { lr_media_flac_depth($0[0], &depth, nil) }) != LR_OK { return false }
+        }
+        return true
     }
 
     func loadFrames(_ source: MediaSource, control: JobControl) throws -> FrameIndex {
@@ -648,6 +687,7 @@ struct NativeEngine: Sendable {
         motion.codec = format == .sdr ? "avc" : "hevc"
         motion.standardHDR = true
         motion.liveClip = true
+        motion.bitDepth = "auto"
         motion.encoder = .auto
         try convert(source, to: clip, options: motion, overwrite: false, index: index, selection: range, control: control)
         let encoded = try inspect(clip, control: control)
@@ -722,6 +762,10 @@ struct NativeEngine: Sendable {
         render.output = hdr ? "hdr" : "sdr"
         render.codec = "hevc"
         render.standardHDR = true
+        render.bitDepth = "auto"
+        render.sampling = "auto"
+        render.colorRange = "auto"
+        render.audio = "auto"
         let choices = try render.data(for: source.summary, container: "mkv", useVideoToolbox: false)
         let plan = try makePlan(source: source.snapshot, choices: choices, staging: utf8(destination.path), window: window,
                                 previewSize: preview ? 960 : 0)
