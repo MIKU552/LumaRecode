@@ -190,6 +190,56 @@ def main():
             flush=True,
         )
 
+        mastering = (
+            "G(8500,39850)B(6550,2300)R(35400,14600)WP(15635,16450)L(10000000,50)"
+        )
+        static_input = folder / "static-pq.mkv"
+        static_output = folder / "static-pq-archive.mkv"
+        subprocess.run(
+            [
+                ffmpeg,
+                "-v",
+                "error",
+                "-i",
+                str(source),
+                "-c:v",
+                "libx265",
+                "-preset",
+                "ultrafast",
+                "-x265-params",
+                f"log-level=error:hdr10=1:master-display={mastering}:max-cll=1000,400",
+                str(static_input),
+            ],
+            check=True,
+            capture_output=True,
+            timeout=30,
+        )
+        call(
+            "convert",
+            static_input,
+            "-o",
+            static_output,
+            "--ffmpeg",
+            ffmpeg,
+            "--encoder",
+            "auto",
+        )
+        assert "Mastering display metadata" in call("probe", static_output)
+        assert "Content light level metadata" in call("probe", static_output)
+        call(
+            "convert",
+            static_input,
+            "-o",
+            unavailable,
+            "--ffmpeg",
+            ffmpeg,
+            "--encoder",
+            "videotoolbox",
+            status=1,
+        )
+        assert not unavailable.exists()
+        print("PASS static PQ metadata through the software archive path", flush=True)
+
         old_hash = hashlib.sha256(output.read_bytes()).digest()
         marker = folder / "running"
         fake = folder / "ffmpeg-block"

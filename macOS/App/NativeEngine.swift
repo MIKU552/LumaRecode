@@ -88,6 +88,14 @@ private func copyBytes(
 }
 
 struct MediaSummary: Decodable, Sendable {
+    struct SideData: Decodable, Sendable {
+        let side_data_type: String?
+    }
+
+    private struct Frame: Decodable {
+        let side_data_list: [SideData]?
+    }
+
     struct Stream: Decodable, Sendable {
         let codec_name: String?
         let codec_type: String?
@@ -96,6 +104,7 @@ struct MediaSummary: Decodable, Sendable {
         let width: Int?
         let height: Int?
         let channels: Int?
+        let side_data_list: [SideData]?
     }
 
     let kind: String
@@ -105,9 +114,10 @@ struct MediaSummary: Decodable, Sendable {
     let streams: [Stream]
     let hdr10plus: Bool
     let hasDolbyVision: Bool
+    let hasStaticHDR: Bool
 
     init(from decoder: Decoder) throws {
-        enum Key: String, CodingKey { case schema_version, kind, profile, duration, video, streams, hdr10plus, dolby_vision }
+        enum Key: String, CodingKey { case schema_version, kind, profile, duration, video, streams, frames, hdr10plus, dolby_vision }
         let values = try decoder.container(keyedBy: Key.self)
         guard try values.decode(Int.self, forKey: .schema_version) == 1 else {
             throw EngineError(message: "Unsupported source snapshot schema.")
@@ -119,6 +129,13 @@ struct MediaSummary: Decodable, Sendable {
         streams = try values.decode([Stream].self, forKey: .streams)
         hdr10plus = try values.decode(Bool.self, forKey: .hdr10plus)
         hasDolbyVision = try !values.decodeNil(forKey: .dolby_vision)
+        let frames = try values.decode([Frame].self, forKey: .frames)
+        func containsStaticHDR(_ side: [SideData]?) -> Bool {
+            side?.contains {
+                $0.side_data_type == "Mastering display metadata" || $0.side_data_type == "Content light level metadata"
+            } ?? false
+        }
+        hasStaticHDR = containsStaticHDR(video.side_data_list) || frames.contains { containsStaticHDR($0.side_data_list) }
     }
 }
 
@@ -222,11 +239,14 @@ struct EncodingOptions: Sendable {
 
     func inputKind(_ media: MediaSummary) -> String { sourceKind == "auto" ? media.kind : sourceKind }
 
-    func outputSignal(_ media: MediaSummary) -> String? {
+    func videoToolboxSignal(_ media: MediaSummary) -> String? {
         let kind = inputKind(media)
         if kind == "unknown" || media.kind == "raw" { return nil }
         if output == "sdr" || (output == "auto" && kind == "sdr") { return "sdr" }
         guard kind != "sdr", standardHDR || (!media.hdr10plus && !media.hasDolbyVision) else { return nil }
+        // The software planners write the source's static HDR metadata.
+        // The VideoToolbox wrapper does not guarantee carrying those fields.
+        if media.hasStaticHDR && kind != "log" { return nil }
         return kind == "pq" ? "pq" : "hlg"
     }
 
@@ -428,11 +448,10 @@ struct NativeEngine: Sendable {
         let container = destination.pathExtension.lowercased()
         guard ["mkv", "mp4"].contains(container) else { throw EngineError(message: "Use an .mkv or .mp4 output path.") }
         try source.identity.check(source.url)
-        let formats = VideoToolboxFormat.formats.filter {
-            $0.codec == options.codec && $0.signal == options.outputSignal(source.summary)
-        }
+        let signal = options.videoToolboxSignal(source.summary)
+        let format = VideoToolboxFormat.formats.first { $0.codec == options.codec && $0.signal == signal }
         let hardware: Bool
-        if options.encoder != .software, let format = formats.first {
+        if options.encoder != .software, let format {
             hardware = try (toolbox?.first { $0.format == format } ?? trialVideoToolbox(format, control: control)).available
         } else {
             hardware = false

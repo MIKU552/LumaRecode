@@ -29,7 +29,7 @@ final class Workspace {
     var isLog: Bool { options.sourceKind == "log" || (options.sourceKind == "auto" && media?.summary.kind == "log") }
     var isDynamicHDR: Bool { media?.summary.hdr10plus == true || media?.summary.hasDolbyVision == true }
     var hardwareCodecs: [String] {
-        guard let media, let signal = options.outputSignal(media.summary) else { return [] }
+        guard let media, let signal = options.videoToolboxSignal(media.summary) else { return [] }
         return (encoderCache?.trials ?? []).filter { $0.available && $0.format.signal == signal }.map(\.format.codec)
     }
 
