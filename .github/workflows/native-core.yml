@@ -124,6 +124,8 @@ jobs:
           sh tools/build-macos.sh Release
       - name: macOS application regression checks
         if: runner.os == 'macOS'
+        env:
+          LUMA_REQUIRE_VIDEO_TOOLBOX_DOVI: '1'
         run: python3 qa/RuntimeChecks/check_macos_host.py --app out/macos-build/Build/Products/Release/LumaRecode.app
       - name: Package verified macOS application
         if: runner.os == 'macOS'

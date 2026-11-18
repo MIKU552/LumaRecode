@@ -7,6 +7,9 @@ enum CommandLineHost {
       probe INPUT [--ffprobe PATH]
       frames INPUT [--ffprobe PATH]
       doctor [--ffmpeg PATH] [--ffprobe PATH]
+      image INPUT -o OUTPUT --frame N [--format sdr|hdr|adaptive] [--overwrite]
+        [--input-kind auto|sdr|hlg|pq|log] [--profile pocket3|samsung|milog|applelog|applelog2]
+        [--ffmpeg PATH] [--ffprobe PATH]
       convert INPUT -o OUTPUT [--codec hevc|av1|avc] [--range auto|sdr|hdr|dolbyvision84]
         [--encoder software|auto|videotoolbox]
         [--input-kind auto|sdr|hlg|pq|log] [--profile pocket3|samsung|milog|applelog|applelog2]
@@ -42,7 +45,7 @@ enum CommandLineHost {
         defer { interrupt.cancel() }
         do {
             let tools = try MediaTools.discover(ffmpeg: parsed.values["--ffmpeg"], ffprobe: parsed.values["--ffprobe"],
-                                                requireEncoder: parsed.command == "convert" || parsed.command == "doctor")
+                                                requireEncoder: ["convert", "doctor", "image"].contains(parsed.command))
             let engine = try NativeEngine(tools: tools, assets: NativeEngine.bundledAssets)
             if parsed.command == "doctor" {
                 let trials = try engine.videoToolboxTrials(control: control)
@@ -62,8 +65,13 @@ enum CommandLineHost {
             default:
                 guard let output = parsed.output else { throw EngineError(message: "Missing output path.") }
                 let overwrite = try confirmOverwrite(output, allowed: parsed.flags.contains("--overwrite"), control: control)
-                try engine.convert(source, to: output, options: parsed.encoding, overwrite: overwrite,
-                                   selection: parsed.selection, control: control)
+                if let photo = parsed.photo {
+                    try engine.exportPhoto(source, to: output, format: photo.format, frame: photo.frame,
+                                           options: parsed.encoding, overwrite: overwrite, control: control)
+                } else {
+                    try engine.convert(source, to: output, options: parsed.encoding, overwrite: overwrite,
+                                       selection: parsed.selection, control: control)
+                }
                 print(output.path)
             }
             return 0
@@ -109,10 +117,11 @@ enum CommandLineHost {
         var flags: Set<String> = []
         var output: URL?
         var selection: FrameSelection?
+        var photo: (format: PhotoFormat, frame: UInt64)?
         var encoding = EncodingOptions()
 
         init(_ words: [String]) throws {
-            guard let command = words.first, ["probe", "frames", "convert", "doctor"].contains(command) else {
+            guard let command = words.first, ["probe", "frames", "convert", "doctor", "image"].contains(command) else {
                 throw EngineError(message: "Specify a command.")
             }
             self.command = command
@@ -122,24 +131,44 @@ enum CommandLineHost {
                 guard words.count >= 2, !words[1].hasPrefix("-") else { throw EngineError(message: "Specify an input path.") }
                 input = URL(fileURLWithPath: words[1]).standardizedFileURL
             }
-            let common: Set<String> = command == "doctor" ? ["--ffmpeg", "--ffprobe"] : ["--ffprobe"]
-            let conversion: Set<String> = [
-                "-o", "--ffmpeg", "--codec", "--encoder", "--range", "--input-kind", "--profile", "--start-frame", "--end-frame"
-            ]
+            var accepted: Set<String> = ["--ffprobe"]
+            var switches: Set<String> = []
+            if command == "doctor" { accepted.insert("--ffmpeg") }
+            if command == "convert" || command == "image" {
+                accepted.formUnion(["-o", "--ffmpeg", "--input-kind", "--profile"])
+                switches.insert("--overwrite")
+            }
+            if command == "convert" {
+                accepted.formUnion(["--codec", "--encoder", "--range", "--start-frame", "--end-frame"])
+                switches.insert("--standard-hdr")
+            }
+            if command == "image" { accepted.formUnion(["--frame", "--format"]) }
             var remaining = words.dropFirst(input == nil ? 1 : 2).makeIterator()
             while let word = remaining.next() {
-                if command == "convert", ["--standard-hdr", "--overwrite"].contains(word), flags.insert(word).inserted {
+                if switches.contains(word), flags.insert(word).inserted {
                     continue
                 }
-                guard common.contains(word) || (command == "convert" && conversion.contains(word)),
+                guard accepted.contains(word),
                       values[word] == nil, let value = remaining.next(), !value.hasPrefix("--"), !value.isEmpty else {
                     throw EngineError(message: "Invalid option: \(word)")
                 }
                 values[word] = value
             }
-            if command != "convert" { return }
-            guard let path = values["-o"] else { throw EngineError(message: "Conversion requires -o OUTPUT.") }
+            guard command == "convert" || command == "image" else { return }
+            guard let path = values["-o"] else { throw EngineError(message: "Export requires -o OUTPUT.") }
             output = URL(fileURLWithPath: path).standardizedFileURL
+            encoding.sourceKind = try choice("--input-kind", allowed: ["auto", "sdr", "hlg", "pq", "log"], defaultValue: "auto")
+            if values["--profile"] != nil {
+                encoding.profile = try choice("--profile", allowed: ["pocket3", "samsung", "milog", "applelog", "applelog2"], defaultValue: "")
+            }
+            if command == "image" {
+                guard let format = PhotoFormat(rawValue: values["--format"] ?? "sdr") else {
+                    throw EngineError(message: "Invalid value for --format.")
+                }
+                guard let selected = try frame("--frame") else { throw EngineError(message: "Specify --frame N.") }
+                photo = (format, selected)
+                return
+            }
             encoding.codec = try choice("--codec", allowed: ["hevc", "av1", "avc"], defaultValue: "hevc")
             if let value = values["--encoder"] {
                 guard let mode = EncoderMode(rawValue: value) else { throw EngineError(message: "Invalid value for --encoder.") }
@@ -149,10 +178,6 @@ enum CommandLineHost {
             encoding.standardHDR = flags.contains("--standard-hdr")
             if encoding.output == "dolbyvision84" && (values["--encoder"] == "software" || encoding.standardHDR) {
                 throw EngineError(message: "Dolby Vision 8.4 requires VideoToolbox and its own output mode.")
-            }
-            encoding.sourceKind = try choice("--input-kind", allowed: ["auto", "sdr", "hlg", "pq", "log"], defaultValue: "auto")
-            if values["--profile"] != nil {
-                encoding.profile = try choice("--profile", allowed: ["pocket3", "samsung", "milog", "applelog", "applelog2"], defaultValue: "")
             }
             let first = try frame("--start-frame")
             let last = try frame("--end-frame")

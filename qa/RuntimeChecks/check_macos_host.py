@@ -76,6 +76,8 @@ def main():
             f"VideoToolbox engine trials: {json.dumps(trials, ensure_ascii=False)}",
             flush=True,
         )
+        if os.environ.get("LUMA_REQUIRE_VIDEO_TOOLBOX_DOVI"):
+            assert dovi_trial["available"], dovi_trial
         for kind, transfer, pixel in [
             ("sdr", "bt709", "yuv420p"),
             ("hlg", "arib-std-b67", "yuv420p10le"),
@@ -212,6 +214,48 @@ def main():
                 call(*dolby_export, status=1)
                 assert not dolby.exists()
             assert not list(folder.glob(".lumarecode-*"))
+
+            formats = ["sdr"] if kind == "sdr" else ["sdr", "hdr", "adaptive"]
+            for photo_format in formats:
+                ext = "jpg" if photo_format == "sdr" else "heic"
+                photo = folder / f"{kind}-{photo_format}.{ext}"
+                call(
+                    "image",
+                    source,
+                    "-o",
+                    photo,
+                    "--frame",
+                    "3",
+                    "--format",
+                    photo_format,
+                    "--ffmpeg",
+                    ffmpeg,
+                )
+                magic = photo.read_bytes()[:12]
+                assert (
+                    magic.startswith(b"\xff\xd8\xff")
+                    if ext == "jpg"
+                    else magic[4:8] == b"ftyp"
+                ), magic
+            photo = folder / f"{kind}-first.jpg"
+            call("image", source, "-o", photo, "--frame", "1", "--ffmpeg", ffmpeg)
+            assert photo.read_bytes() != (folder / f"{kind}-sdr.jpg").read_bytes()
+            outside = folder / "outside.jpg"
+            call(
+                "image",
+                source,
+                "-o",
+                outside,
+                "--frame",
+                "17",
+                "--ffmpeg",
+                ffmpeg,
+                status=1,
+            )
+            assert not outside.exists() and not list(folder.glob(".lumarecode-*"))
+            print(
+                f"PASS macOS still exports: {kind} ({', '.join(formats)})", flush=True
+            )
 
         automatic = folder / "automatic.mkv"
         call(

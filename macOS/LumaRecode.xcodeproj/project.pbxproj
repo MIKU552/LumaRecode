@@ -36,7 +36,7 @@
 			path = App;
 			children = (
 				01AB00000000000000000021, 01AB00000000000000000022, 01AB00000000000000000023,
-				01AB00000000000000000024, 01AB00000000000000000025,
+				01AB00000000000000000024, 01AB00000000000000000025, 01AB00000000000000000026,
 			);
 			sourceTree = "<group>";
 		};
@@ -104,7 +104,7 @@
 		01AB00000000000000000015 = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (01AB00000000000000000031, 01AB00000000000000000032, 01AB00000000000000000033, 01AB00000000000000000034);
+			files = (01AB00000000000000000031, 01AB00000000000000000032, 01AB00000000000000000033, 01AB00000000000000000034, 01AB00000000000000000036);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		01AB00000000000000000016 = {
@@ -118,11 +118,13 @@
 		01AB00000000000000000023 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeEngine.swift; sourceTree = "<group>"; };
 		01AB00000000000000000024 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandLineHost.swift; sourceTree = "<group>"; };
 		01AB00000000000000000025 = { isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		01AB00000000000000000026 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FramePhoto.swift; sourceTree = "<group>"; };
 		01AB00000000000000000031 = { isa = PBXBuildFile; fileRef = 01AB00000000000000000021; };
 		01AB00000000000000000032 = { isa = PBXBuildFile; fileRef = 01AB00000000000000000022; };
 		01AB00000000000000000033 = { isa = PBXBuildFile; fileRef = 01AB00000000000000000023; };
 		01AB00000000000000000034 = { isa = PBXBuildFile; fileRef = 01AB00000000000000000024; };
 		01AB00000000000000000035 = { isa = PBXBuildFile; fileRef = 01AB00000000000000000025; };
+		01AB00000000000000000036 = { isa = PBXBuildFile; fileRef = 01AB00000000000000000026; };
 	};
 	rootObject = 01AB00000000000000000001;
 }

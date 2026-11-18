@@ -248,6 +248,7 @@ struct EncodingOptions: Sendable {
     var encoder: EncoderMode = .software
 
     func inputKind(_ media: MediaSummary) -> String { sourceKind == "auto" ? media.kind : sourceKind }
+    func supportsHDRPhoto(_ media: MediaSummary) -> Bool { ["hlg", "pq", "log"].contains(inputKind(media)) }
 
     func canGenerateDolbyVision(_ media: MediaSummary) -> Bool {
         inputKind(media) == "hlg" && media.kind == "hlg" && media.video.color_transfer == "arib-std-b67"
@@ -485,6 +486,122 @@ struct NativeEngine: Sendable {
             let resolvedIndex = try index ?? loadFrames(source, control: control)
             return try resolvedIndex.resolve(selection)
         }
+        try withOutput(source, to: destination, overwrite: overwrite, control: control) { stagedURL, cleanup in
+            let plan = try makePlan(source: source.snapshot, choices: choices, staging: utf8(stagedURL.path), window: window)
+            defer { lr_plan_release(plan) }
+            let command = try plannedCommand(plan)
+            guard command.sidecars.isEmpty else { throw EngineError(message: "This conversion requires an unsupported media sidecar.") }
+            let total = window.map { $0.end_seconds - $0.start_seconds } ?? source.summary.duration
+            try encodeVideo(command, to: stagedURL, dolbyVision: generateDolbyVision, control: control, cleanup: &cleanup) { position in
+                if total > 0 { progress(min(0.99, position / total)) }
+            }
+            let checked = try inspect(stagedURL, control: control, cleanup: &cleanup)
+            try control.check()
+            try verify(plan, source: source.snapshot, encoded: checked.snapshot)
+            if let window {
+                let encodedFrames = try loadFrames(checked, control: control, cleanup: &cleanup)
+                guard encodedFrames.count == window.end - window.start else {
+                    throw EngineError(message: "The encoded frame count differs from the selected range.")
+                }
+            }
+        }
+        progress(1)
+    }
+
+    func exportPhoto(
+        _ source: MediaSource, to destination: URL, format: PhotoFormat, frame: UInt64, options: EncodingOptions,
+        overwrite: Bool, index: FrameIndex? = nil, control: JobControl
+    ) throws {
+        guard format.matchesExtension(destination.pathExtension) else {
+            throw EngineError(message: "The file extension does not match the photo format.")
+        }
+        guard format == .sdr || options.supportsHDRPhoto(source.summary) else {
+            throw EngineError(message: "HDR photos require an HDR or camera Log source.")
+        }
+        let index = try index ?? loadFrames(source, control: control)
+        let window = try index.resolve(FrameSelection(first: frame, last: frame))
+        try withOutput(source, to: destination.standardizedFileURL, overwrite: overwrite, control: control) { stagedURL, cleanup in
+            let parent = stagedURL.deletingLastPathComponent()
+            let sdr = parent.appendingPathComponent("still-sdr.png")
+            let hdr = parent.appendingPathComponent("still-hdr.png")
+            defer {
+                if cleanup {
+                    try? FileManager.default.removeItem(at: sdr)
+                    try? FileManager.default.removeItem(at: hdr)
+                }
+            }
+            if format != .hdr { try renderStill(source, to: sdr, hdr: false, options: options, window: window, control: control, cleanup: &cleanup) }
+            if format != .sdr { try renderStill(source, to: hdr, hdr: true, options: options, window: window, control: control, cleanup: &cleanup) }
+            try format.write(to: stagedURL, sdr: sdr, hdr: hdr, control: control)
+        }
+    }
+
+    private func encodeVideo(
+        _ command: PlannedCommand, to destination: URL, dolbyVision: Bool, control: JobControl,
+        cleanup: inout Bool, timeout: UInt64 = 0, progress: @escaping (Double) -> Void
+    ) throws {
+        guard dolbyVision else {
+            try runEncoder(command, control: control, cleanup: &cleanup, timeout: timeout, progress: progress)
+            return
+        }
+        let intermediate = destination.deletingLastPathComponent().appendingPathComponent("hevc-" + UUID().uuidString + ".mp4")
+        defer { if cleanup { try? FileManager.default.removeItem(at: intermediate) } }
+        var encode = command
+        encode.arguments[encode.arguments.count - 1] = intermediate.path
+        try runEncoder(encode, control: control, cleanup: &cleanup, timeout: timeout, progress: progress)
+        // The hardware encoder advertises its p010 input format. Reading the
+        // coded stream back supplies planar 10-bit HEVC for the BSF's profile
+        // check while keeping the original VideoToolbox-generated RPU.
+        let remux = PlannedCommand(arguments: [
+            encode.arguments[0], "-hide_banner", "-nostdin", "-n", "-xerror", "-loglevel", "warning",
+            "-i", intermediate.path, "-map", "0", "-c", "copy",
+            "-bsf:v", "dovi_rpu=compression=none", "-strict", "unofficial", "-tag:v", "hvc1",
+            "-movflags", "+faststart+write_colr", destination.path
+        ], working_directory: command.working_directory, sidecars: [])
+        try runEncoder(remux, control: control, cleanup: &cleanup, timeout: timeout) { _ in }
+    }
+
+    private func renderStill(
+        _ source: MediaSource, to destination: URL, hdr: Bool, options: EncodingOptions, window: lr_frame_window,
+        control: JobControl, cleanup: inout Bool
+    ) throws {
+        var render = options
+        render.output = hdr ? "hdr" : "sdr"
+        render.codec = "hevc"
+        render.standardHDR = true
+        let choices = try render.data(for: source.summary, container: "mkv", useVideoToolbox: false)
+        let plan = try makePlan(source: source.snapshot, choices: choices, staging: utf8(destination.path), window: window)
+        defer { lr_plan_release(plan) }
+        let command = try plannedCommand(plan)
+        let args = command.arguments
+        guard command.sidecars.isEmpty, let input = args.firstIndex(of: "-i"), let map = args.firstIndex(of: "-map"),
+              let filter = args.firstIndex(of: "-vf"), input + 1 < args.count, map + 1 < args.count, filter + 1 < args.count else {
+            throw EngineError(message: "Cannot plan the selected still frame.")
+        }
+        // Use the conversion planner's frame selection, orientation and camera
+        // color pipeline, then hand Core Image an RGB intermediate at full precision.
+        let rgb = hdr
+            ? "libplacebo=format=yuv444p16le:colorspace=bt2020nc:color_primaries=bt2020:color_trc=smpte2084:range=full:apply_dolbyvision=0,zscale=matrix=gbr:range=full"
+            : "zscale=primaries=bt709:transfer=iec61966-2-1:matrix=gbr:range=full"
+        let still = PlannedCommand(
+            arguments: Array(args.prefix(input + 2)) + [
+                "-map", args[map + 1], "-an", "-sn", "-dn", "-map_metadata", "-1",
+                "-vf", args[filter + 1] + "," + rgb + ",format=gbrp16le,format=rgb48be",
+                "-frames:v", "1", "-c:v", "png", "-f", "image2", "-update", "1", destination.path
+            ], working_directory: command.working_directory, sidecars: []
+        )
+        try source.identity.check(source.url)
+        try runEncoder(still, control: control, cleanup: &cleanup) { _ in }
+    }
+
+    // Video and still export both verify staged files before publishing them.
+    // The native transaction also protects against a replaced source or target.
+    private func withOutput(
+        _ source: MediaSource, to destination: URL, overwrite: Bool, control: JobControl,
+        _ render: (URL, inout Bool) throws -> Void
+    ) throws {
+        try control.check()
+        try source.identity.check(source.url)
         var output = lr_output_options()
         try check(lr_output_options_init(&output, UInt64(MemoryLayout<lr_output_options>.size)), nil,
                   "Cannot initialize the output.")
@@ -506,29 +623,14 @@ struct NativeEngine: Sendable {
         }
         try source.identity.check(source.url)
         let staging = try copyBytes(limit: 500_000) { lr_output_copy_path(transaction, LR_OUTPUT_PATH_STAGING, $0, $1, $2) }
-        let plan = try makePlan(source: source.snapshot, choices: choices, staging: staging, window: window)
-        defer { lr_plan_release(plan) }
-        let command = try plannedCommand(plan)
-        guard command.sidecars.isEmpty else { throw EngineError(message: "This conversion requires an unsupported media sidecar.") }
-        let total = window.map { $0.end_seconds - $0.start_seconds } ?? source.summary.duration
-        try runEncoder(command, control: control, cleanup: &cleanup) { position in
-            if total > 0 { progress(min(0.99, position / total)) }
-        }
         let stagedURL = URL(fileURLWithPath: String(decoding: staging, as: UTF8.self))
-        let checked = try inspect(stagedURL, control: control, cleanup: &cleanup)
+        try render(stagedURL, &cleanup)
         try control.check()
-        try verify(plan, source: source.snapshot, encoded: checked.snapshot)
-        if let window {
-            let encodedFrames = try loadFrames(checked, control: control, cleanup: &cleanup)
-            guard encodedFrames.count == window.end - window.start else {
-                throw EngineError(message: "The encoded frame count differs from the selected range.")
-            }
-        }
+        try source.identity.check(source.url)
         try check(lr_output_seal(transaction, cleanup ? 1 : 0, &error), error, "Cannot seal the encoded file.")
         try control.check()
         try check(lr_output_commit(transaction, &error), error, "Cannot publish the encoded file.")
         committed = true
-        progress(1)
     }
 
     func videoToolboxTrials(control: JobControl) throws -> [VideoToolboxTrial] {
@@ -577,7 +679,8 @@ struct NativeEngine: Sendable {
         ])
         command.arguments.insert(contentsOf: ["-frames:v", "8"], at: command.arguments.count - 1)
         do {
-            try runEncoder(command, control: control, cleanup: &cleanup, timeout: 6000) { _ in }
+            try encodeVideo(command, to: destination, dolbyVision: format.signal == "dolbyvision84",
+                            control: control, cleanup: &cleanup, timeout: 6000) { _ in }
             let encoded = try inspect(destination, control: control, cleanup: &cleanup)
             try verify(plan, source: source, encoded: encoded.snapshot)
             return VideoToolboxTrial(format: format, available: true, diagnostic: nil)

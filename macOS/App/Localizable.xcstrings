@@ -23,6 +23,28 @@
         }
       }
     },
+    "Adaptive HDR HEIC": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自适应 HDR HEIC"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アダプティブ HDR HEIC"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEIC con HDR adaptativo"
+          }
+        }
+      }
+    },
     "Automatic": {
       "localizations": {
         "zh-Hans": {
@@ -221,6 +243,28 @@
         }
       }
     },
+    "Dolby Vision 8.4 requires standard HLG, HEVC and MP4.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dolby Vision 8.4 需要普通 HLG 素材，并使用 HEVC 和 MP4。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dolby Vision 8.4 には標準 HLG 素材、HEVC、MP4 が必要です。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dolby Vision 8.4 requiere material HLG estándar, HEVC y MP4."
+          }
+        }
+      }
+    },
     "Drop a video here or select one to begin.": {
       "localizations": {
         "zh-Hans": {
@@ -331,6 +375,28 @@
         }
       }
     },
+    "Enter a valid frame number.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入有效的帧号。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有効なフレーム番号を入力してください。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Introduce un número de fotograma válido."
+          }
+        }
+      }
+    },
     "Export Video…": {
       "localizations": {
         "zh-Hans": {
@@ -353,6 +419,50 @@
         }
       }
     },
+    "Export a frame": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出单帧"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フレームを書き出す"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar un fotograma"
+          }
+        }
+      }
+    },
+    "Exporting photo…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在导出照片…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "写真を書き出しています…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportando la foto…"
+          }
+        }
+      }
+    },
     "First frame": {
       "localizations": {
         "zh-Hans": {
@@ -371,6 +481,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Primer fotograma"
+          }
+        }
+      }
+    },
+    "Frame number": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "帧号"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フレーム番号"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Número de fotograma"
           }
         }
       }
@@ -507,28 +639,6 @@
         }
       }
     },
-    "Open a video": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开视频"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "動画を開く"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abre un vídeo"
-          }
-        }
-      }
-    },
     "Open Video…": {
       "localizations": {
         "zh-Hans": {
@@ -551,6 +661,28 @@
         }
       }
     },
+    "Open a video": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开视频"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "動画を開く"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre un vídeo"
+          }
+        }
+      }
+    },
     "Output range": {
       "localizations": {
         "zh-Hans": {
@@ -569,6 +701,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rango dinámico de salida"
+          }
+        }
+      }
+    },
+    "Photo format": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "照片格式"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "写真の形式"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formato de foto"
           }
         }
       }
@@ -617,6 +771,28 @@
         }
       }
     },
+    "Read frame numbers": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取帧索引"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フレーム番号を読み込む"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leer los números de fotograma"
+          }
+        }
+      }
+    },
     "Reading footage…": {
       "localizations": {
         "zh-Hans": {
@@ -635,6 +811,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Leyendo el vídeo…"
+          }
+        }
+      }
+    },
+    "Save Photo…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存照片…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "写真を保存…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar foto…"
           }
         }
       }

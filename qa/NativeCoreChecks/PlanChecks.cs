@@ -344,7 +344,7 @@ internal static class PlanChecks
             Container: "mp4", DynamicHdr: "generate_84");
         var dolbyPlan = Plan(baseline, tools, hardwareHdr, dolbyExport, destination);
         var dolbyArguments = Encoding.UTF8.GetString(dolbyPlan.Data);
-        check(dolbyPlan.Status == NativeStatus.Ok && dolbyArguments.Contains("dovi_rpu=compression=none", StringComparison.Ordinal) &&
+        check(dolbyPlan.Status == NativeStatus.Ok && dolbyArguments.Contains("hevc_videotoolbox", StringComparison.Ordinal) &&
             !dolbyArguments.Contains("dovi_rpu=strip=1", StringComparison.Ordinal),
             $"VideoToolbox Dolby Vision plan failed: {dolbyPlan.Diagnostic}");
         check(Plan(baseline, tools, hardwareSdr, dolbyExport, destination).Status != NativeStatus.Ok &&

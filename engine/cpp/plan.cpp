@@ -739,11 +739,12 @@ class planner
         if (dovi != nullptr && purpose == "archive" && (codec == "hevc" || codec == "av1"))
             add({"-dolbyvision", preserve ? "1" : "0"});
         // VideoToolbox can insert Dolby Vision metadata when encoding HLG.
-        // The explicit profile 8.4 export carries that metadata into the MP4.
+        // Profile 8.4 is remuxed separately once demuxing exposes the coded
+        // yuv420p10le format to the Dolby Vision bitstream filter.
         if (hardware_preset != nullptr && text(config, "encoder") == "hevc_videotoolbox" &&
-            text(colors, "color_transfer") == "arib-std-b67")
-            add({"-bsf:v", generate_dovi ? "dovi_rpu=compression=none" : "dovi_rpu=strip=1"});
-        if (preserve || generate_dovi)
+            text(colors, "color_transfer") == "arib-std-b67" && !generate_dovi)
+            add({"-bsf:v", "dovi_rpu=strip=1"});
+        if (preserve)
             add({"-strict", "unofficial"});
         for (size_t i = 0; i < 4; ++i)
             if (!luma::unspecified(text(colors, color_keys[i])) &&
@@ -809,7 +810,7 @@ class planner
         {
             if (codec == "hevc")
                 add({"-tag:v", "hvc1"});
-            add({"-movflags", "+faststart+write_colr"});
+            add({"-movflags", generate_dovi ? "+write_colr" : "+faststart+write_colr"});
         }
         if (request.seconds > 0)
             add({"-t", number(request.seconds)});

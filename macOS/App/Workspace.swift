@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 
 @MainActor @Observable
 final class Workspace {
-    enum Activity { case inspect, index, checkEncoders, encode }
+    enum Activity { case inspect, index, checkEncoders, encode, photo }
     private typealias EncoderCache = (signature: MediaTools.Signature, trials: [VideoToolboxTrial])
 
     var media: MediaSource?
@@ -17,6 +17,9 @@ final class Workspace {
     var limitFrames = false
     var firstFrame = "1"
     var lastFrame = ""
+    var showPhotoControls = false
+    var photoFrame = "1"
+    var photoFormat = PhotoFormat.sdr
     var activity: Activity?
     var progress = 0.0
     var output: URL?
@@ -28,6 +31,7 @@ final class Workspace {
     var busy: Bool { activity != nil }
     var isLog: Bool { options.sourceKind == "log" || (options.sourceKind == "auto" && media?.summary.kind == "log") }
     var isDynamicHDR: Bool { media?.summary.hdr10plus == true || media?.summary.hasDolbyVision == true }
+    var supportsHDRPhoto: Bool { media.map { options.supportsHDRPhoto($0.summary) } ?? false }
     var isDolbyVisionExport: Bool { options.output == "dolbyvision84" }
     var canOfferDolbyVision: Bool {
         guard let media, options.canGenerateDolbyVision(media.summary) else { return false }
@@ -56,6 +60,9 @@ final class Workspace {
         limitFrames = false
         firstFrame = "1"
         lastFrame = ""
+        showPhotoControls = false
+        photoFrame = "1"
+        photoFormat = .sdr
         options = EncodingOptions()
         container = "mkv"
         let cached = encoderCache
@@ -143,6 +150,35 @@ final class Workspace {
         panel.delegate = consent
         present(panel) { [weak self, consent] url in
             self?.convert(media, to: url, overwrite: consent.existing == url.standardizedFileURL, selection: selection)
+        }
+    }
+
+    func savePhoto() {
+        guard !busy, let media, let frames, let frame = UInt64(photoFrame), frame > 0, frame <= frames.count else {
+            failure = String(localized: "Enter a valid frame number.")
+            return
+        }
+        let format = photoFormat
+        let options = self.options
+        let panel = NSSavePanel()
+        panel.canCreateDirectories = true
+        panel.directoryURL = media.url.deletingLastPathComponent()
+        panel.nameFieldStringValue = media.url.deletingPathExtension().lastPathComponent + "-frame-\(frame)." + format.fileExtension
+        panel.allowedContentTypes = [format.type]
+        panel.isExtensionHidden = false
+        let consent = SaveConsent(fileExtension: format.fileExtension)
+        panel.delegate = consent
+        present(panel) { [weak self, consent] url in
+            guard let self else { return }
+            let overwrite = consent.existing == url.standardizedFileURL
+            self.player?.pause()
+            self.output = nil
+            self.run(.photo) { control in
+                try Self.engine().exportPhoto(media, to: url, format: format, frame: frame, options: options,
+                                              overwrite: overwrite, index: frames, control: control)
+            } finished: { _ in
+                self.output = url
+            }
         }
     }
 
@@ -385,6 +421,25 @@ struct WorkspaceView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            Section {
+                DisclosureGroup("Export a frame", isExpanded: $model.showPhotoControls) {
+                    if let frames = model.frames {
+                        TextField("Frame number", text: $model.photoFrame)
+                        Text("\(frames.count) frames").foregroundStyle(.secondary)
+                        Picker("Photo format", selection: $model.photoFormat) {
+                            Text(PhotoFormat.sdr.title).tag(PhotoFormat.sdr)
+                            if model.supportsHDRPhoto {
+                                Text(PhotoFormat.hdr.title).tag(PhotoFormat.hdr)
+                                Text(PhotoFormat.adaptive.title).tag(PhotoFormat.adaptive)
+                            }
+                        }
+                        Button("Save Photo…", action: model.savePhoto)
+                    } else {
+                        Button("Read frame numbers", action: model.indexFrames)
+                    }
+                }
+                .onChange(of: model.showPhotoControls) { _, shown in if shown { model.indexFrames() } }
+            }
         }
         .formStyle(.grouped)
         .disabled(model.busy)
@@ -395,6 +450,9 @@ struct WorkspaceView: View {
         .onChange(of: model.hardwareCodecs) { _, _ in model.updateEncoderChoice() }
         .onChange(of: model.options.output) { _, _ in model.updateEncoderChoice() }
         .onChange(of: model.canOfferDolbyVision) { _, _ in model.updateEncoderChoice() }
+        .onChange(of: model.supportsHDRPhoto) { _, supported in
+            if !supported { model.photoFormat = .sdr }
+        }
     }
 
     private var footer: some View {
@@ -406,6 +464,7 @@ struct WorkspaceView: View {
                 case .index: ProgressView("Indexing frames…")
                 case .checkEncoders: ProgressView("Checking hardware encoders…")
                 case .encode: ProgressView(value: model.progress) { Text("Encoding video…") }
+                case .photo: ProgressView("Exporting photo…")
                 case nil:
                     if let output = model.output {
                         Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([output]) }
