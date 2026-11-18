@@ -212,7 +212,10 @@ def check_jit_bundle(path, architecture, version):
     )
     assert manifest["native_codecs"]["binary"]["file"] == "uhdr.dll"
     assert manifest["backend"] == "shared-native"
-    assert hashlib.sha256(bundled_bytes(path, entries["LumaRecodeCore.dll"])).hexdigest() == manifest["shared_core"]["sha256"]
+    assert (
+        hashlib.sha256(bundled_bytes(path, entries["LumaRecodeCore.dll"])).hexdigest()
+        == manifest["shared_core"]["sha256"]
+    )
     for name in manifest["shared_core"]["notices"]:
         assert "licenses/" + name in entries, name
     assert any(name.startswith("Assets/Fonts/") for name in entries)

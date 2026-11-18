@@ -62,9 +62,11 @@ def ctrl_break_case(exe, source, output):
             child.stderr.read(),
         )
         assert any(e["event"] == "cancelled" for e in events), events
-        assert not output.exists() and not list(
-            output.parent.glob(".video-converter-*")
-        ) and not list(output.parent.glob(".lumarecode-*"))
+        assert (
+            not output.exists()
+            and not list(output.parent.glob(".video-converter-*"))
+            and not list(output.parent.glob(".lumarecode-*"))
+        )
     finally:
         if child.poll() is None:
             child.kill()
