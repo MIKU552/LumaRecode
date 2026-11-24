@@ -113,7 +113,7 @@ public sealed partial class MainWindow
             }
             return;
         }
-        if (!closing && sourceMedia is not null && hardwareProbeTools is null)
+        if (!closing && sourceMedia is not null && result == ContentDialogResult.Primary)
         {
             // Decoder support and format descriptors belong to the selected
             // tool build. Re-inspect rather than retaining the old snapshot.

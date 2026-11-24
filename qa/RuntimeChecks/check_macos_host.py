@@ -24,8 +24,9 @@ def main():
     ffmpeg = os.environ.get("LUMA_TEST_FFMPEG") or shutil.which("ffmpeg")
     ffprobe = os.environ.get("LUMA_TEST_FFPROBE") or shutil.which("ffprobe")
     assert exe.is_file() and ffmpeg and ffprobe
-    config = Path(__file__).resolve().parents[2] / "macOS/LumaRecode.xcconfig"
-    version = next(line.split("=", 1)[1].strip() for line in config.read_text().splitlines()
+    root = Path(__file__).resolve().parents[2]
+    version_config = root / "macOS/LumaRecode.xcconfig"
+    version = next(line.split("=", 1)[1].strip() for line in version_config.read_text().splitlines()
                    if line.startswith("LUMARECODE_DISPLAY_VERSION ="))
     assert subprocess.check_output([str(exe), "--version"], text=True).strip() == version
 
@@ -530,7 +531,7 @@ def main():
         assert not list(folder.glob(".lumarecode-*"))
         print("PASS macOS host: interrupt, cleanup, and retained output", flush=True)
 
-        manifest_path = config.parents[1] / "qa/HdrChecks/sample-sources.json"
+        manifest_path = root / "qa/HdrChecks/sample-sources.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         fixture = next(item for item in manifest["samples"] if item["file"] == "regular.mkv")
         url = fixture["source"].replace("github.com/", "raw.githubusercontent.com/").replace("/blob/", "/")

@@ -104,11 +104,11 @@ struct pipe_pair
 {
     handle read;
     handle write;
-    pipe_pair()
+    explicit pipe_pair(DWORD capacity = 0)
     {
         SECURITY_ATTRIBUTES attributes{sizeof(attributes), nullptr, TRUE};
         HANDLE reader = nullptr, writer = nullptr;
-        if (!CreatePipe(&reader, &writer, &attributes, 0))
+        if (!CreatePipe(&reader, &writer, &attributes, capacity))
         {
             luma::fail_os("CreatePipe", GetLastError());
         }
@@ -269,7 +269,9 @@ void luma::execute_child(const process_request &request, process_sink &sink)
     {
         append_argument(command, wide(argument));
     }
-    pipe_pair output, errors;
+    // Multi-megabyte preview frames otherwise fill the default 4 KiB pipe
+    // repeatedly and wait for the next process polling interval.
+    pipe_pair output(256 * 1024), errors;
     SECURITY_ATTRIBUTES security{sizeof(security), nullptr, TRUE};
     handle input(CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, &security,
                              OPEN_EXISTING, 0, nullptr));

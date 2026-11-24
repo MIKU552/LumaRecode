@@ -114,13 +114,11 @@ public sealed partial class MainWindow
         Refresh();
         using var client = new ConversionClient();
         probes.Add(client);
+        EncodeOptions? automatic = null;
+        string? destination = null;
+        var hardware = InspectHardwareAsync();
         try
         {
-            await InspectHardwareAsync();
-            if (token != generation)
-            {
-                return;
-            }
             await client.RunAsync(new ConversionRequest("probe", ToolsObject(), path), (type, data) =>
             {
                 if (token != generation)
@@ -132,6 +130,8 @@ public sealed partial class MainWindow
                 {
                     sourceMedia = client.SourceMedia;
                     ApplyMedia(data!.AsObject());
+                    automatic = SelectedOptions();
+                    destination = Output.Text;
                 }
                 else if (type == "error")
                 {
@@ -158,6 +158,26 @@ public sealed partial class MainWindow
                 Refresh();
             }
         }
+
+        // Source inspection and the timeline do not need encoder sessions.
+        // Late results update the defaults only while the user still has the
+        // initial settings and has not started a job.
+        await hardware;
+        if (closing || token != generation || sourceMedia is null || activeJob is not null)
+        {
+            return;
+        }
+        if (!MediaFlag("dynamic_hdr") && automatic is { Purpose: "archive" } &&
+            automatic == SelectedOptions() && Output.Text == destination &&
+            hardwareEncoders.Any(item => item.Available))
+        {
+            updating = true;
+            Select(Purpose, "share");
+            ApplyPurposeDefaults();
+            RefreshHardwareChoices(preserve: false, selectPreferred: true);
+            updating = false;
+        }
+        Refresh();
     }
     // Pick defaults from the source and the available encoders. Refresh retains
     // subsequent user choices while they remain compatible.

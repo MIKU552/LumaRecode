@@ -10,6 +10,7 @@ public sealed partial class MainWindow
     private MediaTools? hardwareProbeTools;
     private (DateTime Encoder, DateTime Probe) hardwareToolVersions;
     private CancellationTokenSource? hardwareProbeCancellation;
+    private Task? hardwareProbe;
     private ComboBox HardwareChoice => Control<ComboBox>("HardwareEncoder");
     private string SelectedHardware => Value(HardwareChoice) is { Length: > 0 } selected ? selected : "qsv";
 
@@ -17,24 +18,49 @@ public sealed partial class MainWindow
     {
         var tools = ToolsObject();
         var versions = (File.GetLastWriteTimeUtc(tools.Ffmpeg), File.GetLastWriteTimeUtc(tools.Ffprobe));
+        if (hardwareProbe is { } running)
+        {
+            await running;
+            if (closing || tools != ToolsObject())
+            {
+                return;
+            }
+        }
         if (hardwareProbeTools == tools && hardwareToolVersions == versions)
         {
             return;
         }
 
+        var current = TestHardwareAsync(tools, versions);
+        hardwareProbe = current;
+        try
+        {
+            await current;
+        }
+        finally
+        {
+            if (ReferenceEquals(hardwareProbe, current))
+            {
+                hardwareProbe = null;
+            }
+        }
+    }
+
+    private async Task TestHardwareAsync(MediaTools tools, (DateTime Encoder, DateTime Probe) versions)
+    {
         using var cancellation = new CancellationTokenSource();
         hardwareProbeCancellation = cancellation;
         try
         {
-            SetStatus("正在检测硬件编码器…");
-            hardwareEncoders = await HardwareEncoders.ProbeAsync(ConversionClient.Engine, tools, cancellation.Token);
-            hardwareProbeTools = tools;
-            hardwareToolVersions = versions;
-            if (!closing)
+            var available = await HardwareEncoders.ProbeAsync(ConversionClient.Engine, tools, cancellation.Token);
+            if (!closing && tools == ToolsObject())
             {
-                SetStatus("正在读取相机元数据…");
+                hardwareEncoders = available;
+                hardwareProbeTools = tools;
+                hardwareToolVersions = versions;
             }
         }
+        catch (OperationCanceledException) when (closing) { }
         catch (Exception error) when (error is TimeoutException or InvalidDataException or IOException)
         {
             // A broken hardware trial must not prevent browsing the source or
