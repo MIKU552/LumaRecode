@@ -915,10 +915,14 @@ struct NativeEngine: Sendable {
             "-show_frames", "-of", "json", source.url.path
         ], working_directory: nil, sidecars: [], colors: nil)
         let data = try runEncoder(command, control: control, cleanup: &cleanup, timeout: 25_000, captureOutput: true) { _ in }
-        func object(_ json: Data) throws -> [String: Any] {
-            try JSONSerialization.jsonObject(with: json) as? [String: Any] ?? [:]
+        // ffprobe emits repeated keys for values such as MaxSCL. Normalize
+        // them to arrays before Foundation turns each JSON object into a dictionary.
+        let normalized = try withViews([data]) { views in
+            try copyBytes(limit: 16 * 1024 * 1024) {
+                lr_probe_normalize_json(views[0], $0, $1, $2, nil)
+            }
         }
-        let frames = try object(data)["frames"] as? [[String: Any]] ?? []
+        let frames = try Self.object(normalized)["frames"] as? [[String: Any]] ?? []
         let matches = frames.filter { frame in
             (frame["best_effort_timestamp"] as? NSNumber)?.int64Value == timestamp
                 || (frame["best_effort_timestamp"] as? String).flatMap(Int64.init) == timestamp
@@ -926,7 +930,7 @@ struct NativeEngine: Sendable {
         guard matches.count == 1, let first = matches.first else {
             throw EngineError(message: "Cannot verify the dynamic HDR metadata of the selected start frame.")
         }
-        var reference = try object(source.snapshot)
+        var reference = try Self.object(source.snapshot)
         reference["frames"] = [first]
         return try JSONSerialization.data(withJSONObject: reference)
     }
