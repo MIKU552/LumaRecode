@@ -1,5 +1,7 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
+using System.Runtime.InteropServices;
 
 namespace VideoConverter;
 
@@ -70,6 +72,63 @@ public sealed partial class ConverterApp : Application
         var settings = UserSettings.Load();
         L.Configure(settings.Language);
         window = new MainWindow(settings);
+        ActivateWithFirstFrame(window);
+    }
+
+    private const uint DwmwaCloak = 13;
+
+    [DllImport("dwmapi.dll", ExactSpelling = true)]
+    private static extern int DwmSetWindowAttribute(nint hwnd, uint attribute, ref int value, uint size);
+
+    private static void ActivateWithFirstFrame(Window window)
+    {
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        int cloak = 1;
+        if (DwmSetWindowAttribute(hwnd, DwmwaCloak, ref cloak, sizeof(int)) < 0)
+        {
+            window.Activate();
+            return;
+        }
+
+        // Give XAML a composition pass before DWM presents the window. A
+        // finite fallback covers drivers or sessions that skip rendering
+        // while a window is cloaked.
+        int frames = 0;
+        bool waiting = true;
+        var timeout = window.DispatcherQueue.CreateTimer();
+        timeout.Interval = TimeSpan.FromMilliseconds(350);
+        timeout.IsRepeating = false;
+        CompositionTarget.Rendering += Render;
+        window.Closed += Closed;
+        timeout.Tick += TimedOut;
+        timeout.Start();
         window.Activate();
+
+        void Render(object? sender, object args)
+        {
+            if (++frames == 2)
+            {
+                Reveal();
+            }
+        }
+        void TimedOut(DispatcherQueueTimer sender, object args) => Reveal();
+        void Closed(object sender, WindowEventArgs args) => Stop();
+        void Stop()
+        {
+            waiting = false;
+            CompositionTarget.Rendering -= Render;
+            timeout.Tick -= TimedOut;
+            timeout.Stop();
+            window.Closed -= Closed;
+        }
+        void Reveal()
+        {
+            if (waiting)
+            {
+                Stop();
+                cloak = 0;
+                _ = DwmSetWindowAttribute(hwnd, DwmwaCloak, ref cloak, sizeof(int));
+            }
+        }
     }
 }

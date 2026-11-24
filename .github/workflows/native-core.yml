@@ -117,6 +117,23 @@ jobs:
           retention-days: 14
           if-no-files-found: error
           path: dist/SelfContained/LumaRecode.exe
+      - name: Build Windows application without bundle extraction
+        if: runner.os == 'Windows' && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode'
+        shell: pwsh
+        run: |
+          ./build.ps1 -Target Native -Compilation Jit -Deployment Portable
+          python qa/RuntimeChecks/check_shared_host.py --exe dist/Portable/LumaRecode.exe --portable
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $archive = Get-Item 'dist/*-win-${{ matrix.cpu }}-portable.zip' -ErrorAction Stop
+          Copy-Item -LiteralPath $archive.FullName -Destination "${{ runner.temp }}/LumaRecode-Windows-${{ matrix.cpu }}-Portable.zip" -ErrorAction Stop
+      - name: Upload Windows portable ZIP
+        if: runner.os == 'Windows' && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lumarecode-windows-${{ matrix.cpu }}-portable
+          retention-days: 14
+          if-no-files-found: error
+          path: ${{ runner.temp }}/LumaRecode-Windows-${{ matrix.cpu }}-Portable.zip
       - name: Build macOS application
         if: runner.os == 'macOS'
         run: |
@@ -201,6 +218,8 @@ jobs:
           mkdir distribution
           cp build/lumarecode-windows-x64-development/LumaRecode.exe distribution/LumaRecode-Windows-x64-JIT.exe
           cp build/lumarecode-windows-arm64-development/LumaRecode.exe distribution/LumaRecode-Windows-arm64-JIT.exe
+          cp build/lumarecode-windows-x64-portable/LumaRecode-Windows-x64-Portable.zip distribution/
+          cp build/lumarecode-windows-arm64-portable/LumaRecode-Windows-arm64-Portable.zip distribution/
           cp build/lumarecode-macos-arm64-development/LumaRecode-ARM64.dmg distribution/LumaRecode-macOS-arm64.dmg
           cp build/lumarecode-macos-arm64-ffmpeg-full/LumaRecode-ARM64-FFmpeg-Full.dmg distribution/LumaRecode-macOS-arm64-FFmpeg-Full.dmg
           cp build/lumarecode-macos-arm64-ffmpeg-full/FFmpeg-Full-Sources.tar.gz distribution/LumaRecode-macOS-FFmpeg-Full-Sources.tar.gz

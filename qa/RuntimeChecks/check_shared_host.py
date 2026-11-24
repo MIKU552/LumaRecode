@@ -14,6 +14,7 @@ from pathlib import Path
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exe", type=Path, required=True)
+    parser.add_argument("--portable", action="store_true")
     args = parser.parse_args()
     exe = args.exe.resolve()
     ffmpeg = os.environ.get("LUMA_TEST_FFMPEG") or shutil.which("ffmpeg")
@@ -22,7 +23,16 @@ def main():
     assert ffmpeg and ffprobe, (
         "Install FFmpeg/ffprobe or set LUMA_TEST_FFMPEG/LUMA_TEST_FFPROBE."
     )
+    if args.portable:
+        with tempfile.TemporaryDirectory(prefix="lumarecode-no-extraction-") as temporary:
+            os.environ["DOTNET_BUNDLE_EXTRACT_BASE_DIR"] = temporary
+            run_suite(exe, ffmpeg, ffprobe, portable=True)
+            assert not list(Path(temporary).iterdir()), "Portable Windows app extracted a .NET bundle"
+        return
+    run_suite(exe, ffmpeg, ffprobe, portable=False)
 
+
+def run_suite(exe, ffmpeg, ffprobe, portable):
     def call(*words, status=0):
         result = subprocess.run(
             [
@@ -59,16 +69,18 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="lumarecode-host-") as temporary:
         folder = Path(temporary)
-        renamed = folder / "LumaRecode (downloaded).exe"
-        shutil.copyfile(exe, renamed)
-        with subprocess.Popen([str(renamed)]) as gui:
+        launch = exe
+        if not portable:
+            launch = folder / "LumaRecode (downloaded).exe"
+            shutil.copyfile(exe, launch)
+        with subprocess.Popen([str(launch)]) as gui:
             try:
                 time.sleep(6)
-                assert gui.poll() is None, f"Renamed Windows GUI exited with {gui.returncode}"
+                assert gui.poll() is None, f"Windows GUI exited with {gui.returncode}"
             finally:
                 if gui.poll() is None:
                     gui.terminate()
-        print("PASS renamed Windows GUI launch", flush=True)
+        print("PASS portable Windows GUI launch" if portable else "PASS renamed Windows GUI launch", flush=True)
         for kind, transfer, depth in [
             ("sdr", "bt709", 8),
             ("hlg", "arib-std-b67", 10),

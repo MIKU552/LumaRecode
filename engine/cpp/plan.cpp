@@ -544,30 +544,37 @@ class planner
         for (const auto entry : side)
             display_transform = display_transform || text(entry, "side_data_type") == "Display Matrix";
         const bool qsv = purpose == "share" && hardware_preset == nullptr;
-        bool software = !qsv || transform != "none" || luma::flag_field(json, choices, "cpu_decode") ||
-                        conversion || display_transform || dovi != nullptr || hdr10plus ||
-                        window != nullptr || motion || kind == "raw";
+        const bool must_decode_in_software =
+            transform != "none" || luma::flag_field(json, choices, "cpu_decode") || conversion ||
+            display_transform || dovi != nullptr || hdr10plus || window != nullptr || motion ||
+            kind == "raw";
         const auto average = luma::probe_number(text(video, "avg_frame_rate")),
                    nominal = luma::probe_number(text(video, "r_frame_rate"));
         const bool timing =
             qsv &&
             ((request.flags & LR_PLAN_QSV_TIMING) != 0 ||
              (average > 0 && nominal > 0 && std::abs(average - nominal) > std::max(.01, nominal * .001)));
-        if (timing && depth != source.bit_depth)
-            software = true;
         const auto source_codec = text(video, "codec_name"), source_pixel = text(video, "pix_fmt");
         const auto decoder = source_codec == "h264"   ? "h264_qsv"
                              : source_codec == "hevc" ? "hevc_qsv"
                              : source_codec == "av1"  ? "av1_qsv"
                                                       : "";
-        const bool gpu =
-            !software && decoder[0] != 0 &&
-            (source_pixel == "yuv420p" || source_pixel == "yuv420p10le" || source_pixel == "p010le");
+        const bool eight_bit = source_pixel == "yuv420p" || source_pixel == "nv12";
+        const bool ten_bit = source_pixel == "yuv420p10le" || source_pixel == "p010le";
+        const bool hardware_input = !must_decode_in_software && decoder[0] != 0 && (eight_bit || ten_bit);
+        const bool gpu = qsv && hardware_input && (!timing || depth == source.bit_depth);
+        // CUDA and D3D11VA produce device frames. Download to the corresponding
+        // source layout before the shared colour/range path.
+        const std::string_view hwaccel = hardware_input && purpose == "share"
+            ? hardware == "nvenc" ? "cuda" : hardware == "amf" || hardware == "mf" ? "d3d11va" : ""
+            : "";
         std::vector<std::string> args{ffmpeg,      "-hide_banner", "-nostdin", "-n",        "-xerror",
                                       "-loglevel", "warning",      "-nostats", "-progress", "pipe:1"};
         const auto add = [&](std::initializer_list<std::string> values) { args.insert(args.end(), values); };
         if (gpu)
             add({"-hwaccel", "qsv", "-hwaccel_output_format", "qsv", "-c:v", decoder});
+        if (!hwaccel.empty())
+            add({"-hwaccel", std::string(hwaccel), "-hwaccel_output_format", hwaccel == "cuda" ? "cuda" : "d3d11"});
         if (kind == "raw")
         {
             add({"-threads:v", "2", "-filter_threads", "2"});
@@ -582,6 +589,8 @@ class planner
              "-map_metadata", motion || transform.starts_with("log-") ? "-1" : "0", "-map_chapters",
              motion || window != nullptr ? "-1" : "0", "-sn", "-dn"});
         std::vector<std::string> filters;
+        if (!hwaccel.empty())
+            filters.push_back(eight_bit ? "hwdownload,format=nv12" : "hwdownload,format=p010le");
         if (window != nullptr)
             filters.push_back("trim=start_frame=" + std::to_string(window->start - window->seek_frame) +
                               ":end_frame=" + std::to_string(window->end - window->seek_frame));
@@ -624,8 +633,7 @@ class planner
         }
         if (transform == "hdr-sdr" || transform == "log-sdr" || (kind == "raw" && output == "sdr"))
         {
-            if ((request.preview_size > 0 || luma::flag_field(json, choices, "cpu_tone_map")) &&
-                !render_dolby && kind != "raw")
+            if (luma::flag_field(json, choices, "cpu_tone_map") && !render_dolby && kind != "raw")
                 filters.push_back(
                     "zscale=transfer=linear:npl=100,format=gbrpf32le,tonemap=tonemap=mobius:desat=0,"
                     "zscale=primaries=bt709:transfer=bt709:matrix=bt709:range=" +
@@ -855,7 +863,7 @@ class planner
         json.put(result, "colors", colors);
         json.put(result, "options", json.copy(choices));
         json.put(result, "qsv_timing_compatibility", yyjson_mut_bool(json.doc(), timing));
-        json.put(result, "uses_software_decoding", yyjson_mut_bool(json.doc(), !gpu));
+        json.put(result, "uses_software_decoding", yyjson_mut_bool(json.doc(), !gpu && hwaccel.empty()));
         json.put(result, "working_directory",
                  (preserve && hdr10plus) || kind == "raw" ? json.string(luma_path_parent(destination))
                                                           : yyjson_mut_null(json.doc()));

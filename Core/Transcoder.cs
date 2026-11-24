@@ -99,15 +99,22 @@ public sealed partial class Transcoder
     }
 
     public EncodingPlan Plan(MediaTools tools, MediaInfo media, EncodeOptions requestedOptions, string destination, double? seconds = null,
-        FrameWindow? window = null, bool motionPhoto = false, string motionSize = "source", int previewSize = 0)
-        => BuildPlan(tools, media, requestedOptions, destination, seconds, false, window: window, motionPhoto: motionPhoto, motionSize: motionSize, previewSize: previewSize);
+        FrameWindow? window = null, bool motionPhoto = false, string motionSize = "source", int previewSize = 0, bool cpuToneMap = false)
+        => BuildPlan(tools, media, requestedOptions, destination, seconds, false, window: window, motionPhoto: motionPhoto,
+            motionSize: motionSize, previewSize: previewSize, cpuToneMap: cpuToneMap);
 
     private EncodingPlan BuildPlan(MediaTools tools, MediaInfo media, EncodeOptions options, string destination, double? seconds,
-        bool forceQsvTimingCompatibility, bool autoLowPower = false, FrameWindow? window = null, bool motionPhoto = false, string motionSize = "source", int previewSize = 0)
+        bool forceQsvTimingCompatibility, bool autoLowPower = false, FrameWindow? window = null, bool motionPhoto = false,
+        string motionSize = "source", int previewSize = 0, bool cpuToneMap = false)
     {
         Require(seconds is null || double.IsFinite(seconds.Value) && seconds.Value > 0, "--duration 必须为有限正数。");
         ArgumentOutOfRangeException.ThrowIfNegative(previewSize);
-        var request = new NativePlanRequest(NativeBackend.Snapshot(media), NativeBackend.JsonBytes(options.ToJson()),
+        var choices = options.ToJson();
+        if (cpuToneMap)
+        {
+            choices["cpu_tone_map"] = true;
+        }
+        var request = new NativePlanRequest(NativeBackend.Snapshot(media), NativeBackend.JsonBytes(choices),
             NativeBackend.JsonBytes(Config), Path.GetFullPath(tools.Ffmpeg), Path.GetFullPath(destination), Assets,
             motionPhoto ? NativeBackend.JsonBytes(MotionConfig) : null, seconds ?? 0,
             (forceQsvTimingCompatibility ? NativePlanFlags.QsvTiming : 0) | (autoLowPower ? NativePlanFlags.AutoLowPower : 0)
@@ -291,6 +298,19 @@ public sealed partial class Transcoder
                 await CheckRequirementsAsync(tools, options, plan, cancellation, reports);
                 attempt = await EncodeAsync(plan, emit, duration, cancellation);
             }
+            if (attempt.ExitCode != 0 && !plan.UsesSoftwareDecoding &&
+                options is { Purpose: "share", Hardware: "nvenc" or "amf" or "mf" } &&
+                (attempt.Errors & (QsvError.Decoder | QsvError.HardwareFormat)) != 0)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                emit("status", JsonValue.Create("硬件解码不可用，正在改用软件解码重试…"));
+                File.Delete(temporary);
+                options = options with { CpuDecode = true };
+                plan = BuildPlan(tools, media, options, temporary, seconds, window: window,
+                    motionPhoto: motionPhoto, motionSize: motionSize);
+                await CheckRequirementsAsync(tools, options, plan, cancellation, reports);
+                attempt = await EncodeAsync(plan, emit, duration, cancellation);
+            }
             Require(attempt.ExitCode == 0, $"FFmpeg 转码失败（{attempt.ExitCode}）。请查看日志，或改用软件归档 / 软件解码。");
             emit("status", JsonValue.Create("正在核对输出色彩和采样格式…"));
             var result = await VerifyAsync(tools, verificationSource, options, plan.Colors, temporary, cancellation, motionPhoto, motionSize, plan);
@@ -342,7 +362,8 @@ public sealed partial class Transcoder
     private async Task<(int ExitCode, QsvError Errors)> EncodeAsync(EncodingPlan plan, Action<string, JsonNode?> emit,
         double duration, CancellationToken cancellation)
     {
-        emit("decoder", JsonValue.Create(plan.UsesSoftwareDecoding ? "software" : "qsv"));
+        var accelerator = Array.IndexOf(plan.Arguments, "-hwaccel");
+        emit("decoder", JsonValue.Create(accelerator < 0 ? "software" : plan.Arguments[accelerator + 1]));
         emit("log", JsonValue.Create(string.Join(' ', plan.Arguments.Select(a => '"' + a.Replace("\"", "\\\"") + '"'))));
         var errors = QsvError.None;
         var progress = new JsonObject();
@@ -378,7 +399,11 @@ public sealed partial class Transcoder
             }
 
             if (text.Contains("Error initializing the MFX video decoder", StringComparison.OrdinalIgnoreCase) || text.Contains("Error submitting packet to decoder", StringComparison.OrdinalIgnoreCase)
-                || text.Contains("Error decoding header", StringComparison.OrdinalIgnoreCase))
+                || text.Contains("Error decoding header", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("Device setup failed for decoder", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("No device available for decoder", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("Failed setup for format", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("[hwdownload", StringComparison.OrdinalIgnoreCase))
             {
                 errors |= QsvError.Decoder;
             }

@@ -28,7 +28,7 @@ public sealed class FramePreview(Transcoder engine)
     {
         var window = timeline.Resolve(new(options.Frame, checked(options.Frame + count)));
         var plan = engine.Plan(tools, source, FrameExporter.RenderOptions(source, options, sdr: true),
-            "preview.mkv", window: window, previewSize: pixels ? Width : 1024);
+            "preview.mkv", window: window, previewSize: pixels ? Width : 1024, cpuToneMap: pixels);
         int input = Array.IndexOf(plan.Arguments, "-i");
         var arguments = plan.Arguments.Take(input + 2).Skip(1).ToList();
         // Frame-threaded decoders otherwise decode many 4K frames ahead before
