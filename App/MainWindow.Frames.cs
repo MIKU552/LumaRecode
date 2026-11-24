@@ -431,16 +431,15 @@ public sealed partial class MainWindow
             Control<Border>(name).Visibility = photo ? Visibility.Collapsed : Visibility.Visible;
         }
         Control<Border>("PhotoSettings").Visibility = photo ? Visibility.Visible : Visibility.Collapsed;
-        var card = Control<Border>("PreviewCard");
-        var inline = Control<Grid>("InlinePreview");
-        var host = photo ? inline : Control<Grid>("OverlayPreviewHost");
-        if (!ReferenceEquals(card.Parent, host))
+        var inline = Control<Border>("InlinePreview");
+        var overlayHost = Control<Border>("OverlayPreviewHost");
+        var (host, previousHost) = photo ? (inline, overlayHost) : (overlayHost, inline);
+        if (host.Child is null && previousHost.Child is { } card)
         {
-            if (card.Parent is Grid old)
-            {
-                old.Children.Remove(card);
-            }
-            host.Children.Add(card);
+            // Transfer the single child through its owning container. Parent
+            // can be unavailable during initial XAML construction.
+            previousHost.Child = null;
+            host.Child = card;
         }
         inline.Visibility = photo && preview ? Visibility.Visible : Visibility.Collapsed;
         Control<Grid>("PreviewOverlay").Visibility = !photo && preview ? Visibility.Visible : Visibility.Collapsed;

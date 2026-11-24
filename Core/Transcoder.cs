@@ -305,8 +305,11 @@ public sealed partial class Transcoder
                 cancellation.ThrowIfCancellationRequested();
                 emit("status", JsonValue.Create("硬件解码不可用，正在改用软件解码重试…"));
                 File.Delete(temporary);
-                options = options with { CpuDecode = true };
-                plan = BuildPlan(tools, media, options, temporary, seconds, window: window,
+                options = options with
+                {
+                    CpuDecode = true
+                };
+                plan = BuildPlan(tools, media, options, temporary, seconds, forceQsvTimingCompatibility: false, window: window,
                     motionPhoto: motionPhoto, motionSize: motionSize);
                 await CheckRequirementsAsync(tools, options, plan, cancellation, reports);
                 attempt = await EncodeAsync(plan, emit, duration, cancellation);

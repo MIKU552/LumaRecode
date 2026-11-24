@@ -79,7 +79,7 @@ public sealed class FrameTimeline
     public string FrameCode(int frame)
     {
         long second = (long)Math.Floor(Math.Max(0, Position(frame)) + 1e-9);
-        int counter = frame - AtOrAfter(second - 1e-9);
+        int counter = frame - AtOrAfter(second);
         return FormattableString.Invariant($"{second / 3600:00}:{second / 60 % 60:00}:{second % 60:00}.{counter:00}");
     }
 
@@ -118,7 +118,7 @@ public sealed class FrameTimeline
         {
             return false;
         }
-        long selected = (long)AtOrAfter(seconds - 1e-9) + withinSecond;
+        long selected = (long)AtOrAfter(seconds) + withinSecond;
         if (selected >= Count || Position((int)selected) + 1e-9 >= seconds + 1)
         {
             return false;

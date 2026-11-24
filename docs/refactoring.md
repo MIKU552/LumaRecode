@@ -54,7 +54,7 @@ Windows 使用 C#、.NET 11、WinUI 3，保留单 EXE 的 GUI / CLI。macOS 面�
 | P8 发布准备 | 四语文档、许可、构建来源证明、平台签名与分发包 | 双平台产物来源核验、整体验收与隐私检查完成 |
 | P9 合并发布 | 保留提交历史合并、最终标签和 Release | 产物、来源和标签一致 |
 
-Windows 和 macOS 的素材探测、时间轴、转码规划、进程和视频发布已接入共享核心。Windows 的 HEVC HDR10+ 使用原生解析器，图片及 Android Motion Photo 使用原生输出事务。macOS 已支持 SwiftUI 工作区、逐帧裁剪、HDR HEIC、Adaptive HDR、Live Photo 和 HLG 转 Dolby Vision 8.4。5.0 Beta 从 `next` 分发。macOS 的 ProRes RAW 显影、HDR10+ 元数据保留、多厂商设备验证，以及首屏和缓存的进一步测量仍待完成。
+Windows 和 macOS 的素材探测、时间轴、转码规划、进程和视频发布已接入共享核心。两端支持兼容解码器上的 ProRes RAW 显影，以及 HEVC 软件归档的 HDR10+ 元数据保留。Windows 图片及 Android Motion Photo 使用原生输出事务，裁剪和动态照片范围可在预览旁设置。macOS 支持逐帧裁剪、HDR HEIC、Adaptive HDR、Live Photo 和 HLG 转 Dolby Vision 8.4。5.0 Beta 从 `next` 分发。硬件路径取决于 FFmpeg 构建和设备驱动，按设备验证。
 
 ### 构建入口
 
@@ -228,7 +228,7 @@ Keep one public C ABI. Internal boundaries can use validated C interfaces or typ
 | P8 Release preparation | Four-language docs, licenses, build provenance, platform signing and packages | Both platforms' artifact provenance, acceptance and privacy checks complete |
 | P9 Merge and release | History-preserving merge, final tag and Release | Artifacts, provenance and tag agree |
 
-Windows and macOS share source inspection, timelines, encoding plans, process execution, and video publication. Windows HEVC HDR10+ uses the native parser, and stills and Android Motion Photos use native output transactions. macOS provides a SwiftUI workspace, frame-accurate trimming, HDR HEIC, Adaptive HDR, Live Photo, and HLG to Dolby Vision 8.4. The 5.0 beta is distributed from `next`. macOS ProRes RAW development and HDR10+ preservation remain open, along with broader hardware validation and measurements for first paint and cache usage.
+Windows and macOS share source inspection, timelines, encoding plans, process execution, and video publication. Both platforms support ProRes RAW development with a compatible decoder and can preserve HDR10+ in software HEVC archives. Windows stills and Android Motion Photos use native output transactions, with trim and motion ranges editable beside the preview. macOS supports frame-accurate trimming, HDR HEIC, Adaptive HDR, Live Photo, and HLG to Dolby Vision 8.4. The 5.0 beta is distributed from `next`. Hardware paths depend on the FFmpeg build and device drivers and are verified per device.
 
 ### Build entry points
 

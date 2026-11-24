@@ -565,8 +565,10 @@ class planner
         const bool gpu = qsv && hardware_input && (!timing || depth == source.bit_depth);
         // CUDA and D3D11VA produce device frames. Download to the corresponding
         // source layout before the shared colour/range path.
+        const auto encoder = text(config, "encoder");
         const std::string_view hwaccel = hardware_input && purpose == "share"
-            ? hardware == "nvenc" ? "cuda" : hardware == "amf" || hardware == "mf" ? "d3d11va" : ""
+            ? encoder.ends_with("_nvenc") ? "cuda"
+              : encoder.ends_with("_amf") || encoder.ends_with("_mf") ? "d3d11va" : ""
             : "";
         std::vector<std::string> args{ffmpeg,      "-hide_banner", "-nostdin", "-n",        "-xerror",
                                       "-loglevel", "warning",      "-nostats", "-progress", "pipe:1"};

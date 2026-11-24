@@ -31,6 +31,13 @@ public sealed class FramePreview(Transcoder engine)
             "preview.mkv", window: window, previewSize: pixels ? Width : 1024, cpuToneMap: pixels);
         int input = Array.IndexOf(plan.Arguments, "-i");
         var arguments = plan.Arguments.Take(input + 2).Skip(1).ToList();
+        // The transcoder normally writes progress to stdout. Here stdout is
+        // the image stream, so progress records would split the pixel data.
+        int progress = arguments.IndexOf("-progress");
+        if (progress >= 0)
+        {
+            arguments.RemoveRange(progress, 2);
+        }
         // Frame-threaded decoders otherwise decode many 4K frames ahead before
         // delivering the single requested frame. Limit that latency and memory.
         arguments.InsertRange(0, ["-threads:v", "2", "-filter_threads", "2"]);

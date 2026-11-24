@@ -87,7 +87,7 @@
             <ToggleButton x:Name="ShowPreview" Content="预览与逐帧裁剪" HorizontalAlignment="Left" />
           </StackPanel>
         </Border>
-        <Grid x:Name="InlinePreview" Grid.Row="1" Grid.ColumnSpan="2" Visibility="Collapsed" />
+        <Border x:Name="InlinePreview" Grid.Row="1" Grid.ColumnSpan="2" Visibility="Collapsed" />
         <Border x:Name="PhotoSettings" Grid.Row="2" Grid.ColumnSpan="2" Style="{StaticResource Card}" Visibility="Collapsed">
           <StackPanel Spacing="16">
             <TextBlock x:Name="PhotoHeading" Text="图片导出" Style="{StaticResource Section}" />
@@ -192,7 +192,7 @@
   </Border>
   <Grid x:Name="PreviewOverlay" Grid.Row="1" Grid.RowSpan="2" Visibility="Collapsed"
         Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Canvas.ZIndex="3">
-    <Grid x:Name="OverlayPreviewHost" Margin="24,14,24,24" MaxWidth="1280" HorizontalAlignment="Stretch">
+    <Border x:Name="OverlayPreviewHost" Margin="24,14,24,24" MaxWidth="1280" HorizontalAlignment="Stretch">
         <Border x:Name="PreviewCard" Style="{StaticResource Card}">
           <Grid RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
             <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -235,6 +235,6 @@
             </StackPanel>
           </Grid>
         </Border>
-    </Grid>
+    </Border>
   </Grid>
 </Grid>
