@@ -16,10 +16,51 @@ from fractions import Fraction
 from pathlib import Path
 
 
+def check_bundled_hdr10plus(app, folder):
+    root = Path(__file__).resolve().parents[2]
+    tools = app / "Contents/Resources/FFmpeg/bin"
+    fixture = next(item for item in json.loads(
+        (root / "qa/HdrChecks/sample-sources.json").read_text(encoding="utf-8")
+    )["samples"] if item["file"] == "regular.mkv")
+    url = fixture["source"].replace("github.com/", "raw.githubusercontent.com/").replace("/blob/", "/")
+    with urllib.request.urlopen(url, timeout=45) as response:
+        fixture_bytes = response.read(256 * 1024)
+    assert hashlib.sha256(fixture_bytes).hexdigest() == fixture["sha256"]
+    source = folder / "hdr10plus.mkv"
+    source.write_bytes(fixture_bytes)
+    output = folder / "hdr10plus-trimmed.mkv"
+    environment = dict(os.environ, PATH="/usr/bin:/bin")
+    for name in ("LUMARECODE_FFMPEG", "LUMARECODE_FFPROBE"):
+        environment.pop(name, None)
+    result = subprocess.run(
+        [str(app / "Contents/MacOS/LumaRecode"), "convert", str(source), "-o", str(output),
+         "--start-frame", "2", "--end-frame", "4"],
+        env=environment, capture_output=True, text=True, timeout=90,
+    )
+    assert result.returncode == 0, (result.stdout, result.stderr)
+
+    def dynamic_frames(path):
+        data = json.loads(subprocess.check_output(
+            [str(tools / "ffprobe"), "-v", "error", "-select_streams", "v:0", "-show_frames",
+             "-show_entries", "frame=side_data_list:frame_side_data", "-of", "json", str(path)],
+            env=environment, timeout=30,
+        ))
+        return [next(entry for entry in frame["side_data_list"] if "HDR10+" in entry["side_data_type"])
+                for frame in data["frames"]]
+
+    assert dynamic_frames(source)[1:4] == dynamic_frames(output)
+    print("PASS bundled macOS HDR10+ frame-range metadata preservation", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--app", type=Path, required=True)
+    parser.add_argument("--bundled-hdr10plus", action="store_true")
     args = parser.parse_args()
+    if args.bundled_hdr10plus:
+        with tempfile.TemporaryDirectory(prefix="lumarecode-macos-hdr10plus-") as temporary:
+            check_bundled_hdr10plus(args.app.resolve(), Path(temporary))
+        return
     exe = args.app.resolve() / "Contents/MacOS/LumaRecode"
     ffmpeg = os.environ.get("LUMA_TEST_FFMPEG") or shutil.which("ffmpeg")
     ffprobe = os.environ.get("LUMA_TEST_FFPROBE") or shutil.which("ffprobe")
@@ -530,29 +571,6 @@ def main():
         assert hashlib.sha256(output.read_bytes()).digest() == old_hash
         assert not list(folder.glob(".lumarecode-*"))
         print("PASS macOS host: interrupt, cleanup, and retained output", flush=True)
-
-        manifest_path = root / "qa/HdrChecks/sample-sources.json"
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        fixture = next(item for item in manifest["samples"] if item["file"] == "regular.mkv")
-        url = fixture["source"].replace("github.com/", "raw.githubusercontent.com/").replace("/blob/", "/")
-        with urllib.request.urlopen(url, timeout=45) as response:
-            fixture_bytes = response.read(256 * 1024)
-        assert hashlib.sha256(fixture_bytes).hexdigest() == fixture["sha256"]
-        hdr10plus = folder / "hdr10plus.mkv"
-        hdr10plus.write_bytes(fixture_bytes)
-        trimmed_hdr = folder / "hdr10plus-trimmed.mkv"
-        call("convert", hdr10plus, "-o", trimmed_hdr, "--ffmpeg", ffmpeg, "--start-frame", "2", "--end-frame", "4")
-
-        def dynamic_frames(path):
-            data = json.loads(subprocess.check_output([
-                ffprobe, "-v", "error", "-select_streams", "v:0", "-show_frames",
-                "-show_entries", "frame=side_data_list:frame_side_data", "-of", "json", str(path)
-            ], timeout=30))
-            return [next(entry for entry in frame["side_data_list"] if "HDR10+" in entry["side_data_type"])
-                    for frame in data["frames"]]
-
-        assert dynamic_frames(hdr10plus)[1:4] == dynamic_frames(trimmed_hdr)
-        print("PASS macOS HDR10+ frame-range metadata preservation", flush=True)
 
         # Open a playable source in the GUI, including the player view which is
         # instantiated after the first successful inspection.

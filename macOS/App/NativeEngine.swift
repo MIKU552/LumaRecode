@@ -1297,6 +1297,14 @@ struct NativeEngine: Sendable {
             lr_process_snapshot_init(&state, UInt64(MemoryLayout<lr_process_snapshot>.size))
             cleanup = lr_process_get_snapshot(handle, &state) == LR_OK && state.cleanup_state == LR_CLEANUP_CONFIRMED
             if cleanup, let failure = reader.failure { throw failure }
+            if cleanup, command.sidecars.contains("hdr10plus.json"), let detail = try? copyBytes(limit: 1024 * 1024, {
+                lr_process_copy_output(handle, LR_STREAM_STDERR, $0, $1, $2)
+            }) {
+                let message = String(decoding: detail, as: UTF8.self)
+                if message.contains("dhdr10-info disabled") || message.contains("Unknown option: dhdr10-info") {
+                    throw EngineError(message: "This FFmpeg build lacks x265 HDR10+ support. Use the FFmpeg Full disk image or choose Standard HDR.")
+                }
+            }
             if run == LR_IO_ERROR, let detail = try? copyBytes(limit: 1024 * 1024, {
                 lr_process_copy_output(handle, LR_STREAM_STDERR, $0, $1, $2)
             }), !detail.isEmpty {

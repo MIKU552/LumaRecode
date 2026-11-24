@@ -54,6 +54,9 @@ if [ "$task_mode" != app ]; then
         env -i PATH=/usr/bin:/bin "$task_tools/ffmpeg" -hide_banner -filters | grep -w libplacebo
         env -i PATH=/usr/bin:/bin "$task_tools/ffprobe" -version
         env -i PATH=/usr/bin:/bin "$task_mount/LumaRecode.app/Contents/MacOS/LumaRecode" doctor
+        if [ "${LUMA_VALIDATE_FULL_FFMPEG:-0}" = 1 ]; then
+            python3 "$task_root/qa/RuntimeChecks/check_macos_host.py" --app "$task_mount/LumaRecode.app" --bundled-hdr10plus
+        fi
         mv -f "$task_package/FFmpeg-Full-Sources.tar.gz" "$task_build/FFmpeg-Full-Sources.tar.gz"
     fi
     diskutil eject "$task_mount"
