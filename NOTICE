@@ -18,7 +18,11 @@ highlight mapping. Their generator is tools/generate_hlg_luts.py.
 The Windows distribution includes Microsoft runtime components.
 Their licenses and notices are included in licenses/.
 
-FFmpeg and ffprobe run as separate processes. The optional macOS FFmpeg Full
+FFmpeg and ffprobe run as separate processes. Windows packages built with
+external tools use the local installation. Locally staged Windows FFmpeg
+bundles keep their upstream archive notices and BUILDINFO.txt. Public
+distribution of a bundled build includes its corresponding sources.
+The optional macOS FFmpeg Full
 package includes a GPL-3.0-or-later FFmpeg build from Homebrew. See the bundled
 FFmpeg/BUILDINFO.txt, FFmpeg/Licenses, and the corresponding source archive
 provided with that download. Standard packages use user-provided tools.

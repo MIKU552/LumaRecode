@@ -51,7 +51,7 @@ This software is based in part on the work of the Independent JPEG Group.
 
 | 项目 | 使用方式 |
 | --- | --- |
-| FFmpeg / ffprobe | 用户提供，以独立子进程调用；各构建的许可见 [FFmpeg 法律说明](https://ffmpeg.org/legal.html) |
+| FFmpeg / ffprobe | 作为独立进程运行，使用用户安装的版本或随包提供的版本。各构建的许可见 [FFmpeg 法律说明](https://ffmpeg.org/legal.html) |
 | PySide6 / Qt | 可选图标生成工具；版本见 [requirements.txt](../Brand/requirements.txt)，许可见 [Qt for Python](https://doc.qt.io/qtforpython-6/licenses.html) |
 | SDK / BuildTools | 开发构建工具；随应用输出的运行时文件保留对应许可 |
 | 品牌图形 | 项目绘制的 SVG / PNG / ICO，采用 MIT |
@@ -105,7 +105,7 @@ This software is based in part on the work of the Independent JPEG Group.
 
 | Item | Use |
 | --- | --- |
-| FFmpeg / ffprobe | User-supplied tools invoked as separate processes; licensing depends on the build, as described in [FFmpeg legal information](https://ffmpeg.org/legal.html) |
+| FFmpeg / ffprobe | Runs as separate processes, using installed or bundled tools. For build-specific licensing, see [FFmpeg legal information](https://ffmpeg.org/legal.html) |
 | PySide6 / Qt | Optional icon-generation tools; versions are in [requirements.txt](../Brand/requirements.txt), licensing in [Qt for Python](https://doc.qt.io/qtforpython-6/licenses.html) |
 | SDK / BuildTools | Development tools; runtime files copied into application output retain their applicable licenses |
 | Brand graphics | Project-created SVG / PNG / ICO artwork under MIT |

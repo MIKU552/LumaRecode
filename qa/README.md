@@ -16,7 +16,7 @@
 
 ### 构建与架构
 
-共享原生核心的独立构建与差异检查见[跨平台重构](../docs/refactoring.md)。C、C++、Rust、C# 与 Swift 的契约检查在 Windows x64、Windows ARM64 和 macOS ARM64 执行；C 调用示例位于 [`engine/examples/format.c`](../engine/examples/format.c)。
+共享原生核心的独立构建与差异检查见[共享核心](../docs/refactoring.md)。C、C++、Rust、C# 与 Swift 的契约检查在 Windows x64、Windows ARM64 和 macOS ARM64 执行；C 调用示例位于 [`engine/examples/format.c`](../engine/examples/format.c)。
 
 `tools/Install-MediaTestTools.ps1` 下载固定版本与架构的 FFmpeg / ffprobe，并校验 SHA-256。`NativeCoreChecks` 使用 `LUMA_TEST_FFMPEG`、`LUMA_TEST_FFPROBE` 指定的路径，也可查找 PATH；设置 `LUMA_REQUIRE_MEDIA_TOOLS=1` 后，缺少工具会使检查失败。Actions 使用必需模式执行软件编码、探测及二进制图片提取。
 
@@ -53,15 +53,15 @@ dotnet run --project qa/BackendChecks/BackendChecks.csproj -c Release -- --resou
 
 此检查生成 12 小时、60 fps 的时间戳索引，并流式读取 1 亿字符的模拟元数据。
 
-这些检查覆盖四种语言的选择、翻译资源与格式占位符、XAML 映射、设置格式、命令行 JSON 格式和生成的 LUT。可给 `check_cli_languages.py` 传入 `--exe dist/SelfContained/LumaRecode.exe`，检查打包后的 CLI 语言资源。
+这些检查覆盖四种语言的选择、翻译资源与格式占位符、XAML 映射、设置格式、命令行 JSON 格式和生成的 LUT。可给 `check_cli_languages.py` 传入 `--exe dist/Aot-SelfContained/LumaRecode.exe`，检查打包后的 CLI 语言资源。
 
 ### CLI 与转换核心
 
 先运行 `./build.ps1`，再执行集成检查：
 
 ```powershell
-python qa/CliChecks/check_cli.py --exe dist/SelfContained/LumaRecode.exe
-python qa/RuntimeChecks/check_runtime.py --exe dist/SelfContained/LumaRecode.exe
+python qa/CliChecks/check_cli.py --exe dist/Aot-SelfContained/LumaRecode.exe
+python qa/RuntimeChecks/check_runtime.py --exe dist/Aot-SelfContained/LumaRecode.exe
 dotnet build qa/BackendChecks/BackendChecks.csproj -c Release
 python qa/TimingChecks/check_timing.py
 python qa/TimingChecks/check_qsv_recovery.py
@@ -197,15 +197,15 @@ dotnet run --project qa/BackendChecks/BackendChecks.csproj -c Release -- --resou
 
 This check generates a timestamp index for 12 hours at 60 fps and streams 100 million characters of simulated metadata.
 
-These checks cover language selection for all four languages, translation resources and format placeholders, XAML mappings, settings formats, CLI JSON contracts and generated LUTs. Pass `--exe dist/SelfContained/LumaRecode.exe` to `check_cli_languages.py` to check packaged CLI language resources.
+These checks cover language selection for all four languages, translation resources and format placeholders, XAML mappings, settings formats, CLI JSON contracts and generated LUTs. Pass `--exe dist/Aot-SelfContained/LumaRecode.exe` to `check_cli_languages.py` to check packaged CLI language resources.
 
 ### CLI and conversion core
 
 Run `./build.ps1` first, then execute the integration checks:
 
 ```powershell
-python qa/CliChecks/check_cli.py --exe dist/SelfContained/LumaRecode.exe
-python qa/RuntimeChecks/check_runtime.py --exe dist/SelfContained/LumaRecode.exe
+python qa/CliChecks/check_cli.py --exe dist/Aot-SelfContained/LumaRecode.exe
+python qa/RuntimeChecks/check_runtime.py --exe dist/Aot-SelfContained/LumaRecode.exe
 dotnet build qa/BackendChecks/BackendChecks.csproj -c Release
 python qa/TimingChecks/check_timing.py
 python qa/TimingChecks/check_qsv_recovery.py

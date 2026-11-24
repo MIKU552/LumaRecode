@@ -117,6 +117,7 @@ HDR / Log から SDR への変換には FFmpeg の libplacebo と Vulkan が必�
 | `--quality 1..100` | 画質。初期値 95。PNG は可逆圧縮 |
 | `--motion` | JPEG / Ultra HDR に Android モーションフォト動画を追加 |
 | `--motion-start-frame N --motion-end-frame N` | カバーを含む動画範囲。初期設定はカバー前後の約 3 秒 |
+| `--motion-range sdr\|hdr` | 動画のダイナミックレンジ。初期値は SDR H.264。HDR は 10 ビット HEVC、カバー形式は `--image-format` で指定 |
 | `--motion-size source\|1080\|720` | 動画の解像度。初期値は元の解像度 |
 | `--purpose archive\|share` | 動画の CPU / Intel エンコード。初期値 `archive` |
 | `--input-kind`、`--profile` | 動画変換と同じ入力解釈とカメラカーブ |

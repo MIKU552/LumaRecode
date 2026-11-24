@@ -1,163 +1,62 @@
-<p align="center">
-  <img src="../../Brand/LumaRecode.svg" width="104" height="104" alt="LumaRecode icon" />
-</p>
-<h1 align="center">映码 · LumaRecode</h1>
+<p align="center"><img src="../../Brand/LumaRecode.svg" width="96" height="96" alt="LumaRecode icon" /></p>
+<h1 align="center">LumaRecode</h1>
 
 [简体中文](../../README.md) | English | [日本語](ja.md) | [Español](es.md)
 
-LumaRecode is a video transcoder and color conversion tool for Windows 11 and Apple Silicon Macs, with native interfaces and command-line access to FFmpeg.
+LumaRecode is a video tool for Windows and macOS. Compress clips, turn camera Log into shareable HDR or SDR, trim by frame, and export stills. Each platform has a native interface backed by the same FFmpeg transcoding core.
 
-[Download](https://github.com/MIKU552/LumaRecode/releases/latest) · [Documentation](../README.md#english) · [Command line](../cli/en.md) · [Changelog](../../CHANGELOG.md#english)
+[Downloads](https://github.com/MIKU552/LumaRecode/releases) · [CLI](../cli/en.md) · [Documentation](../README.md#english) · [Changelog](../../CHANGELOG.md#english)
 
-## macOS
+## Features
 
-Requires an Apple Silicon Mac with macOS 27 or later. Open the DMG and drag LumaRecode into Applications. The app finds FFmpeg and ffprobe through PATH or Homebrew. You can also set their paths in Settings.
+| | Windows 11 · x64 / ARM64 | macOS 27+ · Apple silicon |
+| --- | --- | --- |
+| Interface | WinUI 3 with Mica and system notifications | SwiftUI with system colors and fonts |
+| Video | HEVC, AV1, H.264 · MP4 / MKV | HEVC, AV1, H.264 · MP4 / MKV |
+| Quick share | Intel QSV, NVIDIA NVENC, AMD AMF, Media Foundation | Apple VideoToolbox |
+| HDR | HLG / PQ, Dolby Vision and HDR10+ input | HLG / PQ, Dolby Vision and HDR10+ input, HLG → Dolby Vision 8.4 export |
+| Stills | SDR JPEG / PNG, HDR AVIF, Ultra HDR JPEG | SDR JPEG, HDR HEIC, Adaptive HDR HEIC |
+| Motion | Android Motion Photo | Apple Live Photo |
 
-The FFmpeg Full test build includes FFmpeg, ffprobe, libplacebo, and MoltenVK. For Dolby Vision rendering with the standard build, install the tools with `brew install ffmpeg-full molten-vk`. See [macOS installation and distribution](../dependencies.md#macos-installation-and-distribution) for first launch and tool selection.
+Quick share uses a hardware encoder that passes the device check. Software archive uses x264, x265, or SVT-AV1. Supported camera profiles include DJI D-Log M, Samsung Log, Mi-Log, Apple Log, and Apple Log 2. ProRes RAW support depends on the FFmpeg decoder. [Color conversion](../color-conversion.md#english)
 
-The SwiftUI workspace supports video preview, frame-accurate trimming, software archive, and VideoToolbox quick share. Standard 10-bit HLG footage can be exported as Dolby Vision 8.4. Individual frames can be saved as SDR JPEG, HDR HEIC, or Adaptive HDR HEIC with a gain map. See the [macOS CLI guide](../cli/en.md#macos).
+## Install
 
-Export SDR JPEG or Adaptive HDR HEIC as a Live Photo paired with a MOV. The clip defaults to about three seconds around the cover, with optional frame boundaries.
+- **Windows** · Choose x64 or ARM64. Run the single EXE directly, extract the portable ZIP and open `LumaRecode.exe`, or install the MSI for your user account. AOT builds run directly. Framework-dependent builds require .NET 11 Runtime.
+- **macOS** · Drag LumaRecode from the DMG into Applications. The FFmpeg Full edition includes FFmpeg, ffprobe, libplacebo, and MoltenVK. [First launch and tool paths](../dependencies.md#macos-installation-and-distribution)
 
-## Windows 11
-
-- Frame preview and trimming, HDR / SDR stills, and Android Motion Photos with a selected cover frame.
-- Quick share and Software archive presets for HEVC, AV1, and H.264, with MP4 / MKV output.
-- DJI D-Log M, Samsung Log, Mi-Log, Apple Log and Apple Log 2 to HLG HDR or Rec.709 SDR; HLG / PQ to SDR.
-- ProRes RAW development, Dolby Vision / HDR10+ detection and conversion, and dynamic metadata preservation with software encoding.
-- Source inspection for resolution, frame rate, bit depth, color tags, and audio tracks, with automatic defaults.
-- Chroma sampling, Limited / Full range, and audio controls, including lossless FLAC audio.
-- Progress, encoding fps, position, remaining time, and output format verification.
-- Windows notifications for completed and failed jobs, controlled by the checkbox beside Open folder.
-- Mica, light / dark / system themes, accent colors, and Simplified Chinese, English, Japanese and Spanish.
-- Batch processing, configuration files, command previews, and JSON events through the CLI.
-
-## Quick start
-
-1. Download the EXE for your device from [Releases](https://github.com/MIKU552/LumaRecode/releases). See the variants below. Required runtimes are included.
-2. Obtain a Windows build of [FFmpeg](https://ffmpeg.org/download.html) containing `ffmpeg.exe` and `ffprobe.exe`. LumaRecode checks `PATH` on first use; paths can also be selected with the gear button.
-3. Drop a video or choose **Choose video**, then confirm the output range, preset, and color conversion.
-4. Choose the output path and select **Start conversion**.
-
-Quick share uses an available hardware encoder. Software archive uses the CPU.
-
-| Download | Platform and requirements |
-| --- | --- |
-| `LumaRecode.exe` | X64, using the common x64 instruction-set profile |
-| `LumaRecode-ARM64.exe` | Windows ARM64, with a native ARM64 app and image codec |
-
-Both x64 and ARM64 check for hardware encoding. Software archive is the default when no compatible hardware encoder is available.
-
-Dolby Vision / HDR10+ sources default to software HEVC with dynamic metadata preservation. Select Standard HDR for hardware quick sharing. Supported Dolby Vision profiles are single-layer 5, 8.1, 8.4, 10.1 and 10.4. ProRes RAW checks FFmpeg decoder compatibility, then develops with camera white balance, color matrix and gain, with HLG output by default. See [Color conversion](../color-conversion.md#english) for formats and processing paths.
+Editions that use external FFmpeg check PATH and, on macOS, Homebrew. You can also set the paths to `ffmpeg` and `ffprobe` in the app. Log conversion uses `zscale` and `lut3d`. HDR-to-SDR and some Dolby Vision sources use `libplacebo` and Vulkan.
 
 ## Preview, trimming and images
 
-Open **Preview & frame trimming** on the video page to scrub, step through frames and set the first and last frames. The default is the whole video. GUI frame numbers start at 1 and include the selected last frame.
-
-The **Images & Motion Photos** page exports the selected frame:
-
-| Format | Output |
-| --- | --- |
-| HDR AVIF | BT.2020 / PQ, 10 or 12 bits |
-| Ultra HDR JPEG | SDR base image, HDR gain map and gain-map metadata |
-| SDR JPEG | sRGB image |
-| SDR PNG | Lossless sRGB image, 8-bit or a 16-bit container |
-
-JPEG and Ultra HDR JPEG can include Android Motion Photo video. Choose the cover and video range independently; the default is about three seconds around the cover. A single `MP.jpg` file follows [Google Motion Photo 1.0](https://developer.android.com/media/platform/motion-photo-format). Ultra HDR encoding uses Google's [libultrahdr](https://github.com/google/libultrahdr). Motion video defaults to CPU encoding, with Intel quick encoding available.
-
-The frame preview is SDR. Export uses the selected image format. Frame-accurate video cuts re-encode audio as AAC, Opus or eligible FLAC.
-
-Motion video keeps the source resolution by default, with optional 1080p and 720p limits. Dedicated short-clip presets use x264 fast / CRF20, x265 fast / CRF23, or Intel TU6. Audio is AAC-LC at 48 kHz, preserving mono or using stereo. See [motion-photo-presets.json](../../Assets/motion-photo-presets.json).
-
-## Encoding and color
-
-| Purpose | Encoders | Default container | Default audio |
-| --- | --- | --- | --- |
-| Quick share | Hardware HEVC / AV1 / H.264, depending on the device | MP4 | AAC for HEVC / H.264; Opus for AV1 |
-| Software archive | x265 / SVT-AV1 / x264 | MKV | Copy source tracks |
-
-Container, chroma sampling, bit depth, color range, and audio can be selected separately. Quick share defaults to 8-bit SDR and 10-bit HDR. Software archive keeps source bit depth within encoder limits: 8 / 10 / 12 bits for HEVC and 8 / 10 bits for AVC and AV1.
-
-Software HEVC / H.264 archive keeps source sampling. RGB input defaults to 4:4:4 YCbCr; AV1 and Quick share use 4:2:0. Sampling and bit depth can be reduced within source limits: 8-bit 4:2:0 stays 8-bit 4:2:0, while 10-bit 4:2:2 allows 10 / 8 bits and 4:2:2 / 4:2:0. Archive keeps source Limited / Full range; Quick share defaults to Limited. Sampling, depth, and range are in **Color conversion**; container and audio are in **Format & audio**.
-
-FLAC accepts confirmed lossless integer audio, including integer PCM, and preserves each track's sample rate, channels, and integer precision. FLAC audio uses MKV.
-
-SDR sources default to SDR output, HLG / PQ sources retain HDR, and recognized Log profiles convert to HLG. Input interpretation and Camera profile let you select the source type manually.
-
-Video is re-encoded with the selected preset; audio can be copied or transcoded. See [recommended-presets.json](../../Assets/recommended-presets.json) for the settings and the [encoding benchmark](../benchmarks/encoding-benchmark.md#english) for measurements.
-
-## Requirements
-
-- Windows 11 x64 or ARM64, with the instructions required by the selected variant.
-- User-provided FFmpeg / ffprobe with the required encoders and filters.
-- Quick share requires encoding support in FFmpeg, the GPU and its driver.
-- `zscale` and `lut3d` for Log conversion; `libplacebo` and Vulkan for HDR / Log to SDR.
-
-Language and theme follow the system by default. Chinese, English, Japanese and Spanish system languages are recognized; other languages default to English. Settings are stored at `%LOCALAPPDATA%\LumaRecode\settings.json`.
-
-On first launch, LumaRecode imports language, appearance and tool paths from FrameFlow settings.
-
-Source Sans 3, Source Han Sans, and Source Code Pro are included; no font installation is needed.
+1. Open a clip, choose quick share or software archive, and review the output signal and format.
+2. Open the timeline to play, step through frames, and set the first and last frames. You can also keep the whole clip.
+3. Choose a cover frame on the photo page. On Windows, Android Motion Photo defaults to **Ultra HDR JPEG + SDR video** for HDR footage, with separate controls for the still and video formats. On macOS, Live Photo pairs an SDR JPEG or Adaptive HDR HEIC with a MOV.
 
 ## Command line
 
-Run commands through an output pipeline in PowerShell 7:
-
 ```powershell
-[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-./LumaRecode.exe --help | Out-Host
 ./LumaRecode.exe probe clip.mp4 --json | ConvertFrom-Json
 ./LumaRecode.exe convert clip.mp4 --preset archive-hevc | Out-Host
-./LumaRecode.exe convert dlog.mp4 --input-kind log --profile pocket3 --range hdr | Out-Host
 ```
 
-For first-time unattended use, read the component terms with `license --text`, then run `license --accept-terms`. See the [CLI guide](../cli/en.md) for commands, batch processing, and exit codes.
-
-## Build from source
-
-Requires .NET SDK 11.0.100, PowerShell 7, Rustup and Visual Studio desktop C++ tools.
-
-```powershell
-git clone https://github.com/MIKU552/LumaRecode.git
-cd LumaRecode
-./tools/Install-NativeBuildTools.ps1
-./build.ps1
-./build.ps1 -Target X64
-./build.ps1 -Target X64 -Compilation Aot
-./build.ps1 -Target Arm64
+```sh
+/Applications/LumaRecode.app/Contents/MacOS/LumaRecode probe clip.mov
+/Applications/LumaRecode.app/Contents/MacOS/LumaRecode convert clip.mov -o out.mkv
 ```
 
-JIT is the default. Native selects X64 or ARM64 from the Windows system architecture and writes `dist/SelfContained/LumaRecode.exe`. Releases provide self-contained single EXEs for X64 and ARM64.
+See the [CLI reference](../cli/en.md) for flags, batch jobs, and output formats.
 
-The JIT selects supported instructions on the running device. On x64 devices where both the CPU and Windows support APX, startup opts into APX while preserving explicit user settings. Optional `-Compilation Aot` compiles at publish time and writes to `dist/Aot-SelfContained[-Target]/`. The fixed APX target uses `-Target Apx -Compilation Aot`.
+## Development
 
-Open `LumaRecode.sln` in Visual Studio 2026 18.12 or later. Set `LumaRecode.App` as the startup project and use Debug for debugging. `Release | Native`, `Release | x64` and `Release | ARM64` produce JIT builds. `Release-AOT` provides corresponding AOT builds; `Release-APX | x64` produces APX AOT. `Packaging` creates the single EXE. See [development and distribution](../dependencies.md#english) and the [QA guide](../../qa/README.md#english).
+- **Windows** · Open `LumaRecode.sln` in Visual Studio or run `./build.ps1` in PowerShell 7. Use `./tools/Package-Windows.ps1` to create packages.
+- **macOS** · Open `macOS/LumaRecode.xcodeproj` in Xcode or run `sh tools/build-macos.sh Release --dmg`.
+- **Shared core** · `engine/` contains the C ABI, C/C++ transcoding core, and Rust metadata modules. [Architecture](../architecture.md#english)
 
-## Project structure
+[Tools and distribution](../dependencies.md#english) · [Encoding benchmarks](../benchmarks/encoding-benchmark.md#english) · [QA guide](../../qa/README.md#english)
 
-```text
-App/       WinUI 3 UI, appearance, localization, and job interaction
-Bundle/    Single-file packaging entry
-Packaging/ Visual Studio build and distribution entry
-Core/      Source inspection, format policies, FFmpeg execution, and CLI
-Assets/    LUTs, encoding presets, and source records
-Brand/     Icon sources and generation tools
-tools/     License collection and localization code generation
-qa/        Automated checks and memory sampling
-docs/      User guides, development notes, and benchmark data
-licenses/  Third-party licenses, notices, and provenance
-```
+## License and credits
 
-## Development and license
+Original code is under the [MIT License](../../LICENSE). See [NOTICE](../../NOTICE) for third-party licenses and sources.
 
-Original project code was developed with **Codex for Windows** using **GPT-6.1 Sol** for early development and **GPT-6.2 Sol** for later work, both with **Extra high (`xhigh`)** reasoning. **[MIKU552](https://github.com/MIKU552)** defines requirements, supplies hardware and footage, and verifies the application.
-
-Original code, documentation, graphics, and generated camera Log LUTs use the **[MIT License](../../LICENSE)**. Licenses and sources for third-party LUTs, fonts, and runtimes are listed in [NOTICE](../../NOTICE) and [third-party components](../../Assets/THIRD_PARTY.md#english).
-
-## Documentation
-
-- [Command line](../cli/en.md)
-- [Development and distribution](../dependencies.md#english)
-- [Performance](../performance.md#english)
-- [Encoding benchmark](../benchmarks/encoding-benchmark.md#english)
-- [Changelog](../../CHANGELOG.md#english)
+Codex for Windows wrote the project code using GPT-6.1 Sol and GPT-6.2 Sol, both at `xhigh`. [MIKU552](https://github.com/MIKU552) defines requirements, supplies test footage, and verifies the app on hardware.

@@ -23,7 +23,7 @@
 
 `App/MainWindow.*.cs` 按职责拆分：`Media` 负责素材，`Options` 负责约束，`Conversion` 负责任务与进度，`Frames` 负责预览和帧范围，`Dialogs` 与 `Localization` 负责对话框和语言。
 
-Windows 的 `Core/` 经 `Interop/` 调用共享核心。RAW 参数提取、动态 HDR 辅助文件和图片封装保留在宿主层，按媒体功能阶段迁移。阶段与构建入口见[跨平台重构](refactoring.md)。
+Windows 的 `Core/` 经 `Interop/` 调用共享核心。共享核心解析 RAW 校准和 HDR10+ 数据。各宿主生成编码器所需的辅助文件，并使用本平台的图片格式。详见[共享核心](refactoring.md)。
 
 ### 转换任务
 
@@ -69,9 +69,9 @@ NVENC 使用 VBR CQ。AMF 的 8 位档使用 QVBR，10 位档使用 CQP，且关
 
 ### 构建与打包
 
-`build.ps1` 默认生成自包含 JIT 单文件。Native 按实际 Windows 架构选择 X64 或 ARM64，JIT 在运行设备上选择指令集。支持 APX 的 x64 设备在显式配置缺省时，以进程环境启用 APX 后重新进入应用；CLI 使用同一 EXE 的工作子进程，保留取消清理、句柄、参数、工作目录与退出码。
+`build.ps1` 默认生成 Native AOT 单文件。Native 按构建机器选择架构和指令集，显式目标可跨架构构建。Bundle 引导程序展开载荷并启动应用，CLI 传递标准句柄、参数、工作目录和退出码。
 
-`-Compilation Aot` 使用固定目标或构建 CPU 的指令集。`Directory.Build.props` 按编译方式与目标隔离中间文件；App 生成 AOT 载荷，Bundle 打包为单个 EXE。Visual Studio 的 Release 使用 JIT，Release-AOT 和 Release-APX 使用 AOT。构建与输出路径见[开发与分发](dependencies.md)。
+`Package-Windows.ps1` 从同一次应用发布生成单文件、便携包、MSI 或 MSIX。JIT 可选自包含或系统 .NET。Xcode 和 macOS 脚本生成 Apple Silicon 应用与 DMG。[开发与分发](dependencies.md#简体中文)
 
 ### 线程与生命周期
 
@@ -83,11 +83,11 @@ GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在�
 
 `FrameTimeline` 保存显示帧的 PTS、时长及关键帧证据。常见逐行编码优先索引压缩包；遇到缺失或重复 PTS、隔行编码等情况使用解码帧索引。内部范围从 0 开始、结束位置不包含在内；GUI 将其转换为从 1 开始的包含结束帧表示。
 
-`FramePreviewSession` 同时运行一个渲染任务，并保留一个可替换的待处理请求。拖动不会反复终止解码器；已完成的画面用于反馈，随后处理最新位置。缓存采用 LRU，同时限制为 12 张 PNG 和 8 MiB，切换素材或关闭预览时释放。
+Windows 使用持续运行的 `MediaPlayer` 播放和拖动原片，合并尚未处理的跳转。暂停、松开滑块或逐帧定位时，`FramePreviewSession` 按帧索引提交精确的 SDR 预览。Windows 播放不支持的编码仍可使用 FFmpeg 逐帧预览。
 
-`FramePreview` 使用单次 FFmpeg 图片管道，限制解码线程，在色彩处理前缩小到最长边 1024 像素，并输出 SDR PNG。RAW 在去马赛克后缩小。二进制缓冲使用池化存储并限制输出大小。图片与视频导出使用完整分辨率路径。
+`FramePreview` 通过 FFmpeg 生成 640 × 360 BGRA 预览，缓存邻近帧。原始时间轴及全分辨率路径用于图片和裁剪导出。macOS 用 AVKit 播放系统支持的编码，由 FFmpeg 和 Core Image 生成精确静帧。
 
-拖动时间轴只更新帧位置、范围提示、输出文件名和预览请求。响应式布局只在宽度断点、工作页面或预览可见性改变时调整结构。
+Windows 浮层持有播放器和有界的静帧缓存。关闭时先解除播放器与显示控件的绑定，再释放资源。浮层背景只模糊主界面控件，窗口 Mica 贯穿标题栏与内容区。
 
 ### 编码约定
 
@@ -121,7 +121,7 @@ GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在�
 
 `App/MainWindow.*.cs` is split by responsibility: `Media` handles sources, `Options` enforces constraints, `Conversion` manages jobs and progress, `Frames` handles previews and frame ranges, and `Dialogs` / `Localization` handle dialogs and language.
 
-Windows `Core/` calls the shared engine through `Interop/`. RAW parameter extraction, dynamic HDR auxiliary files and image packaging remain in the host until the media-feature stage. See [Cross-platform refactoring](refactoring.md) for stages and build entry points.
+Windows `Core/` calls the shared engine through `Interop/`. The shared core parses RAW calibration and HDR10+ data. Each host writes encoder sidecars and provides its platform's image formats. See the [shared core guide](refactoring.md#english).
 
 ### Conversion jobs
 
@@ -167,9 +167,9 @@ NVENC uses VBR CQ. AMF uses QVBR at 8-bit and CQP with pre-analysis disabled at 
 
 ### Building and packaging
 
-`build.ps1` produces a self-contained JIT single EXE by default. Native selects X64 or ARM64 from the real Windows architecture; the JIT selects instructions on the running device. On APX-capable x64 devices without an explicit override, startup restarts the application with a process-scoped APX setting. The CLI uses a worker launched through the same EXE to preserve cancellation cleanup, handles, arguments, working directory and exit code.
+`build.ps1` produces a Native AOT single EXE by default. Native selects the build machine's architecture and instructions. Explicit targets support cross-builds. The bundle launcher extracts and starts the application. The CLI forwards standard handles, arguments, the working directory, and the exit code.
 
-`-Compilation Aot` uses a fixed target or the build CPU's instructions. `Directory.Build.props` isolates intermediate files by compilation mode and target. App produces the AOT payload; Bundle packages it into one EXE. Visual Studio Release uses JIT; Release-AOT and Release-APX use AOT. See [Development and distribution](dependencies.md#english) for commands and output paths.
+`Package-Windows.ps1` builds single-file, portable, MSI, and MSIX packages from published application files. JIT builds can bring their runtime or use the system installation. Xcode and the macOS script produce the Apple silicon app and DMG. [Development and distribution](dependencies.md#english)
 
 ### Threads and lifetimes
 
@@ -181,11 +181,11 @@ Each conversion client owns its cancellation source and waits for child processe
 
 `FrameTimeline` stores display-frame PTS values, durations and keyframe evidence. Common progressive codecs use compressed-packet indexing first. Missing or duplicate PTS values, interlaced material and similar cases use decoded-frame indexing. Internal ranges are zero-based and end-exclusive; the GUI converts them to one-based ranges with an inclusive end.
 
-`FramePreviewSession` runs one renderer and keeps one replaceable pending request. Scrubbing updates the pending request while completed renders provide feedback. The LRU cache holds at most 12 PNGs and 8 MiB; hiding the preview or changing the source releases it.
+Windows keeps a `MediaPlayer` active for playback and scrubbing and coalesces pending seeks. On pause, slider release, or single-frame navigation, `FramePreviewSession` uses the index to display an exact SDR preview. Codecs outside Windows playback support can use FFmpeg still previews.
 
-`FramePreview` uses one FFmpeg image pipe, limits decoder threads, scales to a maximum dimension of 1024 pixels before color processing and returns SDR PNG. RAW is scaled after demosaicing. Binary buffers are pooled and output size is bounded. Video and image exports use full-resolution processing.
+`FramePreview` produces 640 × 360 BGRA frames through FFmpeg and caches nearby frames. Stills and trimmed video use the source timeline and full-resolution path. macOS uses AVKit for supported playback and FFmpeg with Core Image for exact stills.
 
-Timeline dragging updates frame position, range hints, output names and preview requests. Responsive layout changes its structure when the width breakpoint, work page or preview visibility changes.
+The Windows overlay owns the player and a bounded still cache. On close it detaches the rendering control before releasing playback resources. The blur covers workspace controls, with the window's Mica continuing behind the title bar and content.
 
 ### Coding conventions
 

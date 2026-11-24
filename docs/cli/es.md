@@ -117,6 +117,7 @@ Los intervalos por fotogramas, por segundos y `--duration` son excluyentes. Los 
 | `--quality 1..100` | Calidad, predeterminada 95; PNG usa compresión sin pérdida |
 | `--motion` | Añadir vídeo de foto en movimiento de Android a JPEG o Ultra HDR |
 | `--motion-start-frame N --motion-end-frame N` | Intervalo que incluye la portada; unos tres segundos alrededor de ella de forma predeterminada |
+| `--motion-range sdr\|hdr` | Señal del vídeo. SDR H.264 por defecto, HEVC de 10 bits para HDR. La portada usa `--image-format` |
 | `--motion-size source\|1080\|720` | Resolución del vídeo; original de forma predeterminada |
 | `--purpose archive\|share` | Codificación CPU / Intel del vídeo, predeterminada `archive` |
 | `--input-kind`, `--profile` | La misma interpretación de entrada y perfiles de cámara que para vídeo |

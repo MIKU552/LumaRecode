@@ -4,6 +4,19 @@
 
 ## 简体中文
 
+### 5.0.0 Beta 3
+
+- Windows 时间轴支持连续播放、暂停、拖动和逐帧定位。预览浮层保留 Mica，并模糊后面的主界面控件。
+- Windows 主窗口在首帧完成后显示，预览关闭时先解绑播放器再释放资源。
+- Android 动态照片支持独立选择封面与动态视频。HDR 素材默认使用 Ultra HDR JPEG 和 SDR 视频。
+- Windows 默认构建 Native AOT。EXE、便携 ZIP、MSI 可分别搭配外置或内置 FFmpeg，并提供外置 .NET 的 JIT 配置。添加开发标识 MSIX。
+- 更新四语项目首页、命令行和跨平台开发文档。
+
+### 5.0.0 Beta 2
+
+- 修复 Windows x64 启动和 FFmpeg 路径提示，改善逐帧预览和裁剪布局。
+- 修复 macOS 应用图标和打开素材时的崩溃，核验 HDR10+ 裁剪输出。
+
 ### 5.0.0 Beta 1
 
 - 添加 macOS Apple Silicon 应用、Xcode 工程和命令行，支持预览、逐帧裁剪、VideoToolbox 和软件归档。
@@ -282,6 +295,19 @@
 - 支持素材自动识别与三组色彩转换。
 
 ## English
+
+### 5.0.0 Beta 3
+
+- The Windows timeline supports playback, pausing, scrubbing, and frame stepping. The Mica preview overlay blurs controls behind it.
+- Windows displays the main window after its first frame and detaches the player before releasing it on preview close.
+- Android Motion Photos have separate cover and video choices. HDR footage defaults to Ultra HDR JPEG with SDR video.
+- Native AOT is the Windows default. EXE, portable ZIP, and MSI formats support external or bundled FFmpeg, with a framework-dependent JIT profile. Added a development-identity MSIX.
+- Updated the four project home pages, command-line guides, and cross-platform developer documentation.
+
+### 5.0.0 Beta 2
+
+- Fixed Windows x64 launch and FFmpeg path warnings, and improved the frame preview and trim layout.
+- Fixed the macOS app icon and a crash when opening footage, and verified trimmed HDR10+ output.
 
 ### 5.0.0 Beta 1
 

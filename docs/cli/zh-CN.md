@@ -128,6 +128,7 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | `--quality 1..100` | 图片质量，默认 95；PNG 使用无损编码 |
 | `--motion` | 为 JPEG 或 Ultra HDR 添加 Android 动态照片视频 |
 | `--motion-start-frame N --motion-end-frame N` | 动态视频范围，默认封面附近约 3 秒，须包含封面帧 |
+| `--motion-range sdr\|hdr` | 动态视频范围。默认 SDR H.264，HDR 使用 10 位 HEVC。封面由 `--image-format` 指定 |
 | `--motion-size source\|1080\|720` | 视频分辨率，默认保留原分辨率 |
 | `--purpose archive\|share` | 动态视频的 CPU / Intel 编码，默认 `archive` |
 | `--input-kind`、`--profile` | 与视频转换相同的输入解释和相机曲线 |

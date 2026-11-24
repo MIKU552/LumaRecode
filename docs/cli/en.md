@@ -117,6 +117,7 @@ Frame and time ranges are mutually exclusive and cannot be combined with `--dura
 | `--quality 1..100` | Image quality, default 95; PNG is lossless |
 | `--motion` | Add Android Motion Photo video to JPEG or Ultra HDR |
 | `--motion-start-frame N --motion-end-frame N` | Video range containing the cover; default is about three seconds around it |
+| `--motion-range sdr\|hdr` | Motion video signal. SDR H.264 by default, 10-bit HEVC for HDR. The cover uses `--image-format` |
 | `--motion-size source\|1080\|720` | Video resolution; source resolution by default |
 | `--purpose archive\|share` | CPU / Intel motion-video encoding, default `archive` |
 | `--input-kind`, `--profile` | Same source interpretation and camera profiles as video conversion |

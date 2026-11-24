@@ -18,9 +18,9 @@
 | 文档 | 内容 |
 | --- | --- |
 | [色彩转换](color-conversion.md) | 相机曲线、动态 HDR 与 RAW 显影 |
-| [开发与分发](dependencies.md) | 构建、依赖、字体、Visual Studio 与单文件打包 |
+| [开发与分发](dependencies.md) | 工具链、Visual Studio、Xcode、Windows 打包和 macOS 分发 |
 | [代码结构](architecture.md) | 模块、任务生命周期、线程与缓存 |
-| [跨平台重构](refactoring.md) | 迁移阶段、混合核心、原生构建与验证 |
+| [共享核心](refactoring.md) | C ABI、进程、时间轴和输出事务 |
 | [性能优化](performance.md) | 预览、内存与运行开销测量 |
 | [QSV 兼容性](qsv-compatibility.md) | 硬件处理策略与上游报告 |
 | [编码预设测试](benchmarks/encoding-benchmark.md) | 编码参数、画质、体积与转码速度 |
@@ -64,7 +64,7 @@ Each page below provides complete Chinese and English sections, selectable at th
 | [Color conversion](color-conversion.md#english) | Camera curves, dynamic HDR and RAW development |
 | [Development and distribution](dependencies.md#english) | Builds, dependencies, fonts, Visual Studio and single-file packaging |
 | [Architecture](architecture.md#english) | Modules, job lifetimes, threads and caches |
-| [Cross-platform refactoring](refactoring.md#english) | Migration stages, mixed core, native builds and verification |
+| [Shared core](refactoring.md#english) | C ABI, processes, timelines and output transactions |
 | [Performance](performance.md#english) | Preview, memory and runtime measurements |
 | [QSV compatibility](qsv-compatibility.md#english) | Hardware policies and upstream reports |
 | [Encoding preset benchmark](benchmarks/encoding-benchmark.md#english) | Encoding parameters, quality, size and throughput |
