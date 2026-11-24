@@ -109,6 +109,12 @@ def main() -> None:
         raise ValueError("Expected the redistributable GPL build of ffmpeg-full")
     run(bins / "ffprobe", "-version")
 
+    if os.environ.get("LUMA_VALIDATE_FULL_FFMPEG") == "1":
+        app = target.parents[2]
+        run("codesign", "--force", "--sign", "-", app)
+        check = Path(__file__).resolve().parents[1] / "qa/RuntimeChecks/check_macos_host.py"
+        subprocess.run([sys.executable, check, "--app", app, "--bundled-hdr10plus"], check=True)
+
     sources.mkdir(parents=True)
     scripts = sources / "Packaging"
     scripts.mkdir()

@@ -9,6 +9,7 @@ import shlex
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.request
@@ -37,18 +38,52 @@ def check_bundled_hdr10plus(app, folder):
          "--start-frame", "2", "--end-frame", "4"],
         env=environment, capture_output=True, text=True, timeout=90,
     )
-    assert result.returncode == 0, (result.stdout, result.stderr)
-
     def dynamic_frames(path):
         data = json.loads(subprocess.check_output(
             [str(tools / "ffprobe"), "-v", "error", "-select_streams", "v:0", "-show_frames",
              "-show_entries", "frame=side_data_list:frame_side_data", "-of", "json", str(path)],
             env=environment, timeout=30,
         ))
-        return [next(entry for entry in frame["side_data_list"] if "HDR10+" in entry["side_data_type"])
+        return [next((entry for entry in frame.get("side_data_list", []) if "HDR10+" in entry["side_data_type"]), None)
                 for frame in data["frames"]]
 
-    assert dynamic_frames(source)[1:4] == dynamic_frames(output)
+    expected = dynamic_frames(source)[1:4]
+    if result.returncode != 0:
+        # Preserve diagnostic copies only for this public fixture. The app
+        # itself must still discard a failed output during the transaction.
+        wrapper = folder / "trace-ffmpeg"
+        saved = folder / "encoded.mkv"
+        trace = folder / "encoder.log"
+        sidecar = folder / "sidecar.json"
+        wrapper.write_text(f"""#!{sys.executable}
+import pathlib, shutil, subprocess, sys
+args = sys.argv[1:]
+staged = pathlib.Path(args[-1])
+commands = pathlib.Path("hdr10plus.json")
+if commands.exists():
+    shutil.copyfile(commands, {str(sidecar)!r})
+    key = args.index("-x265-params") + 1
+    args[key] = args[key].replace("log-level=warning", "log-level=info")
+with open({str(trace)!r}, "ab") as log:
+    done = subprocess.run([{str(tools / "ffmpeg")!r}, *args], stderr=log)
+if staged.name.endswith(".mkv") and staged.is_file() and commands.exists():
+    shutil.copyfile(staged, {str(saved)!r})
+sys.exit(done.returncode)
+""", encoding="utf-8")
+        wrapper.chmod(0o755)
+        subprocess.run(
+            [str(app / "Contents/MacOS/LumaRecode"), "convert", str(source), "-o",
+             str(output), "--start-frame", "2", "--end-frame", "4", "--ffmpeg", str(wrapper)],
+            env=environment, capture_output=True, text=True, timeout=90,
+        )
+        if sidecar.exists():
+            print("HDR10+ sidecar", sidecar.read_text(encoding="utf-8"), flush=True)
+        if trace.exists():
+            print("x265 diagnostics", trace.read_text(encoding="utf-8")[-5000:], flush=True)
+        if saved.exists():
+            print("Expected frame metadata", expected, "Actual frame metadata", dynamic_frames(saved), flush=True)
+        raise AssertionError((result.stdout, result.stderr))
+    assert expected == dynamic_frames(output)
     print("PASS bundled macOS HDR10+ frame-range metadata preservation", flush=True)
 
 
