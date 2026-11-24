@@ -6,7 +6,7 @@
 
 ### 5.0.0 Beta 3
 
-- Windows 时间轴支持连续播放、暂停、拖动和逐帧定位。预览浮层保留 Mica，并模糊后面的主界面控件。
+- Windows 时间轴支持连续播放、暂停、拖动和左右键逐帧定位。主界面与 Mica 预览面板平滑切换，点击外部或按 Esc 可关闭。
 - Windows 主窗口在首帧完成后显示，预览关闭时先解绑播放器再释放资源。
 - Android 动态照片支持独立选择封面与动态视频。HDR 素材默认使用 Ultra HDR JPEG 和 SDR 视频。
 - Windows 默认构建 Native AOT。EXE、便携 ZIP、MSI 可分别搭配外置或内置 FFmpeg，并提供外置 .NET 的 JIT 配置。添加开发标识 MSIX。
@@ -298,7 +298,7 @@
 
 ### 5.0.0 Beta 3
 
-- The Windows timeline supports playback, pausing, scrubbing, and frame stepping. The Mica preview overlay blurs controls behind it.
+- The Windows timeline supports playback, pausing, scrubbing, and arrow-key frame stepping. The Mica preview panel fades in and closes on an outside click or Esc.
 - Windows displays the main window after its first frame and detaches the player before releasing it on preview close.
 - Android Motion Photos have separate cover and video choices. HDR footage defaults to Ultra HDR JPEG with SDR video.
 - Native AOT is the Windows default. EXE, portable ZIP, and MSI formats support external or bundled FFmpeg, with a framework-dependent JIT profile. Added a development-identity MSIX.

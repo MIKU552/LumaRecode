@@ -44,14 +44,7 @@ public sealed partial class MainWindow
         InitializePlayback();
         var close = Control<Button>("ClosePreview");
         close.Click += (_, _) => CloseTimelineOverlay();
-        Control<Grid>("PreviewOverlay").KeyDown += (_, args) =>
-        {
-            if (args.Key == Windows.System.VirtualKey.Escape)
-            {
-                args.Handled = true;
-                CloseTimelineOverlay();
-            }
-        };
+        InitializePreviewOverlayInput(close);
         Choices(Control<ComboBox>("ImageFormat"), ("ultrahdr", "Ultra HDR · JPEG"), ("hdr", "HDR · AVIF"),
             ("sdr", "SDR · JPEG"), ("png", "SDR · PNG"));
         Choices(Control<ComboBox>("MotionEncoder"), ("archive", L.T("软件编码 · CPU")), ("share", L.T("硬件编码 · Intel")));

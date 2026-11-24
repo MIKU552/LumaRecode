@@ -87,7 +87,7 @@ Windows 使用持续运行的 `MediaPlayer` 播放和拖动原片，合并尚未
 
 `FramePreview` 通过 FFmpeg 生成 640 × 360 BGRA 预览，缓存邻近帧。原始时间轴及全分辨率路径用于图片和裁剪导出。macOS 用 AVKit 播放系统支持的编码，由 FFmpeg 和 Core Image 生成精确静帧。
 
-Windows 浮层持有播放器和有界的静帧缓存。关闭时先解除播放器与显示控件的绑定，再释放资源。浮层背景只模糊主界面控件，窗口 Mica 贯穿标题栏与内容区。
+Windows 浮层持有播放器和有界的静帧缓存。关闭时先解除播放器与显示控件的绑定，再释放资源。主界面与预览面板分别用 Windows Composition 淡入淡出，标题栏与内容区共用同一层窗口 Mica。
 
 ### 编码约定
 
@@ -185,7 +185,7 @@ Windows keeps a `MediaPlayer` active for playback and scrubbing and coalesces pe
 
 `FramePreview` produces 640 × 360 BGRA frames through FFmpeg and caches nearby frames. Stills and trimmed video use the source timeline and full-resolution path. macOS uses AVKit for supported playback and FFmpeg with Core Image for exact stills.
 
-The Windows overlay owns the player and a bounded still cache. On close it detaches the rendering control before releasing playback resources. The blur covers workspace controls, with the window's Mica continuing behind the title bar and content.
+The Windows overlay owns the player and a bounded still cache. On close it detaches the rendering control before releasing playback resources. Windows Composition fades the workspace and preview panel while the same window Mica continues behind the title bar and content.
 
 ### Coding conventions
 

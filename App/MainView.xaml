@@ -196,10 +196,9 @@
   </Grid>
   <Grid x:Name="PreviewOverlay" Grid.Row="1" Visibility="Collapsed"
         Background="Transparent" Canvas.ZIndex="3">
-    <Image x:Name="BlurredWorkspace" Stretch="Fill" Opacity="0" IsHitTestVisible="False" />
+    <Border x:Name="PreviewDismissArea" Background="Transparent" />
     <Grid x:Name="OverlayPreviewSurface" Margin="36,24,36,30" MaxWidth="1040" HorizontalAlignment="Stretch"
-          Opacity="0" TabFocusNavigation="Cycle">
-      <Grid.RenderTransform><TranslateTransform /></Grid.RenderTransform>
+          TabFocusNavigation="Cycle">
       <Border CornerRadius="12" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
         <SystemBackdropElement x:Name="PreviewMaterial" CornerRadius="12" IsHitTestVisible="False" />
       </Border>
