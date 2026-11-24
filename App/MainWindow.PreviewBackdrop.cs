@@ -1,12 +1,13 @@
 using System.Numerics;
 using Microsoft.UI.Composition;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Windows.System;
 using Windows.UI.ViewManagement;
+using VirtualKey = Windows.System.VirtualKey;
 
 namespace VideoConverter;
 
@@ -111,11 +112,13 @@ public sealed partial class MainWindow
         int generation = ++previewOverlayGeneration;
         var overlay = Control<Grid>("PreviewOverlay");
         var panel = ElementCompositionPreview.GetElementVisual(Control<Grid>("OverlayPreviewSurface"));
-        var workspace = ElementCompositionPreview.GetElementVisual(Control<Grid>("Workspace"));
+        var workspaceElement = Control<Grid>("Workspace");
+        var workspace = ElementCompositionPreview.GetElementVisual(workspaceElement);
         var scroll = Control<ScrollViewer>("WorkspaceScroll");
 
         if (show)
         {
+            workspaceElement.IsHitTestVisible = false;
             previousWorkspaceScrollbar ??= scroll.VerticalScrollBarVisibility;
             if (overlay.Visibility != Visibility.Visible)
             {
@@ -144,16 +147,17 @@ public sealed partial class MainWindow
                 panel.StopAnimation("Opacity");
                 workspace.StopAnimation("Opacity");
                 workspace.Opacity = 1;
+                workspaceElement.IsHitTestVisible = true;
                 CompletePreviewClose();
                 return;
             }
         }
 
         var compositor = panel.Compositor;
-        var motion = new UISettings();
-        bool reducedMotion = !motion.AnimationsEnabled;
-        var duration = TimeSpan.FromMilliseconds(reducedMotion ? 110 : show ? 200 : 175);
-        using var easing = compositor.CreateCubicBezierEasingFunction(new Vector2(0.24f, 0.05f), new Vector2(0.30f, 1));
+        bool reducedMotion = !new UISettings().AnimationsEnabled;
+        int openMilliseconds = reducedMotion ? 110 : 200;
+        int closeMilliseconds = reducedMotion ? 80 : 115;
+        var duration = TimeSpan.FromMilliseconds(show ? openMilliseconds : closeMilliseconds);
         var batch = compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
         batch.Completed += (_, _) =>
         {
@@ -162,7 +166,7 @@ public sealed partial class MainWindow
             {
                 return;
             }
-            workspace.Opacity = show ? 0 : 1;
+            workspace.Opacity = 0;
             panel.Opacity = show ? 1 : 0;
             if (show)
             {
@@ -173,22 +177,68 @@ public sealed partial class MainWindow
             else
             {
                 CompletePreviewClose();
+                RevealWorkspaceAfterPreviewFrame(workspaceElement, workspace, generation, reducedMotion);
             }
         };
 
-        Fade(workspace, show ? 0 : 1);
-        Fade(panel, show ? 1 : 0);
+        AnimatePreviewOpacity(workspace, 0, duration);
+        AnimatePreviewOpacity(panel, show ? 1 : 0, duration);
         batch.End();
+    }
 
-        void Fade(Visual visual, float opacity)
+    private void RevealWorkspaceAfterPreviewFrame(FrameworkElement workspaceElement, Visual workspace,
+        int generation, bool reducedMotion)
+    {
+        // SystemBackdropElement has its own compositor surface. Wait until
+        // XAML has submitted its removal before fading in the controls behind it.
+        var timeout = DispatcherQueue.CreateTimer();
+        timeout.Interval = TimeSpan.FromMilliseconds(55);
+        timeout.IsRepeating = false;
+        bool waiting = true;
+        bool queued = false;
+        CompositionTarget.Rendered += Rendered;
+        timeout.Tick += TimedOut;
+        timeout.Start();
+
+        void Rendered(object? sender, RenderedEventArgs args)
         {
-            using var animation = compositor.CreateScalarKeyFrameAnimation();
-            animation.Duration = duration;
-            animation.StopBehavior = AnimationStopBehavior.SetToFinalValue;
-            animation.InsertExpressionKeyFrame(0, "this.StartingValue");
-            animation.InsertKeyFrame(1, opacity, easing);
-            visual.StartAnimation("Opacity", animation);
+            if (!queued)
+            {
+                queued = DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, Reveal);
+            }
         }
+
+        void TimedOut(DispatcherQueueTimer sender, object args) => Reveal();
+
+        void Reveal()
+        {
+            if (!waiting)
+            {
+                return;
+            }
+            waiting = false;
+            CompositionTarget.Rendered -= Rendered;
+            timeout.Tick -= TimedOut;
+            timeout.Stop();
+            if (closing || generation != previewOverlayGeneration)
+            {
+                return;
+            }
+            workspaceElement.IsHitTestVisible = true;
+            AnimatePreviewOpacity(workspace, 1, TimeSpan.FromMilliseconds(reducedMotion ? 85 : 120));
+        }
+    }
+
+    private static void AnimatePreviewOpacity(Visual visual, float opacity, TimeSpan duration)
+    {
+        var compositor = visual.Compositor;
+        using var easing = compositor.CreateCubicBezierEasingFunction(new Vector2(0.24f, 0.05f), new Vector2(0.30f, 1));
+        using var animation = compositor.CreateScalarKeyFrameAnimation();
+        animation.Duration = duration;
+        animation.StopBehavior = AnimationStopBehavior.SetToFinalValue;
+        animation.InsertExpressionKeyFrame(0, "this.StartingValue");
+        animation.InsertKeyFrame(1, opacity, easing);
+        visual.StartAnimation("Opacity", animation);
     }
 
     private void CompletePreviewClose()
@@ -201,8 +251,8 @@ public sealed partial class MainWindow
             Control<Image>("FramePreview").Source = null;
         }
 
-        Control<Grid>("PreviewOverlay").Visibility = Visibility.Collapsed;
         Control<SystemBackdropElement>("PreviewMaterial").SystemBackdrop = null;
+        Control<Grid>("PreviewOverlay").Visibility = Visibility.Collapsed;
         previousWorkspaceScrollbar = null;
         if (!PhotoMode)
         {
