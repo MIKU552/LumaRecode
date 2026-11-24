@@ -1,4 +1,5 @@
 #include "raw_model.hpp"
+#include "lumarecode/media.h"
 #include <bit>
 #include <cmath>
 #include <cstring>
