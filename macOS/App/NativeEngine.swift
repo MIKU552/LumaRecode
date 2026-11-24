@@ -751,8 +751,9 @@ struct NativeEngine: Sendable {
                 let pair = field.split(separator: "=", maxSplits: 1)
                 return pair.count == 2 ? (pair[0], pair[1]) : nil
             }, uniquingKeysWith: { _, last in last })
-            guard let offset = values["pos"].flatMap(UInt64.init), let size = values["size"].flatMap(UInt64.init),
-                  let pts = values["pts"].flatMap(Int64.init) else {
+            guard let offset = values["pos"].flatMap({ UInt64($0) }),
+                  let size = values["size"].flatMap({ UInt64($0) }),
+                  let pts = values["pts"].flatMap({ Int64($0) }) else {
                 throw EngineError(message: "Missing ProRes RAW packet coordinates.")
             }
             let calibration = try RawCalibration.read(input, length: length, offset: offset, size: size)
