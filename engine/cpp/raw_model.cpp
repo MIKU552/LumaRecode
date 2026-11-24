@@ -1,6 +1,66 @@
 #include "raw_model.hpp"
+#include <bit>
 #include <cmath>
+#include <cstring>
 #include <regex>
+
+extern "C" lr_status lr_media_raw_calibration(const uint8_t *header, uint64_t header_size, uint64_t packet_size,
+                                                lr_raw_calibration *result)
+{
+    if (header == nullptr || result == nullptr || header_size < 86 || packet_size < 86)
+        return LR_INVALID_ARGUMENT;
+    const auto u16 = [&](size_t offset) -> uint32_t {
+        return (static_cast<uint32_t>(header[offset]) << 8) | header[offset + 1];
+    };
+    const auto u32 = [&](size_t offset) { return (u16(offset) << 16) | u16(offset + 2); };
+    if (u32(0) != packet_size || std::memcmp(header + 4, "prrf", 4) != 0 || u16(8) < 78 ||
+        u16(8) > packet_size - 8 || header[11] > 1)
+        return LR_INVALID_DATA;
+    lr_raw_calibration values{};
+    values.width = u16(16);
+    values.height = u16(18);
+    for (size_t i = 0; i < 4; ++i)
+        values.crop[i] = header[20 + i];
+    values.white_balance_kelvin = u16(76);
+    values.bayer_pattern = u16(24) & 3;
+    const auto sensor_range = u16(26);
+    if ((values.width & 1) != 0 || (values.height & 1) != 0 ||
+        values.crop[0] + values.crop[1] >= values.width || values.crop[2] + values.crop[3] >= values.height ||
+        sensor_range == 0 || sensor_range > 65279)
+        return LR_INVALID_DATA;
+
+    std::array<double, 12> coefficients{};
+    for (size_t i = 0; i < coefficients.size(); ++i)
+    {
+        coefficients[i] = std::bit_cast<float>(u32(28 + i * 4));
+        if (!std::isfinite(coefficients[i]))
+            return LR_INVALID_DATA;
+    }
+    const auto &c = coefficients;
+    const double determinant = c[2] * (c[6] * c[10] - c[7] * c[9]) -
+                               c[3] * (c[5] * c[10] - c[7] * c[8]) +
+                               c[4] * (c[5] * c[9] - c[6] * c[8]);
+    if (c[0] <= 0 || c[1] <= 0 || c[11] <= 0 || std::abs(determinant) < 1e-9)
+        return LR_INVALID_DATA;
+    constexpr double xyz_to_2020[3][3]{
+        {1.716651187971268, -0.355670783776392, -0.253366281373660},
+        {-0.666684351832489, 1.616481236634939, 0.015768545813911},
+        {0.017639857445311, -0.042770613257809, 0.942103121235474}};
+    for (size_t row = 0; row < 3; ++row)
+        for (size_t column = 0; column < 3; ++column)
+        {
+            double value = 0;
+            for (size_t k = 0; k < 3; ++k)
+                value += xyz_to_2020[row][k] * c[2 + k * 3 + column];
+            value *= (column == 0 ? c[0] : column == 2 ? c[1] : 1) * 65535 / sensor_range * c[11] / 1024;
+            if (!std::isfinite(value) || std::abs(value) > 2)
+                return LR_INVALID_DATA;
+            values.matrix[row * 4 + column] = value;
+            values.matrix[row * 4 + 3] -= 256.0 / 65535 * value;
+        }
+    *result = values;
+    return LR_OK;
+}
 
 namespace luma
 {

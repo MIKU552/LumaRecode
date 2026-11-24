@@ -3,23 +3,24 @@ namespace VideoConverter.Core;
 /// <summary>A frame key within one source timeline; output-format changes do not invalidate SDR previews.</summary>
 public sealed record FramePreviewRequest(int Frame, string SourceKind, string? Profile);
 
-/// <summary>Runs one decoder with one replaceable pending request and a bounded PNG cache.</summary>
+/// <summary>Runs one decoder with one replaceable pending request and a bounded frame cache.</summary>
 /// <remarks>Callbacks run on the worker. A GUI must marshal presentation to its dispatcher.
-/// Pointer movement does not kill the active decoder: completed frames keep the viewport moving,
-/// and the newest pending frame is rendered next. Cancel invalidates all older callbacks.</remarks>
+/// Nearby scrubs keep the active decoder. A distant seek may cancel a stale decode before
+/// the latest request starts. Cancel invalidates all older callbacks.</remarks>
 public sealed class FramePreviewSession(
     Func<FramePreviewRequest, CancellationToken, Task<byte[]>> render,
     Func<FramePreviewRequest, byte[], CancellationToken, Task> present,
     Func<Exception, CancellationToken, Task> failed,
-    int maximumCacheBytes = 8 * 1024 * 1024) : IAsyncDisposable
+    int maximumCacheBytes = 8 * 1024 * 1024, int seekCancellationDistance = int.MaxValue) : IAsyncDisposable
 {
     private readonly int cacheLimit = maximumCacheBytes >= 0 ? maximumCacheBytes
         : throw new ArgumentOutOfRangeException(nameof(maximumCacheBytes));
     private readonly Lock gate = new();
     private readonly Dictionary<FramePreviewRequest, LinkedListNode<(FramePreviewRequest Key, byte[] Data)>> cache = [];
     private readonly LinkedList<(FramePreviewRequest Key, byte[] Data)> recent = [];
-    private FramePreviewRequest? pending, latest;
+    private FramePreviewRequest? pending, latest, activeRequest;
     private CancellationTokenSource? active;
+    private long decodeStarted;
     private Task completion = Task.CompletedTask;
     private bool draining, disposed;
     // Epoch changes invalidate an in-flight result even when the child returns
@@ -39,6 +40,7 @@ public sealed class FramePreviewSession(
     /// <summary>Replaces unstarted work. Repeated keys already pending or in flight are coalesced.</summary>
     public void Request(FramePreviewRequest request)
     {
+        CancellationTokenSource? superseded = null;
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(disposed, this);
@@ -47,11 +49,21 @@ public sealed class FramePreviewSession(
                 return;
             }
             latest = pending = request;
+            if (activeRequest is { } running && Math.Abs((long)running.Frame - request.Frame) >= seekCancellationDistance &&
+                Environment.TickCount64 - decodeStarted >= 120)
+            {
+                superseded = active;
+            }
             if (!draining)
             {
                 StartLocked();
             }
         }
+        try
+        {
+            superseded?.Cancel();
+        }
+        catch (ObjectDisposedException) { }
     }
 
     private void StartLocked()
@@ -107,6 +119,8 @@ public sealed class FramePreviewSession(
                     pending = null;
                     revision = epoch;
                     active = cancellation;
+                    activeRequest = request;
+                    decodeStarted = Environment.TickCount64;
                     bytes = FindLocked(request);
                 }
                 try
@@ -150,6 +164,7 @@ public sealed class FramePreviewSession(
                         if (ReferenceEquals(active, cancellation))
                         {
                             active = null;
+                            activeRequest = null;
                         }
                     }
                 }

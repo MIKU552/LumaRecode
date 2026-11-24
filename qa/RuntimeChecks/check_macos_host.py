@@ -11,6 +11,7 @@ import signal
 import subprocess
 import tempfile
 import time
+import urllib.request
 from fractions import Fraction
 from pathlib import Path
 
@@ -528,6 +529,29 @@ def main():
         assert hashlib.sha256(output.read_bytes()).digest() == old_hash
         assert not list(folder.glob(".lumarecode-*"))
         print("PASS macOS host: interrupt, cleanup, and retained output", flush=True)
+
+        manifest_path = config.parents[1] / "qa/HdrChecks/sample-sources.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        fixture = next(item for item in manifest["samples"] if item["file"] == "regular.mkv")
+        url = fixture["source"].replace("github.com/", "raw.githubusercontent.com/").replace("/blob/", "/")
+        with urllib.request.urlopen(url, timeout=45) as response:
+            fixture_bytes = response.read(256 * 1024)
+        assert hashlib.sha256(fixture_bytes).hexdigest() == fixture["sha256"]
+        hdr10plus = folder / "hdr10plus.mkv"
+        hdr10plus.write_bytes(fixture_bytes)
+        trimmed_hdr = folder / "hdr10plus-trimmed.mkv"
+        call("convert", hdr10plus, "-o", trimmed_hdr, "--ffmpeg", ffmpeg, "--start-frame", "2", "--end-frame", "4")
+
+        def dynamic_frames(path):
+            data = json.loads(subprocess.check_output([
+                ffprobe, "-v", "error", "-select_streams", "v:0", "-show_frames",
+                "-show_entries", "frame=side_data_list:frame_side_data", "-of", "json", str(path)
+            ], timeout=30))
+            return [next(entry for entry in frame["side_data_list"] if "HDR10+" in entry["side_data_type"])
+                    for frame in data["frames"]]
+
+        assert dynamic_frames(hdr10plus)[1:4] == dynamic_frames(trimmed_hdr)
+        print("PASS macOS HDR10+ frame-range metadata preservation", flush=True)
 
         # Open a playable source in the GUI, including the player view which is
         # instantiated after the first successful inspection.

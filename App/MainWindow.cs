@@ -342,7 +342,7 @@ public sealed partial class MainWindow : Window
     {
         var narrow = width < 960;
         var compact = width < 760;
-        bool preview = sourceMedia is not null && (PhotoMode || Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").IsChecked == true);
+        bool preview = sourceMedia is not null && PhotoMode;
         var layout = (narrow, compact, PhotoMode, preview);
         if (lastLayout == layout)
         {
@@ -370,7 +370,7 @@ public sealed partial class MainWindow : Window
         grid.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         grid.ColumnSpacing = narrow ? 0 : 24;
         Grid.SetColumnSpan(Control<Border>("SourceCard"), narrow ? 1 : 2);
-        Grid.SetColumnSpan(Control<Border>("PreviewCard"), narrow ? 1 : 2);
+        Grid.SetColumnSpan(Control<Grid>("InlinePreview"), narrow ? 1 : 2);
         Grid.SetColumnSpan(Control<Border>("PhotoSettings"), narrow ? 1 : 2);
         Grid.SetRow(Control<Border>("PhotoSettings"), settingsRow);
         Grid.SetRow(Control<Border>("OutputCard"), settingsRow);

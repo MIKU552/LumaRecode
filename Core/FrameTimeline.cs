@@ -1,3 +1,4 @@
+using System.Globalization;
 using LumaRecode.Native;
 
 namespace VideoConverter.Core;
@@ -73,6 +74,58 @@ public sealed class FrameTimeline
     public double Position(int frame) => Seconds(frame) - Seconds(0);
     public double BoundarySeconds(int frame) => frame == 0 ? Seconds(0) : native.Resolve(0, checked((ulong)frame)).EndSeconds;
     public int AtOrAfter(double position) => checked((int)native.AtOrAfter(position));
+
+    /// <summary>Formats a frame as elapsed wall time and its zero-based index within that second.</summary>
+    public string FrameCode(int frame)
+    {
+        long second = (long)Math.Floor(Math.Max(0, Position(frame)) + 1e-9);
+        int counter = frame - AtOrAfter(second - 1e-9);
+        return FormattableString.Invariant($"{second / 3600:00}:{second / 60 % 60:00}:{second % 60:00}.{counter:00}");
+    }
+
+    /// <summary>Accepts a one-based frame number or elapsed seconds, minutes or hours followed by .frame.</summary>
+    public bool TryFrameCode(string text, out int frame)
+    {
+        frame = 0;
+        text = text.Trim();
+        if (int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out int number))
+        {
+            frame = number - 1;
+            return (uint)frame < (uint)Count;
+        }
+
+        var pieces = text.Split('.');
+        if (pieces.Length != 2 || !int.TryParse(pieces[1], NumberStyles.None, CultureInfo.InvariantCulture, out int withinSecond))
+        {
+            return false;
+        }
+        var clock = pieces[0].Split(':');
+        if (clock.Length > 3)
+        {
+            return false;
+        }
+        long seconds = 0;
+        for (int index = 0; index < clock.Length; index++)
+        {
+            if (!int.TryParse(clock[index], NumberStyles.None, CultureInfo.InvariantCulture, out int part) ||
+                (index != 0 && part >= 60))
+            {
+                return false;
+            }
+            seconds = 60 * seconds + part;
+        }
+        if (seconds >= Duration)
+        {
+            return false;
+        }
+        long selected = (long)AtOrAfter(seconds - 1e-9) + withinSecond;
+        if (selected >= Count || Position((int)selected) + 1e-9 >= seconds + 1)
+        {
+            return false;
+        }
+        frame = (int)selected;
+        return true;
+    }
     public FrameWindow Resolve(FrameRange range)
     {
         if (range.Start < 0 || range.End is < 0 || (range.End ?? Count) <= range.Start || range.End > Count)

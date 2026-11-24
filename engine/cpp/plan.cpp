@@ -624,7 +624,8 @@ class planner
         }
         if (transform == "hdr-sdr" || transform == "log-sdr" || (kind == "raw" && output == "sdr"))
         {
-            if (luma::flag_field(json, choices, "cpu_tone_map") && !render_dolby && kind != "raw")
+            if ((request.preview_size > 0 || luma::flag_field(json, choices, "cpu_tone_map")) &&
+                !render_dolby && kind != "raw")
                 filters.push_back(
                     "zscale=transfer=linear:npl=100,format=gbrpf32le,tonemap=tonemap=mobius:desat=0,"
                     "zscale=primaries=bt709:transfer=bt709:matrix=bt709:range=" +

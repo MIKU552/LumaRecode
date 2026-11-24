@@ -33,6 +33,7 @@ public sealed record DjiColor(DjiSchema Schema, ulong Mode)
     };
 }
 public sealed record DolbyVisionInfo(uint Profile, uint Compatibility);
+public sealed record RawCalibration(uint Width, uint Height, uint[] Crop, double[] Matrix, uint Kelvin, uint BayerPattern);
 public sealed record NativeMediaInput(string Codec, string Transfer,
     IReadOnlyList<KeyValuePair<string, string>> Tags, DjiColor? Dji = null, DolbyVisionInfo? DolbyVision = null);
 public sealed record MediaClassification(MediaKind Kind, CameraProfile Profile, MediaEvidence Evidence, int? TagIndex);
@@ -42,6 +43,34 @@ public sealed record MediaClassification(MediaKind Kind, CameraProfile Profile, 
 public static partial class NativeMedia
 {
     private static readonly UTF8Encoding Utf8 = new(false, true);
+
+    public static unsafe RawCalibration? ReadRawCalibration(ReadOnlySpan<byte> header, ulong packetSize)
+    {
+        RawPacket result = default;
+        fixed (byte* pointer = header)
+        {
+            if (RawCalibrationFromHeader(pointer, (ulong)header.Length, packetSize, ref result) != NativeStatus.Ok)
+            {
+                return null;
+            }
+        }
+        return new(result.Width, result.Height, new ReadOnlySpan<uint>(result.Crop, 4).ToArray(),
+            new ReadOnlySpan<double>(result.Matrix, 12).ToArray(), result.Kelvin, result.BayerPattern);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private unsafe struct RawPacket
+    {
+        internal uint Width;
+        internal uint Height;
+        internal fixed uint Crop[4];
+        internal uint Kelvin;
+        internal uint BayerPattern;
+        internal fixed double Matrix[12];
+    }
+
+    [LibraryImport(NativeCore.LibraryName, EntryPoint = "lr_media_raw_calibration")]
+    private static unsafe partial NativeStatus RawCalibrationFromHeader(byte* header, ulong headerSize, ulong packetSize, ref RawPacket result);
 
     public static unsafe NativeStatus ReadSourceFormat(ReadOnlySpan<byte> mediaJson, out SourceFormat format,
         out string diagnostic, ColorRange profileRange = ColorRange.Auto)

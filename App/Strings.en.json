@@ -377,6 +377,8 @@
   "上一帧": "Previous frame",
   "下一帧": "Next frame",
   "帧": "Frame",
+  "帧或 时间.帧": "Frame or time.frame",
+  "关闭预览": "Close preview",
   "裁剪视频": "Trim video",
   "开始帧": "Start frame",
   "结束帧（包含）": "Last frame (inclusive)",

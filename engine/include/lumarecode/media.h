@@ -123,6 +123,21 @@ LR_API lr_status lr_media_source_format(lr_utf8_view media_json, lr_color_range 
  * On success depth receives 1-32; on failure it is unchanged. */
 LR_API lr_status lr_media_flac_depth(lr_utf8_view stream_json, uint32_t *depth, lr_error *error);
 
+typedef struct lr_raw_calibration
+{
+    uint32_t width;
+    uint32_t height;
+    uint32_t crop[4];
+    uint32_t white_balance_kelvin;
+    uint32_t bayer_pattern;
+    double matrix[12];
+} lr_raw_calibration;
+
+/* Decode the first 86 bytes of a ProRes RAW packet. The full MOV sample size
+ * is verified separately from the borrowed header. Output changes on success. */
+LR_API lr_status lr_media_raw_calibration(const uint8_t *header, uint64_t header_size, uint64_t packet_size,
+                                          lr_raw_calibration *result);
+
 #ifdef __cplusplus
 }
 #endif

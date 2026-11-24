@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using System.Globalization;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -13,11 +12,6 @@ namespace VideoConverter.Core;
 public static class RawDevelopment
 {
     private const double MatrixScale = 1024;
-    private static readonly double[,] xyzTo2020 = {
-        { 1.716651187971268, -0.355670783776392, -0.253366281373660 },
-        { -0.666684351832489, 1.616481236634939, 0.015768545813911 },
-        { 0.017639857445311, -0.042770613257809, 0.942103121235474 }
-    };
     // sendcmd uses FFmpeg duration syntax, which rejects exponent notation.
     private static string N(double value) => value.ToString("0.#################", CultureInfo.InvariantCulture);
 
@@ -31,60 +25,16 @@ public static class RawDevelopment
         Span<byte> header = stackalloc byte[86];
         file.Position = position;
         file.ReadExactly(header);
-        // Local functions cannot capture a stack-only span. Keep the small header
-        // buffer independent of the much larger compressed frame payload.
-        var headerBytes = header.ToArray();
-        int U16(int offset) => BinaryPrimitives.ReadUInt16BigEndian(headerBytes.AsSpan(offset, 2));
-        double F32(int offset) => BitConverter.Int32BitsToSingle(BinaryPrimitives.ReadInt32BigEndian(headerBytes.AsSpan(offset, 4)));
-        if (BinaryPrimitives.ReadUInt32BigEndian(header) != packetSize || !header[4..8].SequenceEqual("prrf"u8)
-            || U16(8) < 78 || U16(8) > packetSize - 8 || header[11] > 1)
-        {
-            throw new InvalidDataException("当前 ProRes RAW 帧头或 Bayer 排列不受支持。");
-        }
-        int width = U16(16), height = U16(18);
-        var crop = header[20..24].ToArray().Select(b => (int)b).ToArray();
-        if (width <= 0 || height <= 0 || (width & 1) != 0 || (height & 1) != 0
-            || crop[0] + crop[1] >= width || crop[2] + crop[3] >= height || U16(26) == 0 || U16(26) > 65279)
-        {
-            throw new InvalidDataException("ProRes RAW 画面尺寸或传感器范围无效。");
-        }
-        var calibration = new[] { F32(28), F32(32) }.Concat(Enumerable.Range(0, 10).Select(i => F32(36 + i * 4))).ToArray();
-        if (calibration.Any(v => !double.IsFinite(v)) || calibration[0] <= 0 || calibration[1] <= 0 || calibration[11] <= 0)
-        {
-            throw new InvalidDataException("ProRes RAW 白平衡或相机色彩参数无效。");
-        }
-        double determinant = calibration[2] * (calibration[6] * calibration[10] - calibration[7] * calibration[9])
-            - calibration[3] * (calibration[5] * calibration[10] - calibration[7] * calibration[8])
-            + calibration[4] * (calibration[5] * calibration[9] - calibration[6] * calibration[8]);
-        if (Math.Abs(determinant) < 1e-9)
-        {
-            throw new InvalidDataException("ProRes RAW 白平衡或相机色彩参数无效。");
-        }
-        var matrix = new JsonArray();
-        for (int i = 0; i < 3; i++)
-        {
-            double offset = 0;
-            for (int j = 0; j < 3; j++)
-            {
-                double value = Enumerable.Range(0, 3).Sum(k => xyzTo2020[i, k] * calibration[2 + k * 3 + j]);
-                value *= (j == 0 ? calibration[0] : j == 2 ? calibration[1] : 1) * 65535 / U16(26) * calibration[11] / MatrixScale;
-                if (Math.Abs(value) > 2)
-                {
-                    throw new InvalidDataException("ProRes RAW 相机增益超出当前显影范围。");
-                }
-                matrix.Add((JsonNode?)JsonValue.Create(value));
-                offset -= 256d / 65535 * value;
-            }
-            matrix.Add((JsonNode?)JsonValue.Create(offset));
-        }
+        var raw = NativeMedia.ReadRawCalibration(header, (ulong)packetSize)
+            ?? throw new InvalidDataException("当前 ProRes RAW 帧头或相机校准不受支持。");
         return new()
         {
-            ["width"] = width,
-            ["height"] = height,
-            ["crop"] = new JsonArray(crop.Select(v => (JsonNode?)JsonValue.Create(v)).ToArray()),
-            ["matrix"] = matrix,
-            ["white_balance_kelvin"] = U16(76),
-            ["bayer_pattern"] = U16(24) & 3
+            ["width"] = (int)raw.Width,
+            ["height"] = (int)raw.Height,
+            ["crop"] = new JsonArray(raw.Crop.Select(v => (JsonNode?)JsonValue.Create((int)v)).ToArray()),
+            ["matrix"] = new JsonArray(raw.Matrix.Select(v => (JsonNode?)JsonValue.Create(v)).ToArray()),
+            ["white_balance_kelvin"] = (int)raw.Kelvin,
+            ["bayer_pattern"] = (int)raw.BayerPattern
         };
     }
 

@@ -1,10 +1,11 @@
 using System.Globalization;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 using VideoConverter.Core;
-using Windows.Storage.Streams;
+using Windows.Globalization.NumberFormatting;
 
 namespace VideoConverter;
 
@@ -21,6 +22,7 @@ public sealed partial class MainWindow
     private int displayedFrame = -1;
     private bool frameUiUpdating, motionRangeEdited;
     private string previewError = "";
+    private WriteableBitmap? previewBitmap;
     private double jobDuration;
     private bool PhotoMode => Control<SelectorBar>("WorkPage").SelectedItem == Control<SelectorBarItem>("PhotoPage");
     private bool TrimVideo => !PhotoMode && Control<CheckBox>("TrimEnabled").IsChecked == true;
@@ -37,6 +39,16 @@ public sealed partial class MainWindow
 
     private void InitializeFrameControls()
     {
+        var close = Control<Button>("ClosePreview");
+        close.Click += (_, _) => CloseTimelineOverlay();
+        Control<Grid>("PreviewOverlay").KeyDown += (_, args) =>
+        {
+            if (args.Key == Windows.System.VirtualKey.Escape)
+            {
+                args.Handled = true;
+                CloseTimelineOverlay();
+            }
+        };
         Choices(Control<ComboBox>("ImageFormat"), ("ultrahdr", "Ultra HDR · JPEG"), ("hdr", "HDR · AVIF"),
             ("sdr", "SDR · JPEG"), ("png", "SDR · PNG"));
         Choices(Control<ComboBox>("MotionEncoder"), ("archive", L.T("软件编码 · CPU")), ("share", L.T("硬件编码 · Intel")));
@@ -61,6 +73,7 @@ public sealed partial class MainWindow
             UpdateFramePresentation();
             if (Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").IsChecked == true)
             {
+                close.Focus(FocusState.Programmatic);
                 await PreparePreviewAsync();
             }
             else
@@ -93,10 +106,22 @@ public sealed partial class MainWindow
                     {
                         motionRangeEdited = true;
                     }
+                    else
+                    {
+                        Control<CheckBox>("TrimEnabled").IsChecked = true;
+                    }
                     Refresh();
                     UpdateTransferStats();
                 };
-                Control<Button>("Set" + prefix + edge).Click += (_, _) => Control<NumberBox>(prefix + edge).Value = SelectedFrame + 1;
+                Control<Button>("Set" + prefix + edge).Click += (_, _) =>
+                {
+                    if (prefix == "Trim")
+                    {
+                        Control<CheckBox>("TrimEnabled").IsChecked = true;
+                    }
+                    Control<NumberBox>(prefix + edge).Value = SelectedFrame + 1;
+                    Refresh();
+                };
             }
         }
         Control<CheckBox>("TrimEnabled").Click += (_, _) => { Refresh(); UpdateTransferStats(); };
@@ -111,6 +136,15 @@ public sealed partial class MainWindow
             }
         };
         Closed += (_, _) => ResetFrameSource();
+    }
+
+    private void CloseTimelineOverlay()
+    {
+        var toggle = Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview");
+        toggle.IsChecked = false;
+        CancelFramePreview();
+        UpdateFramePresentation();
+        toggle.Focus(FocusState.Programmatic);
     }
 
     private void ResetFrameSource()
@@ -130,7 +164,9 @@ public sealed partial class MainWindow
         Control<CheckBox>("IncludeMotion").IsChecked = false;
         foreach (var name in new[] { "FrameNumber", "TrimStart", "TrimEnd", "MotionStart", "MotionEnd" })
         {
-            Control<NumberBox>(name).Value = 1;
+            var input = Control<NumberBox>(name);
+            input.NumberFormatter = new DecimalFormatter { FractionDigits = 0 };
+            input.Value = 1;
         }
         frameUiUpdating = false;
     }
@@ -163,6 +199,7 @@ public sealed partial class MainWindow
             foreach (var name in new[] { "FrameNumber", "TrimStart", "TrimEnd", "MotionStart", "MotionEnd" })
             {
                 Control<NumberBox>(name).Maximum = timeline.Count;
+                Control<NumberBox>(name).NumberFormatter = new FramePositionFormatter(timeline);
             }
             Control<NumberBox>("TrimEnd").Value = timeline.Count;
             SetDefaultMotionRange();
@@ -257,36 +294,50 @@ public sealed partial class MainWindow
         {
             CancelFramePreview();
             var exporter = new FramePreview(ConversionClient.Engine);
+            byte[]? batch = null;
+            int firstInBatch = -1;
             FramePreviewSession? session = null;
             session = new FramePreviewSession(
-                (request, cancellation) => exporter.RenderAsync(tools, source, timeline,
-                    options with
-                    {
-                        Frame = request.Frame,
-                        SourceKind = request.SourceKind,
-                        Profile = request.Profile
-                    }, cancellation),
-                (request, bytes, cancellation) => OnPreviewUiAsync(async () =>
+                async (request, cancellation) =>
                 {
-                    if (!ReferenceEquals(previewSession, session))
+                    if (batch is null || request.Frame < firstInBatch ||
+                        request.Frame - firstInBatch >= batch.Length / FramePreview.PixelBytes)
                     {
-                        return;
+                        int start = request.Frame / FramePreview.BatchFrames * FramePreview.BatchFrames;
+                        var frameOptions = options with { Frame = start, SourceKind = request.SourceKind, Profile = request.Profile };
+                        int count = Math.Min(FramePreview.BatchFrames, timeline.Count - start);
+                        try
+                        {
+                            batch = await exporter.RenderPixelsAsync(tools, source, timeline, frameOptions, count, cancellation);
+                            firstInBatch = start;
+                        }
+                        catch (InvalidDataException) when (count > 1)
+                        {
+                            batch = await exporter.RenderPixelsAsync(tools, source, timeline, frameOptions with { Frame = request.Frame },
+                                1, cancellation);
+                            firstInBatch = request.Frame;
+                        }
                     }
-                    using var stream = new InMemoryRandomAccessStream();
-                    using (var writer = new DataWriter(stream.GetOutputStreamAt(0)))
+                    return batch.AsSpan((request.Frame - firstInBatch) * FramePreview.PixelBytes, FramePreview.PixelBytes).ToArray();
+                },
+                (request, bytes, cancellation) => OnPreviewUiAsync(() =>
+                {
+                    if (ReferenceEquals(previewSession, session) && !cancellation.IsCancellationRequested)
                     {
-                        writer.WriteBytes(bytes);
-                        await writer.StoreAsync();
+                        var bitmap = previewBitmap ??= new WriteableBitmap(FramePreview.Width, FramePreview.Height);
+                        using (var pixels = bitmap.PixelBuffer.AsStream())
+                        {
+                            pixels.Position = 0;
+                            pixels.Write(bytes);
+                        }
+                        bitmap.Invalidate();
+                        Control<Image>("FramePreview").Source = bitmap;
+                        displayedFrame = request.Frame;
+                        previewError = "";
+                        Control<ProgressRing>("PreviewBusy").IsActive = displayedFrame != SelectedFrame;
+                        UpdateFrameSelection();
                     }
-                    stream.Seek(0);
-                    var bitmap = new BitmapImage();
-                    await bitmap.SetSourceAsync(stream);
-                    cancellation.ThrowIfCancellationRequested();
-                    Control<Image>("FramePreview").Source = bitmap;
-                    displayedFrame = request.Frame;
-                    previewError = "";
-                    Control<ProgressRing>("PreviewBusy").IsActive = displayedFrame != SelectedFrame;
-                    UpdateFrameSelection();
+                    return Task.CompletedTask;
                 }, cancellation),
                 (error, cancellation) => OnPreviewUiAsync(() =>
                 {
@@ -297,7 +348,7 @@ public sealed partial class MainWindow
                         UpdateFrameSelection();
                     }
                     return Task.CompletedTask;
-                }, cancellation));
+                }, cancellation), maximumCacheBytes: 6 * 1024 * 1024, seekCancellationDistance: 32);
             previewSession = session;
             previewIdentity = identity;
         }
@@ -335,6 +386,7 @@ public sealed partial class MainWindow
         previewSession = null;
         previewIdentity = null;
         displayedFrame = -1;
+        previewBitmap = null;
         if (previous is not null)
         {
             var teardown = previous.DisposeAsync().AsTask();
@@ -379,10 +431,25 @@ public sealed partial class MainWindow
             Control<Border>(name).Visibility = photo ? Visibility.Collapsed : Visibility.Visible;
         }
         Control<Border>("PhotoSettings").Visibility = photo ? Visibility.Visible : Visibility.Collapsed;
-        Control<Border>("PreviewCard").Visibility = preview ? Visibility.Visible : Visibility.Collapsed;
+        var card = Control<Border>("PreviewCard");
+        var inline = Control<Grid>("InlinePreview");
+        var host = photo ? inline : Control<Grid>("OverlayPreviewHost");
+        if (!ReferenceEquals(card.Parent, host))
+        {
+            if (card.Parent is Grid old)
+            {
+                old.Children.Remove(card);
+            }
+            host.Children.Add(card);
+        }
+        inline.Visibility = photo && preview ? Visibility.Visible : Visibility.Collapsed;
+        Control<Grid>("PreviewOverlay").Visibility = !photo && preview ? Visibility.Visible : Visibility.Collapsed;
+        Control<Border>("FrameViewport").Height = photo ? 280 : double.NaN;
+        Control<Button>("ClosePreview").Visibility = photo ? Visibility.Collapsed : Visibility.Visible;
         Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").Visibility = photo ? Visibility.Collapsed : Visibility.Visible;
         Control<CheckBox>("TrimEnabled").Visibility = photo ? Visibility.Collapsed : Visibility.Visible;
-        Control<Grid>("VideoTrimFields").Visibility = TrimVideo ? Visibility.Visible : Visibility.Collapsed;
+        Control<CheckBox>("IncludeMotion").Visibility = photo ? Visibility.Visible : Visibility.Collapsed;
+        Control<Grid>("VideoTrimFields").Visibility = photo ? Visibility.Collapsed : Visibility.Visible;
         Control<Grid>("MotionFields").Visibility = photo && MotionImage ? Visibility.Visible : Visibility.Collapsed;
         Control<ComboBox>("MotionEncoder").Visibility = photo && MotionImage ? Visibility.Visible : Visibility.Collapsed;
         var motionEncoder = Control<ComboBox>("MotionEncoder");
@@ -482,7 +549,7 @@ public sealed partial class MainWindow
         {
             var frame = Math.Clamp(SelectedFrame, 0, timeline.Count - 1);
             Control<TextBlock>("PreviewStatus").Text = previewError.Length > 0 ? L.T(previewError)
-                : $"{frame + 1:N0} / {timeline.Count:N0} · {FrameTime(timeline.Position(frame))} / {FrameTime(timeline.Duration)}";
+                : $"{frame + 1:N0} / {timeline.Count:N0} · {timeline.FrameCode(frame)} / {FrameTime(timeline.Duration)}";
             foreach (var prefix in new[] { "Trim", "Motion" })
             {
                 var range = ReadRange(prefix);
@@ -517,6 +584,17 @@ public sealed partial class MainWindow
         {
             Control<Button>("Start").IsEnabled = false;
         }
+    }
+
+    private sealed class FramePositionFormatter(FrameTimeline timeline) : INumberFormatter2, INumberParser
+    {
+        public string FormatDouble(double value) => double.IsFinite(value) ? FormatInt((long)value) : "";
+        public string FormatInt(long value) => value >= 1 && value <= timeline.Count
+            ? timeline.FrameCode((int)value - 1) : value.ToString(CultureInfo.InvariantCulture);
+        public string FormatUInt(ulong value) => value <= long.MaxValue ? FormatInt((long)value) : value.ToString(CultureInfo.InvariantCulture);
+        public double? ParseDouble(string text) => ParseInt(text);
+        public long? ParseInt(string text) => timeline.TryFrameCode(text, out int frame) ? frame + 1L : null;
+        public ulong? ParseUInt(string text) => ParseInt(text) is { } value ? (ulong)value : null;
     }
 
     private void UpdateFrameOutput()

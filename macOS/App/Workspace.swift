@@ -49,8 +49,8 @@ final class Workspace {
     var supportsHDRPhoto: Bool { media.map { options.supportsHDRPhoto($0.summary) } ?? false }
     var supportsHDRVideo: Bool { media.map { options.supportsHDRVideo($0.summary) } ?? false }
     var canExportVideo: Bool {
-        guard let media, media.summary.kind != "raw" else { return false }
-        return !media.summary.hdr10plus || options.output == "sdr" || options.standardHDR
+        guard let media else { return false }
+        return media.summary.kind != "raw" || media.summary.video._raw?.decoder_supported == true
     }
     var isDolbyVisionExport: Bool { options.output == "dolbyvision84" }
     var preserveDynamicHDR: Bool { isDynamicHDR && options.output != "sdr" && !options.standardHDR }
@@ -178,6 +178,9 @@ final class Workspace {
     }
 
     func updateEncoderChoice() {
+        if preserveDynamicHDR, media?.summary.hdr10plus == true {
+            options.codec = "hevc"
+        }
         if options.output == "hdr", !supportsHDRVideo {
             options.output = "auto"
         }
@@ -316,7 +319,7 @@ final class Workspace {
     }
 
     private func previewStill(_ media: MediaSource, window: lr_frame_window?) {
-        guard media.summary.kind != "raw" else { return }
+        guard media.summary.kind != "raw" || media.summary.video._raw?.decoder_supported == true else { return }
         // Keep one decoder active and replace a queued slider position with
         // the latest one. Cancelling also waits for the native child to exit.
         pendingStill = window
@@ -586,8 +589,11 @@ struct WorkspaceView: View {
                     if model.options.encoder != .videoToolbox || model.hardwareCodecs.contains("hevc") {
                         Text("HEVC").tag("hevc")
                     }
-                    if model.options.encoder != .videoToolbox { Text("AV1").tag("av1") }
-                    if model.options.encoder != .videoToolbox || model.hardwareCodecs.contains("avc") {
+                    if model.options.encoder != .videoToolbox &&
+                        !(model.preserveDynamicHDR && model.media?.summary.hdr10plus == true) {
+                        Text("AV1").tag("av1")
+                    }
+                    if !model.preserveDynamicHDR && (model.options.encoder != .videoToolbox || model.hardwareCodecs.contains("avc")) {
                         Text("H.264").tag("avc")
                     }
                 }
@@ -679,6 +685,7 @@ struct WorkspaceView: View {
         }
         .onChange(of: model.hardwareCodecs) { _, _ in model.updateEncoderChoice() }
         .onChange(of: model.options.output) { _, _ in model.updateEncoderChoice() }
+        .onChange(of: model.options.standardHDR) { _, _ in model.updateEncoderChoice() }
         .onChange(of: model.supportsHDRVideo) { _, _ in model.updateEncoderChoice() }
         .onChange(of: model.canOfferDolbyVision) { _, _ in model.updateEncoderChoice() }
         .onChange(of: model.supportsHDRPhoto) { _, supported in

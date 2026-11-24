@@ -117,6 +117,9 @@ struct MediaSummary: Decodable, Sendable {
 
     struct Stream: Decodable, Sendable {
         let index: Int?
+        let time_base: String?
+        let start_time: String?
+        let _raw: RawCalibration?
         let codec_name: String?
         let codec_type: String?
         let pix_fmt: String?
@@ -170,6 +173,42 @@ struct MediaSource: Sendable {
     let format: lr_source_format
     let canEncodeFlac: Bool
     fileprivate let identity: SourceIdentity
+}
+
+struct RawCalibration: Codable, Sendable {
+    let width: UInt32
+    let height: UInt32
+    let crop: [UInt32]
+    let matrix: [Double]
+    let white_balance_kelvin: UInt32
+    let bayer_pattern: UInt32
+    var decoder_supported = false
+    var decoder_version_supported = false
+
+    static func read(_ file: FileHandle, length: UInt64, offset: UInt64, size: UInt64) throws -> Self {
+        guard size >= 86 && size <= length && offset <= length - size else {
+            throw EngineError(message: "Invalid ProRes RAW packet bounds.")
+        }
+        try file.seek(toOffset: offset)
+        guard let header = try file.read(upToCount: 86), header.count == 86 else {
+            throw EngineError(message: "Incomplete ProRes RAW frame header.")
+        }
+        var result = lr_raw_calibration()
+        try check(header.withUnsafeBytes {
+            lr_media_raw_calibration($0.bindMemory(to: UInt8.self).baseAddress, UInt64($0.count), size, &result)
+        }, nil, "The ProRes RAW header or calibration is unsupported.")
+        return Self(width: result.width, height: result.height,
+                    crop: withUnsafeBytes(of: result.crop) { Array($0.bindMemory(to: UInt32.self)) },
+                    matrix: withUnsafeBytes(of: result.matrix) { Array($0.bindMemory(to: Double.self)) },
+                    white_balance_kelvin: result.white_balance_kelvin, bayer_pattern: result.bayer_pattern)
+    }
+
+    var commands: String {
+        matrix.enumerated().map { index, value in
+            let row = ["r", "g", "b"][index / 4], column = ["r", "g", "b", "a"][index % 4]
+            return "colorchannelmixer@raw " + row + column + " " + String(value)
+        }.joined(separator: ",")
+    }
 }
 
 fileprivate struct SourceIdentity: Equatable, Sendable {
@@ -288,7 +327,7 @@ struct EncodingOptions: Sendable {
     var audio = "auto"
 
     func inputKind(_ media: MediaSummary) -> String { sourceKind == "auto" ? media.kind : sourceKind }
-    func supportsHDRVideo(_ media: MediaSummary) -> Bool { ["hlg", "pq", "log"].contains(inputKind(media)) }
+    func supportsHDRVideo(_ media: MediaSummary) -> Bool { ["hlg", "pq", "log", "raw"].contains(inputKind(media)) }
     func supportsHDRPhoto(_ media: MediaSummary) -> Bool { supportsHDRVideo(media) }
 
     func formatChoices(for media: MediaSource) -> lr_format_choices? {
@@ -326,11 +365,8 @@ struct EncodingOptions: Sendable {
         guard kind != "unknown" else {
             throw EngineError(message: "Choose the source color profile.")
         }
-        guard !media.hdr10plus || standardHDR || output == "sdr" else {
-            throw EngineError(message: "Select Standard HDR or SDR to convert this HDR10+ source.")
-        }
-        guard media.kind != "raw" else {
-            throw EngineError(message: "ProRes RAW development is not available in this macOS build.")
+        if media.kind == "raw", media.video._raw?.decoder_supported != true {
+            throw EngineError(message: "This FFmpeg build cannot decode the selected ProRes RAW recording.")
         }
         let target = output == "auto" ? (kind == "sdr" ? "sdr" : "hdr") : output == "dolbyvision84" ? "hdr" : output
         let transform: String
@@ -398,7 +434,8 @@ struct MediaTools: Sendable {
             }
             throw EngineError(message: "Could not find an executable \(name). Check the tool paths in Settings.")
         }
-        return try MediaTools(ffmpeg: requireEncoder ? find("ffmpeg", ffmpeg) : nil, ffprobe: find("ffprobe", ffprobe))
+        return try MediaTools(ffmpeg: requireEncoder ? find("ffmpeg", ffmpeg) : try? find("ffmpeg", ffmpeg),
+                              ffprobe: find("ffprobe", ffprobe))
     }
 }
 
@@ -407,24 +444,145 @@ struct MediaTools: Sendable {
 private final class ProgressReader {
     var pending = [UInt8]()
     var droppingLine = false
+    var failure: Error?
     let update: (Double) -> Void
-    init(_ update: @escaping (Double) -> Void) { self.update = update }
+    let receive: ((String) throws -> Void)?
+    init(_ update: @escaping (Double) -> Void, receive: ((String) throws -> Void)?) {
+        self.update = update
+        self.receive = receive
+    }
 
-    func feed(_ bytes: UnsafeBufferPointer<UInt8>) {
+    func feed(_ bytes: UnsafeBufferPointer<UInt8>) throws {
         for byte in bytes {
             if byte == 10 {
-                if !droppingLine, pending.starts(with: "out_time_us=".utf8),
+                if let receive {
+                    try receive(String(decoding: pending, as: UTF8.self))
+                } else if !droppingLine, pending.starts(with: "out_time_us=".utf8),
                    let micros = Int64(String(decoding: pending.dropFirst(12), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)) {
                     update(max(0, Double(micros) / 1_000_000))
                 }
                 pending.removeAll(keepingCapacity: true)
                 droppingLine = false
-            } else if pending.count < 4096 && !droppingLine {
+            } else if pending.count < (receive == nil ? 4096 : 65_536) && !droppingLine {
                 pending.append(byte)
+            } else if receive != nil {
+                throw EngineError(message: "A media metadata line exceeded 64 KiB.")
             } else {
                 droppingLine = true
             }
         }
+    }
+}
+
+// x265 reads one record per display frame. Retain only the current frame and
+// emit the same integer code values as the Windows metadata writer.
+private struct HDR10PlusWriter {
+    private let fields: Set<String> = ["application version", "num_windows", "targeted_system_display_maximum_luminance",
+        "maxscl", "average_maxrgb", "num_distribution_maxrgb_percentiles", "distribution_maxrgb_percentage",
+        "distribution_maxrgb_percentile", "fraction_bright_pixels", "knee_point_x", "knee_point_y",
+        "num_bezier_curve_anchors", "bezier_curve_anchors"]
+    private let output: FileHandle
+    private let window: lr_frame_window?
+    private var inputIndex: UInt64 = 0
+    private var sequence: UInt64 = 0
+    private var scene = -1
+    private var sceneStart: UInt64 = 0
+    private var profile: String?
+    private var previous: Data?
+
+    init(_ output: FileHandle, window: lr_frame_window?) throws {
+        self.output = output
+        self.window = window
+        try output.write(contentsOf: Data("{\"SceneInfo\":[".utf8))
+    }
+
+    private func invalid(_ field: String) -> EngineError {
+        EngineError(message: "Cannot preserve HDR10+ metadata (\(field)). Choose Standard HDR.")
+    }
+
+    mutating func append(_ line: String) throws {
+        guard line == "frame" || line.hasPrefix("frame|") else { return }
+        let index = inputIndex
+        inputIndex += 1
+        if let window, index < window.start || index >= window.end { return }
+        var values = [String: [Substring]]()
+        var selected = false, found = false
+        for field in line.split(separator: "|") {
+            let pair = field.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            guard pair.count == 2, let key = pair[0].split(separator: ":").last else { continue }
+            if key == "side_data_type" {
+                selected = pair[1] == "HDR Dynamic Metadata SMPTE2094-40 (HDR10+)"
+                if selected && found { throw invalid("multiple records on a frame") }
+                found = found || selected
+            } else if selected {
+                let fieldName = String(key)
+                guard fields.contains(fieldName) else { throw invalid(fieldName) }
+                values[fieldName, default: []].append(pair[1])
+            }
+        }
+        guard found else { throw invalid("frame without HDR10+") }
+        func many(_ key: String, _ scale: UInt64, _ maximum: UInt64) throws -> [UInt64] {
+            try (values[key] ?? []).map { text in
+                let parts = text.split(separator: "/", omittingEmptySubsequences: false)
+                guard parts.count == 1 || parts.count == 2, let numerator = UInt64(parts[0]),
+                      let denominator = parts.count == 1 ? 1 : UInt64(parts[1]), denominator > 0 else {
+                    throw invalid(key)
+                }
+                let value = numerator.multipliedReportingOverflow(by: scale)
+                guard !value.overflow, value.partialValue % denominator == 0,
+                      value.partialValue / denominator <= maximum else { throw invalid(key) }
+                return value.partialValue / denominator
+            }
+        }
+        func one(_ key: String, _ scale: UInt64 = 1, _ maximum: UInt64 = 100_000) throws -> UInt64 {
+            let entries = try many(key, scale, maximum)
+            guard entries.count == 1 else { throw invalid(key) }
+            return entries[0]
+        }
+        guard try one("application version") == 1, try one("num_windows") == 1,
+              try one("fraction_bright_pixels", 1000, 1000) == 0 else { throw invalid("processing window") }
+        let target = try one("targeted_system_display_maximum_luminance", 1, 10_000)
+        let maxScl = try many("maxscl", 100_000, 100_000)
+        let distributionIndices = try many("distribution_maxrgb_percentage", 1, 100)
+        let distributionValues = try many("distribution_maxrgb_percentile", 100_000, 100_000)
+        let count = try one("num_distribution_maxrgb_percentiles", 1, 15)
+        guard maxScl.count == 3, distributionIndices.count == Int(count), distributionValues.count == Int(count),
+              distributionIndices == Set(distributionIndices).sorted() else { throw invalid("luminance distribution") }
+        let luminance: [String: Any] = ["AverageRGB": try one("average_maxrgb", 100_000), "MaxScl": maxScl,
+            "LuminanceDistributions": ["DistributionIndex": distributionIndices, "DistributionValues": distributionValues]]
+        var metadata: [String: Any] = ["LuminanceParameters": luminance, "NumberOfWindows": 1,
+                                       "TargetedSystemDisplayMaximumLuminance": target]
+        let curve = values["knee_point_x"] != nil
+        if curve {
+            let anchors = try many("bezier_curve_anchors", 1023, 1023)
+            let count = try one("num_bezier_curve_anchors", 1, 15)
+            guard target > 0, count > 0, anchors.count == Int(count) else { throw invalid("Bezier curve") }
+            metadata["BezierCurveData"] = ["Anchors": anchors, "KneePointX": try one("knee_point_x", 4095, 4095),
+                                           "KneePointY": try one("knee_point_y", 4095, 4095)] as [String: Any]
+        } else if target != 0 || ["knee_point_y", "num_bezier_curve_anchors", "bezier_curve_anchors"].contains(where: { values[$0] != nil }) {
+            throw invalid("incomplete tone-mapping curve")
+        }
+        let currentProfile = curve ? "B" : "A"
+        guard profile == nil || profile == currentProfile else { throw invalid("mixed profiles") }
+        profile = currentProfile
+        let current = try JSONSerialization.data(withJSONObject: metadata, options: .sortedKeys)
+        if current != previous {
+            scene += 1
+            sceneStart = sequence
+            previous = current
+        }
+        metadata["SceneId"] = scene
+        metadata["SceneFrameIndex"] = sequence - sceneStart
+        metadata["SequenceFrameIndex"] = sequence
+        if sequence > 0 { try output.write(contentsOf: Data([44])) }
+        try output.write(contentsOf: JSONSerialization.data(withJSONObject: metadata))
+        sequence += 1
+    }
+
+    func finish() throws {
+        guard let profile else { throw invalid("no HDR10+ frames") }
+        if let window, sequence != window.end - window.start { throw invalid("frame count") }
+        try output.write(contentsOf: Data("],\"JSONInfo\":{\"HDR10plusProfile\":\"\(profile)\",\"Version\":\"1.0\"}}".utf8))
     }
 }
 
@@ -475,8 +633,12 @@ struct NativeEngine: Sendable {
             cleanup = lr_probe_get_snapshot(handle, &state) == LR_OK && state.cleanup_state == LR_CLEANUP_CONFIRMED
             try check(executed, error, "Source inspection failed.")
         }
-        let data = try copyBytes(limit: 64 * 1024 * 1024) { lr_probe_copy_json(handle, $0, $1, $2) }
-        let summary = try JSONDecoder().decode(MediaSummary.self, from: data)
+        var data = try copyBytes(limit: 64 * 1024 * 1024) { lr_probe_copy_json(handle, $0, $1, $2) }
+        var summary = try JSONDecoder().decode(MediaSummary.self, from: data)
+        if summary.kind == "raw", let stream = summary.video.index, tools.ffmpeg != nil {
+            data = try calibrateRAW(data, source: url, stream: stream, control: control, cleanup: &cleanup)
+            summary = try JSONDecoder().decode(MediaSummary.self, from: data)
+        }
         var format = lr_source_format()
         try check(lr_source_format_init(&format, UInt64(MemoryLayout<lr_source_format>.size)), nil,
                   "Cannot initialize source format.")
@@ -498,6 +660,114 @@ struct NativeEngine: Sendable {
             if withViews([data], { lr_media_flac_depth($0[0], &depth, nil) }) != LR_OK { return false }
         }
         return true
+    }
+
+    private static func object(_ json: Data) throws -> [String: Any] {
+        guard let result = try JSONSerialization.jsonObject(with: json) as? [String: Any] else {
+            throw EngineError(message: "Expected media metadata as a JSON object.")
+        }
+        return result
+    }
+
+    private func captureTool(_ executable: URL, _ arguments: [String], control: JobControl,
+                             cleanup: inout Bool) throws -> Data {
+        let command = PlannedCommand(arguments: [executable.path] + arguments, working_directory: nil, sidecars: [], colors: nil)
+        return try runEncoder(command, control: control, cleanup: &cleanup, timeout: 30_000, captureOutput: true) { _ in }
+    }
+
+    private func calibrateRAW(_ snapshot: Data, source: URL, stream: Int,
+                              control: JobControl, cleanup: inout Bool) throws -> Data {
+        guard let ffmpeg = tools.ffmpeg else { return snapshot }
+        let data = try captureTool(tools.ffprobe, ["-v", "error", "-select_streams", String(stream),
+            "-read_intervals", "%+#1", "-show_packets", "-show_entries", "packet=pos,size", "-of", "json", source.path],
+            control: control, cleanup: &cleanup)
+        let packets = try Self.object(data)["packets"] as? [[String: Any]]
+        guard let packet = packets?.first,
+              let offset = Self.unsigned(packet["pos"]), let size = Self.unsigned(packet["size"]) else {
+            throw EngineError(message: "Cannot locate the first ProRes RAW packet.")
+        }
+        let file = try FileHandle(forReadingFrom: source)
+        defer { try? file.close() }
+        var raw = try RawCalibration.read(file, length: file.seekToEnd(), offset: offset, size: size)
+        let version = try captureTool(ffmpeg, ["-version"], control: control, cleanup: &cleanup)
+        let versionText = String(decoding: version, as: UTF8.self)
+        raw.decoder_version_supported = versionText.range(of: #"libavcodec\s+(6[3-9]|[7-9][0-9]|[0-9]{3,})\."#, options: .regularExpression) != nil
+        if raw.decoder_version_supported {
+            do {
+                _ = try captureTool(ffmpeg, ["-hide_banner", "-nostdin", "-v", "error", "-xerror",
+                    "-threads:v", "2", "-i", source.path, "-map", "0:\(stream)", "-frames:v", "1",
+                    "-an", "-sn", "-dn", "-f", "null", "-"], control: control, cleanup: &cleanup)
+                raw.decoder_supported = true
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                if !cleanup { throw error }
+            }
+        }
+        var result = try Self.object(snapshot)
+        var video = result["video"] as? [String: Any] ?? [:]
+        video["_raw"] = try Self.object(JSONEncoder().encode(raw))
+        result["video"] = video
+        return try JSONSerialization.data(withJSONObject: result)
+    }
+
+    private static func unsigned(_ value: Any?) -> UInt64? {
+        if let text = value as? String { return UInt64(text) }
+        if let number = value as? NSNumber { return UInt64(number.stringValue) }
+        return nil
+    }
+
+    private func writeRawCommands(_ source: MediaSource, to sidecar: URL, window: lr_frame_window?,
+                                  control: JobControl, cleanup: inout Bool) throws {
+        guard let raw = source.summary.video._raw, raw.decoder_supported,
+              let stream = source.summary.video.index else {
+            throw EngineError(message: "Missing ProRes RAW calibration.")
+        }
+        let timeBase = (source.summary.video.time_base ?? "").split(separator: "/").compactMap { Double($0) }
+        guard timeBase.count == 2, timeBase[0] > 0, timeBase[1] > 0 else {
+            throw EngineError(message: "Invalid ProRes RAW time base.")
+        }
+        let origin = window.flatMap { $0.seek_frame > 0 ? $0.seek_seconds : nil }
+        let start = origin ?? Double(source.summary.video.start_time ?? "") ?? 0
+        let input = try FileHandle(forReadingFrom: source.url)
+        defer { try? input.close() }
+        let length = try input.seekToEnd()
+        guard FileManager.default.createFile(atPath: sidecar.path, contents: nil) else {
+            throw EngineError(message: "Cannot create the RAW calibration sidecar.")
+        }
+        let output = try FileHandle(forWritingTo: sidecar)
+        defer { try? output.close() }
+        var args = ["-v", "error", "-select_streams", String(stream), "-show_packets",
+                    "-show_entries", "packet=pos,size,pts", "-of", "compact=p=0:nk=0"]
+        if let window {
+            args += ["-read_intervals", "\(window.seek_frame > 0 ? window.seek_seconds : 0)%\(window.end_seconds + 0.1)"]
+        }
+        let command = PlannedCommand(arguments: [tools.ffprobe.path] + args + [source.url.path],
+                                     working_directory: nil, sidecars: [], colors: nil)
+        var previous: String?
+        try runEncoder(command, control: control, cleanup: &cleanup, receive: { line in
+            if line.isEmpty { return }
+            let values = Dictionary(line.split(separator: "|").compactMap { field -> (Substring, Substring)? in
+                let pair = field.split(separator: "=", maxSplits: 1)
+                return pair.count == 2 ? (pair[0], pair[1]) : nil
+            }, uniquingKeysWith: { _, last in last })
+            guard let offset = values["pos"].flatMap(UInt64.init), let size = values["size"].flatMap(UInt64.init),
+                  let pts = values["pts"].flatMap(Int64.init) else {
+                throw EngineError(message: "Missing ProRes RAW packet coordinates.")
+            }
+            let calibration = try RawCalibration.read(input, length: length, offset: offset, size: size)
+            guard calibration.width == raw.width, calibration.height == raw.height, calibration.crop == raw.crop else {
+                throw EngineError(message: "The ProRes RAW crop changes during the recording.")
+            }
+            let next = calibration.commands
+            if next != previous {
+                let time = previous == nil ? 0 : max(0, Double(pts) * timeBase[0] / timeBase[1] - start)
+                let timestamp = String(format: "%.12f", locale: Locale(identifier: "en_US_POSIX"), time)
+                try output.write(contentsOf: Data("\(timestamp) \(next);\n".utf8))
+                previous = next
+            }
+        }) { _ in }
+        guard previous != nil else { throw EngineError(message: "No ProRes RAW calibration packets were read.") }
     }
 
     func loadFrames(_ source: MediaSource, control: JobControl) throws -> FrameIndex {
@@ -569,7 +839,7 @@ struct NativeEngine: Sendable {
         let window = trim?.window
         try withOutput(source, to: destination, overwrite: overwrite, control: control) { stagedURL, cleanup in
             var verificationSource = source.snapshot
-            if source.summary.hasDolbyVision && !options.standardHDR && options.output != "sdr",
+            if (source.summary.hasDolbyVision || source.summary.hdr10plus) && !options.standardHDR && options.output != "sdr",
                let trim, trim.window.start != 0 {
                 verificationSource = try firstSelectedFrame(source, index: trim.index, window: trim.window,
                                                             control: control, cleanup: &cleanup)
@@ -577,7 +847,9 @@ struct NativeEngine: Sendable {
             let plan = try makePlan(source: source.snapshot, choices: choices, staging: utf8(stagedURL.path), window: window)
             defer { lr_plan_release(plan) }
             let command = try plannedCommand(plan)
-            guard command.sidecars.isEmpty else { throw EngineError(message: "This conversion requires an unsupported media sidecar.") }
+            let folder = stagedURL.deletingLastPathComponent()
+            defer { if cleanup { self.removeSidecars(command, from: folder) } }
+            try prepareSidecars(command, source: source, in: folder, window: window, control: control, cleanup: &cleanup)
             let total = window.map { $0.end_seconds - $0.start_seconds } ?? source.summary.duration
             try encodeVideo(command, to: stagedURL, dolbyVision: generateDolbyVision, control: control, cleanup: &cleanup) { position in
                 if total > 0 { progress(min(0.99, position / total)) }
@@ -593,6 +865,39 @@ struct NativeEngine: Sendable {
             }
         }
         progress(1)
+    }
+
+    private func removeSidecars(_ command: PlannedCommand, from folder: URL) {
+        for name in command.sidecars where name == "raw-calibration.cmd" || name == "hdr10plus.json" {
+            try? FileManager.default.removeItem(at: folder.appendingPathComponent(name))
+        }
+    }
+
+    private func prepareSidecars(_ command: PlannedCommand, source: MediaSource, in folder: URL, window: lr_frame_window?,
+                                 control: JobControl, cleanup: inout Bool) throws {
+        for name in command.sidecars {
+            let sidecar = folder.appendingPathComponent(name)
+            switch name {
+            case "raw-calibration.cmd":
+                try writeRawCommands(source, to: sidecar, window: window, control: control, cleanup: &cleanup)
+            case "hdr10plus.json":
+                guard let stream = source.summary.video.index,
+                      FileManager.default.createFile(atPath: sidecar.path, contents: nil) else {
+                    throw EngineError(message: "Cannot create the HDR10+ metadata sidecar.")
+                }
+                let file = try FileHandle(forWritingTo: sidecar)
+                defer { try? file.close() }
+                var writer = try HDR10PlusWriter(file, window: window)
+                var args = [tools.ffprobe.path, "-v", "error", "-select_streams", String(stream)]
+                if let window, window.end_seconds > 0 { args += ["-read_intervals", "%\(window.end_seconds + 1)"] }
+                args += ["-show_frames", "-show_entries", "frame=side_data_list:frame_side_data", "-of", "compact", source.url.path]
+                let probe = PlannedCommand(arguments: args, working_directory: nil, sidecars: [], colors: nil)
+                try runEncoder(probe, control: control, cleanup: &cleanup, receive: { try writer.append($0) }) { _ in }
+                try writer.finish()
+            default:
+                throw EngineError(message: "Unsupported media sidecar.")
+            }
+        }
     }
 
     private func firstSelectedFrame(
@@ -771,8 +1076,11 @@ struct NativeEngine: Sendable {
                                 previewSize: preview ? 960 : 0)
         defer { lr_plan_release(plan) }
         let command = try plannedCommand(plan)
+        let folder = destination.deletingLastPathComponent()
+        defer { if cleanup { self.removeSidecars(command, from: folder) } }
+        try prepareSidecars(command, source: source, in: folder, window: window, control: control, cleanup: &cleanup)
         let args = command.arguments
-        guard command.sidecars.isEmpty, let input = args.firstIndex(of: "-i"), let map = args.firstIndex(of: "-map"),
+        guard let input = args.firstIndex(of: "-i"), let map = args.firstIndex(of: "-map"),
               let filter = args.firstIndex(of: "-vf"), input + 1 < args.count, map + 1 < args.count, filter + 1 < args.count else {
             throw EngineError(message: "Cannot plan the selected still frame.")
         }
@@ -944,7 +1252,7 @@ struct NativeEngine: Sendable {
 
     @discardableResult private func runEncoder(
         _ command: PlannedCommand, control: JobControl, cleanup: inout Bool, timeout: UInt64 = 0,
-        captureOutput: Bool = false,
+        captureOutput: Bool = false, receive: ((String) throws -> Void)? = nil,
         progress: @escaping (Double) -> Void
     ) throws -> Data {
         guard let executable = command.arguments.first else { throw EngineError(message: "The encoding plan is empty.") }
@@ -968,13 +1276,18 @@ struct NativeEngine: Sendable {
         try check(status, error, "Cannot start FFmpeg.")
         guard let handle else { throw EngineError(message: "Missing FFmpeg process handle.") }
         defer { lr_process_release(handle) }
-        let reader = ProgressReader(progress)
+        let reader = ProgressReader(progress, receive: receive)
         return try control.run({ _ = lr_process_cancel(handle) }) {
             let run = captureOutput ? lr_process_run(handle, &error) : withExtendedLifetime(reader) {
                 lr_process_run_streaming(handle, { context, stream, bytes, count in
                     if stream == LR_STREAM_STDOUT, let context {
-                        Unmanaged<ProgressReader>.fromOpaque(context).takeUnretainedValue()
-                            .feed(UnsafeBufferPointer(start: bytes, count: Int(count)))
+                        let reader = Unmanaged<ProgressReader>.fromOpaque(context).takeUnretainedValue()
+                        do {
+                            try reader.feed(UnsafeBufferPointer(start: bytes, count: Int(count)))
+                        } catch {
+                            reader.failure = error
+                            return LR_IO_ERROR
+                        }
                     }
                     return LR_OK
                 }, Unmanaged.passUnretained(reader).toOpaque(), &error)
@@ -982,6 +1295,7 @@ struct NativeEngine: Sendable {
             var state = lr_process_snapshot()
             lr_process_snapshot_init(&state, UInt64(MemoryLayout<lr_process_snapshot>.size))
             cleanup = lr_process_get_snapshot(handle, &state) == LR_OK && state.cleanup_state == LR_CLEANUP_CONFIRMED
+            if cleanup, let failure = reader.failure { throw failure }
             if run == LR_IO_ERROR, let detail = try? copyBytes(limit: 1024 * 1024, {
                 lr_process_copy_output(handle, LR_STREAM_STDERR, $0, $1, $2)
             }), !detail.isEmpty {
@@ -992,6 +1306,9 @@ struct NativeEngine: Sendable {
                 throw EngineError(message: message)
             }
             try check(run, error, "FFmpeg failed.")
+            if let receive, !reader.pending.isEmpty {
+                try receive(String(decoding: reader.pending, as: UTF8.self))
+            }
             return try captureOutput ? copyBytes(limit: 8 * 1024 * 1024) {
                 lr_process_copy_output(handle, LR_STREAM_STDOUT, $0, $1, $2)
             } : Data()
