@@ -29,13 +29,16 @@
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
   </Grid.Resources>
-  <Grid.RowDefinitions><RowDefinition Height="48" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+  <Grid.RowDefinitions><RowDefinition Height="48" /><RowDefinition Height="*" /></Grid.RowDefinitions>
   <Grid x:Name="TitleDrag" Margin="16,0,150,0">
     <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" IsHitTestVisible="False">
       <Image Source="ms-appx:///Assets/LumaRecode.png" Width="20" Height="20" /><TextBlock Text="映码 · LumaRecode" FontSize="12" VerticalAlignment="Center" x:Name="LocalizedElement0" />
     </StackPanel>
   </Grid>
-  <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch" Padding="32,20,32,24">
+  <Grid x:Name="Workspace" Grid.Row="1">
+  <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+  <ScrollViewer x:Name="WorkspaceScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                HorizontalContentAlignment="Stretch" Padding="32,20,32,24">
 
     <Grid>
     <StackPanel Spacing="24" MaxWidth="1240" HorizontalAlignment="Stretch">
@@ -167,7 +170,7 @@
     </StackPanel>
     </Grid>
   </ScrollViewer>
-  <Border Grid.Row="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="32,18,32,20">
+  <Border Grid.Row="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="32,18,32,20">
     <Grid><StackPanel Spacing="14" MaxWidth="1240" HorizontalAlignment="Stretch">
       <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="保存到" VerticalAlignment="Center" x:Name="LocalizedElement45" /><local:PathTextBox Style="{StaticResource PathTextBoxStyle}" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" x:Name="Destination" Grid.Column="1" PlaceholderText="选择视频后自动生成" AutomationProperties.Name="输出路径" /><Button x:Name="ChooseOutput" Grid.Column="2" Style="{StaticResource ActionButtonStyle}"><TextBlock x:Name="ChooseOutputLabel" Text="更改…" FontWeight="Normal" Margin="{StaticResource ControlTextOpticalMargin}" /></Button></Grid>
       <ProgressBar x:Name="Progress" Minimum="0" Maximum="1000" Value="0" Height="6" />
@@ -190,9 +193,17 @@
       </Grid>
     </StackPanel></Grid>
   </Border>
-  <Grid x:Name="PreviewOverlay" Grid.Row="1" Grid.RowSpan="2" Visibility="Collapsed"
-        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Canvas.ZIndex="3">
-    <Border x:Name="OverlayPreviewHost" Margin="24,14,24,24" MaxWidth="1280" HorizontalAlignment="Stretch">
+  </Grid>
+  <Grid x:Name="PreviewOverlay" Grid.Row="1" Visibility="Collapsed"
+        Background="Transparent" Canvas.ZIndex="3">
+    <Image x:Name="BlurredWorkspace" Stretch="Fill" Opacity="0" IsHitTestVisible="False" />
+    <Grid x:Name="OverlayPreviewSurface" Margin="36,24,36,30" MaxWidth="1040" HorizontalAlignment="Stretch"
+          Opacity="0" TabFocusNavigation="Cycle">
+      <Grid.RenderTransform><TranslateTransform /></Grid.RenderTransform>
+      <Border CornerRadius="12" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+        <SystemBackdropElement x:Name="PreviewMaterial" CornerRadius="12" IsHitTestVisible="False" />
+      </Border>
+      <Border x:Name="OverlayPreviewHost">
         <Border x:Name="PreviewCard" Style="{StaticResource Card}">
           <Grid RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
             <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -204,6 +215,8 @@
             </Grid>
             <Border x:Name="FrameViewport" Grid.Row="1" Background="Black" CornerRadius="8" MinHeight="80">
               <Grid>
+                <MediaPlayerElement x:Name="SourcePlayer" Stretch="Uniform" AreTransportControlsEnabled="False"
+                                    Visibility="Collapsed" IsHitTestVisible="False" />
                 <Image x:Name="FramePreview" Stretch="Uniform" />
                 <ProgressRing x:Name="PreviewBusy" Width="36" Height="36" IsActive="False" />
               </Grid>
@@ -212,11 +225,15 @@
             <TextBlock x:Name="PreviewStatus" Style="{StaticResource Secondary}" TextWrapping="Wrap" />
             <Slider x:Name="FrameSeek" Minimum="1" Maximum="2" Value="1" StepFrequency="1" SnapsTo="StepValues" IsEnabled="False" AutomationProperties.Name="预览帧" />
             <Grid x:Name="FrameNavigation" ColumnSpacing="12" RowSpacing="12">
-              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
               <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-              <Button x:Name="PreviousFrame" Content="上一帧" />
-              <Button x:Name="NextFrame" Grid.Column="1" Content="下一帧" />
-              <NumberBox x:Name="FrameNumber" Grid.Column="2" Header="帧或 时间.帧" Minimum="1" Maximum="2" Value="1" SmallChange="1" SpinButtonPlacementMode="Hidden" HorizontalAlignment="Right" MinWidth="160" />
+              <Button x:Name="PlayPreview" Style="{StaticResource AccentActionButtonStyle}" IsEnabled="False"
+                      AutomationProperties.Name="播放预览" ToolTipService.ToolTip="播放预览">
+                <SymbolIcon x:Name="PlaybackGlyph" Symbol="Play" />
+              </Button>
+              <Button x:Name="PreviousFrame" Grid.Column="1" Content="上一帧" />
+              <Button x:Name="NextFrame" Grid.Column="2" Content="下一帧" />
+              <NumberBox x:Name="FrameNumber" Grid.Column="3" Header="帧或 时间.帧" Minimum="1" Maximum="2" Value="1" SmallChange="1" SpinButtonPlacementMode="Hidden" HorizontalAlignment="Right" MinWidth="160" />
             </Grid>
             <CheckBox x:Name="TrimEnabled" Content="裁剪视频" />
             <Grid x:Name="VideoTrimFields" ColumnSpacing="16" RowSpacing="12" Visibility="Collapsed">
@@ -228,13 +245,15 @@
             <CheckBox x:Name="IncludeMotion" Content="包含动态照片视频" />
             <Grid x:Name="MotionFields" ColumnSpacing="16" RowSpacing="12" Visibility="Collapsed">
               <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
               <StackPanel Spacing="8"><NumberBox x:Name="MotionStart" Header="视频开始帧" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Hidden" /><TextBlock x:Name="MotionStartTime" Style="{StaticResource Secondary}" /><Button x:Name="SetMotionStart" Content="将当前帧设为开始" HorizontalAlignment="Stretch" /></StackPanel>
               <StackPanel x:Name="MotionEndFields" Grid.Column="1" Spacing="8"><NumberBox x:Name="MotionEnd" Header="视频结束帧（包含）" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Hidden" /><TextBlock x:Name="MotionEndTime" Style="{StaticResource Secondary}" /><Button x:Name="SetMotionEnd" Content="将当前帧设为结束" HorizontalAlignment="Stretch" /></StackPanel>
+              <ComboBox x:Name="MotionVideoRange" Grid.Row="2" Grid.ColumnSpan="2" Header="动态视频范围" HorizontalAlignment="Stretch" />
             </Grid>
             </StackPanel>
           </Grid>
         </Border>
-    </Border>
+      </Border>
+    </Grid>
   </Grid>
 </Grid>

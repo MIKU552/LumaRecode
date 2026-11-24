@@ -1,4 +1,10 @@
 {
+  "播放预览": "Play preview",
+  "暂停预览": "Pause preview",
+  "原片预览": "Source preview",
+  "动态视频范围": "Motion video range",
+  "请选择有效的动态视频范围。": "Select a valid motion video range.",
+  "HDR 动态视频需要至少 10 位的 HDR、Log 或 RAW 素材。": "HDR motion video requires a 10-bit HDR, Log, or RAW source.",
   " 声道": " channels",
   " 位": "-bit",
   "{0}\n{1} 位 {2} · {3}": "{0}\n{1}-bit {2} · {3}",

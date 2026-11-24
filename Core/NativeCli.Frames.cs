@@ -101,11 +101,12 @@ public sealed partial class NativeCli
         var motion = FrameExporter.DefaultMotionRange(timeline, frame);
         motion = new(FrameInteger(args, "motion_start_frame", motion.Start), FrameInteger(args, "motion_end_frame", motion.End ?? timeline.Count));
         bool includeMotion = args.Has("motion");
-        if (!includeMotion && (args.Get("motion_start_frame") is not null || args.Get("motion_end_frame") is not null || args.Get("motion_size") is not null))
+        if (!includeMotion && new[] { "motion_start_frame", "motion_end_frame", "motion_size", "motion_range" }.Any(key => args.Get(key) is not null))
         {
             throw new CliException("invalid_arguments", "Motion video options require --motion.");
         }
-        var options = new ImageExportOptions(frame, format, kind, profile, includeMotion, motion, quality, args.Get("purpose") ?? "archive", args.Get("motion_size") ?? "source");
+        var options = new ImageExportOptions(frame, format, kind, profile, includeMotion, motion, quality,
+            args.Get("purpose") ?? "archive", args.Get("motion_size") ?? "source", args.Get("motion_range") ?? "sdr");
         if (includeMotion)
         {
             timeline.Resolve(motion);
@@ -141,6 +142,7 @@ public sealed partial class NativeCli
                 ["motion_start_frame"] = motion.Start,
                 ["motion_end_frame"] = motion.End,
                 ["motion_size"] = options.MotionSize,
+                ["motion_range"] = options.MotionVideoRange,
                 ["purpose"] = options.Purpose
             });
             return 0;

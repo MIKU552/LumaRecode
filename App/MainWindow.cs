@@ -382,9 +382,9 @@ public sealed partial class MainWindow : Window
         Grid.SetColumnSpan(format, narrow ? 1 : 2);
 
         var frameNumber = Control<NumberBox>("FrameNumber");
-        Grid.SetColumn(frameNumber, compact ? 0 : 2);
+        Grid.SetColumn(frameNumber, compact ? 0 : 3);
         Grid.SetRow(frameNumber, compact ? 1 : 0);
-        Grid.SetColumnSpan(frameNumber, compact ? 3 : 1);
+        Grid.SetColumnSpan(frameNumber, compact ? 4 : 1);
         frameNumber.HorizontalAlignment = compact ? HorizontalAlignment.Stretch : HorizontalAlignment.Right;
         foreach (var (gridName, fieldsName) in new[] { ("VideoTrimFields", "TrimEndFields"), ("MotionFields", "MotionEndFields") })
         {
@@ -395,6 +395,7 @@ public sealed partial class MainWindow : Window
             Grid.SetColumn(last, compact ? 0 : 1);
             Grid.SetRow(last, compact ? 1 : 0);
         }
+        Grid.SetColumnSpan(MotionVideoRange, compact ? 1 : 2);
         var fields = Control<Grid>("FormatFields");
         var fieldRows = compact ? 4 : 2;
         while (fields.RowDefinitions.Count < fieldRows)

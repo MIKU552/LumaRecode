@@ -3,21 +3,22 @@
 Builds an automatic Native, explicit x64, APX or ARM64 GUI/CLI application.
 .DESCRIPTION
 Each target has isolated restore, payload, license and publish directories.
-JIT is the default. Native selects the OS architecture; the JIT selects CPU instructions.
-Optional AOT builds optimize for the build CPU or an explicit instruction profile.
+Native AOT is the default. Native selects the build CPU's instruction set.
+Select JIT for a framework-dependent application.
 ARM64 AOT cross-compilation requires the Visual Studio C++ ARM64 toolchain.
 #>
 param(
     [ValidateSet('Native','X64','Apx','Arm64')][string]$Target = 'Native',
     [ValidateSet('SelfContained','Portable','FrameworkDependent')][string]$Deployment = 'SelfContained',
-    [ValidateSet('Jit','Aot')][string]$Compilation = 'Jit',
+    [ValidateSet('Jit','Aot')][string]$Compilation = 'Aot',
+    [switch]$SkipArchive,
     [switch]$UseEnvironmentalNativeTools
 )
 $ErrorActionPreference = 'Stop'
 Push-Location -LiteralPath $PSScriptRoot
 try {
     . (Join-Path $PSScriptRoot 'tools/BuildTarget.ps1')
-    if ($Compilation -eq 'Aot' -and $Deployment -ne 'SelfContained') { throw 'Native AOT requires -Deployment SelfContained.' }
+    if ($Compilation -eq 'Aot' -and $Deployment -eq 'FrameworkDependent') { throw 'Use -Compilation Jit for a framework-dependent deployment.' }
     $taskHost = Get-LumaBuildHost
     $taskPlan = Resolve-LumaBuildTarget -Target $Target -Compilation $Compilation -SystemArchitecture $taskHost.Architecture -ApxAvailable $taskHost.ApxAvailable
     $Target = $taskPlan.RequestedTarget
@@ -70,33 +71,34 @@ try {
         ProjectRoot=$taskRoot;Architecture=$taskArchitecture;OutputDirectory=$taskLegal
         AssetsFile=(Join-Path $taskRoot "App/obj/$Compilation/$Target/project.assets.json")
     }
-    if ($taskAot) {
+    if ($taskAot -and $taskBundled) {
         Invoke-DotNet (@('restore','Bundle/LumaRecode.Bundle.csproj','--locked-mode') + $taskCommon)
         $taskLicenseArgs.Add('AdditionalAssetsFile',(Join-Path $taskRoot "Bundle/obj/$Compilation/$Target/project.assets.json"))
     }
     & (Join-Path $taskRoot 'tools/Collect-Licenses.ps1') @taskLicenseArgs
     Reset-GeneratedDirectory $taskOutputRelative
-    if ($taskAot) { Reset-GeneratedDirectory $taskPayloadRelative }
-    $taskAppOutput = if ($taskAot) { $taskPayload } else { $taskOutput }
+    if ($taskAot -and $taskBundled) { Reset-GeneratedDirectory $taskPayloadRelative }
+    $taskAppOutput = if ($taskAot -and $taskBundled) { $taskPayload } else { $taskOutput }
     $taskPublish = @('publish','App/VideoConverter.WinUI.csproj','--no-restore','-c','Release','-o',$taskAppOutput,
         "-p:PublishAot=$($taskAot.ToString().ToLowerInvariant())","-p:LumaLicenseDirectory=$taskLegal") + $taskCommon
-    foreach ($taskName in @('SelfContained','WindowsAppSDKSelfContained')) {
-        $taskPublish += "-p:$taskName=$($taskIncludeRuntime.ToString().ToLowerInvariant())"
-    }
+    # Keep WinUI app-local in every format. FrameworkDependent only changes
+    # how CoreCLR is found, so desktop users have a single external runtime.
+    $taskPublish += "-p:SelfContained=$($taskIncludeRuntime.ToString().ToLowerInvariant())"
+    $taskPublish += '-p:WindowsAppSDKSelfContained=true'
     foreach ($taskName in @('PublishSingleFile','IncludeAllContentForSelfExtract','EnableCompressionInSingleFile')) {
         $taskPublish += "-p:$taskName=$(($taskBundled -and -not $taskAot).ToString().ToLowerInvariant())"
     }
     if ($taskAot) { $taskPublish += "-p:IlcInstructionSet=$taskIsa" }
     if ($taskAot -and $UseEnvironmentalNativeTools) { $taskPublish += '-p:IlcUseEnvironmentalTools=true' }
     Invoke-DotNet $taskPublish
-    if ($taskAot) {
+    if ($taskAot -and $taskBundled) {
         Invoke-DotNet (@('publish','Bundle/LumaRecode.Bundle.csproj','--no-restore','-c','Release','-o',$taskOutput,
             "-p:LumaPayloadDirectory=$taskPayload") + $taskCommon)
     }
     $taskVersion = ([xml](Get-Content -LiteralPath 'App/VideoConverter.WinUI.csproj' -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-    if ($taskBundled) { Write-Output "Built $Target ($taskRid): $taskOutput/LumaRecode.exe" }
+    if ($taskBundled -or $SkipArchive) { Write-Output "Built $Target ($taskRid): $taskOutput/LumaRecode.exe" }
     else {
-        $taskKind = if ($taskIncludeRuntime) { 'portable' } else { 'framework-dependent' }
+        $taskKind = if ($taskAot) { 'aot-portable' } elseif ($taskIncludeRuntime) { 'portable' } else { 'framework-dependent' }
         $taskZip = Join-Path $taskRoot "dist/LumaRecode-$taskVersion-$taskRid-$taskKind.zip"
         Compress-Archive -Path "$taskOutput/*" -DestinationPath $taskZip -Force
         Write-Output "Built $taskKind ZIP: $taskZip"

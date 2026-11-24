@@ -87,6 +87,8 @@ internal static class ViewText
         ("ClosePreview", "AutomationProperties.Name", "关闭预览"),
         ("ClosePreview", "ToolTipService.ToolTip", "关闭预览"),
         ("FrameSeek", "AutomationProperties.Name", "预览帧"),
+        ("PlayPreview", "AutomationProperties.Name", "播放预览"),
+        ("PlayPreview", "ToolTipService.ToolTip", "播放预览"),
         ("PreviousFrame", "Content", "上一帧"),
         ("NextFrame", "Content", "下一帧"),
         ("FrameNumber", "Header", "帧或 时间.帧"),
@@ -100,5 +102,6 @@ internal static class ViewText
         ("SetMotionStart", "Content", "将当前帧设为开始"),
         ("MotionEnd", "Header", "视频结束帧（包含）"),
         ("SetMotionEnd", "Content", "将当前帧设为结束"),
+        ("MotionVideoRange", "Header", "动态视频范围"),
     ];
 }

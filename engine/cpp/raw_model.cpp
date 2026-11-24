@@ -10,6 +10,8 @@ extern "C" lr_status lr_media_raw_calibration(const uint8_t *header, uint64_t he
 {
     if (header == nullptr || result == nullptr || header_size < 86 || packet_size < 86)
         return LR_INVALID_ARGUMENT;
+    // The probe retains only the calibration header. Compare its declaration
+    // with the complete packet length before reading the big-endian fields.
     const auto u16 = [&](size_t offset) -> uint32_t {
         return (static_cast<uint32_t>(header[offset]) << 8) | header[offset + 1];
     };
@@ -38,6 +40,8 @@ extern "C" lr_status lr_media_raw_calibration(const uint8_t *header, uint64_t he
             return LR_INVALID_DATA;
     }
     const auto &c = coefficients;
+    // The camera's calibration supplies an RGB-to-XYZ matrix and per-channel
+    // gains. Reject singular calibrations before composing the Rec.2020 matrix.
     const double determinant = c[2] * (c[6] * c[10] - c[7] * c[9]) -
                                c[3] * (c[5] * c[10] - c[7] * c[8]) +
                                c[4] * (c[5] * c[9] - c[6] * c[8]);

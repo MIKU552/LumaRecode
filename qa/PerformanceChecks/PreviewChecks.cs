@@ -44,6 +44,10 @@ internal static class PreviewChecks
         }
         Check(timeline.TryFrameCode("1.01", out int selected) && selected == 4, "Short frame code");
         Check(!timeline.TryFrameCode("0.03", out _), "A per-second index cannot select the following second");
+        Check(timeline.AtOrBefore(0.429) == 0, "Playing position before the next displayed frame");
+        Check(timeline.AtOrBefore(0.43) == 1, "Playing position on a variable-rate frame boundary");
+        Check(timeline.AtOrBefore(0.9) == 2, "Playing position in a long variable-rate frame");
+        Check(timeline.AtOrBefore(20) == 4, "Playing position after the last displayed frame");
     }
 
     private static async Task CheckPixelPreviewAsync()

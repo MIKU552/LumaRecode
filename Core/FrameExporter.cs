@@ -6,7 +6,8 @@ namespace VideoConverter.Core;
 
 /// <summary>Zero-based cover frame and an optional end-exclusive motion range on the source timeline.</summary>
 public sealed record ImageExportOptions(int Frame = 0, string Format = "sdr", string SourceKind = "auto", string? Profile = null,
-    bool Motion = false, FrameRange? MotionFrames = null, int Quality = 95, string Purpose = "archive", string MotionSize = "source")
+    bool Motion = false, FrameRange? MotionFrames = null, int Quality = 95, string Purpose = "archive", string MotionSize = "source",
+    string MotionVideoRange = "sdr")
 {
     public string Suffix => Format == "hdr" ? ".avif" : Format == "png" ? ".png" : ".jpg";
 }
@@ -36,8 +37,12 @@ public sealed class FrameExporter(Transcoder engine)
         Require(options.Quality is >= 1 and <= 100, "图片质量须在 1 到 100 之间。");
         Require(options.Purpose is "share" or "archive", "请选择有效的编码用途。");
         Require(options.MotionSize is "source" or "1080" or "720", "请选择有效的动态视频分辨率。");
+        Require(options.MotionVideoRange is "sdr" or "hdr", "请选择有效的动态视频范围。");
         string kind = Kind(source, options);
         Require(options.Format is "sdr" or "png" || kind is "hlg" or "pq" or "log" or "raw", "HDR 图片导出需要 HDR、Log 或 RAW 素材。");
+        Require(!options.Motion || options.MotionVideoRange == "sdr" ||
+            (kind is "hlg" or "pq" or "log" or "raw") && OutputPolicy.SourceDepth(source) >= 10,
+            "HDR 动态视频需要至少 10 位的 HDR、Log 或 RAW 素材。");
         Require(kind != "log" || !string.IsNullOrWhiteSpace(options.Profile ?? source.Profile), "请选择相机曲线。");
     }
 
@@ -107,7 +112,8 @@ public sealed class FrameExporter(Transcoder engine)
             if (options.Motion)
             {
                 emit("status", JsonValue.Create("正在生成动态照片视频…"));
-                bool sdr = options.Format == "sdr";
+                // The JPEG and appended MP4 have independent color pipelines.
+                bool sdr = options.MotionVideoRange == "sdr";
                 var videoOptions = RenderOptions(source, options, sdr, options.Purpose) with
                 {
                     Codec = sdr ? "avc" : "hevc",

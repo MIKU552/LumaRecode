@@ -434,8 +434,14 @@ def images(folder, sdr, reference):
                     )
                     assert decoded.stat().st_size == 128 * 72 * 4
             checks += 1
-    for source, fmt in [(sdr, "sdr"), (hdr, "sdr"), (hdr, "ultrahdr")]:
-        output = folder / f"{source.stem}-{fmt}_MP.jpg"
+    for source, fmt, motion_range in [
+        (sdr, "sdr", "sdr"),
+        (hdr, "sdr", "sdr"),
+        (hdr, "ultrahdr", "sdr"),
+        (hdr, "sdr", "hdr"),
+        (hdr, "ultrahdr", "hdr"),
+    ]:
+        output = folder / f"{source.stem}-{fmt}-{motion_range}_MP.jpg"
         native.request(
             "image-export",
             path=source,
@@ -443,13 +449,27 @@ def images(folder, sdr, reference):
             frame=7,
             format=fmt,
             motion=True,
+            motion_range=motion_range,
             start_frame=2,
             end_frame=18,
             purpose="archive",
         )
         info = motion_info(output)
-        clip = folder / f"{source.stem}-{fmt}-motion.mp4"
+        clip = folder / f"{source.stem}-{fmt}-{motion_range}-motion.mp4"
         clip.write_bytes(output.read_bytes()[info["offset"] :])
+        stream = json.loads(
+            run(
+                "ffprobe", "-v", "error", "-select_streams", "v:0",
+                "-show_entries", "stream=codec_name,pix_fmt,color_transfer", "-of", "json", clip,
+            )
+        )["streams"][0]
+        signal = tuple(stream.get(key) for key in ("codec_name", "pix_fmt", "color_transfer"))
+        expected = (
+            ("hevc", "yuv420p10le", "arib-std-b67")
+            if motion_range == "hdr"
+            else ("h264", "yuv420p", "bt709")
+        )
+        assert signal == expected, (fmt, motion_range, signal)
         frames = json.loads(
             run(
                 "ffprobe",

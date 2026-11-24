@@ -1,7 +1,7 @@
+using System.Runtime.InteropServices;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
-using System.Runtime.InteropServices;
 
 namespace VideoConverter;
 
@@ -80,6 +80,9 @@ public sealed partial class ConverterApp : Application
     [DllImport("dwmapi.dll", ExactSpelling = true)]
     private static extern int DwmSetWindowAttribute(nint hwnd, uint attribute, ref int value, uint size);
 
+    [DllImport("dwmapi.dll", ExactSpelling = true)]
+    private static extern int DwmFlush();
+
     private static void ActivateWithFirstFrame(Window window)
     {
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
@@ -90,25 +93,32 @@ public sealed partial class ConverterApp : Application
             return;
         }
 
-        // Give XAML a composition pass before DWM presents the window. A
-        // finite fallback covers drivers or sessions that skip rendering
-        // while a window is cloaked.
-        int frames = 0;
+        // Rendering fires before XAML has drawn. Wait for the loaded tree's
+        // Rendered event, then let DWM consume that submission before uncloaking.
+        var content = (FrameworkElement)window.Content;
         bool waiting = true;
+        bool revealQueued = false;
         var timeout = window.DispatcherQueue.CreateTimer();
         timeout.Interval = TimeSpan.FromMilliseconds(350);
         timeout.IsRepeating = false;
-        CompositionTarget.Rendering += Render;
+        CompositionTarget.Rendered += Render;
         window.Closed += Closed;
         timeout.Tick += TimedOut;
         timeout.Start();
         window.Activate();
 
-        void Render(object? sender, object args)
+        void Render(object? sender, RenderedEventArgs args)
         {
-            if (++frames == 2)
+            if (content.IsLoaded && !revealQueued)
             {
-                Reveal();
+                revealQueued = window.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+                {
+                    if (waiting)
+                    {
+                        _ = DwmFlush();
+                        Reveal();
+                    }
+                });
             }
         }
         void TimedOut(DispatcherQueueTimer sender, object args) => Reveal();
@@ -116,7 +126,7 @@ public sealed partial class ConverterApp : Application
         void Stop()
         {
             waiting = false;
-            CompositionTarget.Rendering -= Render;
+            CompositionTarget.Rendered -= Render;
             timeout.Tick -= TimedOut;
             timeout.Stop();
             window.Closed -= Closed;

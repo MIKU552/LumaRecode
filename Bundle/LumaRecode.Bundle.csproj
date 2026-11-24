@@ -7,13 +7,13 @@
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <EnableCompressionInSingleFile Condition="'$(SelfContained)' == 'true'">true</EnableCompressionInSingleFile>
     <ApplicationManifest>../App/app.manifest</ApplicationManifest>
     <ApplicationIcon>../App/LumaRecode.ico</ApplicationIcon>
     <AssemblyName>LumaRecode</AssemblyName>
     <Product>映码 · LumaRecode</Product>
     <Title>映码 · LumaRecode</Title>
-    <Version>5.0.0-beta.2</Version>
+    <Version>5.0.0-beta.3</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
@@ -29,6 +29,6 @@
   </ItemGroup>
   <!-- IDE and formatting workspaces can load a fresh checkout before publishing. -->
   <Target Name="RequireNativePayload" BeforeTargets="PrepareForBuild" Condition="'$(DesignTimeBuild)' != 'true'">
-    <Error Condition="!Exists('$(LumaPayloadDirectory)/LumaRecode.exe')" Text="Build the Native AOT application before bundling. Use build.ps1 or the Packaging project." />
+    <Error Condition="!Exists('$(LumaPayloadDirectory)/LumaRecode.exe')" Text="Publish the application before bundling. Use build.ps1 or the Packaging project." />
   </Target>
 </Project>

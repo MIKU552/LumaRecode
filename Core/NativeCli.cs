@@ -229,7 +229,7 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
         }
         if (command == "image")
         {
-            Console.Out.WriteLine("  --image-format {auto,hdr,ultrahdr,sdr,png}\n  --frame N\n  --quality 1..100\n  --motion\n  --motion-size {source,1080,720}\n  --motion-start-frame N, --motion-end-frame N\n  --input-kind {auto,sdr,hlg,pq,log,raw}\n  --profile {auto,pocket3,samsung,milog,applelog,applelog2}\n  --purpose {share,archive}\n  -o, --output PATH\n  --overwrite\n  --skip-existing\n  --dry-run");
+            Console.Out.WriteLine("  --image-format {auto,hdr,ultrahdr,sdr,png}\n  --frame N\n  --quality 1..100\n  --motion\n  --motion-size {source,1080,720}\n  --motion-range {sdr,hdr}\n  --motion-start-frame N, --motion-end-frame N\n  --input-kind {auto,sdr,hlg,pq,log,raw}\n  --profile {auto,pocket3,samsung,milog,applelog,applelog2}\n  --purpose {share,archive}\n  -o, --output PATH\n  --overwrite\n  --skip-existing\n  --dry-run");
             Console.Out.WriteLine(T("帧编号从 0 开始，结束帧不包含在输出中；动态照片文件名以 MP.jpg 结尾。"));
         }
         Console.Out.WriteLine("\n" + T("PowerShell 7：接 | Out-Host，或在 --json 后接 | ConvertFrom-Json，以等待完成并读取 $LASTEXITCODE。"));

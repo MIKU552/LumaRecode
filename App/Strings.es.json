@@ -1,4 +1,10 @@
 {
+  "播放预览": "Reproducir vista previa",
+  "暂停预览": "Pausar vista previa",
+  "原片预览": "Vista previa del original",
+  "动态视频范围": "Rango dinámico del vídeo",
+  "请选择有效的动态视频范围。": "Selecciona un rango dinámico de vídeo válido.",
+  "HDR 动态视频需要至少 10 位的 HDR、Log 或 RAW 素材。": "El vídeo HDR requiere una fuente HDR, Log o RAW de 10 bits o más.",
   " 声道": " canales",
   " 位": " bits",
   "{0}\n{1} 位 {2} · {3}": "{0}\n{1} bits {2} · {3}",

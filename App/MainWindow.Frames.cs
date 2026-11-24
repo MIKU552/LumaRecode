@@ -27,6 +27,7 @@ public sealed partial class MainWindow
     private bool PhotoMode => Control<SelectorBar>("WorkPage").SelectedItem == Control<SelectorBarItem>("PhotoPage");
     private bool TrimVideo => !PhotoMode && Control<CheckBox>("TrimEnabled").IsChecked == true;
     private bool MotionImage => Control<CheckBox>("IncludeMotion").IsChecked == true;
+    private ComboBox MotionVideoRange => Control<ComboBox>("MotionVideoRange");
     private int SelectedFrame => Math.Max(0, (int)Control<NumberBox>("FrameNumber").Value - 1);
     private string ImageFormat => Value(Control<ComboBox>("ImageFormat"));
     private FrameRange VideoFrames => ReadRange("Trim");
@@ -35,10 +36,12 @@ public sealed partial class MainWindow
         (int)Control<NumberBox>(prefix + "End").Value);
     private ImageExportOptions SelectedImageOptions() => new(SelectedFrame, ImageFormat, Value(InputKind),
         Value(Profile) is { Length: > 0 } profile ? profile : null, MotionImage, MotionFrames,
-        (int)Control<Slider>("ImageQuality").Value, Value(Control<ComboBox>("MotionEncoder")), Value(Control<ComboBox>("MotionResolution")));
+        (int)Control<Slider>("ImageQuality").Value, Value(Control<ComboBox>("MotionEncoder")), Value(Control<ComboBox>("MotionResolution")),
+        Value(MotionVideoRange) == "hdr" ? "hdr" : "sdr");
 
     private void InitializeFrameControls()
     {
+        InitializePlayback();
         var close = Control<Button>("ClosePreview");
         close.Click += (_, _) => CloseTimelineOverlay();
         Control<Grid>("PreviewOverlay").KeyDown += (_, args) =>
@@ -53,6 +56,9 @@ public sealed partial class MainWindow
             ("sdr", "SDR · JPEG"), ("png", "SDR · PNG"));
         Choices(Control<ComboBox>("MotionEncoder"), ("archive", L.T("软件编码 · CPU")), ("share", L.T("硬件编码 · Intel")));
         Choices(Control<ComboBox>("MotionResolution"), ("source", L.T("原始分辨率")), ("1080", L.T("最高 1080p")), ("720", L.T("最高 720p")));
+        Choices(MotionVideoRange, ("sdr", "SDR · H.264"), ("hdr", "HDR · HEVC"));
+        Select(MotionVideoRange, "sdr");
+        MotionVideoRange.SelectionChanged += (_, _) => { if (!updating && !frameUiUpdating) { Refresh(); } };
         Control<ComboBox>("MotionEncoder").SelectionChanged += (_, _) => { if (!updating) { Refresh(); } };
         Control<SelectorBar>("WorkPage").SelectionChanged += async (_, _) =>
         {
@@ -64,22 +70,22 @@ public sealed partial class MainWindow
             }
             else if (Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").IsChecked != true)
             {
+                ClosePreviewPlayer();
                 CancelFramePreview();
                 Control<Image>("FramePreview").Source = null;
             }
         };
         Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").Click += async (_, _) =>
         {
-            UpdateFramePresentation();
             if (Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").IsChecked == true)
             {
+                UpdateFramePresentation();
                 close.Focus(FocusState.Programmatic);
                 await PreparePreviewAsync();
             }
             else
             {
-                CancelFramePreview();
-                Control<Image>("FramePreview").Source = null;
+                CloseTimelineOverlay();
             }
         };
         Control<Slider>("FrameSeek").ValueChanged += (_, args) => ChangePreviewFrame((int)Math.Round(args.NewValue) - 1);
@@ -115,6 +121,7 @@ public sealed partial class MainWindow
                 };
                 Control<Button>("Set" + prefix + edge).Click += (_, _) =>
                 {
+                    PausePreviewPlayback(drawExact: true);
                     if (prefix == "Trim")
                     {
                         Control<CheckBox>("TrimEnabled").IsChecked = true;
@@ -140,16 +147,15 @@ public sealed partial class MainWindow
 
     private void CloseTimelineOverlay()
     {
-        var toggle = Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview");
-        toggle.IsChecked = false;
-        CancelFramePreview();
+        Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").IsChecked = false;
+        PausePreviewPlayback(drawExact: false);
         UpdateFramePresentation();
-        toggle.Focus(FocusState.Programmatic);
     }
 
     private void ResetFrameSource()
     {
         timelineCancellation?.Cancel();
+        ClosePreviewPlayer();
         CancelFramePreview();
         timelineCancellation = null;
         timelineTask = null;
@@ -162,6 +168,7 @@ public sealed partial class MainWindow
         Control<TextBlock>("PreviewStatus").Text = "";
         Control<CheckBox>("TrimEnabled").IsChecked = false;
         Control<CheckBox>("IncludeMotion").IsChecked = false;
+        Select(MotionVideoRange, "sdr");
         foreach (var name in new[] { "FrameNumber", "TrimStart", "TrimEnd", "MotionStart", "MotionEnd" })
         {
             var input = Control<NumberBox>(name);
@@ -227,8 +234,10 @@ public sealed partial class MainWindow
         var expectedSource = sourceMedia;
         try
         {
+            var playback = OpenPreviewPlayerAsync(expectedSource);
             await EnsureTimelineAsync();
             QueueFramePreview();
+            await playback;
         }
         catch (OperationCanceledException) { }
         catch (Exception error)
@@ -254,9 +263,23 @@ public sealed partial class MainWindow
         {
             return;
         }
+        if (previewPlaying)
+        {
+            PausePreviewPlayback(drawExact: false);
+        }
+        previewError = "";
         frameUiUpdating = true;
         Control<NumberBox>("FrameNumber").Value = frame + 1;
         Control<Slider>("FrameSeek").Value = frame + 1;
+        if (draggingPreview && playerReady)
+        {
+            // Keep the drag loop limited to the playhead and seek queue.
+            // Range validation and output paths update once after release.
+            frameUiUpdating = false;
+            ShowFramePosition(frameTimeline, frame);
+            QueuePlayerSeek(frame);
+            return;
+        }
         if (!motionRangeEdited)
         {
             SetDefaultMotionRange();
@@ -265,7 +288,14 @@ public sealed partial class MainWindow
         UpdateFrameSelection();
         UpdateFrameOutput();
         UpdateTransferStats();
-        QueueFramePreview();
+        QueuePlayerSeek(frame);
+        // During pointer tracking the media engine owns display. Request an
+        // exact color-rendered frame after the gesture, or immediately when
+        // Windows cannot play the original codec.
+        if (!draggingPreview || !playerReady)
+        {
+            QueueFramePreview();
+        }
     }
 
     private void SetDefaultMotionRange()
@@ -282,7 +312,7 @@ public sealed partial class MainWindow
     /// <summary>Queues one viewport request without rebuilding encoding controls or the page layout.</summary>
     private void QueueFramePreview()
     {
-        if (sourceMedia is not { } source || frameTimeline is not { } timeline || activeJob is not null ||
+        if (sourceMedia is not { } source || frameTimeline is not { } timeline || activeJob is not null || previewPlaying ||
             (!PhotoMode && Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").IsChecked != true))
         {
             return;
@@ -304,7 +334,12 @@ public sealed partial class MainWindow
                         request.Frame - firstInBatch >= batch.Length / FramePreview.PixelBytes)
                     {
                         int start = request.Frame / FramePreview.BatchFrames * FramePreview.BatchFrames;
-                        var frameOptions = options with { Frame = start, SourceKind = request.SourceKind, Profile = request.Profile };
+                        var frameOptions = options with
+                        {
+                            Frame = start,
+                            SourceKind = request.SourceKind,
+                            Profile = request.Profile
+                        };
                         int count = Math.Min(FramePreview.BatchFrames, timeline.Count - start);
                         try
                         {
@@ -313,7 +348,10 @@ public sealed partial class MainWindow
                         }
                         catch (InvalidDataException) when (count > 1)
                         {
-                            batch = await exporter.RenderPixelsAsync(tools, source, timeline, frameOptions with { Frame = request.Frame },
+                            batch = await exporter.RenderPixelsAsync(tools, source, timeline, frameOptions with
+                            {
+                                Frame = request.Frame
+                            },
                                 1, cancellation);
                             firstInBatch = request.Frame;
                         }
@@ -322,7 +360,8 @@ public sealed partial class MainWindow
                 },
                 (request, bytes, cancellation) => OnPreviewUiAsync(() =>
                 {
-                    if (ReferenceEquals(previewSession, session) && !cancellation.IsCancellationRequested)
+                    if (ReferenceEquals(previewSession, session) && !cancellation.IsCancellationRequested &&
+                        !previewPlaying && (!draggingPreview || !playerReady) && request.Frame == SelectedFrame)
                     {
                         var bitmap = previewBitmap ??= new WriteableBitmap(FramePreview.Width, FramePreview.Height);
                         using (var pixels = bitmap.PixelBuffer.AsStream())
@@ -332,6 +371,8 @@ public sealed partial class MainWindow
                         }
                         bitmap.Invalidate();
                         Control<Image>("FramePreview").Source = bitmap;
+                        pendingPlayerSeek = null;
+                        SetPlayerPreviewVisible(false);
                         displayedFrame = request.Frame;
                         previewError = "";
                         Control<ProgressRing>("PreviewBusy").IsActive = displayedFrame != SelectedFrame;
@@ -352,7 +393,8 @@ public sealed partial class MainWindow
             previewSession = session;
             previewIdentity = identity;
         }
-        Control<ProgressRing>("PreviewBusy").IsActive = displayedFrame != SelectedFrame;
+        Control<ProgressRing>("PreviewBusy").IsActive = displayedFrame != SelectedFrame &&
+            Control<MediaPlayerElement>("SourcePlayer").Visibility != Visibility.Visible;
         previewSession.Request(new(SelectedFrame, options.SourceKind, options.Profile));
     }
 
@@ -400,6 +442,7 @@ public sealed partial class MainWindow
     {
         var index = timelineTask;
         timelineCancellation?.Cancel();
+        ClosePreviewPlayer();
         CancelFramePreview();
         try
         {
@@ -442,7 +485,8 @@ public sealed partial class MainWindow
             host.Child = card;
         }
         inline.Visibility = photo && preview ? Visibility.Visible : Visibility.Collapsed;
-        Control<Grid>("PreviewOverlay").Visibility = !photo && preview ? Visibility.Visible : Visibility.Collapsed;
+        ShowPreviewOverlay(!photo && preview);
+        UpdatePlaybackButton();
         Control<Border>("FrameViewport").Height = photo ? 280 : double.NaN;
         Control<Button>("ClosePreview").Visibility = photo ? Visibility.Collapsed : Visibility.Visible;
         Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").Visibility = photo ? Visibility.Collapsed : Visibility.Visible;
@@ -453,7 +497,17 @@ public sealed partial class MainWindow
         Control<ComboBox>("MotionEncoder").Visibility = photo && MotionImage ? Visibility.Visible : Visibility.Collapsed;
         var motionEncoder = Control<ComboBox>("MotionEncoder");
         motionEncoder.IsEnabled = enabled;
-        bool motionHdr = Value(Control<ComboBox>("ImageFormat")) == "ultrahdr";
+        bool hdr = Kind is "hlg" or "pq" or "log" or "raw";
+        bool canUseHdrMotion = hdr && SourceDepth >= 10;
+        var hdrMotionChoice = (ComboBoxItem)MotionVideoRange.Items[1];
+        hdrMotionChoice.IsEnabled = canUseHdrMotion;
+        hdrMotionChoice.Visibility = canUseHdrMotion ? Visibility.Visible : Visibility.Collapsed;
+        MotionVideoRange.IsEnabled = enabled && canUseHdrMotion;
+        if (!canUseHdrMotion && Value(MotionVideoRange) == "hdr")
+        {
+            Select(MotionVideoRange, "sdr");
+        }
+        bool motionHdr = Value(MotionVideoRange) == "hdr";
         var qsvMotion = (ComboBoxItem)motionEncoder.Items[1];
         qsvMotion.IsEnabled = HasHardware(motionHdr ? "hevc" : "avc", motionHdr ? 10 : 8, "qsv");
         qsvMotion.Visibility = qsvMotion.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
@@ -467,7 +521,7 @@ public sealed partial class MainWindow
         if (photo && MotionImage)
         {
             string purpose = Value(Control<ComboBox>("MotionEncoder"));
-            var preset = ConversionClient.Engine.MotionConfig[purpose]![ImageFormat == "sdr" ? "avc" : "hevc"]!;
+            var preset = ConversionClient.Engine.MotionConfig[purpose]![motionHdr ? "hevc" : "avc"]!;
             bool software = purpose == "archive";
             string encoder = preset.Text("encoder").Replace("libx", "x");
             bool mono = sourceMedia?.Audio.FirstOrDefault().Integer("channels") == 1;
@@ -482,7 +536,6 @@ public sealed partial class MainWindow
         {
             Control<Microsoft.UI.Xaml.Controls.Control>(name).IsEnabled = enabled && indexed;
         }
-        bool hdr = Kind is "hlg" or "pq" or "log" or "raw";
         var format = Control<ComboBox>("ImageFormat");
         foreach (var item in format.Items.OfType<ComboBoxItem>())
         {
@@ -547,8 +600,7 @@ public sealed partial class MainWindow
         if (frameTimeline is { } timeline)
         {
             var frame = Math.Clamp(SelectedFrame, 0, timeline.Count - 1);
-            Control<TextBlock>("PreviewStatus").Text = previewError.Length > 0 ? L.T(previewError)
-                : $"{frame + 1:N0} / {timeline.Count:N0} · {timeline.FrameCode(frame)} / {FrameTime(timeline.Duration)}";
+            ShowFramePosition(timeline, frame);
             foreach (var prefix in new[] { "Trim", "Motion" })
             {
                 var range = ReadRange(prefix);
@@ -585,7 +637,13 @@ public sealed partial class MainWindow
         }
     }
 
-    private sealed class FramePositionFormatter(FrameTimeline timeline) : INumberFormatter2, INumberParser
+    private void ShowFramePosition(FrameTimeline timeline, int frame)
+    {
+        Control<TextBlock>("PreviewStatus").Text = previewError.Length > 0 ? L.T(previewError)
+            : $"{frame + 1:N0} / {timeline.Count:N0} · {timeline.FrameCode(frame)} / {FrameTime(timeline.Duration)}";
+    }
+
+    private sealed partial class FramePositionFormatter(FrameTimeline timeline) : INumberFormatter2, INumberParser
     {
         public string FormatDouble(double value) => double.IsFinite(value) ? FormatInt((long)value) : "";
         public string FormatInt(long value) => value >= 1 && value <= timeline.Count

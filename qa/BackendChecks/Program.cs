@@ -95,7 +95,9 @@ if (args.FirstOrDefault() == "--server")
                 var timeline = await FrameTimeline.LoadAsync(tools, media);
                 var exporter = new FrameExporter(engine);
                 var options = new ImageExportOptions(request.Integer("frame"), request.Text("format", "sdr"), request.Text("source_kind", "auto"), request["profile"]?.ToString(), request.Flag("motion"),
-                    request["start_frame"] is null ? null : new FrameRange(request.Integer("start_frame"), request.Integer("end_frame")), Purpose: request.Text("purpose", "archive"), MotionSize: request.Text("motion_size", "source"));
+                    request["start_frame"] is null ? null : new FrameRange(request.Integer("start_frame"), request.Integer("end_frame")),
+                    Purpose: request.Text("purpose", "archive"), MotionSize: request.Text("motion_size", "source"),
+                    MotionVideoRange: request.Text("motion_range", "sdr"));
                 if (action == "image-preview")
                 {
                     File.WriteAllBytes(request.Text("output"), await exporter.PreviewAsync(tools, media, timeline, options));

@@ -31,6 +31,9 @@
 !/rust-toolchain.toml
 !/.clang-format
 !/.github/
+!/.config/
+/.config/*
+!/.config/dotnet-tools.json
 /App/app.ico
 /qa/*
 !/qa/README.md

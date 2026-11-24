@@ -136,7 +136,7 @@ public static class ProcessRunner
         }
     }
 
-    /// <summary>Uses an existing saved path first, then searches PATH for a bare executable name.</summary>
+    /// <summary>Resolves a saved override, an app-local tool, or an executable on PATH.</summary>
     /// <returns>The full path, or an empty string when no candidate exists.</returns>
     public static string FindTool(string name, string saved = "")
     {
@@ -146,6 +146,14 @@ public static class ProcessRunner
         }
 
         var executable = OperatingSystem.IsWindows() && !name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? name + ".exe" : name;
+        if (OperatingSystem.IsWindows() && executable is "ffmpeg.exe" or "ffprobe.exe")
+        {
+            var bundled = Path.Combine(AppContext.BaseDirectory, "Tools", "FFmpeg", "bin", executable);
+            if (File.Exists(bundled))
+            {
+                return bundled;
+            }
+        }
         foreach (var folder in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
         {
             var path = Path.Combine(folder.Trim('"'), executable);

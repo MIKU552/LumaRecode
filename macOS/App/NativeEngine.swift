@@ -807,6 +807,8 @@ struct NativeEngine: Sendable {
         }
     }
 
+    /// Keeps the encoded file in the shared output transaction until the
+    /// selected frame count, signal and dynamic metadata have been checked.
     func convert(
         _ source: MediaSource, to destination: URL, options: EncodingOptions, overwrite: Bool,
         index: FrameIndex? = nil, selection: FrameSelection? = nil, toolbox: [VideoToolboxTrial]? = nil, control: JobControl,
@@ -955,6 +957,8 @@ struct NativeEngine: Sendable {
         }
     }
 
+    /// Writes the still and its paired movie under a common asset identifier.
+    /// Publish their directory only after both files and the cover time agree.
     func exportLivePhoto(
         _ source: MediaSource, to destination: URL, format: PhotoFormat, frame: UInt64, options: EncodingOptions,
         range: FrameSelection?, index: FrameIndex? = nil, control: JobControl

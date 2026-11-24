@@ -98,7 +98,7 @@ jobs:
       - name: Build Windows application
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./build.ps1 -Target Native -Compilation Jit
+        run: ./build.ps1 -Target ${{ matrix.cpu }} -Compilation Aot
       - name: Windows application regression checks
         if: runner.os == 'Windows'
         shell: pwsh
@@ -107,7 +107,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --project qa/PerformanceChecks -c Release -- --check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python qa/RuntimeChecks/check_shared_host.py --exe dist/SelfContained/LumaRecode.exe
+          python qa/RuntimeChecks/check_shared_host.py --exe dist/Aot-SelfContained-${{ matrix.cpu }}/LumaRecode.exe
           exit $LASTEXITCODE
       - name: Windows development application
         if: runner.os == 'Windows'
@@ -116,15 +116,15 @@ jobs:
           name: lumarecode-windows-${{ matrix.cpu }}-development
           retention-days: 14
           if-no-files-found: error
-          path: dist/SelfContained/LumaRecode.exe
+          path: dist/Aot-SelfContained-${{ matrix.cpu }}/LumaRecode.exe
       - name: Build Windows application without bundle extraction
         if: runner.os == 'Windows' && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode'
         shell: pwsh
         run: |
-          ./build.ps1 -Target Native -Compilation Jit -Deployment Portable
-          python qa/RuntimeChecks/check_shared_host.py --exe dist/Portable/LumaRecode.exe --portable
+          ./build.ps1 -Target ${{ matrix.cpu }} -Compilation Aot -Deployment Portable
+          python qa/RuntimeChecks/check_shared_host.py --exe dist/Aot-Portable-${{ matrix.cpu }}/LumaRecode.exe --portable
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $archive = Get-Item 'dist/*-win-${{ matrix.cpu }}-portable.zip' -ErrorAction Stop
+          $archive = Get-Item 'dist/*-win-${{ matrix.cpu }}-aot-portable.zip' -ErrorAction Stop
           Copy-Item -LiteralPath $archive.FullName -Destination "${{ runner.temp }}/LumaRecode-Windows-${{ matrix.cpu }}-Portable.zip" -ErrorAction Stop
       - name: Upload Windows portable ZIP
         if: runner.os == 'Windows' && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode'
@@ -217,8 +217,8 @@ jobs:
       - name: Collect exact distribution files
         run: |
           mkdir distribution
-          cp build/lumarecode-windows-x64-development/LumaRecode.exe distribution/LumaRecode-Windows-x64-JIT.exe
-          cp build/lumarecode-windows-arm64-development/LumaRecode.exe distribution/LumaRecode-Windows-arm64-JIT.exe
+          cp build/lumarecode-windows-x64-development/LumaRecode.exe distribution/LumaRecode-Windows-x64-AOT.exe
+          cp build/lumarecode-windows-arm64-development/LumaRecode.exe distribution/LumaRecode-Windows-arm64-AOT.exe
           cp build/lumarecode-windows-x64-portable/LumaRecode-Windows-x64-Portable.zip distribution/
           cp build/lumarecode-windows-arm64-portable/LumaRecode-Windows-arm64-Portable.zip distribution/
           cp build/lumarecode-macos-arm64-development/LumaRecode-ARM64.dmg distribution/LumaRecode-macOS-arm64.dmg

@@ -75,6 +75,17 @@ public sealed class FrameTimeline
     public double BoundarySeconds(int frame) => frame == 0 ? Seconds(0) : native.Resolve(0, checked((ulong)frame)).EndSeconds;
     public int AtOrAfter(double position) => checked((int)native.AtOrAfter(position));
 
+    /// <summary>Returns the displayed frame at a playback timestamp, using actual presentation times for VFR.</summary>
+    public int AtOrBefore(double position)
+    {
+        int frame = AtOrAfter(position);
+        if (frame == Count || frame > 0 && Position(frame) > position + 1e-9)
+        {
+            frame--;
+        }
+        return frame;
+    }
+
     /// <summary>Formats a frame as elapsed wall time and its zero-based index within that second.</summary>
     public string FrameCode(int frame)
     {
