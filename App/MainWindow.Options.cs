@@ -316,7 +316,7 @@ public sealed partial class MainWindow
                 _ => L.T("保留原片动态范围，按目标格式标准化色彩。")
             };
             var warning = "";
-            if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe))
+            if (initialTools.Task.IsCompleted && (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe)))
             {
                 warning = L.T("未找到 FFmpeg / ffprobe，请设置工具路径。");
             }
@@ -369,9 +369,9 @@ public sealed partial class MainWindow
                 warning = L.T(MediaText("flac_reason"));
             }
 
-            var notice = Control<InfoBar>("Notice");
-            notice.Message = warning;
-            notice.IsOpen = warning != "";
+            var notice = Control<Border>("Notice");
+            Control<TextBlock>("NoticeMessage").Text = warning;
+            notice.Visibility = warning.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
             Control<TextBlock>("ChooseInputLabel").Text = L.T(media is null ? "选择视频" : "更换视频");
             Control<Button>("ChooseInput").Style = (Style)root.Resources[media is null ? "AccentActionButtonStyle" : "ActionButtonStyle"];
             Control<Button>("Start").IsEnabled = media is not null && !probing && activeJob is null && warning == "";

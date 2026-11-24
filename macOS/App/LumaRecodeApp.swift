@@ -2,11 +2,17 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+private func initialVideo() -> URL? {
+    let arguments = CommandLine.arguments
+    guard arguments.count == 3, arguments[1] == "--open" else { return nil }
+    return URL(fileURLWithPath: arguments[2]).standardizedFileURL
+}
+
 @main
 enum LumaRecodeMain {
     @MainActor static func main() async {
         let arguments = Array(CommandLine.arguments.dropFirst())
-        if let command = arguments.first, !command.hasPrefix("-psn_"),
+        if initialVideo() == nil, let command = arguments.first, !command.hasPrefix("-psn_"),
            !command.hasPrefix("-NS"), !command.hasPrefix("-Apple") {
             exit(await CommandLineHost.run(arguments))
         }
@@ -31,12 +37,19 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
 struct LumaRecodeApp: App {
     @NSApplicationDelegateAdaptor(ApplicationDelegate.self) private var delegate
     @State private var workspace = Workspace()
+    @State private var launchVideo = initialVideo()
 
     var body: some Scene {
         Window("LumaRecode", id: "workspace") {
             WorkspaceView(model: workspace)
                 .frame(minWidth: 720, minHeight: 490)
-                .task { delegate.workspace = workspace }
+                .task {
+                    delegate.workspace = workspace
+                    if let launchVideo {
+                        self.launchVideo = nil
+                        workspace.open(launchVideo)
+                    }
+                }
                 .onOpenURL { workspace.open($0) }
         }
         .defaultSize(width: 1060, height: 690)

@@ -516,7 +516,7 @@ struct WorkspaceView: View {
         VStack(alignment: .leading, spacing: 12) {
             Group {
                 if let player = model.player {
-                    VideoPlayer(player: player)
+                    PlaybackView(player: player)
                         .accessibilityLabel("Source preview")
                 } else if let image = model.fallbackPreview {
                     Image(nsImage: image).resizable().scaledToFit()
@@ -725,5 +725,26 @@ struct WorkspaceView: View {
             .padding(.vertical, 12)
             .background(.bar)
         }
+    }
+}
+
+// Keep AVKit's native player view. SwiftUI VideoPlayer enters the
+// _AVKit_SwiftUI metadata initialization path on recent macOS releases.
+private struct PlaybackView: NSViewRepresentable {
+    let player: AVPlayer
+
+    func makeNSView(context: Context) -> AVPlayerView {
+        let view = AVPlayerView()
+        view.controlsStyle = .inline
+        view.player = player
+        return view
+    }
+
+    func updateNSView(_ view: AVPlayerView, context: Context) {
+        if view.player !== player { view.player = player }
+    }
+
+    static func dismantleNSView(_ view: AVPlayerView, coordinator: ()) {
+        view.player = nil
     }
 }

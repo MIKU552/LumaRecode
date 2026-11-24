@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import plistlib
 import shlex
 import shutil
 import signal
@@ -528,19 +529,30 @@ def main():
         assert not list(folder.glob(".lumarecode-*"))
         print("PASS macOS host: interrupt, cleanup, and retained output", flush=True)
 
-        # Launch with no arguments to exercise the actual SwiftUI entry point.
-        # The runner can catch launch-time crashes. Visual inspection is separate.
+        # Open a playable source in the GUI, including the player view which is
+        # instantiated after the first successful inspection.
+        resources = args.app.resolve() / "Contents/Resources"
+        with (resources.parent / "Info.plist").open("rb") as stream:
+            icon = plistlib.load(stream)["CFBundleIconFile"]
+        assert icon == "LumaRecode.icns" and (resources / icon).stat().st_size > 0
+        gui_input = folder / "preview.mov"
+        subprocess.run(
+            [ffmpeg, "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=320x192:rate=30",
+             "-t", "1", "-c:v", "libx264", "-pix_fmt", "yuv420p", str(gui_input)],
+            check=True, capture_output=True, timeout=30,
+        )
         with subprocess.Popen(
-            [str(exe)], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            [str(exe), "--open", str(gui_input)], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=dict(os.environ, LUMARECODE_FFMPEG=ffmpeg, LUMARECODE_FFPROBE=ffprobe),
         ) as gui:
             try:
-                time.sleep(2)
+                time.sleep(8)
                 assert gui.poll() is None, gui.communicate()
             finally:
                 if gui.poll() is None:
                     gui.terminate()
                     gui.communicate(timeout=10)
-        print("PASS macOS GUI launch", flush=True)
+        print("PASS macOS application icon and GUI opening a playable source", flush=True)
 
 
 if __name__ == "__main__":

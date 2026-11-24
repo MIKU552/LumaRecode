@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 
@@ -58,6 +59,16 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="lumarecode-host-") as temporary:
         folder = Path(temporary)
+        renamed = folder / "LumaRecode (downloaded).exe"
+        shutil.copyfile(exe, renamed)
+        with subprocess.Popen([str(renamed)]) as gui:
+            try:
+                time.sleep(6)
+                assert gui.poll() is None, f"Renamed Windows GUI exited with {gui.returncode}"
+            finally:
+                if gui.poll() is None:
+                    gui.terminate()
+        print("PASS renamed Windows GUI launch", flush=True)
         for kind, transfer, depth in [
             ("sdr", "bt709", 8),
             ("hlg", "arib-std-b67", 10),

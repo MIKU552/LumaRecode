@@ -161,7 +161,13 @@
             <ComboBox x:Name="BitDepth" Header="位深" HorizontalAlignment="Stretch" AutomationProperties.Name="位深" />
             <ComboBox x:Name="ColorRange" Header="色彩范围" HorizontalAlignment="Stretch" AutomationProperties.Name="色彩范围" />
             <TextBlock x:Name="FormatNote" Style="{StaticResource Secondary}" />
-            <InfoBar x:Name="Notice" IsOpen="False" IsClosable="False" Severity="Warning" />
+            <Border x:Name="Notice" Visibility="Collapsed" Padding="16,12" CornerRadius="6" Background="{ThemeResource SystemFillColorCautionBackgroundBrush}" AutomationProperties.LiveSetting="Polite">
+              <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <FontIcon Glyph="&#xE7BA;" FontSize="16" Foreground="{ThemeResource SystemFillColorCautionBrush}" VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw" />
+                <TextBlock x:Name="NoticeMessage" Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" />
+              </Grid>
+            </Border>
           </StackPanel>
         </Border>
         <Border x:Name="FormatCard" Grid.Row="3" Grid.ColumnSpan="2" Style="{StaticResource Card}">

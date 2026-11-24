@@ -158,6 +158,11 @@ public sealed partial class MainWindow : Window
             dialogOpen = false;
             initialTools.TrySetResult();
         }
+        if (closing)
+        {
+            return;
+        }
+        Refresh();
         if (string.IsNullOrEmpty(ffmpeg) || string.IsNullOrEmpty(ffprobe))
         {
             await ConfigureToolsAsync();
