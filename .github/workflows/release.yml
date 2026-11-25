@@ -110,6 +110,20 @@ jobs:
           run-id: ${{ inputs.candidate_run || github.run_id }}
           name: lumarecode-distribution-${{ needs.version.outputs.source_sha }}
           path: distribution
+      - name: Record the Store package source
+        env:
+          PACKAGE_RUN: ${{ inputs.candidate_run || github.run_id }}
+          SOURCE_SHA: ${{ needs.version.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          jq -n --arg run_id "$PACKAGE_RUN" --arg source_sha "$SOURCE_SHA" \
+            '{run_id: $run_id, source_sha: $source_sha}' > store-package-source.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lumarecode-store-package-source
+          path: store-package-source.json
+          if-no-files-found: error
+          overwrite: true
       - name: Publish the verified distribution
         env:
           GH_TOKEN: ${{ github.token }}

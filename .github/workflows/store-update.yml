@@ -1,6 +1,10 @@
 name: Submit Microsoft Store update
 
 on:
+  workflow_run:
+    workflows: [Publish GitHub release]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       release_run:
@@ -16,7 +20,11 @@ concurrency:
 
 jobs:
   submit:
-    if: github.repository == 'MIKU552/LumaRecode' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == 'MIKU552/LumaRecode' && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: windows-2025-vs2026
     timeout-minutes: 30
     environment: microsoft-store
@@ -32,23 +40,41 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_RUN: ${{ inputs.release_run }}
+          RELEASE_RUN: ${{ inputs.release_run || github.event.workflow_run.id }}
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
           if ($env:RELEASE_RUN -notmatch '^\d+$') { throw 'Enter the numeric Actions run ID.' }
           $run = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:RELEASE_RUN" | ConvertFrom-Json
           if ($run.path -ne '.github/workflows/release.yml' -or $run.event -ne 'workflow_dispatch' -or
+              $run.head_repository.full_name -ne $env:GITHUB_REPOSITORY -or
               $run.head_branch -ne 'main' -or $run.conclusion -ne 'success') {
             throw 'Select a successful official release workflow run on main.'
           }
-          gh run download $env:RELEASE_RUN --name "lumarecode-store-$($run.head_sha)" --dir store
+
+          $packageRun = $env:RELEASE_RUN
+          $sourceSha = $run.head_sha
+          $artifactName = 'lumarecode-store-package-source'
+          $metadataCount = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:RELEASE_RUN/artifacts?name=$artifactName" --jq '.total_count'
+          # Earlier releases built the Store package in their own run without this metadata.
+          if ($metadataCount -eq '1') {
+            gh run download $env:RELEASE_RUN --name $artifactName --dir store-source
+            $packageSource = Get-Content -Raw -LiteralPath 'store-source/store-package-source.json' | ConvertFrom-Json
+            $packageRun = $packageSource.run_id
+            $sourceSha = $packageSource.source_sha
+          } elseif ($metadataCount -ne '0') {
+            throw 'Expected at most one artifact describing the Store package source.'
+          }
+          if ($packageRun -notmatch '^\d+$' -or $sourceSha -notmatch '^[0-9a-f]{40}$') {
+            throw 'The Store package source must contain a run ID and commit SHA.'
+          }
+          gh run download $packageRun --name "lumarecode-store-$sourceSha" --dir store
           $packages = @(Get-ChildItem -LiteralPath store -Filter '*.msixupload' -File)
           if ($packages.Count -ne 1) { throw 'Expected one Store upload file.' }
           $package = $packages[0]
           gh attestation verify $package.FullName --repo $env:GITHUB_REPOSITORY `
             --signer-workflow "$env:GITHUB_REPOSITORY/.github/workflows/native-core.yml" `
-            --source-ref refs/heads/main --source-digest $run.head_sha --deny-self-hosted-runners
+            --source-ref refs/heads/main --source-digest $sourceSha --deny-self-hosted-runners
       - uses: microsoft/microsoft-store-apppublisher@15abd1c50fcc164b19cb240fb04ef3c49bf715a2 # v1.1
         with:
           version: v0.4.4

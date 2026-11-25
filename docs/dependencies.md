@@ -65,7 +65,7 @@ GitHub 正式版的 Windows EXE、ZIP 和 MSI 均提供内置或外置 FFmpeg。
 
 上传时出现 `runFullTrust` 警告后，在「提交选项」填写受限能力用途。应用以当前用户权限运行 WinUI 3 桌面程序，启动随包的 FFmpeg 和 ffprobe，读写用户选择的本地输入和输出，并通过打包 COM 激活完成通知。微软会在认证时审查该说明。认证备注可另附导入素材和软件归档转换的步骤。[微软的受限能力说明](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/app-capability-declarations#restricted-capabilities)
 
-首次发布上线后，可为 Microsoft Entra 应用配置 Partner Center 的 Manager 角色，在 `microsoft-store` 环境中设置 `STORE_TENANT_ID`、`STORE_SELLER_ID`、`STORE_CLIENT_ID`、`STORE_CLIENT_SECRET`。在 `main` 手动运行 **Submit Microsoft Store update** 并输入正式发布的 Actions 运行 ID。工作流验证对应的商店包，确认现有提交已处理后送交认证。[微软商店更新文档](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
+首次发布上线后，可为 Microsoft Entra 应用配置 Partner Center 的 Manager 角色，在 `microsoft-store` 环境中设置 `STORE_TENANT_ID`、`STORE_SELLER_ID`、`STORE_CLIENT_ID`、`STORE_CLIENT_SECRET`。`main` 上的 **Publish GitHub release** 成功完成后，会自动触发 **Submit Microsoft Store update**。工作流验证该次发布使用的商店包，确认现有提交已处理后送交认证。也可以输入正式发布的 Actions 运行 ID 手动重试。[微软商店更新文档](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
 
 ### macOS 安装与分发
 
@@ -164,7 +164,7 @@ For the first submission, complete pricing and availability, age ratings, listin
 
 When the upload reports the `runFullTrust` warning, describe the restricted capability under **Submission options**. LumaRecode runs as a WinUI 3 desktop app under the signed-in user's permissions, launches the bundled FFmpeg and ffprobe, reads and writes the local paths the user selects, and uses packaged COM activation for completion notifications. Microsoft reviews the explanation during certification. Include sample import and Software archive conversion steps in the certification notes. [Microsoft's restricted capability guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/app-capability-declarations#restricted-capabilities)
 
-After the first version goes live, assign the Microsoft Entra application the Partner Center Manager role. Set `STORE_TENANT_ID`, `STORE_SELLER_ID`, `STORE_CLIENT_ID`, and `STORE_CLIENT_SECRET` in the `microsoft-store` environment. Manually run **Submit Microsoft Store update** on `main` with the official release's Actions run ID. The workflow verifies the package and sends it for certification once any existing submission is resolved. [Microsoft Store update documentation](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
+After the first version goes live, assign the Microsoft Entra application the Partner Center Manager role. Set `STORE_TENANT_ID`, `STORE_SELLER_ID`, `STORE_CLIENT_ID`, and `STORE_CLIENT_SECRET` in the `microsoft-store` environment. **Submit Microsoft Store update** runs automatically when **Publish GitHub release** succeeds on `main`. It verifies the Store package used by that release and submits it for certification once any existing submission is resolved. You can also retry manually with the official release's Actions run ID. [Microsoft Store update documentation](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
 
 ### macOS installation and distribution
 
