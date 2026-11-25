@@ -7,6 +7,12 @@ namespace VideoConverter.Core;
 /// <summary>Calls shared source inspection and supplies detached presentation data.</summary>
 public static class MediaProbe
 {
+    // Keep the managed auxiliary readers on the same single-file input contract
+    // as the shared probe and planner (LR_MEDIA_INPUT_FORMATS in lumarecode/media.h).
+    internal static readonly string[] InputOptions =
+        ["-protocol_whitelist", "file", "-format_whitelist",
+         "mov,mp4,m4a,3gp,3g2,mj2,matroska,webm,avi,mpegts,mpeg,mpegvideo,flv,asf,ogg,mxf,dv,h264,hevc,vvc,av1,ivf,vc1,dnxhd,rm,gif,avif,jpeg_pipe,png_pipe,webp_pipe"];
+
     public static async Task<MediaInfo> InspectAsync(MediaTools tools, string path, CancellationToken cancellation = default)
     {
         var result = await NativeProbe.RunAsync(new(Path.GetFullPath(tools.Ffprobe), Path.GetFullPath(path)), cancellation).ConfigureAwait(false);
@@ -24,7 +30,7 @@ public static class MediaProbe
 
     public static async Task<JsonObject> ReadAsync(MediaTools tools, IEnumerable<string> arguments, CancellationToken cancellation = default)
     {
-        var result = await ProcessRunner.CaptureAsync(tools.Ffprobe, new[] { "-v", "error" }.Concat(arguments), cancellation).ConfigureAwait(false);
+        var result = await ProcessRunner.CaptureAsync(tools.Ffprobe, ["-v", "error", .. InputOptions, .. arguments], cancellation).ConfigureAwait(false);
         if (result.ExitCode != 0)
         {
             throw new InvalidDataException(result.Error);

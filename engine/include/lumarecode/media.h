@@ -21,6 +21,10 @@ extern "C"
 #define LR_PROFILE_APPLE_LOG 4U
 #define LR_PROFILE_APPLE_LOG2 5U
 
+/* Local, single-file inputs. Playlist, sequence and manifest demuxers can
+ * open additional files, so they are outside the desktop input contract. */
+#define LR_MEDIA_INPUT_FORMATS "mov,mp4,m4a,3gp,3g2,mj2,matroska,webm,avi,mpegts,mpeg,mpegvideo,flv,asf,ogg,mxf,dv,h264,hevc,vvc,av1,ivf,vc1,dnxhd,rm,gif,avif,jpeg_pipe,png_pipe,webp_pipe"
+
 #define LR_EVIDENCE_UNKNOWN_TRANSFER 0U
 #define LR_EVIDENCE_RAW 1U
 #define LR_EVIDENCE_APPLE_LOG 2U

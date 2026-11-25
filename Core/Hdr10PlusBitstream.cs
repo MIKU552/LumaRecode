@@ -16,9 +16,9 @@ internal static class Hdr10PlusBitstream
         // Store only SEI bytes and a matching size/PTS index. A separate small
         // packet index retains demuxer discard flags, including MP4 edit-list
         // preroll. Both passes read compressed packets; neither decodes pixels.
-        var arguments = new[] { "-hide_banner", "-nostdin", "-n", "-xerror", "-v", "error", "-copyts", "-i", media.Path,
+        string[] arguments = ["-hide_banner", "-nostdin", "-n", "-xerror", "-v", "error", "-copyts", .. MediaProbe.InputOptions, "-i", media.Path,
             "-map", "0:" + media.Video.Text("index"), "-c:v", "copy", "-copyinkf", "-copytb", "1", "-bsf:v", "hevc_mp4toannexb", "-f", "tee",
-            "[f=data:bsfs/v=filter_units=pass_types=39-40]hdr10plus-sei.bin|[f=framehash:hash=crc32:bsfs/v=filter_units=pass_types=39-40]hdr10plus-sei.txt" };
+            "[f=data:bsfs/v=filter_units=pass_types=39-40]hdr10plus-sei.bin|[f=framehash:hash=crc32:bsfs/v=filter_units=pass_types=39-40]hdr10plus-sei.txt"];
         using var process = new Process { StartInfo = ProcessRunner.StartInfo(tools.Ffmpeg, arguments, directory) };
         cancellation.ThrowIfCancellationRequested();
         process.Start();
@@ -47,8 +47,8 @@ internal static class Hdr10PlusBitstream
 
     private static async Task IndexPacketsAsync(MediaTools tools, MediaInfo media, string directory, CancellationToken cancellation)
     {
-        var arguments = new[] { "-v", "error", "-select_streams", media.Video.Text("index"), "-show_packets",
-            "-show_entries", "packet=pts,flags:packet_side_data=", "-of", "csv=p=0", media.Path };
+        string[] arguments = ["-v", "error", "-select_streams", media.Video.Text("index"), "-show_packets",
+            "-show_entries", "packet=pts,flags:packet_side_data=", "-of", "csv=p=0", .. MediaProbe.InputOptions, media.Path];
         using var process = new Process { StartInfo = ProcessRunner.StartInfo(tools.Ffprobe, arguments) };
         cancellation.ThrowIfCancellationRequested();
         process.Start();

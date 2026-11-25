@@ -53,7 +53,7 @@ $tools = ./tools/Stage-WindowsFfmpeg.ps1 -Target X64
 
 生成文件在 `dist/windows/`。WiX 用于生成 MSI，打包脚本从工具清单还原。打包内置工具需要匹配架构的 `bin/ffmpeg.exe`、`bin/ffprobe.exe` 和 `BUILDINFO.txt`。发布含 FFmpeg 的包时，应同时提供该版本对应的源码和库的许可。[FFmpeg 许可](https://ffmpeg.org/legal.html)
 
-GitHub 正式版提供外置 FFmpeg 的 Windows 包。安装有 `zscale`、`lut3d` 和 `libplacebo` 的 FFmpeg 构建，然后打开应用的工具路径面板检测或指定两项工具。Windows 内置 FFmpeg 的配置可用于本地打包。
+GitHub 正式版的 Windows EXE、ZIP 和 MSI 均提供内置或外置 FFmpeg。内置版使用 MSYS2 的 FFmpeg，包含 `zscale`、`lut3d` 和 `libplacebo`，每种架构随发版提供对应的源包和签名。选择外置版时，安装具备这些滤镜的 FFmpeg，在工具路径面板检测或指定程序。
 
 外置 .NET 版启动时由 .NET 宿主查找匹配架构的运行时。桌面启动遇到缺失时，弹窗可打开微软下载页。终端自动化可设置 `DOTNET_DISABLE_GUI_ERRORS=1`，通过退出码、标准错误和下载链接处理缺失的运行时。安装对应 x64 或 ARM64 的 **.NET 11 Runtime** 后重新启动。[微软官方下载](https://dotnet.microsoft.com/download/dotnet/11.0)
 
@@ -61,7 +61,7 @@ GitHub 正式版提供外置 FFmpeg 的 Windows 包。安装有 `zscale`、`lut3
 
 开发 MSIX 使用 `MIKU552.LumaRecode.Dev`。发布构建使用 `-PartnerCenter` 读取 `Packaging/StoreIdentity.json`，再把 x64 和 ARM64 包合成 `.msixupload`。其中的应用名、发布者和产品 ID 是产品标识。Entra 凭据单独保存在 GitHub 的 `microsoft-store` 环境里。
 
-首次在 Partner Center 补齐价格与可用性、年龄分级、商店内容及认证说明，在“包”页面上传正式发布运行的 `lumarecode-store-<commit>` 工件中的 `.msixupload`。应用以桌面完全信任模式运行，以启动 FFmpeg 和 ffprobe。认证说明应写清启动方式、外置 FFmpeg 的配置和转换步骤，并用无开发工具的 Windows 环境验证实际安装和转换。[包上传](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/upload-app-packages)
+首次在 Partner Center 补齐价格与可用性、年龄分级、商店内容及认证说明，在“包”页面上传正式发布运行的 `lumarecode-store-<commit>` 工件中的 `.msixupload`。应用使用桌面完全信任能力来启动随包提供的 FFmpeg 和 ffprobe。在认证说明中写清启动、导入素材及转换的步骤，并用无开发工具的 Windows 环境验证实际安装和转换。[包上传](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/upload-app-packages)
 
 首次发布上线后，可为 Microsoft Entra 应用配置 Partner Center 的 Manager 角色，在 `microsoft-store` 环境中设置 `STORE_TENANT_ID`、`STORE_SELLER_ID`、`STORE_CLIENT_ID`、`STORE_CLIENT_SECRET`。在 `main` 手动运行 **Submit Microsoft Store update** 并输入正式发布的 Actions 运行 ID。工作流验证对应的商店包并送交认证。[微软商店更新文档](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
 
@@ -150,7 +150,7 @@ $tools = ./tools/Stage-WindowsFfmpeg.ps1 -Target X64
 
 Packages appear in `dist/windows/`. The packaging script restores WiX from the tool manifest. Bundling FFmpeg requires an architecture-matched `bin/ffmpeg.exe` and `bin/ffprobe.exe`, plus a `BUILDINFO.txt`. For public distribution, provide the corresponding source and library license texts for the exact binaries. [FFmpeg licensing](https://ffmpeg.org/legal.html)
 
-GitHub releases provide Windows packages that use external FFmpeg. Install a build with `zscale`, `lut3d`, and `libplacebo`, then open the tool path panel to detect or specify both tools. The Windows configuration for bundled FFmpeg is available for local packaging.
+GitHub releases offer each Windows EXE, ZIP, and MSI with or without FFmpeg. Bundled editions use MSYS2 FFmpeg with `zscale`, `lut3d`, and `libplacebo`. Each architecture has a corresponding source and signature archive. For an external edition, install an FFmpeg build with those filters and use the tool path panel to detect or specify it.
 
 The framework-dependent edition uses the .NET app host to locate a runtime for the executable's architecture. If it is missing on a desktop launch, the dialog offers a Microsoft download link. Set `DOTNET_DISABLE_GUI_ERRORS=1` for unattended command-line use and handle the nonzero exit code, diagnostic, and download link on standard error. Install the **.NET 11 Runtime** for x64 or ARM64 as appropriate, then relaunch. [Microsoft downloads](https://dotnet.microsoft.com/download/dotnet/11.0)
 
@@ -158,7 +158,7 @@ The framework-dependent edition uses the .NET app host to locate a runtime for t
 
 The development MSIX uses `MIKU552.LumaRecode.Dev`. Release builds use `-PartnerCenter` to read `Packaging/StoreIdentity.json` and combine the x64 and ARM64 packages into an `.msixupload`. The app name, publisher and product ID are product identifiers. Entra credentials belong in the separate `microsoft-store` GitHub environment.
 
-For the first submission, complete pricing and availability, age ratings, listings, and certification notes in Partner Center. On its Packages page, upload the `.msixupload` file from the official release run's `lumarecode-store-<commit>` artifact. The app runs as a full-trust desktop app so it can start FFmpeg and ffprobe. Give the reviewer instructions for launching, configuring external FFmpeg, and converting a sample, and validate installation and conversion on Windows without developer tools. [Package upload](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/upload-app-packages)
+For the first submission, complete pricing and availability, age ratings, listings, and certification notes in Partner Center. On its Packages page, upload the `.msixupload` file from the official release run's `lumarecode-store-<commit>` artifact. The app uses full-trust desktop access to start the bundled FFmpeg and ffprobe. Give the reviewer instructions for launching, opening footage, and converting a sample, and validate installation and conversion on Windows without developer tools. [Package upload](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/upload-app-packages)
 
 After the first version goes live, assign the Microsoft Entra application the Partner Center Manager role. Set `STORE_TENANT_ID`, `STORE_SELLER_ID`, `STORE_CLIENT_ID`, and `STORE_CLIENT_SECRET` in the `microsoft-store` environment. Manually run **Submit Microsoft Store update** on `main` with the official release's Actions run ID. The workflow verifies the Store package and sends it for certification. [Microsoft Store update documentation](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
 

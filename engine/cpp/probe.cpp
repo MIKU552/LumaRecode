@@ -1,4 +1,5 @@
 #include "lumarecode/probe.h"
+#include "lumarecode/media.h"
 #include "output_internal.hpp"
 #include "probe_json.hpp"
 
@@ -292,6 +293,7 @@ struct lr_probe
         luma::probe_json json;
         phase(LR_PROBE_PHASE_STREAMS);
         auto *root = read(json, {"-v", "error", "-show_streams", "-show_format", "-show_data", "-of", "json",
+                                 "-protocol_whitelist", "file", "-format_whitelist", LR_MEDIA_INPUT_FORMATS,
                                  "-i", source});
         auto *streams = member(root, "streams");
         auto *format = member(root, "format");
@@ -353,7 +355,8 @@ struct lr_probe
             phase(LR_PROBE_PHASE_FRAMES);
             auto *first =
                 read(json, {"-v", "error", "-select_streams", std::to_string(video_index), "-read_intervals",
-                            "%+#1", "-show_frames", "-of", "json", "-i", source});
+                            "%+#1", "-show_frames", "-of", "json", "-protocol_whitelist", "file",
+                            "-format_whitelist", LR_MEDIA_INPUT_FORMATS, "-i", source});
             if (auto *list = member(first, "frames"); yyjson_mut_is_arr(list))
                 frames = list;
             for (const auto *name : {"color_transfer", "color_primaries", "color_space", "color_range"})
@@ -373,12 +376,20 @@ struct lr_probe
             }
         }
         auto *tags = json.object();
+        constexpr size_t max_source_tags = 1024;
         for (auto *source_tags : {member(format, "tags"), member(video, "tags")})
         {
+            // Each input's normalized keys are unique. An oversized input
+            // necessarily makes the union too large, even with overlapping tags.
+            if (yyjson_mut_obj_size(source_tags) > max_source_tags)
+                throw probe_failure(LR_RESOURCE_LIMIT, "Too many source tags.");
+            cancellation();
             yyjson_mut_obj_iter tag_iterator = yyjson_mut_obj_iter_with(source_tags);
             while (auto *key = yyjson_mut_obj_iter_next(&tag_iterator))
                 json.put(tags, luma::string_value(key), json.copy(yyjson_mut_obj_iter_get_val(key)));
         }
+        if (yyjson_mut_obj_size(tags) > max_source_tags)
+            throw probe_failure(LR_RESOURCE_LIMIT, "Too many source tags.");
         lr_dji_color dji;
         lr_dji_color_init(&dji, sizeof(dji));
         lr_status dji_status = LR_NOT_FOUND;
@@ -389,7 +400,8 @@ struct lr_probe
             {
                 auto *packets = read(json, {"-v", "error", "-select_streams", std::to_string(dji_index),
                                             "-read_intervals", "%+#1", "-show_packets", "-show_data", "-of",
-                                            "json", "-i", source});
+                                            "json", "-protocol_whitelist", "file", "-format_whitelist",
+                                            LR_MEDIA_INPUT_FORMATS, "-i", source});
                 yyjson_mut_val *packet = nullptr;
                 yyjson_mut_arr_iter packet_iterator = yyjson_mut_arr_iter_with(member(packets, "packets"));
                 while (auto *candidate = yyjson_mut_arr_iter_next(&packet_iterator))
@@ -444,8 +456,6 @@ struct lr_probe
         while (auto *frame = yyjson_mut_arr_iter_next(&frame_iterator))
             side_data(frame);
         std::vector<std::pair<std::string, std::string>> strings;
-        if (yyjson_mut_obj_size(tags) > 1024)
-            throw probe_failure(LR_RESOURCE_LIMIT, "Too many source tags.");
         yyjson_mut_obj_iter tag_iterator = yyjson_mut_obj_iter_with(tags);
         while (auto *key = yyjson_mut_obj_iter_next(&tag_iterator))
             strings.emplace_back(json.text(key), json.text(yyjson_mut_obj_iter_get_val(key)));

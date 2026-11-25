@@ -229,7 +229,7 @@ public sealed partial class Transcoder
                 NativeProcessResult trial;
                 try
                 {
-                    trial = await NativeProcess.RunAsync(new(tools.Ffmpeg, ["-hide_banner","-nostdin","-v","error","-xerror","-n","-i",media.Path,
+                    trial = await NativeProcess.RunAsync(new(tools.Ffmpeg, ["-hide_banner","-nostdin","-v","error","-xerror","-n", .. MediaProbe.InputOptions, "-i",media.Path,
                         "-map","0:a","-vn","-sn","-dn","-map_metadata","-1","-c:a","copy","-t","0.08","-f","mp4",
                         "-movflags","frag_keyframe+empty_moov","pipe:1"], OutputMode: NativeCaptureMode.Discard, TimeoutMilliseconds: 20000), cancellation);
                     NativeBackend.Check(trial.ChildExited ? NativeStatus.Ok : trial.Status,

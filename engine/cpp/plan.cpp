@@ -587,7 +587,8 @@ class planner
         }
         if (window != nullptr && window->seek_frame > 0)
             add({"-seek_timestamp", "1", "-ss", number(window->seek_seconds)});
-        add({"-i", source_path, "-map", "0:" + text(video, "index"), "-map", motion ? "0:a:0?" : "0:a?",
+        add({"-protocol_whitelist", "file", "-format_whitelist", LR_MEDIA_INPUT_FORMATS, "-i", source_path,
+             "-map", "0:" + text(video, "index"), "-map", motion ? "0:a:0?" : "0:a?",
              "-map_metadata", motion || transform.starts_with("log-") ? "-1" : "0", "-map_chapters",
              motion || window != nullptr ? "-1" : "0", "-sn", "-dn"});
         std::vector<std::string> filters;

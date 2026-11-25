@@ -3,6 +3,8 @@ import CoreMedia
 import Darwin
 import Foundation
 
+private let mediaInputOptions = ["-protocol_whitelist", "file", "-format_whitelist", LR_MEDIA_INPUT_FORMATS]
+
 struct EngineError: LocalizedError {
     let message: String
     var errorDescription: String? { message }
@@ -679,7 +681,8 @@ struct NativeEngine: Sendable {
                               control: JobControl, cleanup: inout Bool) throws -> Data {
         guard let ffmpeg = tools.ffmpeg else { return snapshot }
         let data = try captureTool(tools.ffprobe, ["-v", "error", "-select_streams", String(stream),
-            "-read_intervals", "%+#1", "-show_packets", "-show_entries", "packet=pos,size", "-of", "json", source.path],
+            "-read_intervals", "%+#1", "-show_packets", "-show_entries", "packet=pos,size", "-of", "json"] +
+            mediaInputOptions + [source.path],
             control: control, cleanup: &cleanup)
         let packets = try Self.object(data)["packets"] as? [[String: Any]]
         guard let packet = packets?.first,
@@ -695,7 +698,7 @@ struct NativeEngine: Sendable {
         if raw.decoder_version_supported {
             do {
                 _ = try captureTool(ffmpeg, ["-hide_banner", "-nostdin", "-v", "error", "-xerror",
-                    "-threads:v", "2", "-i", source.path, "-map", "0:\(stream)", "-frames:v", "1",
+                    "-threads:v", "2"] + mediaInputOptions + ["-i", source.path, "-map", "0:\(stream)", "-frames:v", "1",
                     "-an", "-sn", "-dn", "-f", "null", "-"], control: control, cleanup: &cleanup)
                 raw.decoder_supported = true
             } catch is CancellationError {
@@ -742,7 +745,7 @@ struct NativeEngine: Sendable {
         if let window {
             args += ["-read_intervals", "\(window.seek_frame > 0 ? window.seek_seconds : 0)%\(window.end_seconds + 0.1)"]
         }
-        let command = PlannedCommand(arguments: [tools.ffprobe.path] + args + [source.url.path],
+        let command = PlannedCommand(arguments: [tools.ffprobe.path] + args + mediaInputOptions + [source.url.path],
                                      working_directory: nil, sidecars: [], colors: nil)
         var previous: String?
         try runEncoder(command, control: control, cleanup: &cleanup, receive: { line in
@@ -893,7 +896,8 @@ struct NativeEngine: Sendable {
                 var writer = try HDR10PlusWriter(file, window: window)
                 var args = [tools.ffprobe.path, "-v", "error", "-select_streams", String(stream)]
                 if let window, window.end_seconds > 0 { args += ["-read_intervals", "%\(window.end_seconds + 1)"] }
-                args += ["-show_frames", "-show_entries", "frame=side_data_list:frame_side_data", "-of", "compact", source.url.path]
+                args += ["-show_frames", "-show_entries", "frame=side_data_list:frame_side_data", "-of", "compact"]
+                args += mediaInputOptions + [source.url.path]
                 let probe = PlannedCommand(arguments: args, working_directory: nil, sidecars: [], colors: nil)
                 try runEncoder(probe, control: control, cleanup: &cleanup, receive: { try writer.append($0) }) { _ in }
                 try writer.finish()
@@ -914,8 +918,8 @@ struct NativeEngine: Sendable {
         let interval = "\(window.start_seconds)%\(window.start_seconds + 1)"
         let command = PlannedCommand(arguments: [
             tools.ffprobe.path, "-v", "error", "-select_streams", String(stream), "-read_intervals", interval,
-            "-show_frames", "-of", "json", source.url.path
-        ], working_directory: nil, sidecars: [], colors: nil)
+            "-show_frames", "-of", "json"
+        ] + mediaInputOptions + [source.url.path], working_directory: nil, sidecars: [], colors: nil)
         let data = try runEncoder(command, control: control, cleanup: &cleanup, timeout: 25_000, captureOutput: true) { _ in }
         // ffprobe emits repeated keys for values such as MaxSCL. Normalize
         // them to arrays before Foundation turns each JSON object into a dictionary.
@@ -1187,10 +1191,16 @@ struct NativeEngine: Sendable {
         let plan = try makePlan(source: source, choices: choices, staging: utf8(destination.path), window: nil)
         defer { lr_plan_release(plan) }
         var command = try plannedCommand(plan)
-        guard let input = command.arguments.firstIndex(of: "-i"), input + 1 < command.arguments.count else {
-            throw EngineError(message: "The VideoToolbox trial has no input argument.")
+        guard let input = command.arguments.firstIndex(of: "-i"), input + 1 < command.arguments.count,
+              input >= mediaInputOptions.count else {
+            throw EngineError(message: "The VideoToolbox trial has no input arguments.")
         }
-        command.arguments.replaceSubrange(input...input + 1, with: [
+        let policyStart = input - mediaInputOptions.count
+        guard command.arguments[policyStart..<input].elementsEqual(mediaInputOptions) else {
+            throw EngineError(message: "The VideoToolbox trial has incomplete input arguments.")
+        }
+        // This trial has a fixed synthetic source instead of a user-selected file.
+        command.arguments.replaceSubrange(policyStart...input + 1, with: [
             "-f", "lavfi", "-i", "testsrc2=size=320x192:rate=30,format=\(pixel)"
         ])
         command.arguments.insert(contentsOf: ["-frames:v", "8"], at: command.arguments.count - 1)

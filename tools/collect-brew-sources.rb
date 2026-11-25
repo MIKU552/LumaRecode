@@ -5,6 +5,12 @@ require "json"
 require "formulary"
 
 def copy_resource(resource, destination)
+  # The GNU redirector may select a mirror whose certificate is expired.
+  # Use the canonical GNU archive while retaining the installed recipe's hash.
+  if (gnu_path = resource.url[%r{\Ahttps://ftpmirror\.gnu\.org/(?:gnu/)?(.+)\z}, 1])
+    resource = resource.dup
+    resource.url("https://ftp.gnu.org/gnu/#{gnu_path}")
+  end
   resource.fetch
   source = resource.cached_download
   FileUtils.mkdir_p(destination)

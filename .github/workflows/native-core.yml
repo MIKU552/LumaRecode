@@ -32,14 +32,18 @@ jobs:
           - name: Windows x64
             os: windows-2025-vs2026
             cpu: x64
+            msys: UCRT64
+            msys_prefix: mingw-w64-ucrt-x86_64
           - name: Windows ARM64
             os: windows-11-vs2026-arm
             cpu: arm64
+            msys: CLANGARM64
+            msys_prefix: mingw-w64-clang-aarch64
           - name: macOS 27 ARM64
             os: xcode-27
             cpu: arm64
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -148,20 +152,44 @@ jobs:
           retention-days: 14
           if-no-files-found: error
           path: ${{ runner.temp }}/LumaRecode-Windows-${{ matrix.cpu }}-Portable.zip
+      - name: Install MSYS2 FFmpeg for redistribution
+        if: runner.os == 'Windows' && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode' && inputs.release_packages
+        id: ffmpeg
+        uses: msys2/setup-msys2@3c51bf698df1e37b2261f53cb67797b97761185c # v2.34.0
+        with:
+          msystem: ${{ matrix.msys }}
+          update: true
+          cache: false
+          install: ${{ matrix.msys_prefix }}-ffmpeg ${{ matrix.msys_prefix }}-vulkan-loader
       - name: Build and check Windows release formats
         if: runner.os == 'Windows' && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode' && inputs.release_packages
         shell: pwsh
+        env:
+          LUMA_MSYS_ROOT: ${{ steps.ffmpeg.outputs.msys2-location }}
         run: |
           $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
           $cpu = '${{ matrix.cpu }}'
           $formats = Join-Path $env:RUNNER_TEMP 'windows-release'
           $store = Join-Path $env:RUNNER_TEMP 'windows-store'
-          ./tools/Package-Windows.ps1 -Target $cpu -Profile Aot -OutputDirectory $formats -SkipBuild
-          ./tools/Package-Windows.ps1 -Target $cpu -PartnerCenter -Format Msix -OutputDirectory $store -SkipBuild
-          ./tools/Package-Windows.ps1 -Target $cpu -Profile JitExternal -OutputDirectory $formats
+          $toolsOutput = Join-Path $env:RUNNER_TEMP 'ffmpeg-redistribution'
+          python -m pip install --require-hashes --no-deps -r tools/ffmpeg-windows-build-requirements.txt
+          python tools/stage_windows_ffmpeg.py --arch $cpu --msys $env:LUMA_MSYS_ROOT --output $toolsOutput
+          $tools = Join-Path $toolsOutput FFmpeg
+          $env:LUMA_TEST_FFMPEG = Join-Path $tools 'bin/ffmpeg.exe'
+          $env:LUMA_TEST_FFPROBE = Join-Path $tools 'bin/ffprobe.exe'
+          # Run the conversion checks against the packaged DLL closure.
+          python qa/RuntimeChecks/check_shared_host.py --exe "dist/Aot-Portable-$cpu/LumaRecode.exe" --portable
+          $filters = & $env:LUMA_TEST_FFMPEG -hide_banner -filters | Out-String
+          foreach ($filter in @('zscale', 'lut3d', 'libplacebo')) {
+            if ($filters -notmatch "\b$filter\b") { throw "Bundled FFmpeg is missing $filter." }
+          }
+          ./tools/Package-Windows.ps1 -Target $cpu -Profile Aot -Ffmpeg Both -FfmpegDirectory $tools -OutputDirectory $formats -SkipBuild
+          ./tools/Package-Windows.ps1 -Target $cpu -PartnerCenter -Format Msix -Ffmpeg Bundled -FfmpegDirectory $tools -OutputDirectory $store -SkipBuild
+          ./tools/Package-Windows.ps1 -Target $cpu -Profile JitExternal -Ffmpeg Both -FfmpegDirectory $tools -OutputDirectory $formats
           $single = (Get-Item (Join-Path $formats '*-jitexternal-ffmpeg-external.exe')).FullName
           python qa/RuntimeChecks/check_framework_host.py --arch $cpu $single "dist/FrameworkDependent-$cpu/LumaRecode.exe"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item -LiteralPath (Join-Path $toolsOutput "LumaRecode-Windows-$cpu-FFmpeg-Sources.zip") -Destination $formats
       - name: Upload Windows release formats
         if: runner.os == 'Windows' && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode' && inputs.release_packages
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -265,7 +293,7 @@ jobs:
           mkdir distribution
           if [[ "$LUMA_RELEASE_PACKAGES" == true ]]; then
             cp build/lumarecode-windows-{x64,arm64}-release/* distribution/
-            test "$(find distribution -maxdepth 1 -type f | wc -l)" -eq 12
+            test "$(find distribution -maxdepth 1 -type f | wc -l)" -eq 26
           else
             cp build/lumarecode-windows-x64-development/LumaRecode.exe distribution/LumaRecode-Windows-x64-AOT.exe
             cp build/lumarecode-windows-arm64-development/LumaRecode.exe distribution/LumaRecode-Windows-arm64-AOT.exe

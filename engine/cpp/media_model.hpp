@@ -1,5 +1,6 @@
 #ifndef LUMA_MEDIA_MODEL_HPP
 #define LUMA_MEDIA_MODEL_HPP
+#include "lumarecode/media.h"
 #include "probe_json.hpp"
 #include <vector>
 

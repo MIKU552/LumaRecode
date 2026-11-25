@@ -279,7 +279,8 @@ struct lr_timeline final : luma::process_sink
              packets ? "-show_packets" : "-show_frames", "-show_entries",
              packets ? "packet=pts,duration,flags:packet_side_data="
                      : "frame=best_effort_timestamp,duration,key_frame:frame_side_data=",
-             "-of", "compact=p=1:nk=0", source}};
+             "-of", "compact=p=1:nk=0", "-protocol_whitelist", "file", "-format_whitelist",
+             LR_MEDIA_INPUT_FORMATS, source}};
         try
         {
             luma::execute_child(request, *this);

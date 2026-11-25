@@ -79,8 +79,8 @@ public static class DynamicHdr
         // Decoded frames arrive in presentation order, including B frames and
         // AV1 show-existing frames. Parsing raw NAL/OBU order would not preserve
         // the association between a frame and its metadata.
-        var args = new[] { "-v", "error", "-err_detect", "explode", "-threads", "2", "-select_streams", media.Video.Text("index"),
-            "-show_frames", "-show_entries", "frame=:frame_side_data", "-of", "compact=p=1:nk=0", media.Path };
+        string[] args = ["-v", "error", "-err_detect", "explode", "-threads", "2", "-select_streams", media.Video.Text("index"),
+            "-show_frames", "-show_entries", "frame=:frame_side_data", "-of", "compact=p=1:nk=0", .. MediaProbe.InputOptions, media.Path];
         using var probe = new System.Diagnostics.Process { StartInfo = ProcessRunner.StartInfo(tools.Ffprobe, args) };
         cancellation.ThrowIfCancellationRequested();
         probe.Start();

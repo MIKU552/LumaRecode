@@ -156,7 +156,15 @@ public static class ProcessRunner
         }
         foreach (var folder in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
         {
-            var path = Path.Combine(folder.Trim('"'), executable);
+            // An empty or relative entry must not implicitly trust the directory
+            // from which a desktop or CLI user opened a media file.
+            var directory = folder.Trim('"');
+            if (!Path.IsPathFullyQualified(directory))
+            {
+                continue;
+            }
+
+            var path = Path.Combine(directory, executable);
             if (File.Exists(path))
             {
                 return Path.GetFullPath(path);
