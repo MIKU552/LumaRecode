@@ -34,13 +34,10 @@ def main():
 
 def check_gui_process(launch, folder, portable):
     env = os.environ.copy()
-    # A renamed AOT bundle exits after spawning its application. The test's
-    # private extraction root identifies the child without touching other
-    # copies of LumaRecode running on the same machine.
+    # A renamed bundle exits after starting its GUI in the private extraction root.
     cache = folder / "bundle-cache"
     if not portable:
         env["DOTNET_BUNDLE_EXTRACT_BASE_DIR"] = str(cache)
-        env["LUMA_TEST_BUNDLE_CACHE"] = str(cache)
 
     with subprocess.Popen([str(launch)], env=env) as gui:
         try:
@@ -48,23 +45,37 @@ def check_gui_process(launch, folder, portable):
             if gui.poll() is None:
                 return
             assert not portable and gui.returncode == 0, gui.returncode
-            script = r"""
-                $cache = [IO.Path]::GetFullPath($env:LUMA_TEST_BUNDLE_CACHE)
-                $children = @(Get-CimInstance Win32_Process -Filter "Name='LumaRecode.exe'" |
-                    Where-Object {
-                        $_.ExecutablePath -and
-                        [IO.Path]::GetDirectoryName($_.ExecutablePath).EndsWith('\Application') -and
-                        $_.ExecutablePath.StartsWith($cache + [IO.Path]::DirectorySeparatorChar,
-                            [StringComparison]::OrdinalIgnoreCase)
-                    })
-                if ($children.Count -ne 1) { exit 1 }
-                Stop-Process -Id $children[0].ProcessId -ErrorAction Stop
-                """
-            subprocess.run(
-                ["pwsh", "-NoProfile", "-Command", script],
-                env=env,
+            children = subprocess.run(
+                [
+                    "pwsh", "-NoProfile", "-Command",
+                    f"$children = @(Get-CimInstance Win32_Process -Filter "
+                    f"\"ParentProcessId={gui.pid} AND Name='LumaRecode.exe'\" | "
+                    "Select-Object ProcessId, ExecutablePath); "
+                    "ConvertTo-Json -InputObject $children -Compress",
+                ],
+                capture_output=True,
+                text=True,
                 check=True,
                 timeout=30,
+            )
+            # TEMP on hosted Windows runners can use an 8.3 name while CIM
+            # returns the same executable path with long directory names.
+            root = cache.resolve()
+            owned = [
+                child["ProcessId"]
+                for child in json.loads(children.stdout)
+                if child["ExecutablePath"]
+                and Path(child["ExecutablePath"]).resolve().is_relative_to(root)
+            ]
+            assert len(owned) == 1, children.stdout
+            subprocess.run(
+                [
+                    "pwsh", "-NoProfile", "-Command",
+                    f"$p = Get-Process -Id {int(owned[0])} -ErrorAction Stop; "
+                    "$p.Kill(); if (!$p.WaitForExit(10000)) { exit 1 }",
+                ],
+                check=True,
+                timeout=20,
             )
         finally:
             if gui.poll() is None:
