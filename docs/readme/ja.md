@@ -7,7 +7,13 @@ LumaRecode は Windows と macOS 向けの動画ツールです。動画の圧�
 
 [プロジェクトサイト（英語）](https://lumarecode.miku552.top/) · [GitHub ダウンロード](https://github.com/MIKU552/LumaRecode/releases) · [コマンドライン](../cli/ja.md) · [ドキュメント（中国語・英語）](../README.md#english) · [変更履歴（中国語・英語）](../../CHANGELOG.md#english)
 
-<a href="https://apps.microsoft.com/detail/9N71VF8GJT6F"><img src="https://get.microsoft.com/images/ja%20dark.svg" alt="Microsoft Store から LumaRecode を入手（Windows）" width="200" /></a>
+<a href="https://apps.microsoft.com/detail/9N71VF8GJT6F">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://get.microsoft.com/images/ja%20light.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="https://get.microsoft.com/images/ja%20dark.svg" />
+    <img src="https://get.microsoft.com/images/ja%20light.svg" alt="Microsoft Store から LumaRecode を入手（Windows）" width="200" />
+  </picture>
+</a>
 
 ## 機能
 

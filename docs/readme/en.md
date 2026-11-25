@@ -7,7 +7,13 @@ LumaRecode is a video tool for Windows and macOS. Compress clips, turn camera Lo
 
 [Project site](https://lumarecode.miku552.top/) · [GitHub downloads](https://github.com/MIKU552/LumaRecode/releases) · [CLI](../cli/en.md) · [Documentation](../README.md#english) · [Changelog](../../CHANGELOG.md#english)
 
-<a href="https://apps.microsoft.com/detail/9N71VF8GJT6F"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get LumaRecode from Microsoft Store (Windows)" width="200" /></a>
+<a href="https://apps.microsoft.com/detail/9N71VF8GJT6F">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://get.microsoft.com/images/en-us%20light.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="https://get.microsoft.com/images/en-us%20dark.svg" />
+    <img src="https://get.microsoft.com/images/en-us%20light.svg" alt="Get LumaRecode from Microsoft Store (Windows)" width="200" />
+  </picture>
+</a>
 
 ## Features
 

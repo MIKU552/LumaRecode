@@ -7,7 +7,13 @@ LumaRecode es una herramienta de vídeo para Windows y macOS. Permite comprimir 
 
 [Sitio del proyecto (inglés)](https://lumarecode.miku552.top/) · [Descargas en GitHub](https://github.com/MIKU552/LumaRecode/releases) · [Línea de comandos](../cli/es.md) · [Documentación (chino e inglés)](../README.md#english) · [Historial de cambios (chino e inglés)](../../CHANGELOG.md#english)
 
-<a href="https://apps.microsoft.com/detail/9N71VF8GJT6F"><img src="https://get.microsoft.com/images/es%20dark.svg" alt="Obtener LumaRecode en Microsoft Store (Windows)" width="200" /></a>
+<a href="https://apps.microsoft.com/detail/9N71VF8GJT6F">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://get.microsoft.com/images/es%20light.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="https://get.microsoft.com/images/es%20dark.svg" />
+    <img src="https://get.microsoft.com/images/es%20light.svg" alt="Obtener LumaRecode en Microsoft Store (Windows)" width="200" />
+  </picture>
+</a>
 
 ## Funciones
 

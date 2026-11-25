@@ -7,7 +7,13 @@ LumaRecode 是一款 Windows 和 macOS 视频工具。用它压缩视频、把�
 
 [项目网站](https://lumarecode.miku552.top/zh/) · [GitHub 下载](https://github.com/MIKU552/LumaRecode/releases) · [命令行](docs/cli/zh-CN.md) · [文档](docs/README.md) · [更新记录](CHANGELOG.md)
 
-<a href="https://apps.microsoft.com/detail/9N71VF8GJT6F"><img src="https://get.microsoft.com/images/zh-cn%20dark.svg" alt="从 Microsoft Store 获取映码（Windows）" width="200" /></a>
+<a href="https://apps.microsoft.com/detail/9N71VF8GJT6F">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://get.microsoft.com/images/zh-cn%20light.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="https://get.microsoft.com/images/zh-cn%20dark.svg" />
+    <img src="https://get.microsoft.com/images/zh-cn%20light.svg" alt="从 Microsoft Store 获取映码（Windows）" width="200" />
+  </picture>
+</a>
 
 ## 功能
 
