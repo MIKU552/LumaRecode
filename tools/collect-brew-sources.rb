@@ -2,6 +2,8 @@
 # resources and patches. The current Homebrew catalog may have newer versions.
 require "fileutils"
 require "formulary"
+require "securerandom"
+require "tap"
 
 def copy_resource(resource, destination)
   # Try HTTPS mirrors with the recipe's original checksum. Stalled mirrors
@@ -28,22 +30,31 @@ end
 
 script_directory = Pathname.new(__dir__)
 root = script_directory.parent
-recipes = (script_directory / "Recipes").glob("*.rb")
+recipes = (script_directory / "Recipes").glob("*.rb").sort
 raise "No staged Homebrew recipes found" if recipes.empty?
 
-recipes.sort.each do |recipe|
-  formula = Formulary.factory(recipe.to_s)
-  destination = root / recipe.basename(".rb").to_s
-  spec = formula.stable
-  main = spec.resource
-  resources = { "upstream" => main }.merge(spec.resources)
-  resources.each do |resource_name, resource|
-    copy_resource(resource, destination / resource_name)
-    resource.patches.grep(ExternalPatch).each_with_index do |patch, index|
-      copy_resource(patch.resource, destination / resource_name / "patch-#{index + 1}")
+# Homebrew loads formulas through a registered tap or an installed keg.
+tap = Tap.fetch("lumarecode/ffmpeg-sources-#{SecureRandom.hex(6)}")
+system("brew", "tap-new", "--no-git", tap.name, exception: true)
+begin
+  FileUtils.cp(recipes, tap.formula_dir)
+  recipes.each do |recipe|
+    name = recipe.basename(".rb").to_s
+    formula = Formulary.factory("#{tap.name}/#{name}")
+    destination = root / name
+    spec = formula.stable
+    main = spec.resource
+    resources = { "upstream" => main }.merge(spec.resources)
+    resources.each do |resource_name, resource|
+      copy_resource(resource, destination / resource_name)
+      resource.patches.grep(ExternalPatch).each_with_index do |patch, index|
+        copy_resource(patch.resource, destination / resource_name / "patch-#{index + 1}")
+      end
+    end
+    (spec.patches - main.patches).grep(ExternalPatch).each_with_index do |patch, index|
+      copy_resource(patch.resource, destination / "patch-#{index + 1}")
     end
   end
-  (spec.patches - main.patches).grep(ExternalPatch).each_with_index do |patch, index|
-    copy_resource(patch.resource, destination / "patch-#{index + 1}")
-  end
+ensure
+  tap.uninstall
 end
