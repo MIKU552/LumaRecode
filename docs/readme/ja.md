@@ -5,7 +5,9 @@
 
 LumaRecode は Windows と macOS 向けの動画ツールです。動画の圧縮、カメラの Log 素材から HDR・SDR への変換、フレーム単位のトリミング、静止画の書き出しができます。両 OS のネイティブ UI で、共通の FFmpeg 変換エンジンを使います。
 
-[プロジェクトサイト（英語）](https://lumarecode.miku552.top/) · [Microsoft Store（Windows）](https://apps.microsoft.com/detail/9N71VF8GJT6F) · [GitHub ダウンロード](https://github.com/MIKU552/LumaRecode/releases) · [コマンドライン](../cli/ja.md) · [ドキュメント（中国語・英語）](../README.md#english) · [変更履歴（中国語・英語）](../../CHANGELOG.md#english)
+[プロジェクトサイト（英語）](https://lumarecode.miku552.top/) · [GitHub ダウンロード](https://github.com/MIKU552/LumaRecode/releases) · [コマンドライン](../cli/ja.md) · [ドキュメント（中国語・英語）](../README.md#english) · [変更履歴（中国語・英語）](../../CHANGELOG.md#english)
+
+<a href="https://apps.microsoft.com/detail/9N71VF8GJT6F"><img src="https://get.microsoft.com/images/ja%20dark.svg" alt="Microsoft Store から LumaRecode を入手（Windows）" width="200" /></a>
 
 ## 機能
 
@@ -22,7 +24,7 @@ LumaRecode は Windows と macOS 向けの動画ツールです。動画の圧�
 
 ## インストール
 
-- **Windows** · [Microsoft Store](https://apps.microsoft.com/detail/9N71VF8GJT6F) からインストールするか、GitHub Releases から手動でダウンロードできます。 x64 または ARM64 を選びます。単体の EXE を起動するか、ポータブル ZIP を展開して `LumaRecode.exe` を開くか、MSI を実行してユーザー単位でインストールします。AOT 版はそのまま起動できます。外部ランタイム版で .NET 11 Runtime が見つからない場合は、起動時のダイアログからダウンロードページを開けます。[.NET 11 Runtime（英語）](https://dotnet.microsoft.com/download/dotnet/11.0)
+- **Windows** · [Microsoft Store](https://apps.microsoft.com/detail/9N71VF8GJT6F) からインストールするか、GitHub Releases から手動でダウンロードできます。Microsoft Store で配布される MSIX パッケージには Microsoft のデジタル署名が付与されます。x64 または ARM64 を選びます。単体の EXE を起動するか、ポータブル ZIP を展開して `LumaRecode.exe` を開くか、MSI を実行してユーザー単位でインストールします。AOT 版はそのまま起動できます。外部ランタイム版で .NET 11 Runtime が見つからない場合は、起動時のダイアログからダウンロードページを開けます。[.NET 11 Runtime（英語）](https://dotnet.microsoft.com/download/dotnet/11.0)
 - **macOS** · DMG から LumaRecode を「アプリケーション」にドラッグします。FFmpeg Full 版には FFmpeg、ffprobe、libplacebo、MoltenVK が含まれます。[初回起動とツールの設定（中国語・英語）](../dependencies.md#english)
 
 外部の FFmpeg を使う版は PATH を検索します。macOS では Homebrew も検索します。アプリで `ffmpeg` と `ffprobe` の場所を指定することもできます。Log 変換には `zscale` と `lut3d`、HDR から SDR への変換や一部の Dolby Vision 素材には `libplacebo` と Vulkan を使います。

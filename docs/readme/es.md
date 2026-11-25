@@ -5,7 +5,9 @@
 
 LumaRecode es una herramienta de vídeo para Windows y macOS. Permite comprimir clips, convertir grabaciones Log a HDR o SDR, recortar por fotogramas y exportar imágenes. Las dos interfaces nativas comparten el mismo motor de transcodificación basado en FFmpeg.
 
-[Sitio del proyecto (inglés)](https://lumarecode.miku552.top/) · [Microsoft Store (Windows)](https://apps.microsoft.com/detail/9N71VF8GJT6F) · [Descargas en GitHub](https://github.com/MIKU552/LumaRecode/releases) · [Línea de comandos](../cli/es.md) · [Documentación (chino e inglés)](../README.md#english) · [Historial de cambios (chino e inglés)](../../CHANGELOG.md#english)
+[Sitio del proyecto (inglés)](https://lumarecode.miku552.top/) · [Descargas en GitHub](https://github.com/MIKU552/LumaRecode/releases) · [Línea de comandos](../cli/es.md) · [Documentación (chino e inglés)](../README.md#english) · [Historial de cambios (chino e inglés)](../../CHANGELOG.md#english)
+
+<a href="https://apps.microsoft.com/detail/9N71VF8GJT6F"><img src="https://get.microsoft.com/images/es%20dark.svg" alt="Obtener LumaRecode en Microsoft Store (Windows)" width="200" /></a>
 
 ## Funciones
 
@@ -22,7 +24,7 @@ El modo de compartir rápido usa un codificador de hardware que haya superado la
 
 ## Instalación
 
-- **Windows** · Instala desde [Microsoft Store](https://apps.microsoft.com/detail/9N71VF8GJT6F) o descarga manualmente desde GitHub Releases. Elige x64 o ARM64. Puedes abrir el EXE directamente, extraer el ZIP portátil y abrir `LumaRecode.exe`, o instalar el MSI para tu cuenta. La edición AOT funciona sin instalar el entorno de ejecución. Si la edición con .NET externo lo necesita, el aviso de inicio ofrece un enlace de descarga de Microsoft. [.NET 11 Runtime (inglés)](https://dotnet.microsoft.com/download/dotnet/11.0)
+- **Windows** · Instala desde [Microsoft Store](https://apps.microsoft.com/detail/9N71VF8GJT6F) o descarga manualmente desde GitHub Releases. El paquete MSIX distribuido a través de Microsoft Store está firmado digitalmente por Microsoft. Elige x64 o ARM64. Puedes abrir el EXE directamente, extraer el ZIP portátil y abrir `LumaRecode.exe`, o instalar el MSI para tu cuenta. La edición AOT funciona sin instalar el entorno de ejecución. Si la edición con .NET externo lo necesita, el aviso de inicio ofrece un enlace de descarga de Microsoft. [.NET 11 Runtime (inglés)](https://dotnet.microsoft.com/download/dotnet/11.0)
 - **macOS** · Arrastra LumaRecode desde el DMG hasta Aplicaciones. La edición FFmpeg Full incluye FFmpeg, ffprobe, libplacebo y MoltenVK. [Primer inicio y configuración (chino e inglés)](../dependencies.md#english)
 
 Las ediciones con FFmpeg externo consultan PATH y, en macOS, Homebrew. También puedes indicar dónde están `ffmpeg` y `ffprobe` desde la aplicación. La conversión de Log usa `zscale` y `lut3d`. La conversión de HDR a SDR y algunas fuentes Dolby Vision usan `libplacebo` y Vulkan.

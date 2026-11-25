@@ -178,7 +178,11 @@ h1:lang(zh), h1:lang(ja) { letter-spacing: .028em; line-height: 1.15; }
 .hero h1:lang(en) { font-size: clamp(2.25rem, 4.15vw, 3.5rem); }
 .lede { margin-top: 1.4rem; max-width: 34ch; font-size: clamp(1.06rem, 1.6vw, 1.26rem); }
 p, figcaption { color: var(--muted); }
-.actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 2rem; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: 2rem; }
+ms-store-badge { display: inline-flex; max-width: 100%; align-self: center; justify-self: start; }
+ms-store-badge::part(img) { max-width: 200px; max-height: 52px; }
+ms-store-badge:not(:defined) { display: none; }
+ms-store-badge:defined + .store-fallback { display: none; }
 .button {
   display: inline-flex;
   align-items: center;

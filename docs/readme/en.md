@@ -5,7 +5,9 @@
 
 LumaRecode is a video tool for Windows and macOS. Compress clips, turn camera Log into shareable HDR or SDR, trim by frame, and export stills. Each platform has a native interface backed by the same FFmpeg transcoding core.
 
-[Project site](https://lumarecode.miku552.top/) · [Microsoft Store (Windows)](https://apps.microsoft.com/detail/9N71VF8GJT6F) · [GitHub downloads](https://github.com/MIKU552/LumaRecode/releases) · [CLI](../cli/en.md) · [Documentation](../README.md#english) · [Changelog](../../CHANGELOG.md#english)
+[Project site](https://lumarecode.miku552.top/) · [GitHub downloads](https://github.com/MIKU552/LumaRecode/releases) · [CLI](../cli/en.md) · [Documentation](../README.md#english) · [Changelog](../../CHANGELOG.md#english)
+
+<a href="https://apps.microsoft.com/detail/9N71VF8GJT6F"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get LumaRecode from Microsoft Store (Windows)" width="200" /></a>
 
 ## Features
 
@@ -22,7 +24,7 @@ Quick share uses a hardware encoder that passes the device check. Software archi
 
 ## Install
 
-- **Windows** · Install from the [Microsoft Store](https://apps.microsoft.com/detail/9N71VF8GJT6F), or download manually from GitHub Releases. Choose x64 or ARM64. Run the single EXE directly, extract the portable ZIP and open `LumaRecode.exe`, or install the MSI for your user account. AOT builds run directly. Framework-dependent builds offer a Microsoft download link at startup when the runtime is missing. [.NET 11 Runtime](https://dotnet.microsoft.com/download/dotnet/11.0)
+- **Windows** · Install from the [Microsoft Store](https://apps.microsoft.com/detail/9N71VF8GJT6F), or download manually from GitHub Releases. The MSIX package distributed through Microsoft Store is digitally signed by Microsoft. Choose x64 or ARM64. Run the single EXE directly, extract the portable ZIP and open `LumaRecode.exe`, or install the MSI for your user account. AOT builds run directly. Framework-dependent builds offer a Microsoft download link at startup when the runtime is missing. [.NET 11 Runtime](https://dotnet.microsoft.com/download/dotnet/11.0)
 - **macOS** · Drag LumaRecode from the DMG into Applications. The FFmpeg Full edition includes FFmpeg, ffprobe, libplacebo, and MoltenVK. [First launch and tool paths](../dependencies.md#macos-installation-and-distribution)
 
 Editions that use external FFmpeg check PATH and, on macOS, Homebrew. You can also set the paths to `ffmpeg` and `ffprobe` in the app. Log conversion uses `zscale` and `lut3d`. HDR-to-SDR and some Dolby Vision sources use `libplacebo` and Vulkan.

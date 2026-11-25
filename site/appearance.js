@@ -15,6 +15,10 @@
   function applyPalette() {
     const light = appearance === "light" || (appearance === "system" && systemLight.matches);
     root.dataset.appearance = light ? "light" : "dark";
+    // The Store badge's dark variant is intended for light backgrounds.
+    for (const badge of document.querySelectorAll("ms-store-badge")) {
+      badge.setAttribute("theme", light ? "dark" : "light");
+    }
   }
   applyPalette();
 
