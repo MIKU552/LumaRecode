@@ -127,6 +127,10 @@ function Find-WindowsSdkTool([string]$Name) {
 }
 
 function New-StoreResourceIndex([string]$Stage, [string]$Work) {
+    $resourceRoot = (New-Item -ItemType Directory -Path (Join-Path $Work 'input')).FullName
+    Copy-Item -LiteralPath (Join-Path $Stage 'resources.pri') -Destination $resourceRoot
+    New-StoreAssets $resourceRoot
+
     $makePri = Find-WindowsSdkTool 'makepri.exe'
     $configPath = Join-Path $Work 'priconfig.xml'
     & $makePri createconfig /cf $configPath /dq en-US
@@ -134,13 +138,10 @@ function New-StoreResourceIndex([string]$Stage, [string]$Work) {
     # Keep DPI variants in each architecture package and preserve the existing WinUI resources.
     $packaging = $config.SelectSingleNode('/resources/packaging')
     if ($packaging) { [void]$packaging.ParentNode.RemoveChild($packaging) }
-    $logoIndex = $config.SelectSingleNode('/resources/index')
-    $logoIndex.SetAttribute('startIndexAt', 'StoreAssets')
-    $appIndex = $logoIndex.CloneNode($true)
-    $appIndex.SetAttribute('startIndexAt', 'resources.pri')
-    [void]$logoIndex.ParentNode.AppendChild($appIndex)
     $config.Save($configPath)
-    & $makePri new /pr $Stage /cf $configPath /mn (Join-Path $Stage 'AppxManifest.xml') /of (Join-Path $Work 'resources.pri')
+    # Index from the package root layout so the logo resource names retain StoreAssets/.
+    & $makePri new /pr $resourceRoot /cf $configPath /mn (Join-Path $Stage 'AppxManifest.xml') /of (Join-Path $Work 'resources.pri')
+    Move-Item -LiteralPath (Join-Path $resourceRoot 'StoreAssets') -Destination $Stage
 }
 
 Push-Location -LiteralPath $project
@@ -183,7 +184,6 @@ try {
             } finally { $env:DOTNET_ROLL_FORWARD = $oldRollForward }
         }
         if ('Msix' -in $Format) {
-            New-StoreAssets $stage
             $manifest = [xml](Get-Content -LiteralPath 'Packaging/Package.appxmanifest' -Raw)
             $manifest.Package.Identity.SetAttribute('Name', $StoreName)
             $manifest.Package.Identity.SetAttribute('Publisher', $StorePublisher)

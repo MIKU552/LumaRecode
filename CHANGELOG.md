@@ -4,6 +4,10 @@
 
 ## 简体中文
 
+### 5.0.2
+
+- 修复 Microsoft Store 安装包的图标资源索引。Windows 现在可以按应用清单中的路径找到任务栏的透明图标，以及开始菜单和搜索结果所需的高分辨率图标。
+
 ### 5.0.1
 
 - 修复 Microsoft Store 版在 Windows 任务栏图标上出现的纯色底板，适配深色和浅色系统主题。
@@ -308,6 +312,10 @@
 - 支持素材自动识别与三组色彩转换。
 
 ## English
+
+### 5.0.2
+
+- Fixed the Microsoft Store package resource index so Windows can find the transparent taskbar icons and high-resolution Start and Search icons at their manifest paths.
 
 ### 5.0.1
 
