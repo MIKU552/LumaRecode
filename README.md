@@ -5,7 +5,7 @@
 
 LumaRecode 是一款 Windows 和 macOS 视频工具。用它压缩视频、把相机 Log 转成可分享的 HDR 或 SDR、按帧裁剪和导出照片。两套原生界面共用一套 FFmpeg 转码核心。
 
-[项目网站](https://lumarecode.miku552.top/zh/) · [下载](https://github.com/MIKU552/LumaRecode/releases) · [命令行](docs/cli/zh-CN.md) · [文档](docs/README.md) · [更新记录](CHANGELOG.md)
+[项目网站](https://lumarecode.miku552.top/zh/) · [Microsoft Store（Windows）](https://apps.microsoft.com/detail/9N71VF8GJT6F) · [GitHub 下载](https://github.com/MIKU552/LumaRecode/releases) · [命令行](docs/cli/zh-CN.md) · [文档](docs/README.md) · [更新记录](CHANGELOG.md)
 
 ## 功能
 
@@ -22,7 +22,7 @@ LumaRecode 是一款 Windows 和 macOS 视频工具。用它压缩视频、把�
 
 ## 安装
 
-- **Windows** · 选 x64 或 ARM64。单文件 EXE 可直接运行。便携 ZIP 解压后打开 `LumaRecode.exe`。MSI 将应用装到当前用户目录。AOT 版可直接启动，外置 .NET 版缺少运行时时可从启动提示打开微软下载页。[.NET 11 Runtime](https://dotnet.microsoft.com/download/dotnet/11.0)
+- **Windows** · 通过 [Microsoft Store](https://apps.microsoft.com/detail/9N71VF8GJT6F) 安装，或从 GitHub Releases 手动下载。 选 x64 或 ARM64。单文件 EXE 可直接运行。便携 ZIP 解压后打开 `LumaRecode.exe`。MSI 将应用装到当前用户目录。AOT 版可直接启动，外置 .NET 版缺少运行时时可从启动提示打开微软下载页。[.NET 11 Runtime](https://dotnet.microsoft.com/download/dotnet/11.0)
 - **macOS** · 把 DMG 中的 LumaRecode 拖进“应用程序”。FFmpeg Full 版附带 FFmpeg、ffprobe、libplacebo 和 MoltenVK。[首次启动与工具配置](docs/dependencies.md#macos-安装与分发)
 
 外置 FFmpeg 版会查找 PATH（macOS 也查找 Homebrew），还可以在应用中指定 `ffmpeg` 和 `ffprobe`。Log 处理需要 `zscale` 和 `lut3d`。HDR 转 SDR 和部分 Dolby Vision 源需要 `libplacebo` 与 Vulkan。

@@ -234,6 +234,7 @@ figcaption { margin-top: .65rem; text-align: center; font-size: .8rem; }
   border-radius: 12px;
   background: var(--panel);
 }
+.download-actions { display: grid; gap: .75rem; }
 .download-platforms { display: grid; gap: .9rem; margin: 0; }
 .download-platforms dt { color: var(--accent); font-weight: 600; }
 .download-platforms dd { margin: .15rem 0 0; color: var(--muted); }
@@ -258,7 +259,7 @@ figcaption { margin-top: .65rem; text-align: center; font-size: .8rem; }
   .locale-nav { border-inline-start: 0; padding-inline-start: 0; gap: .15rem .55rem; }
   .theme-picker { margin-inline-start: auto; }
   .workflow, .download-panel { grid-template-columns: 1fr; }
-  .download-panel .button { justify-self: start; }
+  .download-actions { justify-items: start; }
 }
 
 @media (max-width: 360px) {
