@@ -1,17 +1,21 @@
 # Collect the exact recipes stored in the installed kegs, including vendored
 # resources and patches. The current Homebrew catalog may have newer versions.
 require "fileutils"
-require "json"
 require "formulary"
 
 def copy_resource(resource, destination)
-  # The GNU redirector may select a mirror whose certificate is expired.
-  # Use the canonical GNU archive while retaining the installed recipe's hash.
-  if (gnu_path = resource.url[%r{\Ahttps://ftpmirror\.gnu\.org/(?:gnu/)?(.+)\z}, 1])
+  # Try HTTPS mirrors with the recipe's original checksum. Stalled mirrors
+  # must not hold the release runner for the full job timeout.
+  if (gnu_path = resource.url[%r{\Ahttps?://(?:ftp|ftpmirror)\.gnu\.org/(?:gnu/)?(.+)\z}, 1])
+    raise "Missing GNU source checksum: #{resource.url}" if resource.checksum.nil?
+
     resource = resource.dup
-    resource.url("https://ftp.gnu.org/gnu/#{gnu_path}")
+    resource.url("https://mirrors.kernel.org/gnu/#{gnu_path}")
+    resource.mirrors.clear
+    resource.mirror("https://mirror.csclub.uwaterloo.ca/gnu/#{gnu_path}")
+    resource.mirror("https://ftp.gnu.org/gnu/#{gnu_path}")
   end
-  resource.fetch
+  resource.fetch(timeout: 90, skip_patches: true)
   source = resource.cached_download
   FileUtils.mkdir_p(destination)
   if source.directory?
@@ -24,11 +28,12 @@ end
 
 script_directory = Pathname.new(__dir__)
 root = script_directory.parent
-JSON.parse((script_directory / "installed-recipes.json").read).each do |name, recipe|
-  formula = Formulary.factory(recipe)
-  destination = root / name
-  FileUtils.mkdir_p(destination)
-  FileUtils.cp(recipe, destination)
+recipes = (script_directory / "Recipes").glob("*.rb")
+raise "No staged Homebrew recipes found" if recipes.empty?
+
+recipes.sort.each do |recipe|
+  formula = Formulary.factory(recipe.to_s)
+  destination = root / recipe.basename(".rb").to_s
   spec = formula.stable
   main = spec.resource
   resources = { "upstream" => main }.merge(spec.resources)

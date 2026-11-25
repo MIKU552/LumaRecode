@@ -53,7 +53,7 @@ $tools = ./tools/Stage-WindowsFfmpeg.ps1 -Target X64
 
 生成文件在 `dist/windows/`。WiX 用于生成 MSI，打包脚本从工具清单还原。打包内置工具需要匹配架构的 `bin/ffmpeg.exe`、`bin/ffprobe.exe` 和 `BUILDINFO.txt`。发布含 FFmpeg 的包时，应同时提供该版本对应的源码和库的许可。[FFmpeg 许可](https://ffmpeg.org/legal.html)
 
-GitHub 正式版的 Windows EXE、ZIP 和 MSI 均提供内置或外置 FFmpeg。内置版使用 MSYS2 的 FFmpeg，包含 `zscale`、`lut3d` 和 `libplacebo`。应用包内含可执行工具、依赖、许可证和构建信息。各架构对应的源码和签名可在[同版本 Release](https://github.com/MIKU552/LumaRecode/releases) 的附件中单独下载。选择外置版时，安装具备这些滤镜的 FFmpeg，在工具路径面板检测或指定程序。
+GitHub 正式版的 Windows EXE、ZIP 和 MSI 均提供内置或外置 FFmpeg。内置版使用 MSYS2 的 FFmpeg，包含 `zscale`、`lut3d` 和 `libplacebo`。应用包内含可执行工具、依赖、许可证和构建信息。x64 和 ARM64 的对应源码与签名合并为一个去重后的 Windows 源码包，可从[同版本 Release](https://github.com/MIKU552/LumaRecode/releases) 单独下载。选择外置版时，安装具备这些滤镜的 FFmpeg，在工具路径面板检测或指定程序。
 
 外置 .NET 版启动时由 .NET 宿主查找匹配架构的运行时。桌面启动遇到缺失时，弹窗可打开微软下载页。终端自动化可设置 `DOTNET_DISABLE_GUI_ERRORS=1`，通过退出码、标准错误和下载链接处理缺失的运行时。安装对应 x64 或 ARM64 的 **.NET 11 Runtime** 后重新启动。[微软官方下载](https://dotnet.microsoft.com/download/dotnet/11.0)
 
@@ -91,7 +91,7 @@ Ultra HDR 使用 Google libultrahdr 和 libjpeg-turbo，可通过 `tools/Build-U
 
 ### 构建来源与验证
 
-手动运行 **Native core** 并勾选 `release_packages` 可准备候选版。Windows 生成两种架构的 AOT 和外置 .NET 包，macOS 生成标准和 FFmpeg Full DMG，同时生成共享 SDK、SHA-256 校验文件和商店上传包。
+手动运行 **Native core** 并勾选 `release_packages` 可准备候选版。先准备 FFmpeg 工具及对应源码清单，再并行构建应用和收集源码。Windows 生成两种架构的 AOT 和外置 .NET 包，macOS 生成标准和 FFmpeg Full DMG。应用与源码工件通过验证后，工作流汇总发布附件和 SHA-256 校验文件。工作流还单独产出共享 SDK 和商店上传包。
 
 在 `main` 的正式版本提交上创建并推送已签名的版本标签，手动运行 **Publish GitHub release** 并输入相同的版本号。工作流运行回归检查、验证构建来源，再从草稿发布 GitHub Release。普通提交和 PR 检查不会发版。
 
@@ -152,7 +152,7 @@ $tools = ./tools/Stage-WindowsFfmpeg.ps1 -Target X64
 
 Packages appear in `dist/windows/`. The packaging script restores WiX from the tool manifest. Bundling FFmpeg requires an architecture-matched `bin/ffmpeg.exe` and `bin/ffprobe.exe`, plus a `BUILDINFO.txt`. For public distribution, provide the corresponding source and library license texts for the exact binaries. [FFmpeg licensing](https://ffmpeg.org/legal.html)
 
-GitHub releases offer each Windows EXE, ZIP, and MSI with or without FFmpeg. Bundled editions use MSYS2 FFmpeg with `zscale`, `lut3d`, and `libplacebo`. The application packages contain the executables, dependencies, license texts and build information. The corresponding source and signatures for each architecture are separate assets on the [same version's release page](https://github.com/MIKU552/LumaRecode/releases). For an external edition, install an FFmpeg build with those filters and use the tool path panel to detect or specify it.
+GitHub releases offer each Windows EXE, ZIP, and MSI with or without FFmpeg. Bundled editions use MSYS2 FFmpeg with `zscale`, `lut3d`, and `libplacebo`. The application packages contain the executables, dependencies, license texts and build information. The corresponding source and signatures for x64 and ARM64 are deduplicated in one Windows archive on the [same version's release page](https://github.com/MIKU552/LumaRecode/releases). For an external edition, install an FFmpeg build with those filters and use the tool path panel to detect or specify it.
 
 The framework-dependent edition uses the .NET app host to locate a runtime for the executable's architecture. If it is missing on a desktop launch, the dialog offers a Microsoft download link. Set `DOTNET_DISABLE_GUI_ERRORS=1` for unattended command-line use and handle the nonzero exit code, diagnostic, and download link on standard error. Install the **.NET 11 Runtime** for x64 or ARM64 as appropriate, then relaunch. [Microsoft downloads](https://dotnet.microsoft.com/download/dotnet/11.0)
 
@@ -190,7 +190,7 @@ Build scripts collect licenses from the locked dependency graph and verify the f
 
 ### Provenance and validation
 
-Run **Native core** manually with `release_packages` checked to prepare a release candidate. It produces Windows AOT and framework-dependent packages for both architectures, standard and FFmpeg Full macOS DMGs, shared SDKs, SHA-256 checksums, and the Store upload.
+Run **Native core** manually with `release_packages` checked to prepare a release candidate. The workflow stages the FFmpeg tools and records their sources. It then builds the applications and collects the corresponding sources in parallel. Windows produces AOT and framework-dependent packages for both architectures, while macOS produces standard and FFmpeg Full DMGs. The workflow verifies the application and source artifacts before assembling release assets and SHA-256 checksums. It also produces the shared SDKs and Store upload separately.
 
 Create and push a signed version tag on the release commit of `main`, then manually run **Publish GitHub release** with the matching version. The workflow runs regression checks, verifies build provenance, and publishes the GitHub release from a draft. Regular pushes and pull request checks do not publish releases.
 

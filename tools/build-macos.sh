@@ -39,9 +39,15 @@ if [ "$task_mode" != app ]; then
         task_dmg="$task_build/LumaRecode-ARM64-FFmpeg-Full.dmg"
         task_staged="$task_package/source/LumaRecode.app"
         task_tools="$task_staged/Contents/Resources/FFmpeg"
-        python3 "$task_root/tools/stage-macos-ffmpeg.py" "$task_tools" "$task_package/FFmpeg-Full-Sources"
+        if [ -n "${LUMA_STAGED_FFMPEG:-}" ]; then
+            ditto "$LUMA_STAGED_FFMPEG" "$task_tools"
+        else
+            task_sources="$task_package/FFmpeg-Full-Sources"
+            python3 "$task_root/tools/stage-macos-ffmpeg.py" "$task_tools" "$task_sources"
+            brew ruby "$task_sources/Packaging/collect-brew-sources.rb"
+            tar -czf "$task_package/FFmpeg-Full-Sources.tar.gz" -C "$task_package" FFmpeg-Full-Sources
+        fi
         codesign --force --sign - "$task_staged"
-        tar -czf "$task_package/FFmpeg-Full-Sources.tar.gz" -C "$task_package" FFmpeg-Full-Sources
     fi
     ln -s /Applications "$task_package/source/Applications"
     task_image="$task_package/compressed.dmg"
@@ -57,7 +63,9 @@ if [ "$task_mode" != app ]; then
         if [ "${LUMA_VALIDATE_FULL_FFMPEG:-0}" = 1 ]; then
             python3 "$task_root/qa/RuntimeChecks/check_macos_host.py" --app "$task_mount/LumaRecode.app" --bundled-hdr10plus
         fi
-        mv -f "$task_package/FFmpeg-Full-Sources.tar.gz" "$task_build/FFmpeg-Full-Sources.tar.gz"
+        if [ -f "$task_package/FFmpeg-Full-Sources.tar.gz" ]; then
+            mv -f "$task_package/FFmpeg-Full-Sources.tar.gz" "$task_build/FFmpeg-Full-Sources.tar.gz"
+        fi
     fi
     diskutil eject "$task_mount"
     task_mounted=no

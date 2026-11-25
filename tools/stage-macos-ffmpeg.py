@@ -1,4 +1,4 @@
-"""Relocate the Homebrew ffmpeg-full tools and collect their redistribution files."""
+"""Relocate Homebrew's FFmpeg tools and snapshot the recipes for the shipped libraries."""
 
 import json
 import os
@@ -117,24 +117,17 @@ def main() -> None:
     (target / "BUILDINFO.txt").write_text(config + "\n\n" + "\n".join(
         f"{name} {keg.name}" for name, keg in sorted(bundle.formulae.items())
     ) + "\n")
-    recipes = {}
+    recipes = scripts / "Recipes"
+    recipes.mkdir()
     notices = target / "Licenses"
     for name, keg in sorted(bundle.formulae.items()):
         [recipe] = (keg / ".brew").glob("*.rb")
-        recipes[name] = str(recipe)
+        shutil.copy2(recipe, recipes / f"{name}.rb")
         destination = notices / name
         destination.mkdir(parents=True)
         for file in keg.iterdir():
             if file.is_file() and file.name.upper().startswith(("LICENSE", "COPYING", "COPYRIGHT", "NOTICE", "AUTHORS")):
                 shutil.copy2(file, destination)
-    # Homebrew strips custom environment variables. The input contains local
-    # paths and is removed before creating the published source archive.
-    recipe_list = scripts / "installed-recipes.json"
-    recipe_list.write_text(json.dumps(recipes))
-    try:
-        subprocess.run(["brew", "ruby", str(scripts / "collect-brew-sources.rb")], check=True)
-    finally:
-        recipe_list.unlink()
     shutil.copy2(target / "BUILDINFO.txt", sources)
 
 
