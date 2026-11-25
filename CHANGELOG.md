@@ -4,6 +4,11 @@
 
 ## 简体中文
 
+### 5.0.1
+
+- 修复 Microsoft Store 版在 Windows 任务栏图标上出现的纯色底板，适配深色和浅色系统主题。
+- 为 Windows 开始菜单和搜索结果提供多种尺寸的清晰图标。
+
 ### 5.0.0
 
 - 映码首次同时发布 Windows 11 和 macOS 版本。Windows 使用 WinUI 3，Apple Silicon Mac 使用 SwiftUI，两端共用 C/C++ 与 Rust 转码核心。
@@ -303,6 +308,11 @@
 - 支持素材自动识别与三组色彩转换。
 
 ## English
+
+### 5.0.1
+
+- Fixed the solid background behind the Microsoft Store app icon on the Windows taskbar in light and dark themes.
+- Added high-resolution icon sizes for the Windows Start menu and search results.
 
 ### 5.0.0
 
