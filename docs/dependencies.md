@@ -63,7 +63,7 @@ GitHub 正式版的 Windows EXE、ZIP 和 MSI 均提供内置或外置 FFmpeg。
 
 首次在 Partner Center 补齐价格与可用性、年龄分级、商店内容及认证说明，在“包”页面上传正式发布运行的 `lumarecode-store-<commit>` 工件中的 `.msixupload`。应用使用桌面完全信任能力来启动随包提供的 FFmpeg 和 ffprobe。在认证说明中写清启动、导入素材及转换的步骤，并用无开发工具的 Windows 环境验证实际安装和转换。[包上传](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/upload-app-packages)
 
-首次发布上线后，可为 Microsoft Entra 应用配置 Partner Center 的 Manager 角色，在 `microsoft-store` 环境中设置 `STORE_TENANT_ID`、`STORE_SELLER_ID`、`STORE_CLIENT_ID`、`STORE_CLIENT_SECRET`。在 `main` 手动运行 **Submit Microsoft Store update** 并输入正式发布的 Actions 运行 ID。工作流验证对应的商店包并送交认证。[微软商店更新文档](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
+首次发布上线后，可为 Microsoft Entra 应用配置 Partner Center 的 Manager 角色，在 `microsoft-store` 环境中设置 `STORE_TENANT_ID`、`STORE_SELLER_ID`、`STORE_CLIENT_ID`、`STORE_CLIENT_SECRET`。在 `main` 手动运行 **Submit Microsoft Store update** 并输入正式发布的 Actions 运行 ID。工作流验证对应的商店包，确认现有提交已处理后送交认证。[微软商店更新文档](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
 
 ### macOS 安装与分发
 
@@ -160,7 +160,7 @@ The development MSIX uses `MIKU552.LumaRecode.Dev`. Release builds use `-Partner
 
 For the first submission, complete pricing and availability, age ratings, listings, and certification notes in Partner Center. On its Packages page, upload the `.msixupload` file from the official release run's `lumarecode-store-<commit>` artifact. The app uses full-trust desktop access to start the bundled FFmpeg and ffprobe. Give the reviewer instructions for launching, opening footage, and converting a sample, and validate installation and conversion on Windows without developer tools. [Package upload](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/upload-app-packages)
 
-After the first version goes live, assign the Microsoft Entra application the Partner Center Manager role. Set `STORE_TENANT_ID`, `STORE_SELLER_ID`, `STORE_CLIENT_ID`, and `STORE_CLIENT_SECRET` in the `microsoft-store` environment. Manually run **Submit Microsoft Store update** on `main` with the official release's Actions run ID. The workflow verifies the Store package and sends it for certification. [Microsoft Store update documentation](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
+After the first version goes live, assign the Microsoft Entra application the Partner Center Manager role. Set `STORE_TENANT_ID`, `STORE_SELLER_ID`, `STORE_CLIENT_ID`, and `STORE_CLIENT_SECRET` in the `microsoft-store` environment. Manually run **Submit Microsoft Store update** on `main` with the official release's Actions run ID. The workflow verifies the package and sends it for certification once any existing submission is resolved. [Microsoft Store update documentation](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
 
 ### macOS installation and distribution
 

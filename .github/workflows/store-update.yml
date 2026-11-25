@@ -69,4 +69,13 @@ jobs:
           $package = (Get-ChildItem -LiteralPath store -Filter '*.msixupload' -File).FullName
           msstore reconfigure --tenantId $env:STORE_TENANT_ID --sellerId $env:STORE_SELLER_ID `
             --clientId $env:STORE_CLIENT_ID --clientSecret $env:STORE_CLIENT_SECRET
+          $app = msstore apps get $identity.productId | ConvertFrom-Json
+          if ($app.Id -ne $identity.productId -or $app.PackageIdentityName -ne $identity.name -or
+              $app.PublisherName -ne $identity.publisher -or !$app.LastPublishedApplicationSubmission.Id) {
+            throw 'The configured product must match the package identity and already be live in the Store.'
+          }
+          # The CLI recreates pending drafts when publishing a package update.
+          if ($app.PendingApplicationSubmission.Id) {
+            throw 'Partner Center already has a pending submission. Resolve it before submitting this release.'
+          }
           msstore publish . --inputFile $package --appId $identity.productId
