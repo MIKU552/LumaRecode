@@ -19,6 +19,7 @@ param(
     [string]$StorePublisher = 'CN=MIKU552',
     [string]$StorePublisherDisplayName = 'MIKU552',
     [version]$StoreVersion,
+    [switch]$PartnerCenter,
     [switch]$UseEnvironmentalNativeTools,
     [switch]$SkipBuild
 )
@@ -36,6 +37,16 @@ $compiler = if ($Profile -eq 'Aot') { 'Aot' } else { 'Jit' }
 $deployment = if ($Profile -eq 'JitExternal') { 'FrameworkDependent' } else { 'Portable' }
 $payloadPath = if ($compiler -eq 'Aot') { "dist/Aot-Portable-$Target" } else { "dist/$deployment-$Target" }
 $variants = switch ($Ffmpeg) { 'Both' { 'external', 'bundled' } default { $Ffmpeg.ToLowerInvariant() } }
+if ($PartnerCenter) {
+    if ('Msix' -notin $Format -or $PSBoundParameters.ContainsKey('StoreName') -or
+        $PSBoundParameters.ContainsKey('StorePublisher') -or $PSBoundParameters.ContainsKey('StorePublisherDisplayName')) {
+        throw 'Use -PartnerCenter with -Format Msix and the registered Store identity.'
+    }
+    $identity = Get-Content -LiteralPath (Join-Path $project 'Packaging/StoreIdentity.json') -Raw | ConvertFrom-Json
+    $StoreName = $identity.name
+    $StorePublisher = $identity.publisher
+    $StorePublisherDisplayName = $identity.publisherDisplayName
+}
 if ($Target -eq 'Apx' -and $Profile -ne 'Aot') { throw 'APX is an explicit AOT build target.' }
 if ('Msix' -in $Format -and ($Profile -ne 'Aot' -or $Target -eq 'Apx')) {
     throw 'Build the Store package from the baseline x64 or ARM64 AOT application.'
@@ -133,7 +144,12 @@ try {
                 # WiX is a developer tool targeting .NET 6; reuse the installed
                 # SDK runtime to run it without imposing that dependency on users.
                 $env:DOTNET_ROLL_FORWARD = 'Major'
-                dotnet wix build Packaging/Installer.wxs -arch $cpu -pdbtype none -d "Version=$($versionParts[0])" -d "Payload=$stage" -o (Join-Path $destination "$stem.msi")
+                $helpLink = if ($Profile -eq 'JitExternal') {
+                    'https://dotnet.microsoft.com/download/dotnet/11.0'
+                } else {
+                    'https://lumarecode.miku552.top/'
+                }
+                dotnet wix build Packaging/Installer.wxs -arch $cpu -pdbtype none -d "Version=$($versionParts[0])" -d "Payload=$stage" -d "HelpLink=$helpLink" -o (Join-Path $destination "$stem.msi")
             } finally { $env:DOTNET_ROLL_FORWARD = $oldRollForward }
         }
         if ('Msix' -in $Format) {
@@ -145,7 +161,8 @@ try {
             $manifest.Package.Identity.SetAttribute('ProcessorArchitecture', $cpu)
             $manifest.Package.Properties.PublisherDisplayName = $StorePublisherDisplayName
             $manifest.Save((Join-Path $stage 'AppxManifest.xml'))
-            & (Find-MakeAppx) pack /d $stage /p (Join-Path $destination "$stem.msix") /o
+            $msixStem = if ($PartnerCenter) { "LumaRecode-$StoreVersion-$cpu-store" } else { $stem }
+            & (Find-MakeAppx) pack /d $stage /p (Join-Path $destination "$msixStem.msix") /o
             # The Store manifest and logos are only used by MSIX.
             Remove-Item -LiteralPath (Join-Path $stage 'AppxManifest.xml')
             foreach ($logo in Get-ChildItem -LiteralPath (Join-Path $stage 'StoreAssets') -File) {
@@ -169,7 +186,10 @@ try {
             Copy-Item -LiteralPath (Join-Path $single 'LumaRecode.exe') -Destination (Join-Path $destination "$stem.exe") -Force
         }
     }
-    Get-ChildItem -LiteralPath $destination -File | Where-Object Name -like "LumaRecode-$version-$($Target.ToLowerInvariant())-$($Profile.ToLowerInvariant())-*"
+    Get-ChildItem -LiteralPath $destination -File | Where-Object {
+        $_.Name -like "LumaRecode-$version-$($Target.ToLowerInvariant())-$($Profile.ToLowerInvariant())-*" -or
+        ($PartnerCenter -and $_.Name -eq "LumaRecode-$StoreVersion-$cpu-store.msix")
+    }
 } finally {
     if ($staging -and (Test-Path -LiteralPath $staging)) {
         $absolute = (Resolve-Path -LiteralPath $staging).Path

@@ -2,6 +2,7 @@
 *.cube -diff -text
 *.ico binary
 *.png binary
+*.webp binary
 App/Assets/Fonts/*.ttf binary linguist-vendored=true
 App/Native/*.dll binary linguist-vendored=true
 App/Native/**/*.dll binary linguist-vendored=true

@@ -1,0 +1,72 @@
+name: Submit Microsoft Store update
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_run:
+        description: Run ID of a successful Publish GitHub release workflow
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: microsoft-store-submission
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    if: github.repository == 'MIKU552/LumaRecode' && github.ref == 'refs/heads/main'
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 30
+    environment: microsoft-store
+    permissions:
+      actions: read
+      contents: read
+      attestations: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify the released Store package
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN: ${{ inputs.release_run }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          if ($env:RELEASE_RUN -notmatch '^\d+$') { throw 'Enter the numeric Actions run ID.' }
+          $run = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:RELEASE_RUN" | ConvertFrom-Json
+          if ($run.path -ne '.github/workflows/release.yml' -or $run.event -ne 'workflow_dispatch' -or
+              $run.head_branch -ne 'main' -or $run.conclusion -ne 'success') {
+            throw 'Select a successful official release workflow run on main.'
+          }
+          gh run download $env:RELEASE_RUN --name "lumarecode-store-$($run.head_sha)" --dir store
+          $packages = @(Get-ChildItem -LiteralPath store -Filter '*.msixupload' -File)
+          if ($packages.Count -ne 1) { throw 'Expected one Store upload file.' }
+          $package = $packages[0]
+          gh attestation verify $package.FullName --repo $env:GITHUB_REPOSITORY `
+            --signer-workflow "$env:GITHUB_REPOSITORY/.github/workflows/native-core.yml" `
+            --source-ref refs/heads/main --source-digest $run.head_sha --deny-self-hosted-runners
+      - uses: microsoft/microsoft-store-apppublisher@15abd1c50fcc164b19cb240fb04ef3c49bf715a2 # v1.1
+        with:
+          version: v0.4.4
+      - name: Send the package to Partner Center certification
+        shell: pwsh
+        env:
+          STORE_TENANT_ID: ${{ secrets.STORE_TENANT_ID }}
+          STORE_SELLER_ID: ${{ secrets.STORE_SELLER_ID }}
+          STORE_CLIENT_ID: ${{ secrets.STORE_CLIENT_ID }}
+          STORE_CLIENT_SECRET: ${{ secrets.STORE_CLIENT_SECRET }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          if (!$env:STORE_TENANT_ID -or !$env:STORE_SELLER_ID -or !$env:STORE_CLIENT_ID -or !$env:STORE_CLIENT_SECRET) {
+            throw 'Configure the Microsoft Store environment secrets after the first Partner Center publication.'
+          }
+          $identity = Get-Content -LiteralPath 'Packaging/StoreIdentity.json' -Raw | ConvertFrom-Json
+          $package = (Get-ChildItem -LiteralPath store -Filter '*.msixupload' -File).FullName
+          msstore reconfigure --tenantId $env:STORE_TENANT_ID --sellerId $env:STORE_SELLER_ID `
+            --clientId $env:STORE_CLIENT_ID --clientSecret $env:STORE_CLIENT_SECRET
+          msstore publish . --inputFile $package --appId $identity.productId

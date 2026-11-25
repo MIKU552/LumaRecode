@@ -6,6 +6,7 @@
     <MediaTemplate EmbedCab="yes" />
     <Icon Id="AppIcon" SourceFile="$(var.Payload)\LumaRecode.ico" />
     <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPHELPLINK" Value="$(var.HelpLink)" />
     <StandardDirectory Id="LocalAppDataFolder">
       <Directory Id="Programs" Name="Programs">
         <Directory Id="INSTALLFOLDER" Name="LumaRecode" />

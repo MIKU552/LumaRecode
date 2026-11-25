@@ -4,6 +4,14 @@
 
 ## 简体中文
 
+### 5.0.0
+
+- 映码首次同时发布 Windows 11 和 macOS 版本。Windows 使用 WinUI 3，Apple Silicon Mac 使用 SwiftUI，两端共用 C/C++ 与 Rust 转码核心。
+- 支持相机 Log 与 HDR/SDR 转换、逐帧预览和裁剪、静态图片与动态照片导出。Windows 提供 Ultra HDR JPEG 和 Android Motion Photo，macOS 提供 HDR HEIC、Adaptive HDR HEIC、实况照片及 HLG 转 Dolby Vision 8.4。
+- Windows 提供 x64 和 ARM64 的 Native AOT 和外置 .NET 版，各有单文件 EXE、便携 ZIP 和 MSI。外置 .NET 版缺少运行时时提供微软下载入口。GitHub 上的 Windows 安装包使用外置 FFmpeg。
+- macOS 提供标准和内置 FFmpeg Full 的 DMG。FFmpeg Full 同时提供对应源码。
+- 重新编写跨平台使用、命令行、开发和分发文档，新增项目网站。正式发布通过手动 GitHub Actions 构建和验证，配套 SHA-256 与来源证明。
+
 ### 5.0.0 Beta 3
 
 - Windows 时间轴支持连续播放、暂停、拖动和左右键逐帧定位。主界面与 Mica 预览面板平滑切换，点击外部或按 Esc 可关闭。
@@ -295,6 +303,14 @@
 - 支持素材自动识别与三组色彩转换。
 
 ## English
+
+### 5.0.0
+
+- LumaRecode ships for Windows 11 and macOS. The WinUI 3 and Apple silicon SwiftUI apps share a C/C++ and Rust transcoding core.
+- Convert camera Log and HDR/SDR video, trim with a frame-accurate preview, and export stills and motion photos. Windows offers Ultra HDR JPEG and Android Motion Photo. macOS offers HDR and Adaptive HDR HEIC, Live Photos, and HLG to Dolby Vision 8.4.
+- Windows offers Native AOT and framework-dependent editions for x64 and ARM64 as an EXE, portable ZIP, or MSI. The framework-dependent edition offers a Microsoft download link when its runtime is missing. GitHub Windows packages use external FFmpeg.
+- macOS offers a standard DMG and an FFmpeg Full DMG with a corresponding source archive.
+- The cross-platform user, CLI, development, and distribution guides accompany the new project site. Manual GitHub Actions releases include SHA-256 checksums and build attestations.
 
 ### 5.0.0 Beta 3
 

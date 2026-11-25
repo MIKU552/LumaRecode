@@ -62,7 +62,7 @@ Each page below provides complete Chinese and English sections, selectable at th
 | Document | Contents |
 | --- | --- |
 | [Color conversion](color-conversion.md#english) | Camera curves, dynamic HDR and RAW development |
-| [Development and distribution](dependencies.md#english) | Builds, dependencies, fonts, Visual Studio and single-file packaging |
+| [Development and distribution](dependencies.md#english) | Visual Studio, Xcode, packaging, Store submissions and build provenance |
 | [Architecture](architecture.md#english) | Modules, job lifetimes, threads and caches |
 | [Shared core](refactoring.md#english) | C ABI, processes, timelines and output transactions |
 | [Performance](performance.md#english) | Preview, memory and runtime measurements |
