@@ -13,6 +13,7 @@
   <link rel="alternate" hreflang="x-default" href="https://lumarecode.miku552.top/">
   <script src="language.js" data-choose-language></script>
   <link rel="icon" href="assets/lumarecode.png" type="image/png">
+  <script src="appearance.js"></script>
   <link rel="stylesheet" href="style.css">
   <title>LumaRecode · Video transcoding for Windows and macOS</title>
 </head>
@@ -32,6 +33,13 @@
         <a href="ja/" data-language="ja" lang="ja" hreflang="ja">日本語</a>
         <a href="es/" data-language="es" lang="es" hreflang="es">Español</a>
       </nav>
+      <div class="theme-picker" hidden>
+        <select aria-label="Appearance">
+          <option value="system">System theme</option>
+          <option value="light">Light theme</option>
+          <option value="dark">Dark theme</option>
+        </select>
+      </div>
     </div>
   </header>
   <main id="main">
@@ -47,7 +55,7 @@
       </div>
       <figure class="hero-shot">
         <picture>
-          <source media="(prefers-color-scheme: light)" srcset="assets/windows-conversion-light.webp">
+          <source data-light-screenshot media="(prefers-color-scheme: light)" srcset="assets/windows-conversion-light.webp">
           <img src="assets/windows-conversion.webp" width="1600" height="1291" fetchpriority="high" alt="LumaRecode for Windows, showing the source and conversion controls">
         </picture>
         <figcaption>Video conversion on Windows 11</figcaption>
@@ -70,7 +78,7 @@
     <section class="wrap photos">
       <figure>
         <picture>
-          <source media="(prefers-color-scheme: light)" srcset="assets/windows-photos-light.webp">
+          <source data-light-screenshot media="(prefers-color-scheme: light)" srcset="assets/windows-photos-light.webp">
           <img src="assets/windows-photos.webp" width="1400" height="1129" loading="lazy" alt="The Images and Motion Photos tab in LumaRecode for Windows">
         </picture>
         <figcaption>Images &amp; Motion Photos on Windows 11</figcaption>

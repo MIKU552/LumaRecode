@@ -13,6 +13,7 @@
   <link rel="alternate" hreflang="x-default" href="https://lumarecode.miku552.top/">
   <script src="../language.js"></script>
   <link rel="icon" href="../assets/lumarecode.png" type="image/png">
+  <script src="../appearance.js"></script>
   <link rel="stylesheet" href="../style.css">
   <title>LumaRecode · Transcodificación de vídeo para Windows y macOS</title>
 </head>
@@ -32,6 +33,13 @@
         <a href="../ja/" data-language="ja" lang="ja" hreflang="ja">日本語</a>
         <a href="./" data-language="es" lang="es" hreflang="es" aria-current="page">Español</a>
       </nav>
+      <div class="theme-picker" hidden>
+        <select aria-label="Apariencia">
+          <option value="system">Tema del sistema</option>
+          <option value="light">Tema claro</option>
+          <option value="dark">Tema oscuro</option>
+        </select>
+      </div>
     </div>
   </header>
   <main id="main">
@@ -47,7 +55,7 @@
       </div>
       <figure class="hero-shot">
         <picture>
-          <source media="(prefers-color-scheme: light)" srcset="../assets/windows-conversion-es-light.webp">
+          <source data-light-screenshot media="(prefers-color-scheme: light)" srcset="../assets/windows-conversion-es-light.webp">
           <img src="../assets/windows-conversion-es.webp" width="1600" height="1291" fetchpriority="high" alt="Interfaz en español de LumaRecode para Windows, con el vídeo de origen y las opciones de conversión">
         </picture>
         <figcaption>Conversión de vídeo en Windows 11</figcaption>
@@ -70,7 +78,7 @@
     <section class="wrap photos">
       <figure>
         <picture>
-          <source media="(prefers-color-scheme: light)" srcset="../assets/windows-photos-es-light.webp">
+          <source data-light-screenshot media="(prefers-color-scheme: light)" srcset="../assets/windows-photos-es-light.webp">
           <img src="../assets/windows-photos-es.webp" width="1400" height="1129" loading="lazy" alt="Pestaña Imágenes y fotos en movimiento en la versión de LumaRecode para Windows en español">
         </picture>
         <figcaption>Imágenes y fotos en movimiento en Windows 11</figcaption>

@@ -13,6 +13,7 @@
   <link rel="alternate" hreflang="x-default" href="https://lumarecode.miku552.top/">
   <script src="../language.js"></script>
   <link rel="icon" href="../assets/lumarecode.png" type="image/png">
+  <script src="../appearance.js"></script>
   <link rel="stylesheet" href="../style.css">
   <title>LumaRecode · Windows と macOS の動画変換</title>
 </head>
@@ -32,6 +33,13 @@
         <a href="./" data-language="ja" lang="ja" hreflang="ja" aria-current="page">日本語</a>
         <a href="../es/" data-language="es" lang="es" hreflang="es">Español</a>
       </nav>
+      <div class="theme-picker" hidden>
+        <select aria-label="外観">
+          <option value="system">システム設定</option>
+          <option value="light">ライト</option>
+          <option value="dark">ダーク</option>
+        </select>
+      </div>
     </div>
   </header>
   <main id="main">
@@ -47,7 +55,7 @@
       </div>
       <figure class="hero-shot">
         <picture>
-          <source media="(prefers-color-scheme: light)" srcset="../assets/windows-conversion-ja-light.webp">
+          <source data-light-screenshot media="(prefers-color-scheme: light)" srcset="../assets/windows-conversion-ja-light.webp">
           <img src="../assets/windows-conversion-ja.webp" width="1600" height="1291" fetchpriority="high" alt="LumaRecode for Windows の日本語画面。動画素材と変換設定を表示しています">
         </picture>
         <figcaption>Windows 11 での動画変換</figcaption>
@@ -70,7 +78,7 @@
     <section class="wrap photos">
       <figure>
         <picture>
-          <source media="(prefers-color-scheme: light)" srcset="../assets/windows-photos-ja-light.webp">
+          <source data-light-screenshot media="(prefers-color-scheme: light)" srcset="../assets/windows-photos-ja-light.webp">
           <img src="../assets/windows-photos-ja.webp" width="1400" height="1129" loading="lazy" alt="LumaRecode for Windows の日本語画面にある「画像・モーションフォト」タブ">
         </picture>
         <figcaption>Windows 11 の画像・モーションフォト</figcaption>
