@@ -53,15 +53,17 @@ $tools = ./tools/Stage-WindowsFfmpeg.ps1 -Target X64
 
 生成文件在 `dist/windows/`。WiX 用于生成 MSI，打包脚本从工具清单还原。打包内置工具需要匹配架构的 `bin/ffmpeg.exe`、`bin/ffprobe.exe` 和 `BUILDINFO.txt`。发布含 FFmpeg 的包时，应同时提供该版本对应的源码和库的许可。[FFmpeg 许可](https://ffmpeg.org/legal.html)
 
-GitHub 正式版的 Windows EXE、ZIP 和 MSI 均提供内置或外置 FFmpeg。内置版使用 MSYS2 的 FFmpeg，包含 `zscale`、`lut3d` 和 `libplacebo`，每种架构随发版提供对应的源包和签名。选择外置版时，安装具备这些滤镜的 FFmpeg，在工具路径面板检测或指定程序。
+GitHub 正式版的 Windows EXE、ZIP 和 MSI 均提供内置或外置 FFmpeg。内置版使用 MSYS2 的 FFmpeg，包含 `zscale`、`lut3d` 和 `libplacebo`。应用包内含可执行工具、依赖、许可证和构建信息。各架构对应的源码和签名可在[同版本 Release](https://github.com/MIKU552/LumaRecode/releases) 的附件中单独下载。选择外置版时，安装具备这些滤镜的 FFmpeg，在工具路径面板检测或指定程序。
 
 外置 .NET 版启动时由 .NET 宿主查找匹配架构的运行时。桌面启动遇到缺失时，弹窗可打开微软下载页。终端自动化可设置 `DOTNET_DISABLE_GUI_ERRORS=1`，通过退出码、标准错误和下载链接处理缺失的运行时。安装对应 x64 或 ARM64 的 **.NET 11 Runtime** 后重新启动。[微软官方下载](https://dotnet.microsoft.com/download/dotnet/11.0)
 
 ### Microsoft Store
 
-开发 MSIX 使用 `MIKU552.LumaRecode.Dev`。发布构建使用 `-PartnerCenter` 读取 `Packaging/StoreIdentity.json`，再把 x64 和 ARM64 包合成 `.msixupload`。其中的应用名、发布者和产品 ID 是产品标识。Entra 凭据单独保存在 GitHub 的 `microsoft-store` 环境里。
+开发 MSIX 使用 `MIKU552.LumaRecode.Dev`。发布构建使用 `-PartnerCenter` 读取 [StoreIdentity.json](../Packaging/StoreIdentity.json)，再把 x64 和 ARM64 包合成 `.msixupload`。其中的包名、发布者、发布者显示名和商店 ID 可公开。Entra 凭据应配置在单独的 GitHub `microsoft-store` 环境中。[应用标识字段](https://learn.microsoft.com/en-us/windows/apps/publish/view-app-identity-details)
 
-首次在 Partner Center 补齐价格与可用性、年龄分级、商店内容及认证说明，在“包”页面上传正式发布运行的 `lumarecode-store-<commit>` 工件中的 `.msixupload`。应用使用桌面完全信任能力来启动随包提供的 FFmpeg 和 ffprobe。在认证说明中写清启动、导入素材及转换的步骤，并用无开发工具的 Windows 环境验证实际安装和转换。[包上传](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/upload-app-packages)
+首次在 Partner Center 补齐价格与可用性、年龄分级、商店内容及认证说明，在“包”页面上传正式发布运行的 `lumarecode-store-<commit>` 工件中的 `.msixupload`。[包上传](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/upload-app-packages)
+
+上传时出现 `runFullTrust` 警告后，在「提交选项」填写受限能力用途。应用以当前用户权限运行 WinUI 3 桌面程序，启动随包的 FFmpeg 和 ffprobe，读写用户选择的本地输入和输出，并通过打包 COM 激活完成通知。微软会在认证时审查该说明。认证备注可另附导入素材和软件归档转换的步骤。[微软的受限能力说明](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/app-capability-declarations#restricted-capabilities)
 
 首次发布上线后，可为 Microsoft Entra 应用配置 Partner Center 的 Manager 角色，在 `microsoft-store` 环境中设置 `STORE_TENANT_ID`、`STORE_SELLER_ID`、`STORE_CLIENT_ID`、`STORE_CLIENT_SECRET`。在 `main` 手动运行 **Submit Microsoft Store update** 并输入正式发布的 Actions 运行 ID。工作流验证对应的商店包，确认现有提交已处理后送交认证。[微软商店更新文档](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
 
@@ -150,15 +152,17 @@ $tools = ./tools/Stage-WindowsFfmpeg.ps1 -Target X64
 
 Packages appear in `dist/windows/`. The packaging script restores WiX from the tool manifest. Bundling FFmpeg requires an architecture-matched `bin/ffmpeg.exe` and `bin/ffprobe.exe`, plus a `BUILDINFO.txt`. For public distribution, provide the corresponding source and library license texts for the exact binaries. [FFmpeg licensing](https://ffmpeg.org/legal.html)
 
-GitHub releases offer each Windows EXE, ZIP, and MSI with or without FFmpeg. Bundled editions use MSYS2 FFmpeg with `zscale`, `lut3d`, and `libplacebo`. Each architecture has a corresponding source and signature archive. For an external edition, install an FFmpeg build with those filters and use the tool path panel to detect or specify it.
+GitHub releases offer each Windows EXE, ZIP, and MSI with or without FFmpeg. Bundled editions use MSYS2 FFmpeg with `zscale`, `lut3d`, and `libplacebo`. The application packages contain the executables, dependencies, license texts and build information. The corresponding source and signatures for each architecture are separate assets on the [same version's release page](https://github.com/MIKU552/LumaRecode/releases). For an external edition, install an FFmpeg build with those filters and use the tool path panel to detect or specify it.
 
 The framework-dependent edition uses the .NET app host to locate a runtime for the executable's architecture. If it is missing on a desktop launch, the dialog offers a Microsoft download link. Set `DOTNET_DISABLE_GUI_ERRORS=1` for unattended command-line use and handle the nonzero exit code, diagnostic, and download link on standard error. Install the **.NET 11 Runtime** for x64 or ARM64 as appropriate, then relaunch. [Microsoft downloads](https://dotnet.microsoft.com/download/dotnet/11.0)
 
 ### Microsoft Store
 
-The development MSIX uses `MIKU552.LumaRecode.Dev`. Release builds use `-PartnerCenter` to read `Packaging/StoreIdentity.json` and combine the x64 and ARM64 packages into an `.msixupload`. The app name, publisher and product ID are product identifiers. Entra credentials belong in the separate `microsoft-store` GitHub environment.
+The development MSIX uses `MIKU552.LumaRecode.Dev`. Release builds use `-PartnerCenter` to read [StoreIdentity.json](../Packaging/StoreIdentity.json) and combine the x64 and ARM64 packages into an `.msixupload`. The package name, publisher, publisher display name and Store ID can be public. Configure Entra credentials in the separate `microsoft-store` GitHub environment. [App identity fields](https://learn.microsoft.com/en-us/windows/apps/publish/view-app-identity-details)
 
-For the first submission, complete pricing and availability, age ratings, listings, and certification notes in Partner Center. On its Packages page, upload the `.msixupload` file from the official release run's `lumarecode-store-<commit>` artifact. The app uses full-trust desktop access to start the bundled FFmpeg and ffprobe. Give the reviewer instructions for launching, opening footage, and converting a sample, and validate installation and conversion on Windows without developer tools. [Package upload](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/upload-app-packages)
+For the first submission, complete pricing and availability, age ratings, listings, and certification notes in Partner Center. On its Packages page, upload the `.msixupload` file from the official release run's `lumarecode-store-<commit>` artifact. [Package upload](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/upload-app-packages)
+
+When the upload reports the `runFullTrust` warning, describe the restricted capability under **Submission options**. LumaRecode runs as a WinUI 3 desktop app under the signed-in user's permissions, launches the bundled FFmpeg and ffprobe, reads and writes the local paths the user selects, and uses packaged COM activation for completion notifications. Microsoft reviews the explanation during certification. Include sample import and Software archive conversion steps in the certification notes. [Microsoft's restricted capability guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/app-capability-declarations#restricted-capabilities)
 
 After the first version goes live, assign the Microsoft Entra application the Partner Center Manager role. Set `STORE_TENANT_ID`, `STORE_SELLER_ID`, `STORE_CLIENT_ID`, and `STORE_CLIENT_SECRET` in the `microsoft-store` environment. Manually run **Submit Microsoft Store update** on `main` with the official release's Actions run ID. The workflow verifies the package and sends it for certification once any existing submission is resolved. [Microsoft Store update documentation](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
 

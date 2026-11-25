@@ -20,8 +20,10 @@ Their licenses and notices are included in licenses/.
 
 FFmpeg and ffprobe run as separate processes. Windows packages built with
 external tools use the local installation. Locally staged Windows FFmpeg
-bundles keep their upstream archive notices and BUILDINFO.txt. Public
-distribution of a bundled build includes its corresponding sources.
+bundles keep their upstream archive notices and BUILDINFO.txt.
+Each public release provides the corresponding FFmpeg sources as separate
+downloads on its release page:
+https://github.com/MIKU552/LumaRecode/releases
 The optional macOS FFmpeg Full
 package includes a GPL-3.0-or-later FFmpeg build from Homebrew. See the bundled
 FFmpeg/BUILDINFO.txt, FFmpeg/Licenses, and the corresponding source archive

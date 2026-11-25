@@ -4,6 +4,10 @@
 !/.gitattributes
 !/.editorconfig
 !/README.md
+!/ACCESSIBILITY.md
+!/CODE_OF_CONDUCT.md
+!/CONTRIBUTING.md
+!/SECURITY.md
 !/LICENSE
 !/NOTICE
 !/docs/
