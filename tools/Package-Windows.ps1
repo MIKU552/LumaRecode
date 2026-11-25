@@ -86,13 +86,26 @@ if ('bundled' -in $variants) {
 function New-StoreAssets([string]$Stage) {
     Add-Type -AssemblyName System.Drawing
     $folder = New-Item -ItemType Directory -Path (Join-Path $Stage 'StoreAssets')
+    $assets = [ordered]@{ StoreLogo = 50; Square44x44Logo = 44; Square150x150Logo = 150 }
+    foreach ($logo in @('Square44x44Logo', 'Square150x150Logo')) {
+        foreach ($scale in @(125, 150, 200, 400)) {
+            $assets["$logo.scale-$scale"] = [int]($assets[$logo] * $scale / 100)
+        }
+    }
+    foreach ($size in @(16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 256)) {
+        foreach ($style in @('', '_altform-unplated', '_altform-lightunplated')) {
+            $assets["Square44x44Logo.targetsize-$size$style"] = $size
+        }
+    }
+
     $image = [Drawing.Image]::FromFile((Join-Path $project 'Brand/LumaRecode.png'))
     try {
-        foreach ($asset in @{StoreLogo=50;Square44x44Logo=44;Square150x150Logo=150}.GetEnumerator()) {
-            $bitmap = [Drawing.Bitmap]::new($asset.Value, $asset.Value)
+        foreach ($asset in $assets.GetEnumerator()) {
+            $bitmap = [Drawing.Bitmap]::new($asset.Value, $asset.Value, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
             try {
                 $graphics = [Drawing.Graphics]::FromImage($bitmap)
                 try {
+                    $graphics.CompositingMode = [Drawing.Drawing2D.CompositingMode]::SourceCopy
                     $graphics.InterpolationMode = [Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
                     $graphics.DrawImage($image, 0, 0, $asset.Value, $asset.Value)
                 } finally { $graphics.Dispose() }
@@ -102,15 +115,32 @@ function New-StoreAssets([string]$Stage) {
     } finally { $image.Dispose() }
 }
 
-function Find-MakeAppx {
-    if ($command = Get-Command 'makeappx.exe' -ErrorAction SilentlyContinue) { return $command.Source }
+function Find-WindowsSdkTool([string]$Name) {
+    if ($command = Get-Command $Name -ErrorAction SilentlyContinue) { return $command.Source }
     $sdk = $applicationProject.Project.ItemGroup.PackageReference | Where-Object Include -eq 'Microsoft.Windows.SDK.BuildTools'
     $packages = if ($env:NUGET_PACKAGES) { $env:NUGET_PACKAGES } else { Join-Path $env:USERPROFILE '.nuget/packages' }
     $hostCpu = [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
-    $tool = Get-ChildItem -LiteralPath (Join-Path $packages "microsoft.windows.sdk.buildtools/$($sdk.Version)/bin") -Recurse -Filter 'makeappx.exe' |
+    $tool = Get-ChildItem -LiteralPath (Join-Path $packages "microsoft.windows.sdk.buildtools/$($sdk.Version)/bin") -Recurse -Filter $Name |
         Where-Object {$_.Directory.Name -eq $hostCpu} | Select-Object -First 1
-    if (!$tool) { throw 'MakeAppx was not found in the Windows SDK or NuGet build tools.' }
+    if (!$tool) { throw "$Name was not found in the Windows SDK or NuGet build tools." }
     return $tool.FullName
+}
+
+function New-StoreResourceIndex([string]$Stage, [string]$Work) {
+    $makePri = Find-WindowsSdkTool 'makepri.exe'
+    $configPath = Join-Path $Work 'priconfig.xml'
+    & $makePri createconfig /cf $configPath /dq en-US
+    $config = [xml](Get-Content -LiteralPath $configPath -Raw)
+    # Keep DPI variants in each architecture package and preserve the existing WinUI resources.
+    $packaging = $config.SelectSingleNode('/resources/packaging')
+    if ($packaging) { [void]$packaging.ParentNode.RemoveChild($packaging) }
+    $logoIndex = $config.SelectSingleNode('/resources/index')
+    $logoIndex.SetAttribute('startIndexAt', 'StoreAssets')
+    $appIndex = $logoIndex.CloneNode($true)
+    $appIndex.SetAttribute('startIndexAt', 'resources.pri')
+    [void]$logoIndex.ParentNode.AppendChild($appIndex)
+    $config.Save($configPath)
+    & $makePri new /pr $Stage /cf $configPath /mn (Join-Path $Stage 'AppxManifest.xml') /of (Join-Path $Work 'resources.pri')
 }
 
 Push-Location -LiteralPath $project
@@ -162,7 +192,17 @@ try {
             $manifest.Package.Properties.PublisherDisplayName = $StorePublisherDisplayName
             $manifest.Save((Join-Path $stage 'AppxManifest.xml'))
             $msixStem = if ($PartnerCenter) { "LumaRecode-$StoreVersion-$cpu-store" } else { $stem }
-            & (Find-MakeAppx) pack /d $stage /p (Join-Path $destination "$msixStem.msix") /o
+            $resourceWork = (New-Item -ItemType Directory -Path (Join-Path $staging "$variant-pri")).FullName
+            New-StoreResourceIndex $stage $resourceWork
+            $appPri = Join-Path $stage 'resources.pri'
+            $originalPri = Join-Path $resourceWork 'original.pri'
+            Move-Item -LiteralPath $appPri -Destination $originalPri
+            try {
+                Move-Item -LiteralPath (Join-Path $resourceWork 'resources.pri') -Destination $appPri
+                & (Find-WindowsSdkTool 'makeappx.exe') pack /d $stage /p (Join-Path $destination "$msixStem.msix") /o
+            } finally {
+                Move-Item -LiteralPath $originalPri -Destination $appPri -Force
+            }
             # The Store manifest and logos are only used by MSIX.
             Remove-Item -LiteralPath (Join-Path $stage 'AppxManifest.xml')
             foreach ($logo in Get-ChildItem -LiteralPath (Join-Path $stage 'StoreAssets') -File) {
