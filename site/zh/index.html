@@ -13,8 +13,8 @@
   <link rel="alternate" hreflang="x-default" href="https://lumarecode.miku552.top/">
   <script src="../language.js"></script>
   <link rel="icon" href="../assets/lumarecode.png" type="image/png">
-  <script src="../appearance.js"></script>
-  <link rel="stylesheet" href="../style.css">
+  <script src="../appearance.js?v=2"></script>
+  <link rel="stylesheet" href="../style.css?v=2">
   <title>映码 · Windows 与 macOS 视频转换</title>
 </head>
 <body>
@@ -33,13 +33,14 @@
         <a href="../ja/" data-language="ja" lang="ja" hreflang="ja">日本語</a>
         <a href="../es/" data-language="es" lang="es" hreflang="es">Español</a>
       </nav>
-      <div class="theme-picker" hidden>
-        <select aria-label="外观">
-          <option value="system">跟随系统</option>
-          <option value="light">浅色</option>
-          <option value="dark">深色</option>
-        </select>
-      </div>
+      <details class="theme-picker" data-label="外观" hidden>
+        <summary>跟随系统</summary>
+        <div class="theme-menu" role="group" aria-label="外观">
+          <button type="button" data-mode="system" aria-pressed="true">跟随系统</button>
+          <button type="button" data-mode="light" aria-pressed="false">浅色</button>
+          <button type="button" data-mode="dark" aria-pressed="false">深色</button>
+        </div>
+      </details>
     </div>
   </header>
   <main id="main">

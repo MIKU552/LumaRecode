@@ -6,8 +6,8 @@
   <meta name="color-scheme" content="light dark">
   <link rel="canonical" href="https://lumarecode.miku552.top/privacy.html">
   <link rel="icon" href="assets/lumarecode.png" type="image/png">
-  <script src="appearance.js"></script>
-  <link rel="stylesheet" href="style.css">
+  <script src="appearance.js?v=2"></script>
+  <link rel="stylesheet" href="style.css?v=2">
   <title>Privacy · LumaRecode</title>
 </head>
 <body>
@@ -20,13 +20,14 @@
         <a href="#ja" lang="ja">日本語</a>
         <a href="#es" lang="es">Español</a>
       </nav>
-      <div class="theme-picker" hidden>
-        <select aria-label="Appearance">
-          <option value="system">System theme</option>
-          <option value="light">Light theme</option>
-          <option value="dark">Dark theme</option>
-        </select>
-      </div>
+      <details class="theme-picker" data-label="Appearance" hidden>
+        <summary>System theme</summary>
+        <div class="theme-menu" role="group" aria-label="Appearance">
+          <button type="button" data-mode="system" aria-pressed="true">System theme</button>
+          <button type="button" data-mode="light" aria-pressed="false">Light theme</button>
+          <button type="button" data-mode="dark" aria-pressed="false">Dark theme</button>
+        </div>
+      </details>
     </div>
   </header>
   <main class="wrap policy">
