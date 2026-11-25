@@ -23,94 +23,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  windows_ffmpeg:
-    name: Prepare Windows FFmpeg (${{ matrix.cpu }})
-    if: github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode' && inputs.release_packages
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-2025-vs2026
-            cpu: x64
-            msys: UCRT64
-            msys_prefix: mingw-w64-ucrt-x86_64
-          - os: windows-11-vs2026-arm
-            cpu: arm64
-            msys: CLANGARM64
-            msys_prefix: mingw-w64-clang-aarch64
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: msys2/setup-msys2@3c51bf698df1e37b2261f53cb67797b97761185c # v2.34.0
-        id: ffmpeg
-        with:
-          msystem: ${{ matrix.msys }}
-          update: true
-          cache: false
-          install: ${{ matrix.msys_prefix }}-ffmpeg ${{ matrix.msys_prefix }}-vulkan-loader
-      - name: Stage the tools and record their corresponding sources
-        shell: pwsh
-        env:
-          LUMA_MSYS_ROOT: ${{ steps.ffmpeg.outputs.msys2-location }}
-          LUMA_TARGET: ${{ matrix.cpu }}
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $PSNativeCommandUseErrorActionPreference = $true
-          python -m pip install --require-hashes --no-deps -r tools/ffmpeg-windows-build-requirements.txt
-          python tools/stage_windows_ffmpeg.py stage --arch $env:LUMA_TARGET --msys $env:LUMA_MSYS_ROOT --output "$env:RUNNER_TEMP/ffmpeg-prepared"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: lumarecode-windows-${{ matrix.cpu }}-ffmpeg-payload
-          path: ${{ runner.temp }}/ffmpeg-prepared/FFmpeg/
-          if-no-files-found: error
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: lumarecode-windows-${{ matrix.cpu }}-ffmpeg-source-input
-          path: ${{ runner.temp }}/ffmpeg-prepared/source-input/
-          if-no-files-found: error
-
-  macos_ffmpeg:
-    name: Prepare macOS FFmpeg Full
-    if: github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode'
-    runs-on: xcode-27
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Stage FFmpeg Full and record its Homebrew recipes
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: '1'
-          HOMEBREW_NO_INSTALL_CLEANUP: '1'
-        run: |
-          HOMEBREW_FORCE_API_AUTO_UPDATE=1 HOMEBREW_API_AUTO_UPDATE_SECS=0 brew install ffmpeg-full molten-vk
-          version="$("$(brew --prefix ffmpeg-full)/bin/ffmpeg" -version | sed -n '1s/^ffmpeg version \([^ ]*\).*/\1/p')"
-          if [ "$version" != '9.1' ]; then
-            echo "Expected reviewed FFmpeg 9.1. Homebrew supplied $version." >&2
-            exit 1
-          fi
-          python3 tools/stage-macos-ffmpeg.py "$RUNNER_TEMP/ffmpeg-prepared/FFmpeg" "$RUNNER_TEMP/ffmpeg-source-input"
-          tar -czf "$RUNNER_TEMP/FFmpeg-Full-Payload.tar.gz" -C "$RUNNER_TEMP/ffmpeg-prepared" FFmpeg
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: lumarecode-macos-ffmpeg-payload
-          path: ${{ runner.temp }}/FFmpeg-Full-Payload.tar.gz
-          if-no-files-found: error
-          compression-level: 0
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: lumarecode-macos-ffmpeg-source-input
-          path: ${{ runner.temp }}/ffmpeg-source-input/
-          if-no-files-found: error
-
   core:
     name: ${{ matrix.name }}
-    needs: [windows_ffmpeg, macos_ffmpeg]
-    if: >-
-      ${{ !cancelled() &&
-          (needs.windows_ffmpeg.result == 'success' || needs.windows_ffmpeg.result == 'skipped') &&
-          (needs.macos_ffmpeg.result == 'success' || needs.macos_ffmpeg.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
@@ -118,9 +32,13 @@ jobs:
           - name: Windows x64
             os: windows-2025-vs2026
             cpu: x64
+            msys: UCRT64
+            msys_prefix: mingw-w64-ucrt-x86_64
           - name: Windows ARM64
             os: windows-11-vs2026-arm
             cpu: arm64
+            msys: CLANGARM64
+            msys_prefix: mingw-w64-clang-aarch64
           - name: macOS 27 ARM64
             os: xcode-27
             cpu: arm64
@@ -234,22 +152,30 @@ jobs:
           retention-days: 14
           if-no-files-found: error
           path: ${{ runner.temp }}/LumaRecode-Windows-${{ matrix.cpu }}-Portable.zip
-      - name: Download the staged Windows FFmpeg
+      - name: Install MSYS2 FFmpeg for redistribution
         if: runner.os == 'Windows' && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode' && inputs.release_packages
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        id: ffmpeg
+        uses: msys2/setup-msys2@3c51bf698df1e37b2261f53cb67797b97761185c # v2.34.0
         with:
-          name: lumarecode-windows-${{ matrix.cpu }}-ffmpeg-payload
-          path: ${{ runner.temp }}/ffmpeg-redistribution
+          msystem: ${{ matrix.msys }}
+          update: true
+          cache: false
+          install: ${{ matrix.msys_prefix }}-ffmpeg ${{ matrix.msys_prefix }}-vulkan-loader
       - name: Build and check Windows release formats
         if: runner.os == 'Windows' && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode' && inputs.release_packages
         shell: pwsh
+        env:
+          LUMA_MSYS_ROOT: ${{ steps.ffmpeg.outputs.msys2-location }}
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
           $cpu = '${{ matrix.cpu }}'
           $formats = Join-Path $env:RUNNER_TEMP 'windows-release'
           $store = Join-Path $env:RUNNER_TEMP 'windows-store'
-          $tools = Join-Path $env:RUNNER_TEMP 'ffmpeg-redistribution'
+          $toolsOutput = Join-Path $env:RUNNER_TEMP 'ffmpeg-redistribution'
+          python -m pip install --require-hashes --no-deps -r tools/ffmpeg-windows-build-requirements.txt
+          python tools/stage_windows_ffmpeg.py --arch $cpu --msys $env:LUMA_MSYS_ROOT --output $toolsOutput
+          $tools = Join-Path $toolsOutput FFmpeg
           $env:LUMA_TEST_FFMPEG = Join-Path $tools 'bin/ffmpeg.exe'
           $env:LUMA_TEST_FFPROBE = Join-Path $tools 'bin/ffprobe.exe'
           # Run the conversion checks against the packaged DLL closure.
@@ -268,6 +194,7 @@ jobs:
           ./tools/Package-Windows.ps1 -Target $cpu -Profile JitExternal -Ffmpeg Both -FfmpegDirectory $tools -OutputDirectory $formats
           $single = (Get-Item (Join-Path $formats '*-jitexternal-ffmpeg-external.exe')).FullName
           python qa/RuntimeChecks/check_framework_host.py --arch $cpu $single "dist/FrameworkDependent-$cpu/LumaRecode.exe"
+          Copy-Item -LiteralPath (Join-Path $toolsOutput "LumaRecode-Windows-$cpu-FFmpeg-Sources.zip") -Destination $formats
       - name: Upload Windows release formats
         if: runner.os == 'Windows' && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode' && inputs.release_packages
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -304,21 +231,21 @@ jobs:
           retention-days: 14
           if-no-files-found: error
           path: out/macos-build/LumaRecode-ARM64.dmg
-      - name: Download the staged macOS FFmpeg
-        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode'
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: lumarecode-macos-ffmpeg-payload
-          path: ${{ runner.temp }}/ffmpeg-payload
       - name: Package macOS with FFmpeg Full
         if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode'
         env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+          HOMEBREW_NO_INSTALL_CLEANUP: '1'
           LUMA_VALIDATE_FULL_FFMPEG: '1'
         run: |
-          payload="$RUNNER_TEMP/ffmpeg-payload"
-          tar -xzf "$payload/FFmpeg-Full-Payload.tar.gz" -C "$payload"
-          LUMA_STAGED_FFMPEG="$payload/FFmpeg" sh tools/build-macos.sh Release --dmg-full-tools
-      - name: macOS application with FFmpeg Full
+          HOMEBREW_FORCE_API_AUTO_UPDATE=1 HOMEBREW_API_AUTO_UPDATE_SECS=0 brew install ffmpeg-full molten-vk
+          version="$("$(brew --prefix ffmpeg-full)/bin/ffmpeg" -version | sed -n '1s/^ffmpeg version \([^ ]*\).*/\1/p')"
+          if [ "$version" != '9.1' ]; then
+            echo "Expected reviewed FFmpeg 9.1. Homebrew supplied $version." >&2
+            exit 1
+          fi
+          sh tools/build-macos.sh Release --dmg-full-tools
+      - name: macOS application with FFmpeg Full and sources
         if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -326,7 +253,9 @@ jobs:
           retention-days: 14
           compression-level: 0
           if-no-files-found: error
-          path: out/macos-build/LumaRecode-ARM64-FFmpeg-Full.dmg
+          path: |
+            out/macos-build/LumaRecode-ARM64-FFmpeg-Full.dmg
+            out/macos-build/FFmpeg-Full-Sources.tar.gz
       - name: SDK artifact
         shell: pwsh
         run: |
@@ -347,73 +276,15 @@ jobs:
           if-no-files-found: error
           path: ${{ runner.temp }}/LumaRecode-SDK-*-${{ matrix.cpu }}.zip
 
-  windows_ffmpeg_sources:
-    name: Collect shared Windows FFmpeg sources
-    needs: windows_ffmpeg
-    if: github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode' && inputs.release_packages
-    runs-on: windows-2025-vs2026
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: msys2/setup-msys2@3c51bf698df1e37b2261f53cb67797b97761185c # v2.34.0
-        id: keyring
-        with:
-          msystem: UCRT64
-          update: true
-          cache: false
-          install: gnupg
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          pattern: lumarecode-windows-*-ffmpeg-source-input
-          path: recipes
-      - name: Download and verify the union of the signed source archives
-        shell: pwsh
-        env:
-          LUMA_MSYS_ROOT: ${{ steps.keyring.outputs.msys2-location }}
-        run: |
-          python tools/stage_windows_ffmpeg.py collect --msys $env:LUMA_MSYS_ROOT --output source-archives --inputs recipes/lumarecode-windows-x64-ffmpeg-source-input recipes/lumarecode-windows-arm64-ffmpeg-source-input
-          exit $LASTEXITCODE
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: lumarecode-ffmpeg-sources-windows
-          path: source-archives/LumaRecode-Windows-FFmpeg-Sources.zip
-          compression-level: 0
-          if-no-files-found: error
-
-  macos_ffmpeg_sources:
-    name: Collect macOS FFmpeg Full sources
-    needs: macos_ffmpeg
-    if: github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode'
-    runs-on: xcode-27
-    steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: lumarecode-macos-ffmpeg-source-input
-          path: FFmpeg-Full-Sources
-      - name: Download the sources described by the installed recipes
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: '1'
-        run: |
-          brew ruby "$PWD/FFmpeg-Full-Sources/Packaging/collect-brew-sources.rb"
-          tar -czf FFmpeg-Full-Sources.tar.gz FFmpeg-Full-Sources
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: lumarecode-ffmpeg-sources-macos
-          path: FFmpeg-Full-Sources.tar.gz
-          compression-level: 0
-          if-no-files-found: error
-
   distribution:
     name: Verify distribution provenance
-    needs: [core, windows_ffmpeg_sources, macos_ffmpeg_sources]
+    needs: core
     # The build matrix also runs for pull requests. Only maintainer-dispatched
     # builds from the project repository have the signing permissions.
     if: >-
-      ${{ !cancelled() && github.event_name == 'workflow_dispatch' && github.repository == 'MIKU552/LumaRecode' &&
-          (github.ref == 'refs/heads/next' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) &&
-          needs.core.result == 'success' && needs.macos_ffmpeg_sources.result == 'success' &&
-          (!inputs.release_packages || needs.windows_ffmpeg_sources.result == 'success') }}
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'MIKU552/LumaRecode' &&
+      (github.ref == 'refs/heads/next' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -432,8 +303,7 @@ jobs:
           mkdir distribution
           if [[ "$LUMA_RELEASE_PACKAGES" == true ]]; then
             cp build/lumarecode-windows-{x64,arm64}-release/* distribution/
-            test "$(find distribution -maxdepth 1 -type f | wc -l)" -eq 24
-            cp build/lumarecode-ffmpeg-sources-windows/LumaRecode-Windows-FFmpeg-Sources.zip distribution/
+            test "$(find distribution -maxdepth 1 -type f | wc -l)" -eq 26
           else
             cp build/lumarecode-windows-x64-development/LumaRecode.exe distribution/LumaRecode-Windows-x64-AOT.exe
             cp build/lumarecode-windows-arm64-development/LumaRecode.exe distribution/LumaRecode-Windows-arm64-AOT.exe
@@ -441,7 +311,7 @@ jobs:
           fi
           cp build/lumarecode-macos-arm64-development/LumaRecode-ARM64.dmg distribution/LumaRecode-macOS-arm64.dmg
           cp build/lumarecode-macos-arm64-ffmpeg-full/LumaRecode-ARM64-FFmpeg-Full.dmg distribution/LumaRecode-macOS-arm64-FFmpeg-Full.dmg
-          cp build/lumarecode-ffmpeg-sources-macos/FFmpeg-Full-Sources.tar.gz distribution/LumaRecode-macOS-FFmpeg-Full-Sources.tar.gz
+          cp build/lumarecode-macos-arm64-ffmpeg-full/FFmpeg-Full-Sources.tar.gz distribution/LumaRecode-macOS-FFmpeg-Full-Sources.tar.gz
           cp build/native-core-Windows-x64/LumaRecode-SDK-Windows-x64.zip distribution/
           cp build/native-core-Windows-arm64/LumaRecode-SDK-Windows-arm64.zip distribution/
           cp build/native-core-macOS-arm64/LumaRecode-SDK-macOS-arm64.zip distribution/

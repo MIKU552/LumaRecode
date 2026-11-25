@@ -1,10 +1,8 @@
-"""Stage signed MSYS2 tools and collect the sources shared by both Windows builds."""
+"""Assemble signed MSYS2 tools and the corresponding source for each shipped DLL."""
 
 import argparse
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
 import hashlib
-import json
 from pathlib import Path
 import re
 import shutil
@@ -12,12 +10,14 @@ import subprocess
 from urllib.request import urlopen
 from zipfile import ZIP_STORED, ZipFile
 
+import pefile
+
+
 PLATFORMS = {
     "x64": ("ucrt64", 0x8664),
     "arm64": ("clangarm64", 0xAA64),
 }
 SOURCE_ROOT = "https://repo.msys2.org/mingw/sources"
-SOURCE_ARCHIVE = "LumaRecode-Windows-FFmpeg-Sources.zip"
 
 
 def run(tool, *args):
@@ -37,8 +37,6 @@ def digest(path):
 
 
 def imports(path, machine):
-    import pefile
-
     # Delay imports also need to be available when the user selects optional filters.
     tables = ("IMAGE_DIRECTORY_ENTRY_IMPORT", "IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT")
     with pefile.PE(str(path), fast_load=True) as image:
@@ -115,7 +113,12 @@ def download(url, path):
         shutil.copyfileobj(body, target)
 
 
-def stage_payload(options):
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--arch", required=True, choices=tuple(PLATFORMS))
+    parser.add_argument("--msys", required=True, type=Path)
+    parser.add_argument("--output", required=True, type=Path)
+    options = parser.parse_args()
     platform, machine = PLATFORMS[options.arch]
     msys = options.msys.resolve(strict=True)
     out = options.output.resolve()
@@ -123,94 +126,47 @@ def stage_payload(options):
     payload = out / "FFmpeg"
     binary = payload / "bin"
     binary.mkdir(parents=True)
+    sources = out / "sources"
+    sources.mkdir()
     files = collect_binaries(msys / platform / "bin", machine, binary)
+    gpg = msys / "usr/bin/gpg.exe"
+    cygpath = msys / "usr/bin/cygpath.exe"
     package_rows = []
-    source_packages = set()
     for name, version, source, notices in find_package_sources(msys, platform, files):
         package_rows.append(f"{name} {version} {source}")
-        source_packages.add(source)
         for item in notices:
             destination = payload / "licenses" / Path(item).relative_to(Path(platform) / "share/licenses")
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(msys / item, destination)
-    buildinfo = payload / "BUILDINFO.txt"
-    buildinfo.write_text(
-        f"FFmpeg 9.1-1 for Windows {options.arch} ({platform}, MSYS2)\n"
-        f"GPL distribution. Corresponding source: {SOURCE_ARCHIVE}\n"
-        f"Upstream source packages: {SOURCE_ROOT}/\n\n"
-        + "\n".join(package_rows)
-        + "\n\nSHA-256 of shipped programs and DLLs\n"
-        + "".join(f"{digest(path)}  {path.name}\n" for path in sorted(binary.iterdir())),
-        encoding="utf-8",
-    )
-    manifest = out / "source-input"
-    manifest.mkdir()
-    shutil.copy2(buildinfo, manifest / buildinfo.name)
-    (manifest / "packages.json").write_text(
-        json.dumps({"architecture": options.arch, "sources": sorted(source_packages)}, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    print(payload, flush=True)
-
-
-def collect_sources(options):
-    msys = options.msys.resolve(strict=True)
-    out = options.output.resolve()
-    sources = out / "sources"
-    sources.mkdir(parents=True)
-    packages = set()
-    buildinfo = {}
-    for entry in options.inputs:
-        manifest = json.loads((entry / "packages.json").read_text(encoding="utf-8"))
-        arch = manifest["architecture"]
-        if arch not in PLATFORMS or arch in buildinfo or not manifest["sources"]:
-            raise ValueError(f"Unexpected Windows source manifest: {entry}")
-        buildinfo[arch] = entry / "BUILDINFO.txt"
-        for source in manifest["sources"]:
-            if not re.fullmatch(r"[A-Za-z0-9_+.~-]+\.src\.tar\.zst", source):
-                raise ValueError(f"Invalid source package name: {source}")
-            packages.add(source)
-    if set(buildinfo) != set(PLATFORMS):
-        raise ValueError("Expected one source manifest per Windows architecture")
-
-    # Both architectures frequently use the same signed MSYS2 source archive.
-    filenames = sorted(packages | {f"{source}.sig" for source in packages})
-    with ThreadPoolExecutor(max_workers=6) as workers:
-        for future in [workers.submit(download, f"{SOURCE_ROOT}/{name}", sources / name) for name in filenames]:
-            future.result()
-
-    gpg = msys / "usr/bin/gpg.exe"
-    cygpath = msys / "usr/bin/cygpath.exe"
-    for source in sorted(packages):
-        signature_path = run(cygpath, "-u", sources / f"{source}.sig").strip()
-        archive_path = run(cygpath, "-u", sources / source).strip()
+        archive = sources / source
+        if archive.exists():
+            continue
+        signature = sources / f"{source}.sig"
+        download(f"{SOURCE_ROOT}/{source}", archive)
+        download(f"{SOURCE_ROOT}/{signature.name}", signature)
+        signature_path = run(cygpath, "-u", signature).strip()
+        archive_path = run(cygpath, "-u", archive).strip()
         status = run(gpg, "--batch", "--homedir", "/etc/pacman.d/gnupg", "--status-fd", "1",
                      "--verify", signature_path, archive_path)
         if not re.search(r"^\[GNUPG:\] TRUST_(FULLY|ULTIMATE)", status, re.MULTILINE):
             raise ValueError(f"Source package signature is not trusted: {source}")
         print(f"Verified source for {source}", flush=True)
 
-    with ZipFile(out / SOURCE_ARCHIVE, "x", compression=ZIP_STORED) as archive:
-        for arch, path in sorted(buildinfo.items()):
-            archive.write(path, f"BUILDINFO-{arch}.txt")
+    buildinfo = payload / "BUILDINFO.txt"
+    buildinfo.write_text(
+        f"FFmpeg 9.1-1 for Windows {options.arch} ({platform}, MSYS2)\n"
+        f"GPL distribution. Corresponding source: LumaRecode-Windows-{options.arch}-FFmpeg-Sources.zip\n"
+        f"Upstream source packages: {SOURCE_ROOT}/\n\n"
+        + "\n".join(package_rows)
+        + "\n\nSHA-256 of shipped programs and DLLs\n"
+        + "".join(f"{digest(path)}  {path.name}\n" for path in sorted(binary.iterdir())),
+        encoding="utf-8",
+    )
+    with ZipFile(out / f"LumaRecode-Windows-{options.arch}-FFmpeg-Sources.zip", "x", compression=ZIP_STORED) as archive:
+        archive.write(buildinfo, buildinfo.name)
         for path in sorted(sources.iterdir()):
             archive.write(path, f"sources/{path.name}")
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    commands = parser.add_subparsers(required=True)
-    stage = commands.add_parser("stage")
-    stage.add_argument("--arch", required=True, choices=tuple(PLATFORMS))
-    stage.set_defaults(handler=stage_payload)
-    collect = commands.add_parser("collect")
-    collect.add_argument("--inputs", required=True, type=Path, nargs=2)
-    collect.set_defaults(handler=collect_sources)
-    for command in (stage, collect):
-        command.add_argument("--msys", required=True, type=Path)
-        command.add_argument("--output", required=True, type=Path)
-    options = parser.parse_args()
-    options.handler(options)
+    print(payload, flush=True)
 
 
 if __name__ == "__main__":
