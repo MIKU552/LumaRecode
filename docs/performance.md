@@ -4,7 +4,7 @@
 
 ## 简体中文
 
-LumaRecode 使用 WinUI 3 和 C# / .NET，默认以 JIT 发布，保留 Native AOT 可选构建。转换核心直接管理 FFmpeg 任务。
+Windows 使用 WinUI 3，macOS 使用 SwiftUI。两端通过共享原生核心管理 FFmpeg 任务。以下运行和内存数据来自 Windows。
 
 ### 实现
 
@@ -14,18 +14,18 @@ LumaRecode 使用 WinUI 3 和 C# / .NET，默认以 JIT 发布，保留 Native A
 | 编译视图 | XAML 编译为 XBF，本地化使用生成的控件映射 |
 | 源生成序列化 | 为设置、翻译资源和命令行 JSON 生成序列化代码 |
 | 控件缓存 | 复用主视图控件引用，路径与日志禁用拼写检查和文字预测 |
-| 编译方式 | 默认 JIT 与动态 PGO；可选 Native AOT 在发布时生成本机代码 |
-| 进程内转换核心 | GUI 与 CLI 直接调用同一 C# 核心，按需启动 FFmpeg / ffprobe |
+| 编译方式 | 默认 Native AOT；JIT 提供自包含或外置 .NET 的构建 |
+| 进程内转换核心 | GUI 与 CLI 使用同一共享核心，按需启动 FFmpeg / ffprobe |
 | 进度事件 | 直接传递 JSON 节点快照，最多排队 128 个事件 |
 | 日志刷新 | 有界文本缓冲，合并界面刷新；CLI 按需生成 JSON |
 | 本地化模板 | 按需创建正则匹配器，先匹配固定前后缀 |
 | 批量能力查询 | 同一批次复用成功的编码器与滤镜报告 |
 | 字体更新 | 仅写入发生变化的字体属性，减少布局失效 |
-| 预览调度 | 单解码器、最新请求合并、12 帧 / 8 MiB LRU 缓存 |
-| 预览渲染 | 色彩处理前缩小至 1024 像素，双线程解码、有界 PNG 管道与池化缓冲 |
+| 预览调度 | 原片播放会话合并跳转，暂停时渲染精确 SDR 帧 |
+| 预览渲染 | 双线程解码、640 × 360 BGRA 画面、邻近帧缓存 |
 | 布局刷新 | 拖动只更新帧相关控件；页面结构变化时才调整布局 |
-| 帧索引 | Span 解析压缩包字段，保留紧凑、只读的时间戳数组 |
-| 单文件入口 | JIT GUI 直接运行，CLI 使用同一 EXE 的工作子进程；AOT 使用打包入口 |
+| 帧索引 | 共享核心索引显示时间戳和关键帧，宿主按页读取 |
+| 单文件入口 | 单文件入口展开应用，便携 ZIP 与 MSI 从应用目录加载 |
 
 ### 元数据与长片索引
 
@@ -41,6 +41,12 @@ LumaRecode 使用 WinUI 3 和 C# / .NET，默认以 JIT 发布，保留 Native A
 
 长片检查使用 12 小时、60 fps 的 2,592,000 条时间戳记录，最终快照为 62,208,000 字节；另读取 1,000,000 行、共 100,000,000 字符的模拟元数据流。复现命令见 [QA 指南](../qa/README.md)。
 
+### Windows 启动与解包
+
+主窗口提交首帧布局后显示，FFmpeg 与 ffprobe 的查找在后台执行。单文件 EXE 首次启动时展开程序与资源。便携 ZIP 和 MSI 直接读取程序目录中的文件。
+
+2026-11-18，在 Core Ultra X7 358H 的 Windows x64 上，对两种构建分别运行一次空缓存的 `--version`，再运行五次取中位数。单文件 EXE 首次为 1,226 ms、随后的中位数为 233 ms，写入 234.4 MiB 缓存。便携版为 204 ms 和 202 ms，未创建解包缓存。这组数据测量命令行进程的启动和退出。
+
 ### 逐帧预览
 
 2026-11-14，Core Ultra X7 358H / Arc B390、FFmpeg 9.0.2、.NET 11 Release。三条 Pocket 3 素材均为 3840×2160、29.97 fps 的静态屏幕图案。依次请求第 0、30、60、90 帧；旧实现运行一轮，新实现运行三轮。
@@ -53,7 +59,7 @@ LumaRecode 使用 WinUI 3 和 C# / .NET，默认以 JIT 发布，保留 Native A
 | HLG | 1,075 ms | 560 ms | 48% |
 | D-Log M | 1,062 ms | 607 ms | 43% |
 
-新实现每次请求的托管分配量中位数分别为 0.54、0.64、0.41 MB。预览缓存最多保留 12 张 PNG、合计 8 MiB；隐藏预览或切换素材时释放。完整样本、素材哈希与采样记录见 [preview-performance.json](benchmarks/data/preview-performance.json)。
+4.3.1 每次请求的托管分配量中位数分别为 0.54、0.64、0.41 MB。该版本的预览缓存最多保留 12 张 PNG、合计 8 MiB。完整样本、素材哈希与采样记录见 [preview-performance.json](benchmarks/data/preview-performance.json)。
 
 ### 内存结果
 
@@ -104,7 +110,7 @@ dotnet run --project qa/PerformanceChecks/PerformanceChecks.csproj -c Release --
 
 ### 复测
 
-[内存采样脚本](../qa/MemoryChecks/Measure-Process.ps1)记录实际 GUI 进程的计数器。默认 JIT 版按主程序采样。可选 AOT 单文件版的 GUI 位于缓存内的 `Application/LumaRecode.exe`。CLI 按入口、主程序和任务进程的合计占用采样。
+[内存采样脚本](../qa/MemoryChecks/Measure-Process.ps1)记录实际 GUI 进程的计数器。AOT 单文件版的 GUI 进程位于缓存内的 `Application/LumaRecode.exe`，可直接采样。CLI 按入口、主程序和任务进程的合计占用采样。
 
 命令见 [QA 指南](../qa/README.md)，构建方式见[开发文档](dependencies.md)。
 
@@ -121,7 +127,7 @@ Core Ultra X7 358H / Arc B390、FFmpeg 9.0.2。素材为 Pocket 3 的 4K 29.97 f
 
 ## English
 
-LumaRecode uses WinUI 3 and C# / .NET. JIT is the default publication mode; Native AOT remains optional. The conversion core manages FFmpeg jobs directly.
+The Windows app uses WinUI 3 and the macOS app uses SwiftUI. Both manage FFmpeg jobs through the shared native core. The runtime and memory measurements below are from Windows.
 
 ### Implementation
 
@@ -131,18 +137,18 @@ LumaRecode uses WinUI 3 and C# / .NET. JIT is the default publication mode; Nati
 | Compiled views | Compile XAML to XBF; use generated control mappings for localization |
 | Generated serialization | Generate serializers for settings, translation resources and CLI JSON |
 | Control caching | Reuse main-view references; disable spell checking and text prediction for paths and logs |
-| Compilation | JIT with dynamic PGO by default; optional Native AOT compiles at publish time |
-| In-process core | GUI and CLI call the same C# core and start FFmpeg / ffprobe on demand |
+| Compilation | Native AOT by default, with self-contained and framework-dependent JIT profiles |
+| In-process core | GUI and CLI use the same native core and start FFmpeg / ffprobe on demand |
 | Progress events | Pass JSON-node snapshots directly; queue at most 128 events |
 | Log updates | Bound the text buffer and coalesce UI refreshes; generate CLI JSON on demand |
 | Localization templates | Create regex matchers on demand and check fixed prefixes/suffixes first |
 | Batch capability queries | Reuse successful encoder and filter reports within a batch |
 | Font updates | Write changed font properties to reduce layout invalidation |
-| Preview scheduling | One renderer, replacement of pending requests and a 12-frame / 8 MiB LRU |
-| Preview rendering | Scale to 1024 pixels before color processing; two decoder threads, bounded PNG pipes and pooled buffers |
+| Preview scheduling | A source playback session coalesces seeks and renders exact SDR frames on pause |
+| Preview rendering | Two decoder threads, 640 × 360 BGRA frames, and a nearby-frame cache |
 | Layout updates | Scrubbing updates frame-related controls; structural layout changes follow page changes |
-| Frame indexing | Parse packet fields with spans; retain compact, read-only timestamp arrays |
-| Single-file entry | JIT GUI runs directly; CLI launches a worker through the same EXE; AOT uses a bundle entry |
+| Frame indexing | The shared core indexes presentation times and keyframes. Hosts read pages on demand |
+| Single-file entry | The single EXE extracts the app. Portable ZIPs and MSIs load from the app directory |
 
 ### Metadata and long-recording indexes
 
@@ -158,6 +164,12 @@ Indexes grow with record count and structure size; resolution, bitrate and compr
 
 The long-recording check indexes 2,592,000 timestamp records representing 12 hours at 60 fps, producing a 62,208,000-byte snapshot. A separate check reads 1,000,000 simulated metadata lines totaling 100,000,000 characters. Commands are in the [QA guide](../qa/README.md#english).
 
+### Windows startup and extraction
+
+The main window appears after its first layout is rendered. FFmpeg and ffprobe discovery runs in the background. The single EXE extracts the app on first run. Portable ZIP and MSI builds read files from the application directory.
+
+On 2026-11-18, on Windows x64 with a Core Ultra X7 358H, each build ran `--version` once with an empty extraction cache and five more times for a warm median. The single EXE took 1,226 ms on the first run and 233 ms warm, and wrote 234.4 MiB of cache. The portable build took 204 ms on the first run and 202 ms warm without creating an extraction cache. These measurements cover CLI process startup and exit.
+
 ### Frame preview
 
 Measured on November 14, 2026 with a Core Ultra X7 358H / Arc B390, FFmpeg 9.0.2 and .NET 11 Release. Three Pocket 3 clips show a static screen chart at 3840×2160 and 29.97 fps. Requests visit frames 0, 30, 60 and 90 in order. The old implementation runs once; the new implementation runs three times.
@@ -170,7 +182,7 @@ Timing includes FFmpeg startup, decoding the selected frame, color processing an
 | HLG | 1,075 ms | 560 ms | 48% |
 | D-Log M | 1,062 ms | 607 ms | 43% |
 
-Median managed allocation per request is 0.54, 0.64 and 0.41 MB respectively. The preview cache holds at most 12 PNGs and 8 MiB and is released when hidden or when the source changes. Samples, source hashes and memory records are in [preview-performance.json](benchmarks/data/preview-performance.json).
+In 4.3.1, median managed allocation per request was 0.54, 0.64 and 0.41 MB respectively. That build's preview cache held up to 12 PNGs and 8 MiB. Samples, source hashes and memory records are in [preview-performance.json](benchmarks/data/preview-performance.json).
 
 ### Memory results
 
@@ -221,7 +233,7 @@ The default command measures localization and progress snapshots. `--tools` meas
 
 ### Reproducing measurements
 
-The [memory-sampling script](../qa/MemoryChecks/Measure-Process.ps1) records counters for the actual GUI process. The default JIT application is sampled directly. The optional AOT application's GUI is cached at `Application/LumaRecode.exe`. CLI measurements include the entry, main application and task processes.
+The [memory-sampling script](../qa/MemoryChecks/Measure-Process.ps1) records counters for the actual GUI process. For the AOT single EXE, the main window runs in the extracted `Application/LumaRecode.exe` process. CLI measurements include the entry, main application and task processes.
 
 Commands are in the [QA guide](../qa/README.md#english); build options are in [Development and distribution](dependencies.md#english).
 

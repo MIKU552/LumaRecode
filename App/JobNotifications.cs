@@ -11,10 +11,25 @@ internal sealed class JobNotifications(Action activate)
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
     private static extern int SetCurrentProcessExplicitAppUserModelID(string appId);
 
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    private static extern int GetCurrentPackageFullName(ref uint length, nint name);
+
+    private static bool HasPackageIdentity()
+    {
+        uint length = 0;
+        const int insufficientBuffer = 122;
+        return GetCurrentPackageFullName(ref length, 0) == insufficientBuffer;
+    }
+
     // The extracted application path changes between releases. A stable AppID
     // keeps notification settings and history under one Windows application.
-    internal static void ConfigureIdentity() =>
-        Marshal.ThrowExceptionForHR(SetCurrentProcessExplicitAppUserModelID("MIKU552.LumaRecode"));
+    internal static void ConfigureIdentity()
+    {
+        if (!HasPackageIdentity())
+        {
+            Marshal.ThrowExceptionForHR(SetCurrentProcessExplicitAppUserModelID("MIKU552.LumaRecode"));
+        }
+    }
 
     private void Register()
     {
@@ -30,7 +45,14 @@ internal sealed class JobNotifications(Action activate)
         candidate.NotificationInvoked += OnInvoked;
         try
         {
-            candidate.Register("映码 · LumaRecode", new Uri(System.IO.Path.Combine(AppContext.BaseDirectory, "LumaRecode.ico")));
+            if (HasPackageIdentity())
+            {
+                candidate.Register();
+            }
+            else
+            {
+                candidate.Register("映码 · LumaRecode", new Uri(System.IO.Path.Combine(AppContext.BaseDirectory, "LumaRecode.ico")));
+            }
             manager = candidate;
         }
         catch

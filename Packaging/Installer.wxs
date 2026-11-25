@@ -1,0 +1,28 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="LumaRecode" Manufacturer="MIKU552" Version="$(var.Version)"
+           UpgradeCode="7B496507-679A-42C2-8770-AA8F0EF43FA9" Scope="perUser">
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A newer version of LumaRecode is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Icon Id="AppIcon" SourceFile="$(var.Payload)\LumaRecode.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPHELPLINK" Value="$(var.HelpLink)" />
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="Programs" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="LumaRecode" />
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenu" Guid="F2C77813-840B-49F2-85DE-98D0EE52BEB7">
+        <Shortcut Id="LaunchLumaRecode" Name="LumaRecode" Target="[INSTALLFOLDER]LumaRecode.exe"
+                  WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
+        <RegistryValue Root="HKCU" Key="Software\MIKU552\LumaRecode\Installer" Name="StartMenu"
+                       Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+    <Feature Id="Application">
+      <Files Directory="INSTALLFOLDER" Include="$(var.Payload)\**" />
+      <ComponentRef Id="StartMenu" />
+    </Feature>
+  </Package>
+</Wix>

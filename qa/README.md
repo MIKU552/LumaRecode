@@ -16,6 +16,12 @@
 
 ### 构建与架构
 
+共享原生核心的独立构建与差异检查见[共享核心](../docs/refactoring.md)。C、C++、Rust、C# 与 Swift 的契约检查在 Windows x64、Windows ARM64 和 macOS ARM64 执行；C 调用示例位于 [`engine/examples/format.c`](../engine/examples/format.c)。
+
+`tools/Install-MediaTestTools.ps1` 下载固定版本与架构的 FFmpeg / ffprobe，并校验 SHA-256。`NativeCoreChecks` 使用 `LUMA_TEST_FFMPEG`、`LUMA_TEST_FFPROBE` 指定的路径，也可查找 PATH；设置 `LUMA_REQUIRE_MEDIA_TOOLS=1` 后，缺少工具会使检查失败。Actions 使用必需模式执行软件编码、探测及二进制图片提取。
+
+Windows Actions 同时生成 GUI / CLI 单 EXE 开发包，并通过 `qa/RuntimeChecks/check_shared_host.py` 验证打包后的原生库加载、SDR / HLG / PQ 软件转码、进度、输出核验与覆盖保护。这组检查无需 GPU。
+
 ```powershell
 python qa/BuildChecks/check_build.py
 python qa/BuildChecks/check_build.py --artifacts
@@ -47,15 +53,15 @@ dotnet run --project qa/BackendChecks/BackendChecks.csproj -c Release -- --resou
 
 此检查生成 12 小时、60 fps 的时间戳索引，并流式读取 1 亿字符的模拟元数据。
 
-这些检查覆盖四种语言的选择、翻译资源与格式占位符、XAML 映射、设置格式、命令行 JSON 格式和生成的 LUT。可给 `check_cli_languages.py` 传入 `--exe dist/SelfContained/LumaRecode.exe`，检查打包后的 CLI 语言资源。
+这些检查覆盖四种语言的选择、翻译资源与格式占位符、XAML 映射、设置格式、命令行 JSON 格式和生成的 LUT。可给 `check_cli_languages.py` 传入 `--exe dist/Aot-SelfContained/LumaRecode.exe`，检查打包后的 CLI 语言资源。
 
 ### CLI 与转换核心
 
 先运行 `./build.ps1`，再执行集成检查：
 
 ```powershell
-python qa/CliChecks/check_cli.py --exe dist/SelfContained/LumaRecode.exe
-python qa/RuntimeChecks/check_runtime.py --exe dist/SelfContained/LumaRecode.exe
+python qa/CliChecks/check_cli.py --exe dist/Aot-SelfContained/LumaRecode.exe
+python qa/RuntimeChecks/check_runtime.py --exe dist/Aot-SelfContained/LumaRecode.exe
 dotnet build qa/BackendChecks/BackendChecks.csproj -c Release
 python qa/TimingChecks/check_timing.py
 python qa/TimingChecks/check_qsv_recovery.py
@@ -154,6 +160,12 @@ Runs C# formatting, resources, serialization, core boundaries, preview schedulin
 
 ### Builds and architectures
 
+See [Cross-platform refactoring](../docs/refactoring.md) for independent native builds and differential checks. C, C++, Rust, C# and Swift contract checks run across Windows x64, Windows ARM64 and macOS ARM64. The C caller example is [`engine/examples/format.c`](../engine/examples/format.c).
+
+`tools/Install-MediaTestTools.ps1` downloads pinned FFmpeg/ffprobe builds for the host architecture and verifies SHA-256. `NativeCoreChecks` uses `LUMA_TEST_FFMPEG` and `LUMA_TEST_FFPROBE` paths or searches PATH. Setting `LUMA_REQUIRE_MEDIA_TOOLS=1` makes missing tools a failure. Actions requires software encoding, probing and binary image extraction checks.
+
+Windows Actions also produces a GUI / CLI single-EXE development artifact. `qa/RuntimeChecks/check_shared_host.py` verifies packaged native-library loading, SDR / HLG / PQ software encoding, progress, output verification and overwrite protection without a GPU.
+
 ```powershell
 python qa/BuildChecks/check_build.py
 python qa/BuildChecks/check_build.py --artifacts
@@ -185,15 +197,15 @@ dotnet run --project qa/BackendChecks/BackendChecks.csproj -c Release -- --resou
 
 This check generates a timestamp index for 12 hours at 60 fps and streams 100 million characters of simulated metadata.
 
-These checks cover language selection for all four languages, translation resources and format placeholders, XAML mappings, settings formats, CLI JSON contracts and generated LUTs. Pass `--exe dist/SelfContained/LumaRecode.exe` to `check_cli_languages.py` to check packaged CLI language resources.
+These checks cover language selection for all four languages, translation resources and format placeholders, XAML mappings, settings formats, CLI JSON contracts and generated LUTs. Pass `--exe dist/Aot-SelfContained/LumaRecode.exe` to `check_cli_languages.py` to check packaged CLI language resources.
 
 ### CLI and conversion core
 
 Run `./build.ps1` first, then execute the integration checks:
 
 ```powershell
-python qa/CliChecks/check_cli.py --exe dist/SelfContained/LumaRecode.exe
-python qa/RuntimeChecks/check_runtime.py --exe dist/SelfContained/LumaRecode.exe
+python qa/CliChecks/check_cli.py --exe dist/Aot-SelfContained/LumaRecode.exe
+python qa/RuntimeChecks/check_runtime.py --exe dist/Aot-SelfContained/LumaRecode.exe
 dotnet build qa/BackendChecks/BackendChecks.csproj -c Release
 python qa/TimingChecks/check_timing.py
 python qa/TimingChecks/check_qsv_recovery.py

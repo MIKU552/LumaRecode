@@ -25,7 +25,73 @@ internal static class PreviewChecks
         await CheckStaleResultAsync();
         await CheckFailureAsync();
         await CheckBinaryPipeAsync();
+        CheckFrameCodes();
+        await CheckPixelPreviewAsync();
         Console.WriteLine($"Preview checks passed: {assertions}");
+    }
+
+    private static void CheckFrameCodes()
+    {
+        // Nonzero starting PTS and uneven intervals exercise per-second frame
+        // numbering without assuming a constant source FPS.
+        var timeline = new FrameTimeline([new(200, 43, true), new(243, 10, false),
+            new(253, 47, false), new(300, 55, false), new(355, 45, false)], 1, 100, true);
+        Check(timeline.FrameCode(3) == "00:00:01.00", "First display frame at the next second");
+        for (int index = 0; index < timeline.Count; index++)
+        {
+            Check(timeline.TryFrameCode(timeline.FrameCode(index), out int value) && index == value,
+                "Variable-rate frame code round trip");
+        }
+        Check(timeline.TryFrameCode("1.01", out int selected) && selected == 4, "Short frame code");
+        Check(!timeline.TryFrameCode("0.03", out _), "A per-second index cannot select the following second");
+        Check(timeline.AtOrBefore(0.429) == 0, "Playing position before the next displayed frame");
+        Check(timeline.AtOrBefore(0.43) == 1, "Playing position on a variable-rate frame boundary");
+        Check(timeline.AtOrBefore(0.9) == 2, "Playing position in a long variable-rate frame");
+        Check(timeline.AtOrBefore(20) == 4, "Playing position after the last displayed frame");
+    }
+
+    private static async Task CheckPixelPreviewAsync()
+    {
+        string ffmpeg = Environment.GetEnvironmentVariable("LUMA_TEST_FFMPEG") ?? ProcessRunner.FindTool("ffmpeg");
+        string ffprobe = Environment.GetEnvironmentVariable("LUMA_TEST_FFPROBE") ?? ProcessRunner.FindTool("ffprobe");
+        if (ffmpeg.Length == 0 || ffprobe.Length == 0)
+        {
+            Check(Environment.GetEnvironmentVariable("LUMA_REQUIRE_MEDIA_TOOLS") != "1", "Preview FFmpeg tools available");
+            return;
+        }
+        var folder = Directory.CreateTempSubdirectory("luma-pixel-checks-");
+        var source = Path.Combine(folder.FullName, "画面.mkv");
+        try
+        {
+            var result = await ProcessRunner.CaptureBinaryAsync(ffmpeg, ["-v", "error", "-f", "lavfi", "-i",
+                "testsrc2=size=384x216:rate=24:duration=1", "-c:v", "libx265", "-preset", "ultrafast",
+                "-pix_fmt", "yuv420p10le", "-x265-params", "log-level=error:colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc", source]);
+            Check(result.ExitCode == 0, "Generate HLG preview clip: " + result.Error);
+            var tools = new MediaTools(ffmpeg, ffprobe);
+            var media = await MediaProbe.InspectAsync(tools, source);
+            var timeline = await FrameTimeline.LoadAsync(tools, media);
+            var preview = new FramePreview(new Transcoder(Path.GetFullPath("Assets")));
+            var bytes = await preview.RenderPixelsAsync(tools, media, timeline, new(2, "png", "hlg"), 4);
+            Check(bytes.Length == FramePreview.PixelBytes * 4, "Complete BGRA frame batch");
+            for (int frame = 0; frame < 4; frame++)
+            {
+                int start = frame * FramePreview.PixelBytes;
+                for (int position = start + 3; position < start + FramePreview.PixelBytes; position += 4)
+                {
+                    if (bytes[position] != 255)
+                    {
+                        throw new InvalidDataException("BGRA alpha or frame stride mismatch.");
+                    }
+                }
+                Check(bytes.AsSpan(start, FramePreview.PixelBytes).ContainsAnyExcept((byte)0, (byte)255),
+                    "Decoded preview contains image content");
+            }
+        }
+        finally
+        {
+            File.Delete(source);
+            folder.Delete();
+        }
     }
 
     private static async Task CheckCoalescingAsync()

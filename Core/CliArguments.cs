@@ -16,6 +16,7 @@ public sealed class CliArguments
     public static readonly Dictionary<string, string[]> Choices = new()
     {
         ["purpose"] = ["share", "archive"],
+        ["hardware"] = ["auto", "qsv", "nvenc", "amf", "mf"],
         ["codec"] = ["hevc", "av1", "avc"],
         ["range"] = ["auto", "sdr", "hdr"],
         ["transform"] = ["auto", "none", "log-hdr", "log-sdr", "hdr-sdr"],
@@ -31,7 +32,7 @@ public sealed class CliArguments
     };
     private static readonly HashSet<string> booleans = ["json", "accept_terms", "no_settings", "text", "recursive", "overwrite", "skip_existing", "continue_on_error", "dry_run", "verbose", "motion"];
     private static readonly HashSet<string> commonValues = ["lang", "ffmpeg", "ffprobe"];
-    private static readonly HashSet<string> taskValues = ["output", "output_dir", "config", "preset", "duration", "log", "start_frame", "end_frame", "start_time", "end_time", "frame", "image_format", "quality", "motion_start_frame", "motion_end_frame", "motion_size"];
+    private static readonly HashSet<string> taskValues = ["output", "output_dir", "config", "preset", "duration", "log", "start_frame", "end_frame", "start_time", "end_time", "frame", "image_format", "quality", "motion_start_frame", "motion_end_frame", "motion_size", "motion_range"];
     public string? Command
     {
         get; private set;
@@ -171,12 +172,12 @@ public sealed class CliArguments
                 throw new CliException("invalid_arguments", "Encoding options require convert or plan.");
             }
 
-            string[] imageOnly = ["frame", "image_format", "quality", "motion_start_frame", "motion_end_frame", "motion_size"];
+            string[] imageOnly = ["frame", "image_format", "quality", "motion_start_frame", "motion_end_frame", "motion_size", "motion_range"];
             if (parsed.Command != "image" && (parsed.Has("motion") || imageOnly.Any(parsed.Values.ContainsKey)))
             {
                 throw new CliException("invalid_arguments", "Image options require image.");
             }
-            if (parsed.Command == "image" && (parsed.Values.Keys.Any(key => !commonValues.Contains(key) && key is not ("output" or "log" or "frame" or "image_format" or "quality" or "motion_start_frame" or "motion_end_frame" or "motion_size" or "input_kind" or "profile" or "purpose"))
+            if (parsed.Command == "image" && (parsed.Values.Keys.Any(key => !commonValues.Contains(key) && key is not ("output" or "log" or "frame" or "image_format" or "quality" or "motion_start_frame" or "motion_end_frame" or "motion_size" or "motion_range" or "input_kind" or "profile" or "purpose"))
                 || parsed.Flags.Any(key => key is "recursive" or "continue_on_error")))
             {
                 throw new CliException("invalid_arguments", "Unsupported image option.");

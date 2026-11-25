@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -52,7 +53,7 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
     }
     // Resolve metadata-dependent CLI defaults before invoking the same core
     // validation used by the GUI. Explicit input interpretation has priority.
-    private EncodeOptions Resolve(JsonObject values, MediaInfo media)
+    private EncodeOptions Resolve(JsonObject values, MediaInfo media, HardwareEncoder[]? hardware)
     {
         var fields = values.DeepClone().AsObject();
         var kind = fields.Text("input_kind", "auto");
@@ -99,19 +100,62 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
             throw new CliException("invalid_arguments", T("--profile 需要 Log 转换；要覆盖错误的色彩标签，请指定 --input-kind log。"));
         }
 
-        if (!fields.ContainsKey("purpose") && media.DynamicHdr && target == "hdr" && fields.Text("dynamic_hdr", "preserve") == "preserve")
+        var requested = values.Text("hardware", "auto");
+        if (!fields.ContainsKey("purpose") && requested == "auto" && media.DynamicHdr &&
+            target == "hdr" && fields.Text("dynamic_hdr", "preserve") == "preserve")
         {
             fields["purpose"] = "archive";
         }
         if (!fields.ContainsKey("purpose"))
         {
-            fields["purpose"] = PlatformDefaults.Purpose;
+            fields["purpose"] = "share";
         }
         fields["output"] = target;
         fields["source_kind"] = kind;
         fields["transform"] = transform;
         fields["profile"] = profile.Length > 0 ? profile : null;
         var options = EncodeOptions.FromJson(fields);
+        if (options.Purpose == "archive" && requested != "auto")
+        {
+            throw new CliException("invalid_options", T("选择硬件编码器需要使用快速分享。"));
+        }
+        if (options.Purpose == "share")
+        {
+            // Prefer the usual share depth. An available 10-bit route may
+            // also serve SDR when the 8-bit session cannot initialize.
+            int[] Depths(string codec) => OutputPolicy.DepthChoices(media, "share", codec, target)
+                .Where(depth => options.BitDepth == "auto" || options.BitDepth == depth.ToString(CultureInfo.InvariantCulture)).ToArray();
+            var codecs = values.ContainsKey("codec") ? new[] { options.Codec } : ["hevc", "av1", "avc"];
+            var selected = HardwareEncoders.Select(hardware ?? [], codecs, Depths, requested);
+            if (selected is not null)
+            {
+                options = options with
+                {
+                    Hardware = selected.Backend,
+                    Codec = selected.Codec,
+                    BitDepth = selected.Depth.ToString(CultureInfo.InvariantCulture)
+                };
+            }
+            else if (hardware is null || Depths(options.Codec).Length == 0)
+            {
+                // Explicit plans can be inspected on a different machine.
+                options = options with
+                {
+                    Hardware = requested == "auto" ? "qsv" : requested
+                };
+            }
+            else if (!values.ContainsKey("purpose") && requested == "auto")
+            {
+                options = options with
+                {
+                    Purpose = "archive"
+                };
+            }
+            else
+            {
+                throw new CliException("hardware_unavailable", T("没有可用的硬件编码器符合所选编码和位深。"), 3);
+            }
+        }
         try
         {
             engine.Validate(options, media);
@@ -155,6 +199,7 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
         Row("--version", "显示版本并退出");
         Row("--json", "机器可读 JSON；转换时为逐行 JSON");
         Row("--lang, --language {system,zh,en,ja,es}", "输出语言");
+        Row("--hardware auto|qsv|nvenc|amf|mf", "选择快速分享的硬件编码器");
         Row("--ffmpeg PATH", "FFmpeg 路径，默认先 PATH 再使用 GUI 已保存路径");
         Row("--ffprobe PATH", "ffprobe 路径");
         Row("--accept-terms", "接受随附第三方二进制组件条款");
@@ -184,7 +229,7 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
         }
         if (command == "image")
         {
-            Console.Out.WriteLine("  --image-format {auto,hdr,ultrahdr,sdr,png}\n  --frame N\n  --quality 1..100\n  --motion\n  --motion-size {source,1080,720}\n  --motion-start-frame N, --motion-end-frame N\n  --input-kind {auto,sdr,hlg,pq,log,raw}\n  --profile {auto,pocket3,samsung,milog,applelog,applelog2}\n  --purpose {share,archive}\n  -o, --output PATH\n  --overwrite\n  --skip-existing\n  --dry-run");
+            Console.Out.WriteLine("  --image-format {auto,hdr,ultrahdr,sdr,png}\n  --frame N\n  --quality 1..100\n  --motion\n  --motion-size {source,1080,720}\n  --motion-range {sdr,hdr}\n  --motion-start-frame N, --motion-end-frame N\n  --input-kind {auto,sdr,hlg,pq,log,raw}\n  --profile {auto,pocket3,samsung,milog,applelog,applelog2}\n  --purpose {share,archive}\n  -o, --output PATH\n  --overwrite\n  --skip-existing\n  --dry-run");
             Console.Out.WriteLine(T("帧编号从 0 开始，结束帧不包含在输出中；动态照片文件名以 MP.jpg 结尾。"));
         }
         Console.Out.WriteLine("\n" + T("PowerShell 7：接 | Out-Host，或在 --json 后接 | ConvertFrom-Json，以等待完成并读取 $LASTEXITCODE。"));
@@ -209,7 +254,9 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
             }
             if (args.Command == "presets")
             {
-                Output(new JsonObject { ["schema_version"] = 1, ["presets"] = Presets(), ["motion_photo"] = engine.MotionConfig.DeepClone() });
+                var hardwarePresets = new JsonObject(HardwareEncoders.WindowsPresets(engine.Config)
+                    .Select(item => KeyValuePair.Create(item.Key, item.Value?.DeepClone())));
+                Output(new JsonObject { ["schema_version"] = 1, ["presets"] = Presets(), ["motion_photo"] = engine.MotionConfig.DeepClone(), ["hardware"] = hardwarePresets });
                 return 0;
             }
             if (args.Command == "profiles")
@@ -297,6 +344,19 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
                         values[key]![name] = Regex.IsMatch(result.Output, @"\b" + Regex.Escape(name) + @"\b");
                     }
                 }
+                var hardwareChoices = new JsonArray();
+                foreach (var item in await HardwareEncoders.ProbeAsync(engine, tools, cancellation))
+                {
+                    hardwareChoices.Add((JsonNode)new JsonObject
+                    {
+                        ["backend"] = item.Backend,
+                        ["codec"] = item.Codec,
+                        ["encoder"] = item.Name,
+                        ["bit_depth"] = item.Depth,
+                        ["status"] = item.Status
+                    });
+                }
+                values["hardware_encoders"] = hardwareChoices;
                 values["note"] = T("硬件编码模式取决于显卡与驱动。");
                 Output(values);
                 return 0;
@@ -324,6 +384,14 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
 
             var inputs = InputFiles.Expand(args);
             var valuesForEncoding = args.EncodingValues(Presets());
+            HardwareEncoder[]? hardware = null;
+            bool planning = args.Command == "plan" || args.Has("dry_run");
+            var hardwareName = valuesForEncoding.Text("hardware", "auto");
+            if (valuesForEncoding.Text("purpose") != "archive" && (!planning || hardwareName == "auto"))
+            {
+                hardware = await HardwareEncoders.ProbeAsync(engine, tools, cancellation,
+                    hardwareName == "auto" ? null : hardwareName);
+            }
             // Plan the whole batch before creating outputs. This detects
             // collisions with every input (including hard links), not just the
             // currently encoded source, before any overwrite can occur.
@@ -336,7 +404,7 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
                 try
                 {
                     var media = await MediaProbe.InspectAsync(tools, path, cancellation);
-                    var options = Resolve(valuesForEncoding, media);
+                    var options = Resolve(valuesForEncoding, media, hardware);
                     FrameTimeline? timeline = HasFrameSelection(args) ? await FrameTimeline.LoadAsync(tools, media, cancellation) : null;
                     FrameRange? selection = timeline is null ? null : ReadFrameSelection(args, timeline);
                     var name = $"{Path.GetFileNameWithoutExtension(path)}_{options.Output.ToUpperInvariant()}_{options.Codec}_{options.Purpose}{options.Suffix}";

@@ -19,8 +19,6 @@ internal static class CodeChecks
             }
         }
 
-        Check(PlatformDefaults.PurposeFor(System.Runtime.InteropServices.Architecture.Arm64) == "archive"
-            && PlatformDefaults.PurposeFor(System.Runtime.InteropServices.Architecture.X64) == "share", "platform encoding defaults");
         Check(FrameTimeline.TryReadPoint("packet|pts=-1001|duration=1001|flags=K_", true, out var point, out var discarded)
             && point == new FramePoint(-1001, 1001, true) && !discarded, "packet index tick parsing");
         Check(FrameTimeline.TryReadPoint("frame|key_frame=1|best_effort_timestamp=9223372036854775806|duration=N/A", false, out point, out discarded)
@@ -203,7 +201,12 @@ internal static class CodeChecks
             {
                 try
                 {
-                    MediaProbe.ProtobufFields(payload);
+                    var status = LumaRecode.Native.NativeMedia.ParseDjiColor(payload, out _, out _);
+                    if (status != LumaRecode.Native.NativeStatus.Ok)
+                    {
+                        throw new InvalidDataException();
+                    }
+
                     Check(false, "truncated protobuf rejection");
                 }
                 catch (InvalidDataException)

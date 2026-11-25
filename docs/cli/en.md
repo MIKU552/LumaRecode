@@ -50,7 +50,8 @@ Every command supports `--help`. Probe/catalog/doctor/license results are JSON. 
 | Option | Values |
 | --- | --- |
 | `--preset` | `share-avc`, `share-hevc`, `share-av1`, `archive-avc`, `archive-hevc`, `archive-av1`, `archive-av1-fast` |
-| `--purpose` | `share` (Intel QSV), `archive` (CPU); x64 defaults to share, ARM64 to archive; dynamic HDR sources default to archive |
+| `--purpose` | `share` (hardware), `archive` (CPU). The default follows available encoders. Preserving dynamic HDR uses archive. |
+| `--hardware` | `auto` (default), `qsv`, `nvenc`, `amf`, `mf`. Applies to Quick share. |
 | `--codec` | `hevc` (default), `av1`, `avc` |
 | `--range` / `--dynamic-range` | `auto` (default), `sdr`, `hdr` |
 | `--transform` | `auto` (default), `none`, `log-hdr`, `log-sdr`, `hdr-sdr` |
@@ -116,6 +117,7 @@ Frame and time ranges are mutually exclusive and cannot be combined with `--dura
 | `--quality 1..100` | Image quality, default 95; PNG is lossless |
 | `--motion` | Add Android Motion Photo video to JPEG or Ultra HDR |
 | `--motion-start-frame N --motion-end-frame N` | Video range containing the cover; default is about three seconds around it |
+| `--motion-range sdr\|hdr` | Motion video signal. SDR H.264 by default, 10-bit HEVC for HDR. The cover uses `--image-format` |
 | `--motion-size source\|1080\|720` | Video resolution; source resolution by default |
 | `--purpose archive\|share` | CPU / Intel motion-video encoding, default `archive` |
 | `--input-kind`, `--profile` | Same source interpretation and camera profiles as video conversion |
@@ -168,3 +170,18 @@ $LASTEXITCODE
 Read the process exit code or `$LASTEXITCODE` for the result, and JSON `code` fields for error handling.
 
 Interactive Ctrl+C interrupts both the PowerShell pipeline and the conversion job and cleans up temporary output. To read cancellation events and the exit code, send a console cancellation signal through a process API and wait for the program to exit. Cooperative cancellation returns 130.
+
+## macOS
+
+Run the executable inside the app bundle. `probe`, `frames`, and `doctor` return JSON. Frame ranges include the last frame. Use `image --format sdr` for JPEG, `hdr` for PQ HEIC, or `adaptive` for HEIC with a gain map. `dolbyvision84` requires standard 10-bit HLG and a working VideoToolbox HEVC encoder.
+
+With `--live-photo`, `-o` is a new folder containing a still and a MOV to import together into Photos.
+
+```sh
+luma=/Applications/LumaRecode.app/Contents/MacOS/LumaRecode
+"$luma" doctor
+"$luma" convert input.mov -o trimmed.mp4 --start-frame 2 --end-frame 60
+"$luma" convert hlg.mov -o dolby-vision.mp4 --range dolbyvision84
+"$luma" image hlg.mov -o frame.heic --frame 25 --format adaptive
+"$luma" image hlg.mov -o live-photo --frame 25 --format adaptive --live-photo --motion-first 1 --motion-last 60
+```

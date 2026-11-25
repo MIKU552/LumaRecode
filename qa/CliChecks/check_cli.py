@@ -62,8 +62,10 @@ def ctrl_break_case(exe, source, output):
             child.stderr.read(),
         )
         assert any(e["event"] == "cancelled" for e in events), events
-        assert not output.exists() and not list(
-            output.parent.glob(".video-converter-*")
+        assert (
+            not output.exists()
+            and not list(output.parent.glob(".video-converter-*"))
+            and not list(output.parent.glob(".lumarecode-*"))
         )
     finally:
         if child.poll() is None:
@@ -363,11 +365,25 @@ def main():
         old_hash = hashlib.sha256(output.read_bytes()).hexdigest()
         bad = folder / "bad-ffmpeg.cmd"
         bad.write_text("@exit /b 1\n")
+        # Bypass hardware selection to exercise FFmpeg failure after the
+        # overwrite request has been accepted.
         events(
-            "convert", source, "-o", output, "--overwrite", "--ffmpeg", bad, status=1
+            "convert",
+            source,
+            "-o",
+            output,
+            "--overwrite",
+            "--purpose",
+            "archive",
+            "--container",
+            "mp4",
+            "--ffmpeg",
+            bad,
+            status=1,
         )
         assert hashlib.sha256(output.read_bytes()).hexdigest() == old_hash
         assert not list(folder.glob(".video-converter-*"))
+        assert not list(folder.glob(".lumarecode-*"))
         tree = folder / "input"
         (tree / "nested").mkdir(parents=True)
         shutil.copyfile(source, tree / "a.mp4")

@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using System.Globalization;
+using LumaRecode.Native;
 
 namespace VideoConverter.Core;
 
@@ -16,239 +16,193 @@ public sealed record FrameWindow(int Start, int End, int SeekFrame, double SeekS
     public double Duration => EndSeconds - StartSeconds;
 }
 
-/// <summary>Indexes display frames lazily; common progressive codecs use compressed packet timestamps.</summary>
-/// <remarks>Discarded MP4 preroll is excluded. Missing/duplicate packet PTS, interlaced
-/// streams and other codecs use decoded frame order instead of guessing from FPS.</remarks>
+/// <summary>A host-owned view of the shared display index; frame records are fetched in bounded pages.</summary>
+/// <remarks>Holding this object keeps its native SafeHandle alive. Concurrent GUI, preview and export
+/// borrowers share it; the native owner reports allocation pressure to the GC when the last borrower leaves.</remarks>
 public sealed class FrameTimeline
 {
+    private readonly NativeTimeline native;
+    private readonly NativeTimelineSnapshot snapshot;
+    private string? sourcePath;
+    private long sourceBytes;
+    private DateTime sourceModified;
     public IReadOnlyList<FramePoint> Frames
     {
         get;
     }
-    public long TimeBaseNumerator
-    {
-        get;
-    }
-    public long TimeBaseDenominator
-    {
-        get;
-    }
-    public bool PacketIndexed
-    {
-        get;
-    }
-    private string? sourcePath;
-    private long sourceBytes;
-    private DateTime sourceModified;
-    public int Count => Frames.Count;
-    public double Duration => BoundarySeconds(Count) - Seconds(0);
-    public bool Matches(string path)
-    {
-        var file = new FileInfo(path);
-        return sourcePath is not null && Path.GetFullPath(path).Equals(sourcePath, StringComparison.OrdinalIgnoreCase)
-            && file.Exists && file.Length == sourceBytes && file.LastWriteTimeUtc == sourceModified;
-    }
-
-    private static FrameTimeline Capture(FrameTimeline timeline, string path)
-    {
-        var file = new FileInfo(path);
-        timeline.sourcePath = file.FullName;
-        timeline.sourceBytes = file.Length;
-        timeline.sourceModified = file.LastWriteTimeUtc;
-        return timeline;
-    }
+    public long TimeBaseNumerator => snapshot.TimeBaseNumerator;
+    public long TimeBaseDenominator => snapshot.TimeBaseDenominator;
+    public bool PacketIndexed => snapshot.PacketIndexed;
+    public int Count => checked((int)snapshot.Count);
+    public double Duration => snapshot.Duration;
 
     public FrameTimeline(IReadOnlyList<FramePoint> frames, long numerator, long denominator, bool packetIndexed)
-        : this(numerator, denominator, packetIndexed, BoundedMediaIndex<FramePoint>.CopySnapshot(frames)) { }
+        : this(Import(frames, numerator, denominator, packetIndexed)) { }
 
-    private FrameTimeline(long numerator, long denominator, bool packetIndexed, FramePoint[] frames)
+    private FrameTimeline(NativeTimeline native)
     {
-        if (frames.Length == 0 || numerator <= 0 || denominator <= 0)
+        this.native = native;
+        snapshot = native.Snapshot;
+        Frames = new FrameView(this);
+    }
+
+    private static NativeTimeline Import(IReadOnlyList<FramePoint> frames, long numerator, long denominator, bool packets)
+    {
+        if (frames.Count == 0 || (long)frames.Count * 48 > MediaResourceLimits.IndexBytes)
         {
             throw new InvalidDataException("无法建立视频帧时间轴。");
         }
-        // Public inputs are copied once; the loader already owns its bounded
-        // snapshot. Avoid another full movie-sized array during publication.
-        Frames = Array.AsReadOnly(frames);
-        TimeBaseNumerator = numerator;
-        TimeBaseDenominator = denominator;
-        PacketIndexed = packetIndexed;
+
+        var values = new NativeFramePoint[frames.Count];
+        for (int i = 0; i < values.Length; ++i)
+        {
+            values[i] = new(frames[i].Pts, frames[i].Duration, frames[i].KeyFrame ? 1U : 0);
+        }
+
+        return NativeTimeline.FromPoints(values, numerator, denominator, packets);
+    }
+
+    public bool Matches(string path)
+    {
+        var file = new FileInfo(path);
+        return sourcePath is not null && Path.GetFullPath(path).Equals(sourcePath,
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)
+            && file.Exists && file.Length == sourceBytes && file.LastWriteTimeUtc == sourceModified;
     }
 
     public double Seconds(int frame) => (double)Frames[frame].Pts * TimeBaseNumerator / TimeBaseDenominator;
     public double Position(int frame) => Seconds(frame) - Seconds(0);
-    public double BoundarySeconds(int frame)
+    public double BoundarySeconds(int frame) => frame == 0 ? Seconds(0) : native.Resolve(0, checked((ulong)frame)).EndSeconds;
+    public int AtOrAfter(double position) => checked((int)native.AtOrAfter(position));
+
+    /// <summary>Returns the displayed frame at a playback timestamp, using actual presentation times for VFR.</summary>
+    public int AtOrBefore(double position)
     {
-        if (frame < Count)
+        int frame = AtOrAfter(position);
+        if (frame == Count || frame > 0 && Position(frame) > position + 1e-9)
         {
-            return Seconds(frame);
+            frame--;
         }
-        var last = Frames[^1];
-        long duration = last.Duration > 0 ? last.Duration : Count > 1 ? Math.Max(1, last.Pts - Frames[^2].Pts) : 1;
-        return ((double)last.Pts + duration) * TimeBaseNumerator / TimeBaseDenominator;
+        return frame;
     }
 
-    /// <summary>Resolves typed time to the first frame at or after that display position.</summary>
-    public int AtOrAfter(double position)
+    /// <summary>Formats a frame as elapsed wall time and its zero-based index within that second.</summary>
+    public string FrameCode(int frame)
     {
-        int lower = 0, upper = Count;
-        while (lower < upper)
-        {
-            int middle = lower + (upper - lower) / 2;
-            if (Position(middle) + 1e-9 < position)
-            {
-                lower = middle + 1;
-            }
-            else
-            {
-                upper = middle;
-            }
-        }
-        return lower;
+        long second = (long)Math.Floor(Math.Max(0, Position(frame)) + 1e-9);
+        int counter = frame - AtOrAfter(second);
+        return FormattableString.Invariant($"{second / 3600:00}:{second / 60 % 60:00}:{second % 60:00}.{counter:00}");
     }
 
+    /// <summary>Accepts a one-based frame number or elapsed seconds, minutes or hours followed by .frame.</summary>
+    public bool TryFrameCode(string text, out int frame)
+    {
+        frame = 0;
+        text = text.Trim();
+        if (int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out int number))
+        {
+            frame = number - 1;
+            return (uint)frame < (uint)Count;
+        }
+
+        var pieces = text.Split('.');
+        if (pieces.Length != 2 || !int.TryParse(pieces[1], NumberStyles.None, CultureInfo.InvariantCulture, out int withinSecond))
+        {
+            return false;
+        }
+        var clock = pieces[0].Split(':');
+        if (clock.Length > 3)
+        {
+            return false;
+        }
+        long seconds = 0;
+        for (int index = 0; index < clock.Length; index++)
+        {
+            if (!int.TryParse(clock[index], NumberStyles.None, CultureInfo.InvariantCulture, out int part) ||
+                (index != 0 && part >= 60))
+            {
+                return false;
+            }
+            seconds = 60 * seconds + part;
+        }
+        if (seconds >= Duration)
+        {
+            return false;
+        }
+        long selected = (long)AtOrAfter(seconds) + withinSecond;
+        if (selected >= Count || Position((int)selected) + 1e-9 >= seconds + 1)
+        {
+            return false;
+        }
+        frame = (int)selected;
+        return true;
+    }
     public FrameWindow Resolve(FrameRange range)
     {
-        int end = range.End ?? Count;
-        if (range.Start < 0 || end <= range.Start || end > Count)
+        if (range.Start < 0 || range.End is < 0 || (range.End ?? Count) <= range.Start || range.End > Count)
         {
             throw new InvalidDataException($"帧范围无效：开始帧须小于结束帧，结束帧不能超过 {Count}。");
         }
-        int seek = 0;
-        if (PacketIndexed)
-        {
-            for (int i = range.Start; i >= 0; i--)
-            {
-                if (Frames[i].KeyFrame && Seconds(i) >= 0)
-                {
-                    seek = i;
-                    break;
-                }
-            }
-        }
-        return new(range.Start, end, seek, seek == 0 ? 0 : Seconds(seek), Seconds(range.Start), BoundarySeconds(end));
+
+        var value = native.Resolve((ulong)range.Start, range.End is { } end ? (ulong)end : null);
+        return new((int)value.Start, (int)value.End, (int)value.SeekFrame, value.SeekSeconds, value.StartSeconds, value.EndSeconds);
     }
 
     public static async Task<FrameTimeline> LoadAsync(MediaTools tools, MediaInfo media, CancellationToken cancellation = default)
     {
-        var timeBase = media.Video.Text("time_base").Split('/');
-        if (timeBase.Length != 2 || !long.TryParse(timeBase[0], out var numerator) || !long.TryParse(timeBase[1], out var denominator) || numerator <= 0 || denominator <= 0)
+        var file = new FileInfo(media.Path);
+        long bytes = file.Length;
+        var modified = file.LastWriteTimeUtc;
+        var result = await NativeTimeline.LoadFromProbeAsync(Path.GetFullPath(tools.Ffprobe), NativeBackend.Snapshot(media), cancellation).ConfigureAwait(false);
+        NativeBackend.Check(result.Status, result.Diagnostic, result.Snapshot.CleanupConfirmed, cancellation);
+        var timeline = new FrameTimeline(result.Timeline!) { sourcePath = file.FullName, sourceBytes = bytes, sourceModified = modified };
+        if (!timeline.Matches(media.Path))
         {
-            throw new InvalidDataException("无法读取视频帧时间基。");
+            result.Timeline!.Dispose();
+            throw new IOException("素材已更改，请重新添加。");
         }
-        bool progressive = !new[] { "tt", "bb", "tb", "bt" }.Contains(media.Video.Text("field_order"))
-            && !media.Frames.Objects().Any(f => f.Integer("interlaced_frame") == 1);
-        if (progressive && media.Video.Text("codec_name") is "h264" or "hevc" or "prores" or "prores_raw" or "mjpeg" or "dnxhd")
-        {
-            var packets = await ReadAsync(tools, media, packets: true, cancellation).ConfigureAwait(false);
-            if (packets is not null && packets.Count > 0)
-            {
-                packets.Sort((a, b) => a.Pts.CompareTo(b.Pts));
-                bool unique = true;
-                for (int i = 1; i < packets.Count; i++)
-                {
-                    if (packets[i - 1].Pts == packets[i].Pts)
-                    {
-                        unique = false;
-                        break;
-                    }
-                }
-                cancellation.ThrowIfCancellationRequested();
-                if (unique)
-                {
-                    return Capture(new(numerator, denominator, true, packets.Snapshot()), media.Path);
-                }
-            }
-        }
-        var frames = await ReadAsync(tools, media, packets: false, cancellation).ConfigureAwait(false);
-        cancellation.ThrowIfCancellationRequested();
-        return Capture(new(numerator, denominator, false,
-            (frames ?? throw new InvalidDataException("无法读取逐帧显示时间。")).Snapshot()), media.Path);
+        return timeline;
     }
 
-    private static async Task<BoundedMediaIndex<FramePoint>?> ReadAsync(MediaTools tools, MediaInfo media, bool packets, CancellationToken cancellation)
-    {
-        var arguments = new[] { "-v", "error", "-threads", "2", "-select_streams", media.Video.Text("index"), packets ? "-show_packets" : "-show_frames",
-            "-show_entries", packets ? "packet=pts,duration,flags:packet_side_data=" : "frame=best_effort_timestamp,duration,key_frame:frame_side_data=",
-            "-of", "compact=p=1:nk=0", media.Path };
-        using var process = new Process { StartInfo = ProcessRunner.StartInfo(tools.Ffprobe, arguments) };
-        cancellation.ThrowIfCancellationRequested();
-        process.Start();
-        using var registration = cancellation.Register(() => ProcessRunner.Stop(process));
-        var errors = ProcessRunner.ReadTailAsync(process.StandardError, 4096);
-        var result = new BoundedMediaIndex<FramePoint>();
-        var lines = new BoundedLineReader(process.StandardOutput);
-        try
-        {
-            while (await lines.ReadLineAsync(cancellation).ConfigureAwait(false) is { } line)
-            {
-                if (!line.StartsWith(packets ? "packet|" : "frame|", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-                bool valid = TryReadPoint(line, packets, out var point, out bool discarded);
-                if (discarded)
-                {
-                    continue;
-                }
-                if (!valid)
-                {
-                    // One missing timestamp already makes this index unusable.
-                    // Stop this pass before starting decoded-frame fallback.
-                    return null;
-                }
-                result.Add(point);
-            }
-            await process.WaitForExitAsync(cancellation).ConfigureAwait(false);
-            if (process.ExitCode != 0)
-            {
-                throw new InvalidDataException("无法建立视频帧时间轴：" + await errors.ConfigureAwait(false));
-            }
-            return result;
-        }
-        finally
-        {
-            ProcessRunner.Stop(process);
-            await process.WaitForExitAsync().ConfigureAwait(false);
-            await errors.ConfigureAwait(false);
-        }
-    }
-
-    /// <summary>Reads the few index fields without allocating a dictionary per frame.</summary>
+    // Compatibility for the parser fixture suite; parsing remains authoritative in C++.
     internal static bool TryReadPoint(ReadOnlySpan<char> line, bool packets, out FramePoint point, out bool discarded)
     {
-        long pts = 0, duration = 0;
-        bool timestamp = false, key = false;
-        discarded = false;
-        foreach (var range in line.Split('|'))
+        bool valid = NativeTimeline.ParsePoint(line.ToString(), packets, out var value, out discarded);
+        point = new(value.Pts, value.Duration, value.KeyFrame != 0);
+        return valid;
+    }
+
+    private sealed class FrameView(FrameTimeline owner) : IReadOnlyList<FramePoint>
+    {
+        private readonly Lock gate = new();
+        private int first = -1;
+        private NativeFramePoint[] page = [];
+        public int Count => owner.Count;
+        public FramePoint this[int index]
         {
-            var field = line[range];
-            int equals = field.IndexOf('=');
-            if (equals <= 0)
+            get
             {
-                continue;
-            }
-            var name = field[..equals];
-            var value = field[(equals + 1)..];
-            if (name.SequenceEqual(packets ? "pts" : "best_effort_timestamp"))
-            {
-                timestamp = long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out pts);
-            }
-            else if (name.SequenceEqual("duration"))
-            {
-                long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out duration);
-            }
-            else if (packets && name.SequenceEqual("flags"))
-            {
-                discarded = value.Contains('D');
-                key = value.Contains('K');
-            }
-            else if (!packets && name.SequenceEqual("key_frame"))
-            {
-                key = value.SequenceEqual("1");
+                ArgumentOutOfRangeException.ThrowIfNegative(index);
+                ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Count);
+                lock (gate)
+                {
+                    if (index < first || index - first >= page.Length)
+                    {
+                        first = index / 256 * 256;
+                        page = owner.native.CopyPoints((ulong)first, Math.Min(256, Count - first));
+                    }
+                    var value = page[index - first];
+                    return new(value.Pts, value.Duration, value.KeyFrame != 0);
+                }
             }
         }
-        point = new(pts, duration, key);
-        return timestamp;
+        public IEnumerator<FramePoint> GetEnumerator()
+        {
+            for (int i = 0; i < Count; ++i)
+            {
+                yield return this[i];
+            }
+        }
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

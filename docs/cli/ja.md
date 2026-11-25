@@ -50,7 +50,8 @@
 | オプション | 値 |
 | --- | --- |
 | `--preset` | `share-avc`, `share-hevc`, `share-av1`, `archive-avc`, `archive-hevc`, `archive-av1`, `archive-av1-fast` |
-| `--purpose` | `share`（Intel QSV）/ `archive`（CPU）。x64 は共有、ARM64 はアーカイブが初期値。動的 HDR 素材はアーカイブを使用 |
+| `--purpose` | `share`（ハードウェア）、`archive`（CPU）。既定値は利用可能な方式に従います。ダイナミック HDR の保持はアーカイブを使用します。 |
+| `--hardware` | `auto`（既定）、`qsv`、`nvenc`、`amf`、`mf`。クイック共有用。 |
 | `--codec` | `hevc`（標準）、`av1`, `avc` |
 | `--range` / `--dynamic-range` | `auto`（標準）、`sdr`, `hdr` |
 | `--transform` | `auto`（標準）、`none`, `log-hdr`, `log-sdr`, `hdr-sdr` |
@@ -116,6 +117,7 @@ HDR / Log から SDR への変換には FFmpeg の libplacebo と Vulkan が必�
 | `--quality 1..100` | 画質。初期値 95。PNG は可逆圧縮 |
 | `--motion` | JPEG / Ultra HDR に Android モーションフォト動画を追加 |
 | `--motion-start-frame N --motion-end-frame N` | カバーを含む動画範囲。初期設定はカバー前後の約 3 秒 |
+| `--motion-range sdr\|hdr` | 動画のダイナミックレンジ。初期値は SDR H.264。HDR は 10 ビット HEVC、カバー形式は `--image-format` で指定 |
 | `--motion-size source\|1080\|720` | 動画の解像度。初期値は元の解像度 |
 | `--purpose archive\|share` | 動画の CPU / Intel エンコード。初期値 `archive` |
 | `--input-kind`、`--profile` | 動画変換と同じ入力解釈とカメラカーブ |
@@ -168,3 +170,18 @@ $LASTEXITCODE
 結果の判定にはプロセスの終了コードまたは `$LASTEXITCODE`、エラー処理には JSON の `code` を使用してください。
 
 対話実行中の Ctrl+C は PowerShell のパイプラインと変換ジョブを中断し、一時出力を削除します。キャンセルイベントと終了コードを取得するには、プロセス API からコンソールのキャンセルシグナルを送り、終了を待ちます。協調的キャンセルは 130 を返します。
+
+## macOS
+
+アプリ内の実行ファイルを使います。`probe`、`frames`、`doctor` は JSON を返します。範囲の終了フレームは出力に含まれます。静止画の形式は `sdr`（JPEG）、`hdr`（PQ HEIC）、`adaptive`（ゲインマップ付き HEIC）です。`dolbyvision84` を使うには標準の 10 ビット HLG 素材と、動作確認済みの VideoToolbox HEVC エンコーダーが必要です。
+
+`--live-photo` を使う場合、`-o` に新規フォルダを指定します。フォルダ内の静止画と MOV を「写真」に一緒に読み込めます。
+
+```sh
+luma=/Applications/LumaRecode.app/Contents/MacOS/LumaRecode
+"$luma" doctor
+"$luma" convert input.mov -o trimmed.mp4 --start-frame 2 --end-frame 60
+"$luma" convert hlg.mov -o dolby-vision.mp4 --range dolbyvision84
+"$luma" image hlg.mov -o frame.heic --frame 25 --format adaptive
+"$luma" image hlg.mov -o live-photo --frame 25 --format adaptive --live-photo --motion-first 1 --motion-last 60
+```

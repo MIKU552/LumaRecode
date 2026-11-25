@@ -68,6 +68,94 @@
       "async_depth": 4
     }
   },
+  "hardware": {
+    "nvenc": {
+      "label": "NVIDIA NVENC",
+      "codecs": {
+        "avc": {
+          "encoder": "h264_nvenc",
+          "arguments": {
+            "8": ["-preset", "p4", "-tune", "hq", "-rc", "vbr", "-cq", "25", "-b:v", "0"]
+          }
+        },
+        "hevc": {
+          "encoder": "hevc_nvenc",
+          "arguments": {
+            "8": ["-preset", "p4", "-tune", "hq", "-rc", "vbr", "-cq", "27", "-b:v", "0"],
+            "10": ["-preset", "p4", "-tune", "hq", "-rc", "vbr", "-cq", "27", "-b:v", "0"]
+          }
+        },
+        "av1": {
+          "encoder": "av1_nvenc",
+          "arguments": {
+            "8": ["-preset", "p4", "-tune", "hq", "-rc", "vbr", "-cq", "34", "-b:v", "0"],
+            "10": ["-preset", "p4", "-tune", "hq", "-rc", "vbr", "-cq", "34", "-b:v", "0"]
+          }
+        }
+      }
+    },
+    "amf": {
+      "label": "AMD AMF",
+      "codecs": {
+        "avc": {
+          "encoder": "h264_amf",
+          "arguments": {
+            "8": ["-usage", "transcoding", "-quality", "balanced", "-rc", "qvbr", "-qvbr_quality_level", "30"]
+          }
+        },
+        "hevc": {
+          "encoder": "hevc_amf",
+          "arguments": {
+            "8": ["-usage", "transcoding", "-quality", "balanced", "-rc", "qvbr", "-qvbr_quality_level", "30"],
+            "10": ["-usage", "transcoding", "-quality", "balanced", "-rc", "cqp", "-qp_i", "24", "-qp_p", "24", "-bitdepth", "10", "-preanalysis", "0"]
+          }
+        },
+        "av1": {
+          "encoder": "av1_amf",
+          "arguments": {
+            "8": ["-usage", "transcoding", "-quality", "balanced", "-rc", "qvbr", "-qvbr_quality_level", "26"],
+            "10": ["-usage", "transcoding", "-quality", "balanced", "-rc", "cqp", "-qp_i", "26", "-qp_p", "26", "-bitdepth", "10", "-preanalysis", "0"]
+          }
+        }
+      }
+    },
+    "videotoolbox": {
+      "label": "Apple VideoToolbox",
+      "platform": "macos",
+      "codecs": {
+        "avc": {
+          "encoder": "h264_videotoolbox",
+          "arguments": {
+            "8": ["-allow_sw", "0", "-q:v", "70"]
+          }
+        },
+        "hevc": {
+          "encoder": "hevc_videotoolbox",
+          "arguments": {
+            "8": ["-allow_sw", "0", "-q:v", "65"],
+            "10": ["-allow_sw", "0", "-q:v", "68"]
+          }
+        }
+      }
+    },
+    "mf": {
+      "label": "Media Foundation",
+      "codecs": {
+        "avc": {
+          "encoder": "h264_mf",
+          "arguments": {
+            "8": ["-hw_encoding", "1", "-rate_control", "quality", "-quality", "75"]
+          }
+        },
+        "hevc": {
+          "encoder": "hevc_mf",
+          "arguments": {
+            "8": ["-hw_encoding", "1", "-rate_control", "quality", "-quality", "75"]
+          }
+        }
+      }
+    }
+  },
   "audio": {
     "archive_default": "copy",
     "share_default": {

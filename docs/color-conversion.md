@@ -29,7 +29,7 @@ Apple Log 与 Apple Log 2 使用同一传递曲线，区别在输入 RGB 色域�
 
 动态 HDR 素材默认使用软件 HEVC、原片范围、10 位和 4:2:0。保留模式保持编码样本的色彩表示，并逐帧传递元数据。Profile 5 的 IPTPQc2 数据直接送入编码器；软件 HEVC 启用 Dolby Vision 所需的 VBV，`vbv-maxrate=100000`、`vbv-bufsize=100000`。
 
-HDR10+ 由内置 C# 解析并导出为 x265 JSON。HEVC 路径扫描 SEI，按数据包 PTS 排序，并排除容器标记为丢弃的前置帧。重复 SEI 按解码顺序继承，再按显示顺序导出。AV1、无时间戳的裸码流及时间线存在歧义的素材使用 ffprobe 解码后的逐帧元数据。JSON 逐帧写入任务临时目录。保留支持单窗口 Profile A / B。
+HDR10+ 由共享核心解析，各平台将数据写成 x265 JSON。HEVC 路径扫描 SEI，按数据包 PTS 排序，并排除容器标记为丢弃的前置帧。重复 SEI 按解码顺序继承，再按显示顺序导出。AV1、无时间戳的裸码流及时间线存在歧义的素材使用 ffprobe 解码后的逐帧元数据。JSON 逐帧写入任务临时目录。保留支持单窗口 Profile A / B。
 
 选择“标准 HDR”后可使用硬件快速分享。Dolby Vision 转换由 libplacebo 应用 RPU 后输出标准 HLG / PQ；HDR10+ 使用 PQ 基础图像。转 SDR 时应用色调映射。已应用的动态元数据随后移除。
 
@@ -81,7 +81,7 @@ Camera Log profiles are independent of the YCbCr matrix and sample range. Detect
 
 Dynamic HDR defaults to software HEVC, source sample range, 10-bit and 4:2:0. Preservation keeps the source sample representation and carries per-frame metadata. Profile 5 IPTPQc2 samples pass directly to the encoder. HEVC enables the VBV settings required by Dolby Vision: `vbv-maxrate=100000` and `vbv-bufsize=100000`.
 
-Built-in C# code parses HDR10+ and exports x265 JSON. HEVC scans SEI payloads, orders packets by PTS and excludes container-discarded preroll. Repeated SEI inherits state in decode order before presentation ordering. AV1, untimestamped elementary streams and ambiguous timelines use decoded frame side data from ffprobe. JSON is streamed to the job directory. Preservation supports single-window Profile A / B.
+The shared core parses HDR10+, and each host writes x265 JSON. HEVC scans SEI payloads, orders packets by PTS and excludes container-discarded preroll. Repeated SEI inherits state in decode order before presentation ordering. AV1, untimestamped elementary streams and ambiguous timelines use decoded frame side data from ffprobe. JSON is streamed to the job directory. Preservation supports single-window Profile A / B.
 
 Standard HDR enables hardware quick sharing. libplacebo applies Dolby Vision RPU mapping for standard HLG / PQ; HDR10+ uses its PQ base image. SDR output applies tone mapping. Consumed dynamic metadata is then removed.
 

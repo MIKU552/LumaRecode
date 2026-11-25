@@ -1,9 +1,8 @@
-using System.Buffers.Binary;
-using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using LumaRecode.Native;
 
 namespace VideoConverter.Core;
 
@@ -13,11 +12,6 @@ namespace VideoConverter.Core;
 public static class RawDevelopment
 {
     private const double MatrixScale = 1024;
-    private static readonly double[,] xyzTo2020 = {
-        { 1.716651187971268, -0.355670783776392, -0.253366281373660 },
-        { -0.666684351832489, 1.616481236634939, 0.015768545813911 },
-        { 0.017639857445311, -0.042770613257809, 0.942103121235474 }
-    };
     // sendcmd uses FFmpeg duration syntax, which rejects exponent notation.
     private static string N(double value) => value.ToString("0.#################", CultureInfo.InvariantCulture);
 
@@ -31,60 +25,16 @@ public static class RawDevelopment
         Span<byte> header = stackalloc byte[86];
         file.Position = position;
         file.ReadExactly(header);
-        // Local functions cannot capture a stack-only span. Keep the small header
-        // buffer independent of the much larger compressed frame payload.
-        var headerBytes = header.ToArray();
-        int U16(int offset) => BinaryPrimitives.ReadUInt16BigEndian(headerBytes.AsSpan(offset, 2));
-        double F32(int offset) => BitConverter.Int32BitsToSingle(BinaryPrimitives.ReadInt32BigEndian(headerBytes.AsSpan(offset, 4)));
-        if (BinaryPrimitives.ReadUInt32BigEndian(header) != packetSize || !header[4..8].SequenceEqual("prrf"u8)
-            || U16(8) < 78 || U16(8) > packetSize - 8 || header[11] > 1)
-        {
-            throw new InvalidDataException("当前 ProRes RAW 帧头或 Bayer 排列不受支持。");
-        }
-        int width = U16(16), height = U16(18);
-        var crop = header[20..24].ToArray().Select(b => (int)b).ToArray();
-        if (width <= 0 || height <= 0 || (width & 1) != 0 || (height & 1) != 0
-            || crop[0] + crop[1] >= width || crop[2] + crop[3] >= height || U16(26) == 0 || U16(26) > 65279)
-        {
-            throw new InvalidDataException("ProRes RAW 画面尺寸或传感器范围无效。");
-        }
-        var calibration = new[] { F32(28), F32(32) }.Concat(Enumerable.Range(0, 10).Select(i => F32(36 + i * 4))).ToArray();
-        if (calibration.Any(v => !double.IsFinite(v)) || calibration[0] <= 0 || calibration[1] <= 0 || calibration[11] <= 0)
-        {
-            throw new InvalidDataException("ProRes RAW 白平衡或相机色彩参数无效。");
-        }
-        double determinant = calibration[2] * (calibration[6] * calibration[10] - calibration[7] * calibration[9])
-            - calibration[3] * (calibration[5] * calibration[10] - calibration[7] * calibration[8])
-            + calibration[4] * (calibration[5] * calibration[9] - calibration[6] * calibration[8]);
-        if (Math.Abs(determinant) < 1e-9)
-        {
-            throw new InvalidDataException("ProRes RAW 白平衡或相机色彩参数无效。");
-        }
-        var matrix = new JsonArray();
-        for (int i = 0; i < 3; i++)
-        {
-            double offset = 0;
-            for (int j = 0; j < 3; j++)
-            {
-                double value = Enumerable.Range(0, 3).Sum(k => xyzTo2020[i, k] * calibration[2 + k * 3 + j]);
-                value *= (j == 0 ? calibration[0] : j == 2 ? calibration[1] : 1) * 65535 / U16(26) * calibration[11] / MatrixScale;
-                if (Math.Abs(value) > 2)
-                {
-                    throw new InvalidDataException("ProRes RAW 相机增益超出当前显影范围。");
-                }
-                matrix.Add((JsonNode?)JsonValue.Create(value));
-                offset -= 256d / 65535 * value;
-            }
-            matrix.Add((JsonNode?)JsonValue.Create(offset));
-        }
+        var raw = NativeMedia.ReadRawCalibration(header, (ulong)packetSize)
+            ?? throw new InvalidDataException("当前 ProRes RAW 帧头或相机校准不受支持。");
         return new()
         {
-            ["width"] = width,
-            ["height"] = height,
-            ["crop"] = new JsonArray(crop.Select(v => (JsonNode?)JsonValue.Create(v)).ToArray()),
-            ["matrix"] = matrix,
-            ["white_balance_kelvin"] = U16(76),
-            ["bayer_pattern"] = U16(24) & 3
+            ["width"] = (int)raw.Width,
+            ["height"] = (int)raw.Height,
+            ["crop"] = new JsonArray(raw.Crop.Select(v => (JsonNode?)JsonValue.Create((int)v)).ToArray()),
+            ["matrix"] = new JsonArray(raw.Matrix.Select(v => (JsonNode?)JsonValue.Create(v)).ToArray()),
+            ["white_balance_kelvin"] = (int)raw.Kelvin,
+            ["bayer_pattern"] = (int)raw.BayerPattern
         };
     }
 
@@ -107,7 +57,7 @@ public static class RawDevelopment
         // Decoder presence alone does not establish support for a camera's
         // Bayer layout. In particular, FFmpeg 9.0.2 rejects iPhone pattern 3.
         var trial = await ProcessRunner.CaptureAsync(tools.Ffmpeg, ["-hide_banner", "-nostdin", "-v", "error", "-xerror", "-threads:v", "2", .. PlatformDefaults.RawCpuArguments,
-            "-i", path, "-map", "0:" + stream, "-frames:v", "1", "-an", "-sn", "-dn", "-f", "null", "-"], cancellation, 30);
+            .. MediaProbe.InputOptions, "-i", path, "-map", "0:" + stream, "-frames:v", "1", "-an", "-sn", "-dn", "-f", "null", "-"], cancellation, 30);
         raw["decoder_supported"] = trial.ExitCode == 0;
         return raw;
     }
@@ -207,48 +157,57 @@ public static class RawDevelopment
         {
             args.AddRange(["-read_intervals", "%+" + N(seconds.Value + 0.1)]);
         }
+        args.AddRange(MediaProbe.InputOptions);
         args.Add(media.Path);
-        using var process = new Process { StartInfo = ProcessRunner.StartInfo(tools.Ffprobe, args) };
         cancellation.ThrowIfCancellationRequested();
-        process.Start();
-        using var registration = cancellation.Register(() => ProcessRunner.Stop(process));
-        var errors = ProcessRunner.ReadTailAsync(process.StandardError, 8192);
         using var file = File.OpenRead(media.Path);
-        await using var writer = new StreamWriter(destination, false, new UTF8Encoding(false));
+        using var writer = new StreamWriter(destination, false, new UTF8Encoding(false));
         var initial = media.Video["_raw"]!.AsObject();
         var timeBase = media.Video.Text("time_base").Split('/');
         long numerator = long.Parse(timeBase[0], CultureInfo.InvariantCulture), denominator = long.Parse(timeBase[1], CultureInfo.InvariantCulture);
         string previous = "";
-        var lines = new BoundedLineReader(process.StandardOutput);
-        try
+        var lines = new Utf8LineConsumer(line =>
         {
-            while (await lines.ReadLineAsync(cancellation) is { } line)
-            {
-                var fields = line.Split('|').Select(p => p.Split('=', 2)).Where(p => p.Length == 2).ToDictionary(p => p[0], p => p[1]);
-                var raw = ReadHeader(file, long.Parse(fields["pos"], CultureInfo.InvariantCulture), long.Parse(fields["size"], CultureInfo.InvariantCulture));
-                if (raw.Integer("width") != initial.Integer("width") || raw.Integer("height") != initial.Integer("height")
-                    || !JsonNode.DeepEquals(raw["crop"], initial["crop"]))
-                {
-                    throw new InvalidDataException("ProRes RAW 素材在录像中改变了画面尺寸或裁切。");
-                }
-                string coefficients = string.Join(',', Coefficients(raw).Select(p => "colorchannelmixer@raw " + p.Replace('=', ' ')));
-                if (coefficients == previous)
-                {
-                    continue;
-                }
-                double sourceTime = (double)long.Parse(fields["pts"], CultureInfo.InvariantCulture) * numerator / denominator;
-                double time = previous.Length == 0 ? 0 : Math.Max(0, sourceTime
-                    - (window is { SeekFrame: > 0 } ? window.SeekSeconds : JsonFields.Number(media.Video.Text("start_time"))));
-                await writer.WriteLineAsync(N(time) + " " + coefficients + ";");
-                previous = coefficients;
-            }
-            await process.WaitForExitAsync(cancellation);
             cancellation.ThrowIfCancellationRequested();
-            if (process.ExitCode != 0)
+            if (line.Length == 0)
             {
-                throw new InvalidDataException("无法读取 ProRes RAW 帧参数：" + await errors);
+                return;
             }
+
+            var fields = line.Split('|').Select(p => p.Split('=', 2)).Where(p => p.Length == 2).ToDictionary(p => p[0], p => p[1]);
+            var raw = ReadHeader(file, long.Parse(fields["pos"], CultureInfo.InvariantCulture), long.Parse(fields["size"], CultureInfo.InvariantCulture));
+            if (raw.Integer("width") != initial.Integer("width") || raw.Integer("height") != initial.Integer("height")
+                || !JsonNode.DeepEquals(raw["crop"], initial["crop"]))
+            {
+                throw new InvalidDataException("ProRes RAW 素材在录像中改变了画面尺寸或裁切。");
+            }
+            string coefficients = string.Join(',', Coefficients(raw).Select(p => "colorchannelmixer@raw " + p.Replace('=', ' ')));
+            if (coefficients == previous)
+            {
+                return;
+            }
+
+            double sourceTime = (double)long.Parse(fields["pts"], CultureInfo.InvariantCulture) * numerator / denominator;
+            double time = previous.Length == 0 ? 0 : Math.Max(0, sourceTime
+                - (window is { SeekFrame: > 0 } ? window.SeekSeconds : JsonFields.Number(media.Video.Text("start_time"))));
+            writer.WriteLine(N(time) + " " + coefficients + ";");
+            previous = coefficients;
+        });
+        var result = await NativeProcess.RunStreamingAsync(
+            new(tools.Ffprobe, args, OutputMode: NativeCaptureMode.Discard, TimeoutMilliseconds: 0),
+            (stream, bytes) =>
+            {
+                if (stream == 1)
+                {
+                    lines.Feed(bytes);
+                }
+            }, cancellation).ConfigureAwait(false);
+        NativeBackend.Check(result.ChildExited && result.Status == NativeStatus.IoError ? NativeStatus.Ok : result.Status,
+            result.Diagnostic, result.CleanupConfirmed, cancellation);
+        if (result.ExitCode != 0)
+        {
+            throw new InvalidDataException("无法读取 ProRes RAW 帧参数：" + result.ErrorText);
         }
-        finally { ProcessRunner.Stop(process); await process.WaitForExitAsync(); await errors; }
+        lines.Feed([], flush: true);
     }
 }

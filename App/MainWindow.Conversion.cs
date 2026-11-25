@@ -12,7 +12,8 @@ public sealed partial class MainWindow
         Transform: Value(Transform), Profile: Value(Profile) == "" ? null : Value(Profile),
         Sampling: Value(Sampling), Variant: Value(Variant), Audio: TrimVideo && audioUsesDefault ? "auto" : Value(Audio),
         Container: Value(Container), SourceKind: Value(InputKind), CpuDecode: preferSoftwareDecode || softwareDecodeFallback,
-        ColorRange: Value(ColorRange), BitDepth: Value(BitDepth), DynamicHdr: Value(DynamicMetadata));
+        ColorRange: Value(ColorRange), BitDepth: Value(BitDepth), DynamicHdr: Value(DynamicMetadata),
+        Hardware: Value(Purpose) == "share" ? SelectedHardware : "qsv");
     private EncodeOptions DecodeSelectionKey() => SelectedOptions() with { CpuDecode = false, Audio = "auto", Container = "auto", Variant = "standard" };
 
     private async Task StartAsync()
@@ -57,6 +58,7 @@ public sealed partial class MainWindow
             }
             catch (Exception error) { await MessageAsync(L.T("读取失败"), error.Message); return; }
         }
+        PausePreviewPlayback(drawExact: false);
         var pendingPreview = Task.WhenAll(previewTeardown, previewSession?.CancelAsync() ?? Task.CompletedTask);
         var request = new ConversionRequest(PhotoMode ? "image" : "convert", ToolsObject(), MediaText("path"), output,
             SelectedOptions(), Overwrite: overwrite, Frames: TrimVideo ? VideoFrames : null,
@@ -316,7 +318,7 @@ public sealed partial class MainWindow
     }
     private void UpdateEditingEnabled(bool enabled)
     {
-        foreach (var name in new[] { "InputKind", "OutputRange", "Purpose", "Codec", "Variant", "Container", "Transform", "Sampling", "ColorRange", "Audio", "CpuDecode", "DynamicMetadata" })
+        foreach (var name in new[] { "InputKind", "OutputRange", "Purpose", "Codec", "HardwareEncoder", "Variant", "Container", "Transform", "Sampling", "ColorRange", "Audio", "CpuDecode", "DynamicMetadata" })
         {
             Control<Microsoft.UI.Xaml.Controls.Control>(name).IsEnabled = enabled;
         }

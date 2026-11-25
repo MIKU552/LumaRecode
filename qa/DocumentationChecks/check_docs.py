@@ -26,7 +26,14 @@ localized = {
     *(f"docs/readme/{lang}.md" for lang in LANGUAGES if lang != "zh-CN"),
     *(f"docs/cli/{lang}.md" for lang in LANGUAGES),
 }
-bilingual = set(documents) - localized
+# GitHub prefills these templates in one editor, so each field uses both labels.
+interaction_templates = {
+    name
+    for name in documents
+    if name.startswith(".github/ISSUE_TEMPLATE/")
+    or name == ".github/PULL_REQUEST_TEMPLATE.md"
+}
+bilingual = set(documents) - localized - interaction_templates
 failures = []
 
 

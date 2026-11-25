@@ -98,7 +98,7 @@ public sealed partial class MainWindow
                 item.Content = L.T(original);
             }
 
-            foreach (var name in new[] { "InputKind", "Purpose", "Codec", "Variant", "Container", "Transform", "Profile", "Sampling", "BitDepth", "ColorRange", "Audio", "DynamicMetadata", "ImageFormat", "MotionEncoder", "MotionResolution" })
+            foreach (var name in new[] { "InputKind", "Purpose", "Codec", "Variant", "Container", "Transform", "Profile", "Sampling", "BitDepth", "ColorRange", "Audio", "DynamicMetadata", "ImageFormat", "MotionEncoder", "MotionResolution", "MotionVideoRange" })
             {
                 var combo = Control<ComboBox>(name);
                 var selected = combo.SelectedIndex;

@@ -4,232 +4,198 @@
 
 ## 简体中文
 
-### 开发环境
+### 工具链
 
-| 组件 | 版本 | 用途 |
-| --- | --- | --- |
-| .NET SDK | 11.0.100 | 由 `global.json` 固定 |
-| .NET runtime | 11.0.0 | 应用、转换核心与 JIT |
-| Windows App SDK | 2.6.5 | WinUI 与 Windows App Runtime |
-| Windows SDK BuildTools | 10.0.28000.2957 | Windows 资源与清单 |
-| Windows API target | 10.0.26100.0 | Windows API 编译合约 |
-| Visual Studio | 2026 18.12+ | 解决方案、调试与打包 |
-| MSVC linker | 14.52.37029+ | 可选 Native AOT 构建 |
-| libultrahdr / libjpeg-turbo | 2.0.2 / 3.2.1 | Ultra HDR JPEG 编码 |
-| PySide6 | 6.12.0 | 可选图标生成工具 |
-
-默认 JIT 构建需要 .NET SDK、PowerShell 7，以及 WinUI 构建所需的 Windows 工具：
-
-```powershell
-./build.ps1
-```
-
-可选 AOT 构建需要 [Visual Studio C++ 工具链](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/)。自行配置原生工具 `PATH` 和 `LIB` 时可加 `-UseEnvironmentalNativeTools`。
-
-NuGet 按架构和编译方式使用锁文件：JIT 使用 `packages.lock.json` 或 `packages.arm64.lock.json`，AOT 使用 `packages.aot.lock.json` 或 `packages.arm64.aot.lock.json`。运行时支持见 [.NET 支持周期](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core)和 [Windows App SDK 发布渠道](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/release-channels)。
-
-### 编译目标
-
-| 命令 | 编译方式 | 输出目录 |
-| --- | --- | --- |
-| `./build.ps1` / `-Target Native` | JIT，自动选择 X64 或 ARM64 | `dist/SelfContained/` |
-| `./build.ps1 -Target X64` | JIT，`win-x64` | `dist/SelfContained-X64/` |
-| `./build.ps1 -Target Arm64` | JIT，`win-arm64` | `dist/SelfContained-Arm64/` |
-| `./build.ps1 -Compilation Aot` | Native AOT，本机指令集 | `dist/Aot-SelfContained/` |
-| `./build.ps1 -Target X64 -Compilation Aot` | Native AOT，x86-64-v2 | `dist/Aot-SelfContained-X64/` |
-| `./build.ps1 -Target Apx -Compilation Aot` | Native AOT，APX | `dist/Aot-SelfContained-Apx/` |
-| `./build.ps1 -Target Arm64 -Compilation Aot` | Native AOT，ARMv8-A | `dist/Aot-SelfContained-Arm64/` |
-
-每个目录生成一个 `LumaRecode.exe`。正式发布提供 X64 和 ARM64 两种 JIT 单文件。Native 根据 Windows 的实际系统架构选择目标，包括仿真终端下的系统架构。
-
-JIT 在运行设备上选择指令集。x64 的 CPU 与 Windows 均支持 APX，且 `DOTNET_EnableAPX` / `COMPlus_EnableAPX` 未显式设置时，启动阶段以子进程环境启用 APX 后重新进入应用。ARM64 使用运行时的特性检测和指令选择。
-
-AOT 的 Native 目标按构建 CPU 优化，需要与系统架构相同的 .NET SDK。显式 X64、Apx、Arm64 使用固定指令集，支持交叉编译。APX AOT 入口在加载主体前检查 CPU 和 Windows 支持。ARM64 默认选择软件归档。
-
-JIT 交叉发布无需 C++ 链接器；AOT 交叉编译需要对应架构的 [C++ 构建工具](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile)。中间目录为 `obj/<Compilation>/<Target>/` 和 `bin/<Compilation>/<Target>/`，分发许可清单位于 `build-cache/licenses/<Compilation>/<Target>/`，AOT 载荷位于 `dist/NativeAot/<Target>/`。
-
-### 部署方式
-
-| 命令 | 产物 | 运行时 |
-| --- | --- | --- |
-| `./build.ps1` | JIT 单文件 EXE | 内置所需运行时 |
-| `./build.ps1 -Compilation Aot` | AOT 单文件 EXE | 内置所需运行组件 |
-| `./build.ps1 -Deployment FrameworkDependent` | JIT ZIP | 用户安装 .NET 11 Runtime、Windows App Runtime 2.6 |
-
-`-Target` 可与部署选项组合；Apx 使用 SelfContained / Aot。FFmpeg 与 ffprobe 由用户提供。
-
-Ultra HDR 原生库按架构放置在 `App/Native/x64/uhdr.dll` 与 `App/Native/arm64/uhdr.dll`，首次导出时加载。重新编译需要 MSVC、CMake 和 Ninja；x64 还需要 NASM：
-
-```powershell
-./tools/Build-UltraHdr.ps1 -Architecture x64
-./tools/Build-UltraHdr.ps1 -Architecture arm64
-```
-
-ARM64 使用 NEON，x64 使用 libjpeg-turbo 的 x86 SIMD。源码版本、构建配置和二进制哈希见[原生组件清单](../App/Native/manifest.json)。
-
-### Visual Studio
-
-使用 Visual Studio 2026 18.12 或更新版本，安装 WinUI / C# 桌面开发工具、.NET SDK 11.0.100，并将 PowerShell 7 的 `pwsh` 加入 `PATH`。AOT 另需对应架构的 C++ 构建工具。
-
-打开 `LumaRecode.sln` 或 `LumaRecode.slnx`，将 `LumaRecode.App` 设为启动项目。Debug / x64 和 Debug / ARM64 用于调试。
-
-| 解决方案配置 | 打包目标 |
+| 平台 | 开发环境 |
 | --- | --- |
-| Release / Native | JIT，自动选择系统架构 |
-| Release / x64 | JIT X64 |
-| Release / ARM64 | JIT ARM64 |
-| Release-AOT / Native | AOT，本机构建 CPU |
-| Release-AOT / x64 | AOT X64 |
-| Release-AOT / ARM64 | AOT ARM64 |
-| Release-APX / x64 | AOT APX |
+| Windows x64 / ARM64 | Visual Studio 2026 18.12+ 的 WinUI 和桌面 C++ 工具，PowerShell 7，.NET SDK |
+| macOS ARM64 | Apple Silicon Mac，macOS 27+，Xcode 27.2 |
+| 共享核心 | Rustup、CMake、Ninja 和目标平台 C/C++ 工具链 |
 
-“生成解决方案”通过 `Packaging` 调用 `build.ps1`，完成依赖还原、许可收集与单文件发布。也可单独生成 `Packaging` 项目。
+`global.json` 固定 .NET SDK，`rust-toolchain.toml` 固定 Rust，`tools/native-build-tools.json` 固定 CMake 和 Ninja。NuGet 锁文件按架构和编译方式区分，包含 Windows App SDK 及其运行时依赖。
+
+### Windows 构建
+
+打开 `LumaRecode.sln` 或 `LumaRecode.slnx`，选 `LumaRecode.App` 进行调试。解决方案的 `Release-AOT` 配置构建 AOT，`Release` 构建 JIT，`Release-APX | x64` 构建 APX。无需通过 IDE 时，从仓库根目录运行：
 
 ```powershell
-dotnet build LumaRecode.sln -c Release -p:Platform=Native
-dotnet build LumaRecode.sln -c Release -p:Platform=x64
-dotnet build LumaRecode.sln -c Release -p:Platform=ARM64
-dotnet build LumaRecode.sln -c Release-AOT -p:Platform=x64
-dotnet build LumaRecode.sln -c Release-APX -p:Platform=x64
+./tools/Install-NativeBuildTools.ps1
+./build.ps1
+./build.ps1 -Target Arm64 -Deployment Portable
+./build.ps1 -Target X64 -Compilation Jit -Deployment FrameworkDependent
 ```
 
-主视图位于 `App/MainView.xaml`。修改翻译后运行 `python tools/Update-ViewText.py` 更新控件映射。提交前运行 `./tools/Check-Source.ps1`；Python 工具可使用 `ruff check qa tools Brand` 和 `ruff format --check qa tools Brand`。检查命令见 [QA 指南](../qa/README.md)，模块职责见[代码结构](architecture.md)，图标生成见 [Brand/README.md](../Brand/README.md)。
+| 目标 | Native AOT 指令集 |
+| --- | --- |
+| `Native` | 识别真实 Windows 架构，并按构建机器支持的指令集优化 |
+| `X64` | x86-64-v2 |
+| `Apx` | Intel APX，启动时检查 CPU 和 Windows 支持 |
+| `Arm64` | ARMv8-A |
 
-### 字体
+交叉编译需要目标架构的 C++ 和 Rust 工具。JIT 可选相同平台的基本架构，运行时根据设备选择指令；支持 APX 的设备可通过 `DOTNET_EnableAPX` 控制。.NET Native AOT 工具链和跨架构要求见 [Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile)。
 
-界面使用 Source Sans 3、思源黑体中文与日文字体；日志使用 Source Code Pro，并回退到对应的思源黑体。字体随程序提供。
+### Windows 打包
 
-字体位于 `App/Assets/Fonts/`，版权和 SIL OFL 1.1 原文位于 `licenses/Fonts/`。提交、下载地址和 SHA-256 固定在[字体来源清单](../licenses/Fonts/manifest.json)。构建时校验字体与许可文件的哈希。
+| 配置 | 应用运行时 | 可用格式 |
+| --- | --- | --- |
+| `Aot`（默认） | Native AOT，含所需运行组件 | EXE、ZIP、MSI；x64 / ARM64 也可生成 MSIX |
+| `JitExternal` | 用户安装 .NET 11 Runtime；包内含 WinUI | EXE、ZIP、MSI |
+| `JitBundled` | 包内含 .NET 及 WinUI | EXE、ZIP、MSI |
 
-### 单文件结构
+单文件 EXE 由引导程序展开后启动。便携 ZIP 和 MSI 从应用目录加载资源。MSI 以当前用户安装，包含开始菜单快捷方式。EXE、ZIP 和 MSI 可独立选择外置或内置 FFmpeg：
 
-JIT 默认直接打包应用、中间代码、.NET 运行时、Windows App SDK、字体、LUT 与许可文件。WinUI 资源和运行依赖提取到临时缓存后，GUI 主体在当前进程中运行。CLI 入口通过同一 EXE 启动工作子进程，保留管道取消后的清理。
+```powershell
+./tools/Package-Windows.ps1 -Target X64 -Profile Aot -Format Exe,Zip,Msi
+$tools = ./tools/Stage-WindowsFfmpeg.ps1 -Target X64
+./tools/Package-Windows.ps1 -Target X64 -Profile JitExternal -Ffmpeg Both -FfmpegDirectory $tools
+./tools/Package-Windows.ps1 -Target X64 -Format Msix
+```
 
-可选 AOT 构建通过 `Bundle/` 打包 AOT 主程序和依赖。GUI 入口启动主体后退出；CLI 入口保留标准句柄和工作目录，等待任务结束并返回退出码。APX JIT 启动引导也采用同样的句柄与退出码传递。
+生成文件在 `dist/windows/`。WiX 用于生成 MSI，打包脚本从工具清单还原。打包内置工具需要匹配架构的 `bin/ffmpeg.exe`、`bin/ffprobe.exe` 和 `BUILDINFO.txt`。发布含 FFmpeg 的包时，应同时提供该版本对应的源码和库的许可。[FFmpeg 许可](https://ffmpeg.org/legal.html)
 
-单文件使用 `IncludeAllContentForSelfExtract` 保留磁盘文件兼容性。缓存与进程的性能测量见[性能优化](performance.md)，命令行说明见 [CLI 手册](cli/zh-CN.md)。
+GitHub 正式版的 Windows EXE、ZIP 和 MSI 均提供内置或外置 FFmpeg。内置版使用 MSYS2 的 FFmpeg，包含 `zscale`、`lut3d` 和 `libplacebo`。应用包内含可执行工具、依赖、许可证和构建信息。各架构对应的源码和签名可在[同版本 Release](https://github.com/MIKU552/LumaRecode/releases) 的附件中单独下载。选择外置版时，安装具备这些滤镜的 FFmpeg，在工具路径面板检测或指定程序。
 
-### 依赖收集
+外置 .NET 版启动时由 .NET 宿主查找匹配架构的运行时。桌面启动遇到缺失时，弹窗可打开微软下载页。终端自动化可设置 `DOTNET_DISABLE_GUI_ERRORS=1`，通过退出码、标准错误和下载链接处理缺失的运行时。安装对应 x64 或 ARM64 的 **.NET 11 Runtime** 后重新启动。[微软官方下载](https://dotnet.microsoft.com/download/dotnet/11.0)
 
-1. 按锁文件还原当前架构与编译方式的依赖。
-2. 收集应用依赖的许可、声明和运行时记录；AOT 另合并 Bundle 入口的依赖图。
-3. 校验字体、LUT、原生图片编解码库和许可哈希。
-4. 随单文件发布完整组件许可与来源清单。
+### Microsoft Store
 
-项目许可见 [LICENSE](../LICENSE)、[NOTICE](../NOTICE)和[第三方组件](../Assets/THIRD_PARTY.md)。
+开发 MSIX 使用 `MIKU552.LumaRecode.Dev`。发布构建使用 `-PartnerCenter` 读取 [StoreIdentity.json](../Packaging/StoreIdentity.json)，再把 x64 和 ARM64 包合成 `.msixupload`。其中的包名、发布者、发布者显示名和商店 ID 可公开。Entra 凭据应配置在单独的 GitHub `microsoft-store` 环境中。[应用标识字段](https://learn.microsoft.com/en-us/windows/apps/publish/view-app-identity-details)
+
+首次在 Partner Center 补齐价格与可用性、年龄分级、商店内容及认证说明，在“包”页面上传正式发布运行的 `lumarecode-store-<commit>` 工件中的 `.msixupload`。[包上传](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/upload-app-packages)
+
+上传时出现 `runFullTrust` 警告后，在「提交选项」填写受限能力用途。应用以当前用户权限运行 WinUI 3 桌面程序，启动随包的 FFmpeg 和 ffprobe，读写用户选择的本地输入和输出，并通过打包 COM 激活完成通知。微软会在认证时审查该说明。认证备注可另附导入素材和软件归档转换的步骤。[微软的受限能力说明](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/app-capability-declarations#restricted-capabilities)
+
+首次发布上线后，可为 Microsoft Entra 应用配置 Partner Center 的 Manager 角色，在 `microsoft-store` 环境中设置 `STORE_TENANT_ID`、`STORE_SELLER_ID`、`STORE_CLIENT_ID`、`STORE_CLIENT_SECRET`。在 `main` 手动运行 **Submit Microsoft Store update** 并输入正式发布的 Actions 运行 ID。工作流验证对应的商店包，确认现有提交已处理后送交认证。[微软商店更新文档](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
+
+### macOS 安装与分发
+
+将 DMG 中的应用拖到“应用程序”。如果首次打开被 macOS 拦截，确认下载来源后，在“系统设置 → 隐私与安全性”选择“仍要打开”。[Apple 使用手册](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac)
+
+使用 `macOS/LumaRecode.xcodeproj` 构建和归档。也可以运行：
+
+```sh
+sh tools/build-macos.sh Release --dmg
+brew install ffmpeg-full molten-vk
+sh tools/build-macos.sh Release --dmg-full-tools
+```
+
+标准 DMG 使用系统上的 FFmpeg。FFmpeg Full DMG 把 FFmpeg、ffprobe、libplacebo 和 MoltenVK 放入应用，配套源码包包含对应的上游源码、Homebrew 配方、资源和补丁。两种 DMG 都使用 ad-hoc 签名。
+
+### 第三方资源
+
+Windows 界面使用 Source Sans 3 和思源黑体，日志使用 Source Code Pro，并回退到思源黑体。字体与原始许可一同打包。版本和哈希见[字体清单](../licenses/Fonts/manifest.json)。
+
+Ultra HDR 使用 Google libultrahdr 和 libjpeg-turbo，可通过 `tools/Build-UltraHdr.ps1` 为各架构重建。源码版本、构建设置和二进制哈希见[组件清单](../App/Native/manifest.json)。
+
+构建脚本从锁定的依赖图收集许可，校验字体和原生组件；单文件包也收集引导程序依赖。[项目许可](../LICENSE) · [第三方声明](../NOTICE)
+
+### 构建来源与验证
+
+手动运行 **Native core** 并勾选 `release_packages` 可准备候选版。Windows 生成两种架构的 AOT 和外置 .NET 包，macOS 生成标准和 FFmpeg Full DMG，同时生成共享 SDK、SHA-256 校验文件和商店上传包。
+
+在 `main` 的正式版本提交上创建并推送已签名的版本标签，手动运行 **Publish GitHub release** 并输入相同的版本号。工作流运行回归检查、验证构建来源，再从草稿发布 GitHub Release。普通提交和 PR 检查不会发版。
+
+```sh
+gh attestation verify <file> --repo MIKU552/LumaRecode --signer-workflow MIKU552/LumaRecode/.github/workflows/native-core.yml
+```
+
+可用 `--source-ref` 和 `--source-digest` 核对指定标签和提交。[构建来源证明](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations) · [QA 指南](../qa/README.md)
 
 ## English
 
-### Development environment
+### Toolchains
 
-| Component | Version | Purpose |
-| --- | --- | --- |
-| .NET SDK | 11.0.100 | Pinned by `global.json` |
-| .NET runtime | 11.0.0 | Application, conversion core and JIT |
-| Windows App SDK | 2.6.5 | WinUI and Windows App Runtime |
-| Windows SDK BuildTools | 10.0.28000.2957 | Windows resources and manifests |
-| Windows API target | 10.0.26100.0 | Windows API contracts |
-| Visual Studio | 2026 18.12+ | Solution, debugging and packaging |
-| MSVC linker | 14.52.37029+ | Optional Native AOT builds |
-| libultrahdr / libjpeg-turbo | 2.0.2 / 3.2.1 | Ultra HDR JPEG encoding |
-| PySide6 | 6.12.0 | Optional icon-generation tool |
-
-Default JIT builds require the .NET SDK, PowerShell 7 and Windows tools for WinUI compilation:
-
-```powershell
-./build.ps1
-```
-
-Optional AOT builds require the [Visual Studio C++ toolchain](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/). Add `-UseEnvironmentalNativeTools` when configuring the native tools through `PATH` and `LIB`.
-
-NuGet lock files cover each architecture and compilation mode. JIT uses `packages.lock.json` or `packages.arm64.lock.json`; AOT uses `packages.aot.lock.json` or `packages.arm64.aot.lock.json`. Runtime support is listed in the [.NET support policy](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) and [Windows App SDK release channels](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/release-channels).
-
-### Build targets
-
-| Command | Compilation | Output directory |
-| --- | --- | --- |
-| `./build.ps1` / `-Target Native` | JIT, automatic X64 or ARM64 | `dist/SelfContained/` |
-| `./build.ps1 -Target X64` | JIT, `win-x64` | `dist/SelfContained-X64/` |
-| `./build.ps1 -Target Arm64` | JIT, `win-arm64` | `dist/SelfContained-Arm64/` |
-| `./build.ps1 -Compilation Aot` | Native AOT, build CPU instructions | `dist/Aot-SelfContained/` |
-| `./build.ps1 -Target X64 -Compilation Aot` | Native AOT, x86-64-v2 | `dist/Aot-SelfContained-X64/` |
-| `./build.ps1 -Target Apx -Compilation Aot` | Native AOT, APX | `dist/Aot-SelfContained-Apx/` |
-| `./build.ps1 -Target Arm64 -Compilation Aot` | Native AOT, ARMv8-A | `dist/Aot-SelfContained-Arm64/` |
-
-Each directory contains one `LumaRecode.exe`. Releases provide JIT single EXEs for X64 and ARM64. Native reads the real Windows system architecture, including from emulated terminals.
-
-The JIT selects instructions on the running device. When the x64 CPU and Windows support APX and neither `DOTNET_EnableAPX` nor `COMPlus_EnableAPX` is explicitly set, startup restarts the application with APX enabled in the child environment. ARM64 uses runtime feature detection and instruction selection.
-
-AOT Native targets the build CPU and requires a .NET SDK matching the system architecture. Explicit X64, Apx and Arm64 targets use fixed instruction profiles and support cross-compilation. The APX AOT entry checks CPU and Windows support before loading the application. ARM64 defaults to Software archive.
-
-JIT cross-publishing does not need a C++ linker. AOT cross-compilation requires the corresponding [C++ build tools](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile). Intermediate files use `obj/<Compilation>/<Target>/` and `bin/<Compilation>/<Target>/`. Distribution licenses use `build-cache/licenses/<Compilation>/<Target>/`; AOT payloads use `dist/NativeAot/<Target>/`.
-
-### Deployment options
-
-| Command | Artifact | Runtime |
-| --- | --- | --- |
-| `./build.ps1` | JIT single EXE | Required runtimes included |
-| `./build.ps1 -Compilation Aot` | AOT single EXE | Required runtime components included |
-| `./build.ps1 -Deployment FrameworkDependent` | JIT ZIP | Install .NET 11 Runtime and Windows App Runtime 2.6 |
-
-Combine `-Target` with deployment options. Apx uses SelfContained / Aot. FFmpeg and ffprobe are supplied by the user.
-
-Ultra HDR native libraries are stored at `App/Native/x64/uhdr.dll` and `App/Native/arm64/uhdr.dll` and loaded on first export. Rebuilding requires MSVC, CMake and Ninja; x64 also needs NASM:
-
-```powershell
-./tools/Build-UltraHdr.ps1 -Architecture x64
-./tools/Build-UltraHdr.ps1 -Architecture arm64
-```
-
-ARM64 uses NEON; x64 uses libjpeg-turbo x86 SIMD. Source versions, build settings and binary hashes are recorded in the [native-component manifest](../App/Native/manifest.json).
-
-### Visual Studio
-
-Use Visual Studio 2026 18.12 or later with WinUI / C# desktop tools and .NET SDK 11.0.100. Add PowerShell 7's `pwsh` to `PATH`. AOT also requires C++ build tools for the target architecture.
-
-Open `LumaRecode.sln` or `LumaRecode.slnx` and set `LumaRecode.App` as the startup project. Debug / x64 and Debug / ARM64 support debugging.
-
-| Solution configuration | Packaging target |
+| Platform | Development environment |
 | --- | --- |
-| Release / Native | JIT, automatic system architecture |
-| Release / x64 | JIT X64 |
-| Release / ARM64 | JIT ARM64 |
-| Release-AOT / Native | AOT, build CPU |
-| Release-AOT / x64 | AOT X64 |
-| Release-AOT / ARM64 | AOT ARM64 |
-| Release-APX / x64 | AOT APX |
+| Windows x64 / ARM64 | Visual Studio 2026 18.12+ with WinUI and desktop C++ tools, PowerShell 7, .NET SDK |
+| macOS ARM64 | Apple silicon Mac, macOS 27+, Xcode 27.2 |
+| Shared core | Rustup, CMake, Ninja, and the platform's C/C++ toolchain |
 
-Build Solution runs `build.ps1` through `Packaging` to restore dependencies, collect licenses and publish the single EXE. You can also build `Packaging` separately.
+`global.json` pins the .NET SDK, `rust-toolchain.toml` pins Rust, and `tools/native-build-tools.json` pins CMake and Ninja. The NuGet lock files cover Windows App SDK and runtime dependencies by architecture and compilation mode.
+
+### Windows builds
+
+Open `LumaRecode.sln` or `LumaRecode.slnx` and select `LumaRecode.App` for debugging. The `Release-AOT` solution configuration compiles with AOT, `Release` builds JIT, and `Release-APX | x64` targets APX. To build from the command line, run from the repository root:
 
 ```powershell
-dotnet build LumaRecode.sln -c Release -p:Platform=Native
-dotnet build LumaRecode.sln -c Release -p:Platform=x64
-dotnet build LumaRecode.sln -c Release -p:Platform=ARM64
-dotnet build LumaRecode.sln -c Release-AOT -p:Platform=x64
-dotnet build LumaRecode.sln -c Release-APX -p:Platform=x64
+./tools/Install-NativeBuildTools.ps1
+./build.ps1
+./build.ps1 -Target Arm64 -Deployment Portable
+./build.ps1 -Target X64 -Compilation Jit -Deployment FrameworkDependent
 ```
 
-The main view is `App/MainView.xaml`. Run `python tools/Update-ViewText.py` after translation edits. Run `./tools/Check-Source.ps1` before committing; Python tools support `ruff check qa tools Brand` and `ruff format --check qa tools Brand`. See the [QA guide](../qa/README.md), [code structure](architecture.md) and [icon-generation guide](../Brand/README.md).
+| Target | Native AOT instruction set |
+| --- | --- |
+| `Native` | Detects the real Windows architecture and optimizes for the build CPU |
+| `X64` | x86-64-v2 |
+| `Apx` | Intel APX, with CPU and OS checks at launch |
+| `Arm64` | ARMv8-A |
 
-### Fonts
+Cross-compiling requires C++ and Rust tools for the target architecture. JIT selects instructions on the running device. On eligible systems, `DOTNET_EnableAPX` controls APX. See [Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/cross-compile) for Native AOT toolchain and cross-compilation requirements.
 
-The interface uses Source Sans 3 and Source Han Sans for Chinese and Japanese. Logs use Source Code Pro with the corresponding Source Han Sans fallback. Fonts are included with the application.
+### Windows packages
 
-Fonts are in `App/Assets/Fonts/`; copyright and SIL OFL 1.1 texts are in `licenses/Fonts/`. Commits, download URLs and SHA-256 values are pinned in the [font manifest](../licenses/Fonts/manifest.json). Builds verify font and license hashes.
+| Profile | Application runtime | Formats |
+| --- | --- | --- |
+| `Aot` (default) | Native AOT with its runtime components | EXE, ZIP, MSI, and MSIX on baseline x64 / ARM64 |
+| `JitExternal` | Installed .NET 11 Runtime, with WinUI in the package | EXE, ZIP, MSI |
+| `JitBundled` | .NET and WinUI in the package | EXE, ZIP, MSI |
 
-### Single-file layout
+The single EXE extracts the app before starting it. Portable ZIPs and MSI installations load resources from the app directory. The MSI installs per user and adds a Start menu shortcut. EXE, ZIP, and MSI support either external or bundled FFmpeg:
 
-JIT publication directly bundles the application, IL, .NET runtime, Windows App SDK, fonts, LUTs and licenses. WinUI resources and runtime dependencies are extracted to a temporary cache before the GUI runs in the current process. The CLI entry starts a worker through the same EXE so pipeline cancellation can finish cleanup.
+```powershell
+./tools/Package-Windows.ps1 -Target X64 -Profile Aot -Format Exe,Zip,Msi
+$tools = ./tools/Stage-WindowsFfmpeg.ps1 -Target X64
+./tools/Package-Windows.ps1 -Target X64 -Profile JitExternal -Ffmpeg Both -FfmpegDirectory $tools
+./tools/Package-Windows.ps1 -Target X64 -Format Msix
+```
 
-Optional AOT publication uses `Bundle/` to package the AOT application and dependencies. The GUI entry exits after starting the application. The CLI entry preserves standard handles and the working directory, waits for completion and returns the exit code. APX JIT startup uses the same handle and exit-code forwarding.
+Packages appear in `dist/windows/`. The packaging script restores WiX from the tool manifest. Bundling FFmpeg requires an architecture-matched `bin/ffmpeg.exe` and `bin/ffprobe.exe`, plus a `BUILDINFO.txt`. For public distribution, provide the corresponding source and library license texts for the exact binaries. [FFmpeg licensing](https://ffmpeg.org/legal.html)
 
-Single-file publication uses `IncludeAllContentForSelfExtract` for disk-file compatibility. Cache and process measurements are described in [Performance](performance.md); commands are in the [CLI guide](cli/en.md).
+GitHub releases offer each Windows EXE, ZIP, and MSI with or without FFmpeg. Bundled editions use MSYS2 FFmpeg with `zscale`, `lut3d`, and `libplacebo`. The application packages contain the executables, dependencies, license texts and build information. The corresponding source and signatures for each architecture are separate assets on the [same version's release page](https://github.com/MIKU552/LumaRecode/releases). For an external edition, install an FFmpeg build with those filters and use the tool path panel to detect or specify it.
 
-### Dependency collection
+The framework-dependent edition uses the .NET app host to locate a runtime for the executable's architecture. If it is missing on a desktop launch, the dialog offers a Microsoft download link. Set `DOTNET_DISABLE_GUI_ERRORS=1` for unattended command-line use and handle the nonzero exit code, diagnostic, and download link on standard error. Install the **.NET 11 Runtime** for x64 or ARM64 as appropriate, then relaunch. [Microsoft downloads](https://dotnet.microsoft.com/download/dotnet/11.0)
 
-1. Restore locked dependencies for the current architecture and compilation mode.
-2. Collect application licenses, notices and runtime records; AOT also merges the Bundle entry's dependency graph.
-3. Verify font, LUT, native image-codec and license hashes.
-4. Include complete component licenses and provenance with the single EXE.
+### Microsoft Store
 
-See [LICENSE](../LICENSE), [NOTICE](../NOTICE) and [third-party components](../Assets/THIRD_PARTY.md).
+The development MSIX uses `MIKU552.LumaRecode.Dev`. Release builds use `-PartnerCenter` to read [StoreIdentity.json](../Packaging/StoreIdentity.json) and combine the x64 and ARM64 packages into an `.msixupload`. The package name, publisher, publisher display name and Store ID can be public. Configure Entra credentials in the separate `microsoft-store` GitHub environment. [App identity fields](https://learn.microsoft.com/en-us/windows/apps/publish/view-app-identity-details)
+
+For the first submission, complete pricing and availability, age ratings, listings, and certification notes in Partner Center. On its Packages page, upload the `.msixupload` file from the official release run's `lumarecode-store-<commit>` artifact. [Package upload](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/upload-app-packages)
+
+When the upload reports the `runFullTrust` warning, describe the restricted capability under **Submission options**. LumaRecode runs as a WinUI 3 desktop app under the signed-in user's permissions, launches the bundled FFmpeg and ffprobe, reads and writes the local paths the user selects, and uses packaged COM activation for completion notifications. Microsoft reviews the explanation during certification. Include sample import and Software archive conversion steps in the certification notes. [Microsoft's restricted capability guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/app-capability-declarations#restricted-capabilities)
+
+After the first version goes live, assign the Microsoft Entra application the Partner Center Manager role. Set `STORE_TENANT_ID`, `STORE_SELLER_ID`, `STORE_CLIENT_ID`, and `STORE_CLIENT_SECRET` in the `microsoft-store` environment. Manually run **Submit Microsoft Store update** on `main` with the official release's Actions run ID. The workflow verifies the package and sends it for certification once any existing submission is resolved. [Microsoft Store update documentation](https://learn.microsoft.com/en-us/windows/apps/publish/msstore-dev-cli/github-actions)
+
+### macOS installation and distribution
+
+Drag the app from the DMG to Applications. If macOS blocks the first launch, verify the download source and choose **Open Anyway** in **System Settings → Privacy & Security**. [Apple User Guide](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac)
+
+Build and archive with `macOS/LumaRecode.xcodeproj` or run:
+
+```sh
+sh tools/build-macos.sh Release --dmg
+brew install ffmpeg-full molten-vk
+sh tools/build-macos.sh Release --dmg-full-tools
+```
+
+The standard DMG uses system-provided FFmpeg. The FFmpeg Full DMG includes FFmpeg, ffprobe, libplacebo, and MoltenVK in the app. Its accompanying source archive contains upstream sources, Homebrew formulas, resources, and patches. Both editions use ad-hoc signing.
+
+### Third-party resources
+
+Windows uses Source Sans 3 and Source Han Sans in the interface. Logs use Source Code Pro with Source Han Sans as a fallback. The original licenses ship with the fonts. See the [font manifest](../licenses/Fonts/manifest.json) for revisions and hashes.
+
+Ultra HDR uses Google libultrahdr and libjpeg-turbo. Rebuild them for either architecture with `tools/Build-UltraHdr.ps1`. See the [component manifest](../App/Native/manifest.json) for source versions, build settings, and binary hashes.
+
+Build scripts collect licenses from the locked dependency graph and verify the fonts and native components. The single EXE also includes the launcher dependency notices. [Project license](../LICENSE) · [Third-party notices](../NOTICE)
+
+### Provenance and validation
+
+Run **Native core** manually with `release_packages` checked to prepare a release candidate. It produces Windows AOT and framework-dependent packages for both architectures, standard and FFmpeg Full macOS DMGs, shared SDKs, SHA-256 checksums, and the Store upload.
+
+Create and push a signed version tag on the release commit of `main`, then manually run **Publish GitHub release** with the matching version. The workflow runs regression checks, verifies build provenance, and publishes the GitHub release from a draft. Regular pushes and pull request checks do not publish releases.
+
+```sh
+gh attestation verify <file> --repo MIKU552/LumaRecode --signer-workflow MIKU552/LumaRecode/.github/workflows/native-core.yml
+```
+
+Use `--source-ref` and `--source-digest` to check a specific tag and commit. [Artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations) · [QA guide](../qa/README.md)

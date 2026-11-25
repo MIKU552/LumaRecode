@@ -1,11 +1,13 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
+using LumaRecode.Native;
 
 namespace VideoConverter.Core;
 
 /// <summary>Zero-based cover frame and an optional end-exclusive motion range on the source timeline.</summary>
 public sealed record ImageExportOptions(int Frame = 0, string Format = "sdr", string SourceKind = "auto", string? Profile = null,
-    bool Motion = false, FrameRange? MotionFrames = null, int Quality = 95, string Purpose = "archive", string MotionSize = "source")
+    bool Motion = false, FrameRange? MotionFrames = null, int Quality = 95, string Purpose = "archive", string MotionSize = "source",
+    string MotionVideoRange = "sdr")
 {
     public string Suffix => Format == "hdr" ? ".avif" : Format == "png" ? ".png" : ".jpg";
 }
@@ -35,8 +37,12 @@ public sealed class FrameExporter(Transcoder engine)
         Require(options.Quality is >= 1 and <= 100, "图片质量须在 1 到 100 之间。");
         Require(options.Purpose is "share" or "archive", "请选择有效的编码用途。");
         Require(options.MotionSize is "source" or "1080" or "720", "请选择有效的动态视频分辨率。");
+        Require(options.MotionVideoRange is "sdr" or "hdr", "请选择有效的动态视频范围。");
         string kind = Kind(source, options);
         Require(options.Format is "sdr" or "png" || kind is "hlg" or "pq" or "log" or "raw", "HDR 图片导出需要 HDR、Log 或 RAW 素材。");
+        Require(!options.Motion || options.MotionVideoRange == "sdr" ||
+            (kind is "hlg" or "pq" or "log" or "raw") && OutputPolicy.SourceDepth(source) >= 10,
+            "HDR 动态视频需要至少 10 位的 HDR、Log 或 RAW 素材。");
         Require(kind != "log" || !string.IsNullOrWhiteSpace(options.Profile ?? source.Profile), "请选择相机曲线。");
     }
 
@@ -91,8 +97,11 @@ public sealed class FrameExporter(Transcoder engine)
             var window = timeline.Resolve(motion);
             Require(options.Frame >= window.Start && options.Frame < window.End, "封面帧必须位于动态照片的视频范围内。");
         }
-        var directory = Path.Combine(parent, ".lumarecode-photo-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(directory);
+        using var transaction = NativeOutputTransaction.Create(source.Path, destination, overwrite);
+        string directory = transaction.WorkspacePath;
+        string motionFolder = Path.Combine(directory, "motion");
+        string clip = Path.Combine(motionFolder, "clip.mp4");
+        bool cleanupConfirmed = true;
         try
         {
             emit("decoder", JsonValue.Create("software"));
@@ -103,7 +112,8 @@ public sealed class FrameExporter(Transcoder engine)
             if (options.Motion)
             {
                 emit("status", JsonValue.Create("正在生成动态照片视频…"));
-                bool sdr = options.Format == "sdr";
+                // The JPEG and appended MP4 have independent color pipelines.
+                bool sdr = options.MotionVideoRange == "sdr";
                 var videoOptions = RenderOptions(source, options, sdr, options.Purpose) with
                 {
                     Codec = sdr ? "avc" : "hevc",
@@ -113,7 +123,10 @@ public sealed class FrameExporter(Transcoder engine)
                     Sampling = "420",
                     BitDepth = sdr ? "8" : "10"
                 };
-                string clip = Path.Combine(directory, "motion.mp4");
+                // The outer transaction holds its workspace with DELETE
+                // access. Use a child directory as the nested transaction's
+                // parent so neither owner has to weaken its share modes.
+                Directory.CreateDirectory(motionFolder);
                 var video = await engine.RunAsync(tools, source, videoOptions, clip, emit, cancellation, selection: motion, motionPhoto: true, cachedTimeline: timeline, motionSize: options.MotionSize).ConfigureAwait(false);
                 var movieFrames = await FrameTimeline.LoadAsync(tools, video, cancellation).ConfigureAwait(false);
                 int cover = options.Frame - motion.Start;
@@ -125,7 +138,9 @@ public sealed class FrameExporter(Transcoder engine)
                 motionDuration = movieFrames.Duration;
             }
             cancellation.ThrowIfCancellationRequested();
-            File.Move(temporary, destination, overwrite);
+            File.Move(temporary, transaction.StagingPath);
+            NativeBackend.Check(transaction.Seal(true, out var sealDiagnostic), sealDiagnostic);
+            NativeBackend.Check(transaction.Commit(out var publishDiagnostic), publishDiagnostic);
             return new(destination, new FileInfo(destination).Length, image.Width, image.Height,
                 options.Format switch
                 {
@@ -135,9 +150,38 @@ public sealed class FrameExporter(Transcoder engine)
                     _ => "JPEG · SDR"
                 }, motionDuration);
         }
+        catch (NativeCleanupException)
+        {
+            cleanupConfirmed = false;
+            throw;
+        }
         finally
         {
-            Directory.Delete(directory, recursive: true);
+            if (cleanupConfirmed)
+            {
+                // Leave any unrecognized files or nested retained transactions
+                // intact. Only remove paths generated by this export.
+                foreach (string name in new[] { "frame.avif", "frame.png", "frame.rgb10", "frame.jpg", "motion_MP.jpg", "raw-calibration.cmd" })
+                {
+                    try
+                    {
+                        File.Delete(Path.Combine(directory, name));
+                    }
+                    catch (IOException) { }
+                    catch (UnauthorizedAccessException) { }
+                }
+                try
+                {
+                    File.Delete(clip);
+                    if (Directory.Exists(motionFolder))
+                    {
+                        Directory.Delete(motionFolder);
+                    }
+                }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+            transaction.Cleanup(cleanupConfirmed, out _);
         }
     }
 

@@ -1,0 +1,4 @@
+LUMARECODE_1 {
+    global: lr_*;
+    local: *;
+};

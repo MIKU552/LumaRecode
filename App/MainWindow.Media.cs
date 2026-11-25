@@ -73,7 +73,8 @@ public sealed partial class MainWindow
     /// <summary>Probes one source asynchronously and applies only the current generation's results.</summary>
     private async Task InspectAsync(bool force = false)
     {
-        if (activeJob is not null || probing)
+        await initialTools.Task;
+        if (closing || activeJob is not null || probing)
         {
             return;
         }
@@ -113,6 +114,9 @@ public sealed partial class MainWindow
         Refresh();
         using var client = new ConversionClient();
         probes.Add(client);
+        EncodeOptions? automatic = null;
+        string? destination = null;
+        var hardware = InspectHardwareAsync();
         try
         {
             await client.RunAsync(new ConversionRequest("probe", ToolsObject(), path), (type, data) =>
@@ -126,6 +130,8 @@ public sealed partial class MainWindow
                 {
                     sourceMedia = client.SourceMedia;
                     ApplyMedia(data!.AsObject());
+                    automatic = SelectedOptions();
+                    destination = Output.Text;
                 }
                 else if (type == "error")
                 {
@@ -135,6 +141,7 @@ public sealed partial class MainWindow
                 }
             });
         }
+        catch (OperationCanceledException) when (closing) { }
         catch (Exception error)
         {
             if (!closing)
@@ -151,19 +158,43 @@ public sealed partial class MainWindow
                 Refresh();
             }
         }
+
+        // Source inspection and the timeline do not need encoder sessions.
+        // Late results update the defaults only while the user still has the
+        // initial settings and has not started a job.
+        await hardware;
+        if (closing || token != generation || sourceMedia is null || activeJob is not null)
+        {
+            return;
+        }
+        if (!MediaFlag("dynamic_hdr") && automatic is { Purpose: "archive" } &&
+            automatic == SelectedOptions() && Output.Text == destination &&
+            hardwareEncoders.Any(item => item.Available))
+        {
+            updating = true;
+            Select(Purpose, "share");
+            ApplyPurposeDefaults();
+            RefreshHardwareChoices(preserve: false, selectPreferred: true);
+            updating = false;
+        }
+        Refresh();
     }
-    // A new source starts from platform defaults; subsequent user selections are
-    // retained by Refresh as long as the source and encoder can support them.
+    // Pick defaults from the source and the available encoders. Refresh retains
+    // subsequent user choices while they remain compatible.
     private void ResetSourceOptions()
     {
         Select(InputKind, "auto");
-        Select(Purpose, MediaFlag("dynamic_hdr") ? "archive" : PlatformDefaults.Purpose);
+        Select(Purpose, MediaFlag("dynamic_hdr") || !hardwareEncoders.Any(item => item.Available) ? "archive" : "share");
         Select(DynamicMetadata, "preserve");
         Select(Codec, "hevc");
         Select(Variant, "standard");
         ApplyPurposeDefaults();
         Range.SelectedIndex = MediaText("kind") is "log" or "hlg" or "pq" or "raw" ? 1 : 0;
         Select(Profile, MediaText("profile"));
+        if (Value(Purpose) == "share")
+        {
+            RefreshHardwareChoices(preserve: false, selectPreferred: true);
+        }
     }
 
     private void ApplyMedia(JsonObject data)

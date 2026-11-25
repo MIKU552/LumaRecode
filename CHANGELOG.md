@@ -4,6 +4,38 @@
 
 ## 简体中文
 
+### 5.0.0
+
+- 映码首次同时发布 Windows 11 和 macOS 版本。Windows 使用 WinUI 3，Apple Silicon Mac 使用 SwiftUI，两端共用 C/C++ 与 Rust 转码核心。
+- 支持相机 Log 与 HDR/SDR 转换、逐帧预览和裁剪、静态图片与动态照片导出。Windows 提供 Ultra HDR JPEG 和 Android Motion Photo，macOS 提供 HDR HEIC、Adaptive HDR HEIC、实况照片及 HLG 转 Dolby Vision 8.4。
+- Windows 提供 x64 和 ARM64 的 Native AOT 和外置 .NET 版，各有单文件 EXE、便携 ZIP 和 MSI，可选内置 FFmpeg，并提供对应源码。外置 .NET 版缺少运行时时提供微软下载入口。
+- macOS 提供标准和内置 FFmpeg Full 的 DMG。FFmpeg Full 同时提供对应源码。
+- 重新编写跨平台使用、命令行、开发和分发文档，新增项目网站。正式发布通过手动 GitHub Actions 构建和验证，配套 SHA-256 与来源证明。
+
+### 5.0.0 Beta 3
+
+- Windows 时间轴支持连续播放、暂停、拖动和左右键逐帧定位。主界面与 Mica 预览面板平滑切换，点击外部或按 Esc 可关闭。
+- Windows 主窗口在首帧完成后显示，预览关闭时先解绑播放器再释放资源。
+- Android 动态照片支持独立选择封面与动态视频。HDR 素材默认使用 Ultra HDR JPEG 和 SDR 视频。
+- Windows 默认构建 Native AOT。EXE、便携 ZIP、MSI 可分别搭配外置或内置 FFmpeg，并提供外置 .NET 的 JIT 配置。添加开发标识 MSIX。
+- 更新四语项目首页、命令行和跨平台开发文档。
+
+### 5.0.0 Beta 2
+
+- 修复 Windows x64 启动和 FFmpeg 路径提示，改善逐帧预览和裁剪布局。
+- 修复 macOS 应用图标和打开素材时的崩溃，核验 HDR10+ 裁剪输出。
+
+### 5.0.0 Beta 1
+
+- 添加 macOS Apple Silicon 应用、Xcode 工程和命令行，支持预览、逐帧裁剪、VideoToolbox 和软件归档。
+- macOS 支持 HLG 转 Dolby Vision 8.4，以及 SDR JPEG、HDR HEIC、Adaptive HDR HEIC 和实况照片。
+- macOS 提供位深、色度采样、色彩范围和音轨选项，可把导出的实况照片添加到“照片”。FFmpeg Full 调试版内置 libplacebo 和 MoltenVK。
+- Windows 与 macOS 共用 C/C++ 核心。Rust 负责相机与 HDR 元数据解析，C ABI 提供素材探测、编码规划、时间轴、进程管理和输出校验。
+- Windows 按可用的 Intel QSV、NVIDIA NVENC、AMD AMF 和 Media Foundation 编码器提供快速分享预设。
+- Windows 图片和 Android Motion Photo 使用原生输出事务。硬件检测可以重跑，10 位试编码覆盖 HLG 和 PQ。
+- Windows 可构建自包含的便携 ZIP，工具路径查找移到首次布局后的后台任务。
+- GitHub Actions 构建 Windows x64 / ARM64、macOS ARM64 和共享 SDK，并为分发文件生成和验证构建来源证明。
+
 ### 4.4.3
 
 - 默认构建与正式发布改用自包含 JIT 单文件，提供 X64 和 ARM64 两种 EXE。
@@ -271,6 +303,38 @@
 - 支持素材自动识别与三组色彩转换。
 
 ## English
+
+### 5.0.0
+
+- LumaRecode ships for Windows 11 and macOS. The WinUI 3 and Apple silicon SwiftUI apps share a C/C++ and Rust transcoding core.
+- Convert camera Log and HDR/SDR video, trim with a frame-accurate preview, and export stills and motion photos. Windows offers Ultra HDR JPEG and Android Motion Photo. macOS offers HDR and Adaptive HDR HEIC, Live Photos, and HLG to Dolby Vision 8.4.
+- Windows offers Native AOT and framework-dependent editions for x64 and ARM64 as an EXE, portable ZIP, or MSI, with optional bundled FFmpeg and its corresponding sources. The framework-dependent edition offers a Microsoft download link when its runtime is missing.
+- macOS offers a standard DMG and an FFmpeg Full DMG with a corresponding source archive.
+- The cross-platform user, CLI, development, and distribution guides accompany the new project site. Manual GitHub Actions releases include SHA-256 checksums and build attestations.
+
+### 5.0.0 Beta 3
+
+- The Windows timeline supports playback, pausing, scrubbing, and arrow-key frame stepping. The Mica preview panel fades in and closes on an outside click or Esc.
+- Windows displays the main window after its first frame and detaches the player before releasing it on preview close.
+- Android Motion Photos have separate cover and video choices. HDR footage defaults to Ultra HDR JPEG with SDR video.
+- Native AOT is the Windows default. EXE, portable ZIP, and MSI formats support external or bundled FFmpeg, with a framework-dependent JIT profile. Added a development-identity MSIX.
+- Updated the four project home pages, command-line guides, and cross-platform developer documentation.
+
+### 5.0.0 Beta 2
+
+- Fixed Windows x64 launch and FFmpeg path warnings, and improved the frame preview and trim layout.
+- Fixed the macOS app icon and a crash when opening footage, and verified trimmed HDR10+ output.
+
+### 5.0.0 Beta 1
+
+- Add the Apple Silicon macOS app, Xcode project, and CLI with preview, frame-accurate trimming, VideoToolbox, and software archive.
+- Export HLG as Dolby Vision 8.4 on macOS, or save frames as SDR JPEG, HDR HEIC, Adaptive HDR HEIC, and Live Photos.
+- Choose bit depth, chroma, color range, and audio on macOS, and add exported Live Photos to Photos. The FFmpeg Full test build includes libplacebo and MoltenVK.
+- Share the C/C++ engine between Windows and macOS. Rust parses camera and HDR metadata. The C ABI exposes inspection, encoding plans, timelines, process management, and output verification.
+- Show Windows quick-share presets for available Intel QSV, NVIDIA NVENC, AMD AMF, and Media Foundation encoders.
+- Publish Windows stills and Android Motion Photos through native output transactions. Hardware detection can be repeated and tests both HLG and PQ for 10-bit encoders.
+- Add a self-contained portable ZIP build on Windows and move tool discovery to a background task after initial layout.
+- Build Windows x64 / ARM64, macOS ARM64, and the shared SDK on GitHub Actions. Generate and verify provenance for the distribution files.
 
 ### 4.4.3
 

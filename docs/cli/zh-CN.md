@@ -50,7 +50,8 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | 选项 | 值 / 默认行为 |
 | --- | --- |
 | `--preset` | `share-avc`、`share-hevc`、`share-av1`、`archive-avc`、`archive-hevc`、`archive-av1`、`archive-av1-fast` |
-| `--purpose` | `share` / `archive`；x64 默认 Intel QSV 快速分享，ARM64 默认软件归档；动态 HDR 素材默认归档 |
+| `--purpose` | `share`（硬件编码）、`archive`（CPU）。默认按可用编码器选择。保留动态 HDR 时使用归档。 |
+| `--hardware` | `auto`（默认）、`qsv`、`nvenc`、`amf`、`mf`。用于快速分享。 |
 | `--codec` | `hevc` / `av1` / `avc`；默认 `hevc` |
 | `--range` / `--dynamic-range` | `auto` / `sdr` / `hdr`；默认按素材动态范围选择 |
 | `--transform` | `auto` / `none` / `log-hdr` / `log-sdr` / `hdr-sdr` |
@@ -127,6 +128,7 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | `--quality 1..100` | 图片质量，默认 95；PNG 使用无损编码 |
 | `--motion` | 为 JPEG 或 Ultra HDR 添加 Android 动态照片视频 |
 | `--motion-start-frame N --motion-end-frame N` | 动态视频范围，默认封面附近约 3 秒，须包含封面帧 |
+| `--motion-range sdr\|hdr` | 动态视频范围。默认 SDR H.264，HDR 使用 10 位 HEVC。封面由 `--image-format` 指定 |
 | `--motion-size source\|1080\|720` | 视频分辨率，默认保留原分辨率 |
 | `--purpose archive\|share` | 动态视频的 CPU / Intel 编码，默认 `archive` |
 | `--input-kind`、`--profile` | 与视频转换相同的输入解释和相机曲线 |
@@ -179,3 +181,18 @@ $LASTEXITCODE
 脚本通过进程退出码或 `$LASTEXITCODE` 读取结果，通过 JSON 的 `code` 字段处理错误。
 
 交互式 Ctrl+C 同时中断 PowerShell 管道和转换任务，并清理临时输出。需要读取取消事件和退出码时，使用进程 API 发送控制台取消信号并等待程序退出；协作取消返回 130。
+
+## macOS
+
+通过应用包中的可执行文件运行命令。`probe`、`frames` 和 `doctor` 输出 JSON。结束帧计入裁剪范围。`image` 格式为 `sdr`（JPEG）、`hdr`（PQ HEIC）或 `adaptive`（带增益图的 HEIC）。`dolbyvision84` 要求普通 10 位 HLG 素材及通过检测的 VideoToolbox HEVC 编码器。
+
+使用 `--live-photo` 时，`-o` 为新建的文件夹，其中包含用于成对导入“照片”的静态图和 MOV。
+
+```sh
+luma=/Applications/LumaRecode.app/Contents/MacOS/LumaRecode
+"$luma" doctor
+"$luma" convert input.mov -o trimmed.mp4 --start-frame 2 --end-frame 60
+"$luma" convert hlg.mov -o dolby-vision.mp4 --range dolbyvision84
+"$luma" image hlg.mov -o frame.heic --frame 25 --format adaptive
+"$luma" image hlg.mov -o live-photo --frame 25 --format adaptive --live-photo --motion-first 1 --motion-last 60
+```
