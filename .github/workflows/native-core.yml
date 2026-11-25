@@ -286,7 +286,7 @@ jobs:
       github.repository == 'MIKU552/LumaRecode' &&
       (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
       id-token: write
@@ -336,6 +336,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: lumarecode-distribution-${{ github.sha }}
+          compression-level: 0
           if-no-files-found: error
           path: distribution/*
 

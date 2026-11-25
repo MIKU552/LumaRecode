@@ -7,6 +7,9 @@ on:
         description: Stable version matching the signed Git tag (for example 5.0.0)
         required: true
         type: string
+      candidate_run:
+        description: Optional successful Native core run for the signed release commit
+        type: string
 
 permissions:
   contents: read
@@ -19,21 +22,40 @@ jobs:
   version:
     if: github.repository == 'MIKU552/LumaRecode' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      source_sha: ${{ steps.release_commit.outputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Match the version and tag to the selected commit
+        id: release_commit
         env:
           VERSION: ${{ inputs.version }}
+          CANDIDATE_RUN: ${{ inputs.candidate_run }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           tag="v$VERSION"
-          test "$(git rev-parse "$tag^{commit}")" = "$GITHUB_SHA"
+          source_sha="$(git rev-parse "$tag^{commit}")"
           test "$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$(git rev-parse "$tag")" --jq '.verification.verified')" = true
+          if [[ -n "$CANDIDATE_RUN" ]]; then
+            [[ "$CANDIDATE_RUN" =~ ^[0-9]+$ ]]
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN" |
+              jq -e --arg sha "$source_sha" --arg repo "$GITHUB_REPOSITORY" '
+                .repository.full_name == $repo and .head_repository.full_name == $repo and
+                .path == ".github/workflows/native-core.yml" and .event == "workflow_dispatch" and
+                .head_branch == "main" and .head_sha == $sha and .conclusion == "success"
+              ' >/dev/null
+            git checkout --detach "$source_sha"
+          else
+            test "$source_sha" = "$GITHUB_SHA"
+          fi
           python - <<'PY'
           import os
           from pathlib import Path
@@ -56,9 +78,11 @@ jobs:
           if gh release view "$tag" >/dev/null 2>&1; then
             test "$(gh release view "$tag" --json isDraft --jq .isDraft)" = true
           fi
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
 
   build:
     needs: version
+    if: inputs.candidate_run == ''
     permissions:
       contents: read
       id-token: write
@@ -68,32 +92,69 @@ jobs:
       release_packages: true
 
   publish:
-    needs: build
+    needs: [version, build]
+    if: ${{ !cancelled() && needs.version.result == 'success' && (inputs.candidate_run != '' || needs.build.result == 'success') }}
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: write
       attestations: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ needs.version.outputs.source_sha }}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: lumarecode-distribution-${{ github.sha }}
+          github-token: ${{ inputs.candidate_run != '' && github.token || '' }}
+          run-id: ${{ inputs.candidate_run || github.run_id }}
+          name: lumarecode-distribution-${{ needs.version.outputs.source_sha }}
           path: distribution
       - name: Publish the verified distribution
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
+          SOURCE_SHA: ${{ needs.version.outputs.source_sha }}
         run: |
           set -euo pipefail
           tag="v$VERSION"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+          distribution = Path("distribution")
+          expected = {
+              f"LumaRecode-{version}-{arch}-{profile}-ffmpeg-{ffmpeg}{suffix}"
+              for arch in ("x64", "arm64")
+              for profile in ("aot", "jitexternal")
+              for ffmpeg in ("bundled", "external")
+              for suffix in (".exe", ".msi", "-portable.zip")
+          }
+          expected.update({
+              "LumaRecode-Windows-x64-FFmpeg-Sources.zip",
+              "LumaRecode-Windows-arm64-FFmpeg-Sources.zip",
+              "LumaRecode-macOS-arm64.dmg",
+              "LumaRecode-macOS-arm64-FFmpeg-Full.dmg",
+              "LumaRecode-macOS-FFmpeg-Full-Sources.tar.gz",
+              "LumaRecode-SDK-Windows-x64.zip",
+              "LumaRecode-SDK-Windows-arm64.zip",
+              "LumaRecode-SDK-macOS-arm64.zip",
+          })
+          checksums = distribution / "SHA256SUMS.txt"
+          names = [line.split("  ", 1)[1] for line in checksums.read_text().splitlines()]
+          assert len(names) == len(expected) and set(names) == expected, "Incomplete release checksums"
+          assert {file.name for file in distribution.iterdir()} == expected | {checksums.name}, "Incomplete release assets"
+          PY
           (cd distribution && sha256sum --check --strict SHA256SUMS.txt)
           for file in distribution/*; do
             gh attestation verify "$file" --repo "$GITHUB_REPOSITORY" \
               --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/native-core.yml" \
-              --source-ref "$GITHUB_REF" --source-digest "$GITHUB_SHA" --deny-self-hosted-runners
+              --source-ref "$GITHUB_REF" --source-digest "$SOURCE_SHA" --deny-self-hosted-runners
           done
+          tag_object="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '.object.sha')"
+          gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_object" |
+            jq -e --arg sha "$SOURCE_SHA" '.object.sha == $sha and .verification.verified' >/dev/null
           if gh release view "$tag" >/dev/null 2>&1; then
             test "$(gh release view "$tag" --json isDraft --jq .isDraft)" = true
             # Only replace a draft containing files from this same distribution.

@@ -93,7 +93,7 @@ Ultra HDR 使用 Google libultrahdr 和 libjpeg-turbo，可通过 `tools/Build-U
 
 手动运行 **Native core** 并勾选 `release_packages` 可准备候选版。Windows 生成两种架构的 AOT 和外置 .NET 包，macOS 生成标准和 FFmpeg Full DMG，同时生成共享 SDK、SHA-256 校验文件和商店上传包。
 
-在 `main` 的正式版本提交上创建并推送已签名的版本标签，手动运行 **Publish GitHub release** 并输入相同的版本号。工作流运行回归检查、验证构建来源，再从草稿发布 GitHub Release。普通提交和 PR 检查不会发版。
+在 `main` 的正式版本提交上创建并推送已签名的版本标签，手动运行 **Publish GitHub release** 并输入相同的版本号。填写 `candidate_run` 可以复用同一签名提交在 `main` 上通过的完整 **Native core** 候选构建。工作流验证发布文件、校验和及构建来源，再从草稿发布 GitHub Release。普通提交和 PR 检查不会发版。
 
 ```sh
 gh attestation verify <file> --repo MIKU552/LumaRecode --signer-workflow MIKU552/LumaRecode/.github/workflows/native-core.yml
@@ -192,7 +192,7 @@ Build scripts collect licenses from the locked dependency graph and verify the f
 
 Run **Native core** manually with `release_packages` checked to prepare a release candidate. It produces Windows AOT and framework-dependent packages for both architectures, standard and FFmpeg Full macOS DMGs, shared SDKs, SHA-256 checksums, and the Store upload.
 
-Create and push a signed version tag on the release commit of `main`, then manually run **Publish GitHub release** with the matching version. The workflow runs regression checks, verifies build provenance, and publishes the GitHub release from a draft. Regular pushes and pull request checks do not publish releases.
+Create and push a signed version tag on the release commit of `main`, then manually run **Publish GitHub release** with the matching version. Provide `candidate_run` to reuse a successful full **Native core** candidate from the same signed commit on `main`. The workflow verifies the release files, checksums, and build provenance before publishing the GitHub release from a draft. Regular pushes and pull request checks do not publish releases.
 
 ```sh
 gh attestation verify <file> --repo MIKU552/LumaRecode --signer-workflow MIKU552/LumaRecode/.github/workflows/native-core.yml
