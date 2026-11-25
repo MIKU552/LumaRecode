@@ -30,7 +30,6 @@
         const selected = button.dataset.mode === appearance;
         button.setAttribute("aria-pressed", String(selected));
         if (selected) {
-          trigger.textContent = button.textContent;
           trigger.setAttribute("aria-label", `${picker.dataset.label} · ${button.textContent}`);
         }
       }
