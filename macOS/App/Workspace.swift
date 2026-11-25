@@ -154,7 +154,13 @@ final class Workspace {
         } finished: { frames in
             self.frames = frames
             self.lastFrame = String(frames.count)
+            if self.showPhotoControls { self.previewPhotoFrame() }
         }
+    }
+
+    func showFrameExport() {
+        showPhotoControls = true
+        if frames == nil { indexFrames() } else { previewPhotoFrame() }
     }
 
     func recheckEncoders() {
@@ -469,27 +475,10 @@ struct WorkspaceView: View {
     @Bindable var model: Workspace
 
     var body: some View {
-        Group {
-            if let media = model.media {
-                HSplitView {
-                    preview(media)
-                        .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
-                    settings
-                        .frame(minWidth: 290, idealWidth: 320, maxWidth: 380, maxHeight: .infinity)
-                }
-            } else if model.activity == .inspect {
-                ProgressView("Reading footage…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ContentUnavailableView {
-                    Label("Open a video", systemImage: "film")
-                } description: {
-                    Text("Drop a video here or select one to begin.")
-                } actions: {
-                    Button("Open Video…", action: model.chooseSource)
-                        .buttonStyle(.borderedProminent)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(spacing: 0) {
+            workspace.frame(maxWidth: .infinity, maxHeight: .infinity)
+            if model.media != nil || model.busy {
+                footer.fixedSize(horizontal: false, vertical: true)
             }
         }
         .navigationTitle(model.media?.url.lastPathComponent ?? "LumaRecode")
@@ -505,13 +494,37 @@ struct WorkspaceView: View {
             model.open(url)
             return true
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if model.media != nil || model.busy { footer }
-        }
         .alert("LumaRecode", isPresented: Binding(get: { model.failure != nil }, set: { if !$0 { model.failure = nil } })) {
             Button("OK") { model.failure = nil }
         } message: {
             Text(model.failure ?? "")
+        }
+    }
+
+    @ViewBuilder
+    private var workspace: some View {
+        if let media = model.media {
+            HSplitView {
+                preview(media)
+                    .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
+                Group {
+                    if model.showPhotoControls { photoSettings } else { settings }
+                }
+                .frame(minWidth: 290, idealWidth: 320, maxWidth: 380, maxHeight: .infinity)
+            }
+        } else if model.activity == .inspect {
+            ProgressView("Reading footage…")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ContentUnavailableView {
+                Label("Open a video", systemImage: "film")
+            } description: {
+                Text("Drop a video here or select one to begin.")
+            } actions: {
+                Button("Open Video…", action: model.chooseSource)
+                    .buttonStyle(.borderedProminent)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -530,6 +543,7 @@ struct WorkspaceView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
             VStack(alignment: .leading, spacing: 4) {
                 Text(media.url.lastPathComponent)
                     .font(.headline)
@@ -543,6 +557,8 @@ struct WorkspaceView: View {
             }
             .foregroundStyle(.secondary)
             .textSelection(.enabled)
+            .fixedSize(horizontal: false, vertical: true)
+            .layoutPriority(1)
         }
         .padding(20)
     }
@@ -641,41 +657,6 @@ struct WorkspaceView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            Section {
-                DisclosureGroup("Export a frame", isExpanded: $model.showPhotoControls) {
-                    if let frames = model.frames {
-                        TextField("Frame number", text: $model.photoFrame)
-                            .onSubmit(model.previewPhotoFrame)
-                        if model.player != nil || model.fallbackPreview != nil, frames.count > 1 {
-                            Slider(value: Binding(
-                                get: { Double(min(frames.count, max(1, UInt64(model.photoFrame) ?? 1))) },
-                                set: { model.photoFrame = String(UInt64($0)); model.previewPhotoFrame() }
-                            ), in: 1...Double(frames.count), step: 1) {
-                                Text("Frame number")
-                            }
-                        }
-                        Text("\(frames.count) frames").foregroundStyle(.secondary)
-                        Picker("Photo format", selection: $model.photoFormat) {
-                            Text(PhotoFormat.sdr.title).tag(PhotoFormat.sdr)
-                            if model.supportsHDRPhoto {
-                                Text(PhotoFormat.hdr.title).tag(PhotoFormat.hdr)
-                                Text(PhotoFormat.adaptive.title).tag(PhotoFormat.adaptive)
-                            }
-                        }
-                        if model.photoFormat != .hdr {
-                            Toggle("Include Live Photo", isOn: $model.includeLivePhoto)
-                            if model.includeLivePhoto {
-                                TextField("First motion frame", text: $model.motionFirst, prompt: Text("Automatic"))
-                                TextField("Last motion frame", text: $model.motionLast, prompt: Text("Automatic"))
-                            }
-                        }
-                        Button("Save Photo…", action: model.savePhoto)
-                    } else {
-                        Button("Read frame numbers", action: model.indexFrames)
-                    }
-                }
-                .onChange(of: model.showPhotoControls) { _, shown in if shown { model.indexFrames() } }
-            }
         }
         .formStyle(.grouped)
         .disabled(model.busy)
@@ -691,6 +672,44 @@ struct WorkspaceView: View {
         .onChange(of: model.supportsHDRPhoto) { _, supported in
             if !supported { model.photoFormat = .sdr }
         }
+    }
+
+    private var photoSettings: some View {
+        Form {
+            Section("Export a frame") {
+                if let frames = model.frames {
+                    TextField("Frame number", text: $model.photoFrame)
+                        .onSubmit(model.previewPhotoFrame)
+                    if model.player != nil || model.fallbackPreview != nil, frames.count > 1 {
+                        Slider(value: Binding(
+                            get: { Double(min(frames.count, max(1, UInt64(model.photoFrame) ?? 1))) },
+                            set: { model.photoFrame = String(UInt64($0)); model.previewPhotoFrame() }
+                        ), in: 1...Double(frames.count), step: 1) {
+                            Text("Frame number")
+                        }
+                    }
+                    Text("\(frames.count) frames").foregroundStyle(.secondary)
+                    Picker("Photo format", selection: $model.photoFormat) {
+                        Text(PhotoFormat.sdr.title).tag(PhotoFormat.sdr)
+                        if model.supportsHDRPhoto {
+                            Text(PhotoFormat.hdr.title).tag(PhotoFormat.hdr)
+                            Text(PhotoFormat.adaptive.title).tag(PhotoFormat.adaptive)
+                        }
+                    }
+                    if model.photoFormat != .hdr {
+                        Toggle("Include Live Photo", isOn: $model.includeLivePhoto)
+                        if model.includeLivePhoto {
+                            TextField("First motion frame", text: $model.motionFirst, prompt: Text("Automatic"))
+                            TextField("Last motion frame", text: $model.motionLast, prompt: Text("Automatic"))
+                        }
+                    }
+                } else {
+                    Button("Read frame numbers", action: model.indexFrames)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .disabled(model.busy)
     }
 
     private func choice(_ binding: Binding<String>, choices: [String], fallback: String) -> Binding<String> {
@@ -722,7 +741,13 @@ struct WorkspaceView: View {
                     EmptyView()
                 } else if model.busy {
                     Button("Cancel", action: model.cancel)
+                } else if model.showPhotoControls {
+                    Button("Video settings") { model.showPhotoControls = false }
+                    Button("Save Photo…", action: model.savePhoto)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(model.frames == nil)
                 } else {
+                    Button("Export a frame", action: model.showFrameExport)
                     Button("Export Video…", action: model.chooseDestination)
                         .buttonStyle(.borderedProminent)
                         .disabled(!model.canExportVideo)

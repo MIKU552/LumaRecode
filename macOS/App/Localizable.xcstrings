@@ -1255,6 +1255,28 @@
         }
       }
     },
+    "Video settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "视频设置"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "動画設定"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes de vídeo"
+          }
+        }
+      }
+    },
     "You can still convert this file.": {
       "localizations": {
         "zh-Hans": {
