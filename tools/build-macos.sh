@@ -27,7 +27,7 @@ if [ "$task_mode" != app ]; then
     task_mount="$task_package/mounted"
     task_mounted=no
     cleanup_package() {
-        if [ "$task_mounted" = yes ] && ! hdiutil detach "$task_mount"; then
+        if [ "$task_mounted" = yes ] && ! diskutil eject "$task_mount"; then
             return
         fi
         rm -rf -- "$task_package"
@@ -45,20 +45,24 @@ if [ "$task_mode" != app ]; then
     fi
     ln -s /Applications "$task_package/source/Applications"
     task_image="$task_package/compressed.dmg"
-    # Create and populate the volume before compression. On macOS 27 the
-    # one-step directory conversion can fail on the larger FFmpeg bundle.
-    task_writable="$task_package/writable.dmg"
-    task_kib=$(du -sk "$task_package/source" | awk '{print $1}')
-    hdiutil create -quiet -size "$((task_kib + task_kib / 10 + 65536))k" -fs HFS+ \
-        -volname LumaRecode -format UDRW "$task_writable"
-    hdiutil attach -nobrowse -noautoopen -mountpoint "$task_mount" "$task_writable"
-    task_mounted=yes
-    ditto "$task_package/source" "$task_mount"
-    hdiutil detach "$task_mount"
-    task_mounted=no
-    mkdir -p "$task_mount"
-    hdiutil convert "$task_writable" -format UDZO -o "$task_image"
-    hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$task_mount" "$task_image"
+    if [ "$task_mode" = --dmg-full-tools ]; then
+        # Size a writable volume explicitly for the larger bundle before
+        # converting it to a compressed macOS disk image.
+        task_writable="$task_package/writable.dmg"
+        task_kib=$(du -sk "$task_package/source" | awk '{print $1}')
+        diskutil image create blank --size "$((task_kib + task_kib / 10 + 65536))KiB" \
+            --volumeName LumaRecode "$task_writable"
+        diskutil image attach --mountPoint "$task_mount" "$task_writable"
+        task_mounted=yes
+        ditto "$task_package/source" "$task_mount"
+        diskutil eject "$task_mount"
+        task_mounted=no
+        mkdir -p "$task_mount"
+        diskutil image create from --format ULFO "$task_writable" "$task_image"
+    else
+        diskutil image create from --format UDZO --volumeName LumaRecode "$task_package/source" "$task_image"
+    fi
+    diskutil image attach --readOnly --mountPoint "$task_mount" "$task_image"
     task_mounted=yes
     codesign --verify --deep --strict "$task_mount/LumaRecode.app"
     if [ "$task_mode" = --dmg-full-tools ]; then
@@ -71,7 +75,7 @@ if [ "$task_mode" != app ]; then
         fi
         mv -f "$task_package/FFmpeg-Full-Sources.tar.gz" "$task_build/FFmpeg-Full-Sources.tar.gz"
     fi
-    hdiutil detach "$task_mount"
+    diskutil eject "$task_mount"
     task_mounted=no
     mv -f "$task_image" "$task_dmg"
     printf '%s\n' "$task_dmg"
