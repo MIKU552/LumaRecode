@@ -179,8 +179,8 @@ h1:lang(zh), h1:lang(ja) { letter-spacing: .028em; line-height: 1.15; }
 .lede { margin-top: 1.4rem; max-width: 34ch; font-size: clamp(1.06rem, 1.6vw, 1.26rem); }
 p, figcaption { color: var(--muted); }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: 2rem; }
-ms-store-badge { display: inline-flex; max-width: 100%; align-self: center; justify-self: start; }
-ms-store-badge::part(img) { max-width: 200px; max-height: 52px; }
+ms-store-badge { display: block; width: 100%; min-width: 0; }
+ms-store-badge::part(img) { display: block; width: 100%; height: auto; }
 ms-store-badge:not(:defined) { display: none; }
 ms-store-badge:defined + .store-fallback { display: none; }
 .button {
@@ -238,7 +238,8 @@ figcaption { margin-top: .65rem; text-align: center; font-size: .8rem; }
   border-radius: 12px;
   background: var(--panel);
 }
-.download-actions { display: grid; gap: .75rem; }
+.download-actions { display: grid; gap: .75rem; width: 220px; max-width: 100%; }
+.download-actions .button { width: 100%; min-width: 0; text-align: center; }
 .download-platforms { display: grid; gap: .9rem; margin: 0; }
 .download-platforms dt { color: var(--accent); font-weight: 600; }
 .download-platforms dd { margin: .15rem 0 0; color: var(--muted); }
@@ -263,7 +264,7 @@ figcaption { margin-top: .65rem; text-align: center; font-size: .8rem; }
   .locale-nav { border-inline-start: 0; padding-inline-start: 0; gap: .15rem .55rem; }
   .theme-picker { margin-inline-start: auto; }
   .workflow, .download-panel { grid-template-columns: 1fr; }
-  .download-actions { justify-items: start; }
+  .download-actions { justify-self: start; }
 }
 
 @media (max-width: 360px) {
