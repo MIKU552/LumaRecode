@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: native-core-${{ github.ref }}
+  group: native-core-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -179,8 +179,13 @@ jobs:
           $env:LUMA_TEST_FFMPEG = Join-Path $tools 'bin/ffmpeg.exe'
           $env:LUMA_TEST_FFPROBE = Join-Path $tools 'bin/ffprobe.exe'
           # Run the conversion checks against the packaged DLL closure.
-          python qa/RuntimeChecks/check_shared_host.py --exe "dist/Aot-Portable-$cpu/LumaRecode.exe" --portable
-          $filters = & $env:LUMA_TEST_FFMPEG -hide_banner -filters | Out-String
+          $python = (Get-Command python).Source
+          $buildPath = $env:PATH
+          try {
+            $env:PATH = "$env:SystemRoot/system32;$env:SystemRoot;$PSHOME"
+            & $python qa/RuntimeChecks/check_shared_host.py --exe "dist/Aot-Portable-$cpu/LumaRecode.exe" --portable
+            $filters = & $env:LUMA_TEST_FFMPEG -hide_banner -filters | Out-String
+          } finally { $env:PATH = $buildPath }
           foreach ($filter in @('zscale', 'lut3d', 'libplacebo')) {
             if ($filters -notmatch "\b$filter\b") { throw "Bundled FFmpeg is missing $filter." }
           }

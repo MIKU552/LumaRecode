@@ -293,7 +293,8 @@ struct lr_probe
         luma::probe_json json;
         phase(LR_PROBE_PHASE_STREAMS);
         auto *root = read(json, {"-v", "error", "-show_streams", "-show_format", "-show_data", "-of", "json",
-                                 "-protocol_whitelist", "file", "-format_whitelist", LR_MEDIA_INPUT_FORMATS,
+                                 "-protocol_whitelist", "file", "-format_whitelist", LR_MEDIA_PROBE_FORMATS,
+                                 "-pattern_type", "none",
                                  "-i", source});
         auto *streams = member(root, "streams");
         auto *format = member(root, "format");
@@ -356,7 +357,7 @@ struct lr_probe
             auto *first =
                 read(json, {"-v", "error", "-select_streams", std::to_string(video_index), "-read_intervals",
                             "%+#1", "-show_frames", "-of", "json", "-protocol_whitelist", "file",
-                            "-format_whitelist", LR_MEDIA_INPUT_FORMATS, "-i", source});
+                            "-format_whitelist", LR_MEDIA_PROBE_FORMATS, "-pattern_type", "none", "-i", source});
             if (auto *list = member(first, "frames"); yyjson_mut_is_arr(list))
                 frames = list;
             for (const auto *name : {"color_transfer", "color_primaries", "color_space", "color_range"})
@@ -401,7 +402,7 @@ struct lr_probe
                 auto *packets = read(json, {"-v", "error", "-select_streams", std::to_string(dji_index),
                                             "-read_intervals", "%+#1", "-show_packets", "-show_data", "-of",
                                             "json", "-protocol_whitelist", "file", "-format_whitelist",
-                                            LR_MEDIA_INPUT_FORMATS, "-i", source});
+                                            LR_MEDIA_PROBE_FORMATS, "-pattern_type", "none", "-i", source});
                 yyjson_mut_val *packet = nullptr;
                 yyjson_mut_arr_iter packet_iterator = yyjson_mut_arr_iter_with(member(packets, "packets"));
                 while (auto *candidate = yyjson_mut_arr_iter_next(&packet_iterator))

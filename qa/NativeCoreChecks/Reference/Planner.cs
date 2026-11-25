@@ -298,7 +298,10 @@ public sealed partial class ReferencePlanner
         {
             args.AddRange(["-seek_timestamp", "1", "-ss", FormatNumber(window.SeekSeconds)]);
         }
-        args.AddRange(["-i", media.Path, "-map", "0:" + video.Text("index"), "-map", motionPhoto ? "0:a:0?" : "0:a?", "-map_metadata", motionPhoto || options.Transform.StartsWith("log-") ? "-1" : "0", "-map_chapters", motionPhoto || window is not null ? "-1" : "0", "-sn", "-dn"]);
+        // The 5.0 planner also limits demuxing to the selected local file.
+        args.AddRange(["-protocol_whitelist", "file", "-format_whitelist",
+            "mov,mp4,m4a,3gp,3g2,mj2,matroska,webm,avi,mpegts,mpeg,mpegvideo,flv,asf,ogg,mxf,dv,h264,hevc,vvc,av1,ivf,vc1,dnxhd,rm,gif,avif,jpeg_pipe,png_pipe,webp_pipe",
+            "-i", media.Path, "-map", "0:" + video.Text("index"), "-map", motionPhoto ? "0:a:0?" : "0:a?", "-map_metadata", motionPhoto || options.Transform.StartsWith("log-") ? "-1" : "0", "-map_chapters", motionPhoto || window is not null ? "-1" : "0", "-sn", "-dn"]);
         var filters = new List<string>();
         if (window is not null)
         {
