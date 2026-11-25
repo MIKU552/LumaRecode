@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="LumaRecode は Windows と macOS 向けのオープンソース動画変換ツールです。Log・HDR の色変換、フレーム単位のトリミング、画像の書き出しに対応します。">
+  <link rel="canonical" href="https://lumarecode.miku552.top/ja/">
+  <link rel="alternate" hreflang="en" href="https://lumarecode.miku552.top/">
+  <link rel="alternate" hreflang="zh-Hans" href="https://lumarecode.miku552.top/zh/">
+  <link rel="alternate" hreflang="ja" href="https://lumarecode.miku552.top/ja/">
+  <link rel="alternate" hreflang="es" href="https://lumarecode.miku552.top/es/">
+  <link rel="alternate" hreflang="x-default" href="https://lumarecode.miku552.top/">
+  <script src="../language.js"></script>
+  <link rel="icon" href="../assets/lumarecode.png" type="image/png">
+  <link rel="stylesheet" href="../style.css">
+  <title>LumaRecode · Windows と macOS の動画変換</title>
+</head>
+<body>
+  <a class="skip" href="#main">本文へ移動</a>
+  <header class="wrap topbar">
+    <a class="brand" href="./"><img src="../assets/lumarecode.png" width="29" height="29" alt="">LumaRecode</a>
+    <div class="site-nav">
+      <nav aria-label="メイン">
+        <a href="#downloads">ダウンロード</a>
+        <a href="https://github.com/MIKU552/LumaRecode/blob/main/docs/readme/ja.md">ドキュメント</a>
+        <a href="https://github.com/MIKU552/LumaRecode">GitHub</a>
+      </nav>
+      <nav class="locale-nav" aria-label="言語">
+        <a href="../?lang=en" data-language="en" lang="en" hreflang="en">English</a>
+        <a href="../zh/" data-language="zh" lang="zh-Hans" hreflang="zh-Hans">简体中文</a>
+        <a href="./" data-language="ja" lang="ja" hreflang="ja" aria-current="page">日本語</a>
+        <a href="../es/" data-language="es" lang="es" hreflang="es">Español</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main">
+    <section class="wrap hero">
+      <div class="intro">
+        <p class="platforms">Windows と macOS · オープンソース</p>
+        <h1>色にこだわる<br>動画変換。</h1>
+        <p class="lede">Log や HDR の素材を変換し、フレーム単位でトリミング。動画から静止画やモーションフォトも書き出せます。</p>
+        <div class="actions">
+          <a class="button filled" href="#downloads">LumaRecode をダウンロード</a>
+          <a class="button" href="https://github.com/MIKU552/LumaRecode/blob/main/CHANGELOG.md#english" hreflang="en">更新履歴（英語）</a>
+        </div>
+      </div>
+      <figure class="hero-shot">
+        <picture>
+          <source media="(prefers-color-scheme: light)" srcset="../assets/windows-conversion-ja-light.webp">
+          <img src="../assets/windows-conversion-ja.webp" width="1600" height="1291" fetchpriority="high" alt="LumaRecode for Windows の日本語画面。動画素材と変換設定を表示しています">
+        </picture>
+        <figcaption>Windows 11 での動画変換</figcaption>
+      </figure>
+    </section>
+    <section class="wrap workflow" aria-label="機能">
+      <div>
+        <h2>Log と HDR の色変換</h2>
+        <p>カメラの Log、HLG、PQ を HDR または SDR に変換できます。エンコード前に色やメタデータを確認し、素材に合った LUT を選べます。</p>
+      </div>
+      <div>
+        <h2>フレーム単位のトリミング</h2>
+        <p>タイムラインを再生・スクラブし、前後のフレームを確認しながら書き出し範囲を正確に指定できます。</p>
+      </div>
+      <div>
+        <h2>共有とアーカイブ</h2>
+        <p>素早く共有するときは利用可能なハードウェアエンコーダーを、保存用にはソフトウェアエンコードを選べます。</p>
+      </div>
+    </section>
+    <section class="wrap photos">
+      <figure>
+        <picture>
+          <source media="(prefers-color-scheme: light)" srcset="../assets/windows-photos-ja-light.webp">
+          <img src="../assets/windows-photos-ja.webp" width="1400" height="1129" loading="lazy" alt="LumaRecode for Windows の日本語画面にある「画像・モーションフォト」タブ">
+        </picture>
+        <figcaption>Windows 11 の画像・モーションフォト</figcaption>
+      </figure>
+      <div>
+        <h2>好きなフレームを写真に。</h2>
+        <p>Windows では Ultra HDR JPEG や Android のモーションフォトを、macOS では HDR HEIC、Adaptive HDR HEIC や Apple の Live Photos を書き出せます。</p>
+        <a class="text-link" href="https://github.com/MIKU552/LumaRecode/blob/main/docs/readme/ja.md">プラットフォーム別の機能を見る</a>
+      </div>
+    </section>
+    <section class="wrap downloads" id="downloads">
+      <h2>LumaRecode をダウンロード</h2>
+      <div class="download-panel">
+        <dl class="download-platforms">
+          <div>
+            <dt>Windows 11 · x64 または ARM64</dt>
+            <dd>Native AOT のポータブル ZIP、単体 EXE、MSI から選べます。FFmpeg 同梱版もあります。</dd>
+          </div>
+          <div>
+            <dt>macOS 27 以降 · Apple シリコン</dt>
+            <dd>標準 DMG と、変換ツールを同梱した FFmpeg Full DMG を選べます。</dd>
+          </div>
+        </dl>
+        <a class="button filled" href="https://github.com/MIKU552/LumaRecode/releases/latest">すべてのダウンロード</a>
+      </div>
+    </section>
+  </main>
+  <footer class="wrap footer">
+    <a class="brand" href="./"><img src="../assets/lumarecode.png" width="25" height="25" alt="">LumaRecode</a>
+    <nav aria-label="LumaRecode">
+      <a href="../privacy.html#ja">プライバシー</a>
+      <a href="mailto:lumarecode@miku552.top">お問い合わせ</a>
+    </nav>
+  </footer>
+</body>
+</html>
