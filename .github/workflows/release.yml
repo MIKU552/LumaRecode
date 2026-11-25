@@ -104,6 +104,14 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ needs.version.outputs.source_sha }}
+      - name: Check out the release notes generator
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          path: release-tools
+          sparse-checkout: tools/update-release-downloads.py
+          sparse-checkout-cone-mode: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           github-token: ${{ inputs.candidate_run != '' && github.token || '' }}
@@ -192,4 +200,6 @@ jobs:
             gh release create "$tag" --verify-tag --draft --title "LumaRecode $VERSION" --notes-file release-notes.md
           fi
           gh release upload "$tag" distribution/* --clobber
-          gh release edit "$tag" --draft=false --latest
+          gh release view "$tag" --json body,assets |
+            python release-tools/tools/update-release-downloads.py "$VERSION" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" > release-notes.md
+          gh release edit "$tag" --notes-file release-notes.md --draft=false --latest

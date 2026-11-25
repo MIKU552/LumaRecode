@@ -104,4 +104,5 @@ jobs:
           if ($app.PendingApplicationSubmission.Id) {
             throw 'Partner Center already has a pending submission. Resolve it before submitting this release.'
           }
-          msstore publish . --inputFile $package --appId $identity.productId
+          # v0.4.4 accepts a .msixupload as its positional path.
+          msstore publish $package --appId $identity.productId
