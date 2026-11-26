@@ -67,7 +67,7 @@ internal static class JitProcessHost
 
     internal static ProcessStartInfo StartInfo(string executable, string assemblyPath, IReadOnlyList<string> arguments, bool enableApx, bool cliWorker)
     {
-        var info = new ProcessStartInfo(executable) { UseShellExecute = false };
+        var info = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = !cliWorker };
         // Framework-dependent applications can also be invoked as dotnet app.dll.
         if (Path.GetFileNameWithoutExtension(executable).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
         {

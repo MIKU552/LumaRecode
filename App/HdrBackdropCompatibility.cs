@@ -7,7 +7,7 @@ using Windows.UI.ViewManagement;
 
 namespace VideoConverter;
 
-/// <summary>Keep native Mica within the XAML composition tree on HDR displays.</summary>
+/// <summary>Keeps native window materials within the XAML composition tree on HDR displays.</summary>
 public sealed class HdrBackdropCompatibility
 {
     private readonly Grid root;
@@ -16,8 +16,9 @@ public sealed class HdrBackdropCompatibility
     private readonly DisplayInformation? display;
     private readonly UISettings system = new();
     private readonly AccessibilitySettings accessibility = new();
-    private readonly SystemBackdropElement micaLayer;
+    private readonly SystemBackdropElement materialLayer;
     private bool hdrActive;
+    private bool nativeMaterialEnabled;
     private bool effectsEvent;
     private bool disposed;
     private string lastState = "";
@@ -27,9 +28,9 @@ public sealed class HdrBackdropCompatibility
         this.root = root;
         this.window = window;
         this.settings = settings;
-        micaLayer = new SystemBackdropElement { IsHitTestVisible = false, Visibility = Visibility.Collapsed };
-        Grid.SetRowSpan(micaLayer, Math.Max(1, root.RowDefinitions.Count));
-        root.Children.Insert(0, micaLayer);
+        materialLayer = new SystemBackdropElement { IsHitTestVisible = false, Visibility = Visibility.Collapsed };
+        Grid.SetRowSpan(materialLayer, Math.Max(1, root.RowDefinitions.Count));
+        root.Children.Insert(0, materialLayer);
         try
         {
             system.AdvancedEffectsEnabledChanged += OnAdvancedEffectsChanged;
@@ -62,6 +63,22 @@ public sealed class HdrBackdropCompatibility
     private void OnAdvancedColorInfoChanged(DisplayInformation sender, object args) => root.DispatcherQueue.TryEnqueue(Refresh);
     private void OnAdvancedEffectsChanged(UISettings sender, object args) => root.DispatcherQueue.TryEnqueue(Refresh);
 
+    internal Color SolidBackground => accessibility.HighContrast ? system.GetColorValue(UIColorType.Background)
+        : root.ActualTheme == ElementTheme.Dark ? Color.FromArgb(255, 32, 32, 32) : Color.FromArgb(255, 243, 243, 243);
+
+    internal void EnableNativeMaterial()
+    {
+        nativeMaterialEnabled = true;
+        Refresh();
+    }
+
+    internal static SystemBackdrop? ResolveMaterial(string material, SystemBackdrop? current) => material switch
+    {
+        "solid" => null,
+        "acrylic" => current as DesktopAcrylicBackdrop ?? new DesktopAcrylicBackdrop(),
+        _ => current as MicaBackdrop ?? new MicaBackdrop()
+    };
+
     public void Refresh()
     {
         if (disposed)
@@ -76,18 +93,17 @@ public sealed class HdrBackdropCompatibility
         }
         catch (System.Runtime.InteropServices.COMException) { return; }
         hdrActive = hdr;
-        if (accessibility.HighContrast || settings.Backdrop == "solid")
+        if (!nativeMaterialEnabled || accessibility.HighContrast || settings.Backdrop == "solid")
         {
-            micaLayer.Visibility = Visibility.Collapsed;
-            micaLayer.SystemBackdrop = null;
-            root.Background = new SolidColorBrush(accessibility.HighContrast ? system.GetColorValue(UIColorType.Background)
-                : root.ActualTheme == ElementTheme.Dark ? Color.FromArgb(255, 32, 32, 32) : Color.FromArgb(255, 243, 243, 243));
+            materialLayer.Visibility = Visibility.Collapsed;
+            materialLayer.SystemBackdrop = null;
+            root.Background = new SolidColorBrush(SolidBackground);
             if (window.SystemBackdrop is not null)
             {
                 window.SystemBackdrop = null;
             }
         }
-        // Keep genuine Mica in the XAML tree on HDR displays. A window-level
+        // Keep the native material in the XAML tree on HDR displays. A window-level
         // backdrop combined with in-root popup composition caused visible halos
         // on the tested system; Appearance also uses a separate popup surface.
         else if (hdr)
@@ -98,21 +114,23 @@ public sealed class HdrBackdropCompatibility
                 window.SystemBackdrop = null;
             }
 
-            if (micaLayer.SystemBackdrop is not MicaBackdrop)
+            var material = ResolveMaterial(settings.Backdrop, materialLayer.SystemBackdrop);
+            if (material != materialLayer.SystemBackdrop)
             {
-                micaLayer.SystemBackdrop = new MicaBackdrop();
+                materialLayer.SystemBackdrop = material;
             }
 
-            micaLayer.Visibility = Visibility.Visible;
+            materialLayer.Visibility = Visibility.Visible;
         }
         else
         {
-            micaLayer.Visibility = Visibility.Collapsed;
-            micaLayer.SystemBackdrop = null;
+            materialLayer.Visibility = Visibility.Collapsed;
+            materialLayer.SystemBackdrop = null;
             root.Background = null;
-            if (window.SystemBackdrop is not MicaBackdrop)
+            var material = ResolveMaterial(settings.Backdrop, window.SystemBackdrop);
+            if (material != window.SystemBackdrop)
             {
-                window.SystemBackdrop = new MicaBackdrop();
+                window.SystemBackdrop = material;
             }
         }
         RecordState();
@@ -127,7 +145,13 @@ public sealed class HdrBackdropCompatibility
             return;
         }
 
-        var state = $"HDR={hdrActive}; HighContrast={accessibility.HighContrast}; Backdrop={window.SystemBackdrop?.GetType().Name ?? (micaLayer.Visibility == Visibility.Visible ? "NativeMicaElement" : "Opaque")}; Theme={root.ActualTheme}";
+        var material = window.SystemBackdrop?.GetType().Name ?? (materialLayer.SystemBackdrop switch
+        {
+            DesktopAcrylicBackdrop => "NativeAcrylicElement",
+            MicaBackdrop => "NativeMicaElement",
+            _ => "Opaque"
+        });
+        var state = $"HDR={hdrActive}; HighContrast={accessibility.HighContrast}; Backdrop={material}; Theme={root.ActualTheme}";
         if (state != lastState)
         {
             lastState = state;

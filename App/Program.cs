@@ -1,7 +1,5 @@
-using System.Runtime.InteropServices;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Media;
 
 namespace VideoConverter;
 
@@ -56,7 +54,7 @@ internal static class Program
 
 public sealed partial class ConverterApp : Application
 {
-    private Window? window;
+    private MainWindow? window;
     public ConverterApp()
     {
         InitializeComponent();
@@ -72,73 +70,6 @@ public sealed partial class ConverterApp : Application
         var settings = UserSettings.Load();
         L.Configure(settings.Language);
         window = new MainWindow(settings);
-        ActivateWithFirstFrame(window);
-    }
-
-    private const uint DwmwaCloak = 13;
-
-    [DllImport("dwmapi.dll", ExactSpelling = true)]
-    private static extern int DwmSetWindowAttribute(nint hwnd, uint attribute, ref int value, uint size);
-
-    [DllImport("dwmapi.dll", ExactSpelling = true)]
-    private static extern int DwmFlush();
-
-    private static void ActivateWithFirstFrame(Window window)
-    {
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-        int cloak = 1;
-        if (DwmSetWindowAttribute(hwnd, DwmwaCloak, ref cloak, sizeof(int)) < 0)
-        {
-            window.Activate();
-            return;
-        }
-
-        // Rendering fires before XAML has drawn. Wait for the loaded tree's
-        // Rendered event, then let DWM consume that submission before uncloaking.
-        var content = (FrameworkElement)window.Content;
-        bool waiting = true;
-        bool revealQueued = false;
-        var timeout = window.DispatcherQueue.CreateTimer();
-        timeout.Interval = TimeSpan.FromMilliseconds(350);
-        timeout.IsRepeating = false;
-        CompositionTarget.Rendered += Render;
-        window.Closed += Closed;
-        timeout.Tick += TimedOut;
-        timeout.Start();
-        window.Activate();
-
-        void Render(object? sender, RenderedEventArgs args)
-        {
-            if (content.IsLoaded && !revealQueued)
-            {
-                revealQueued = window.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
-                {
-                    if (waiting)
-                    {
-                        _ = DwmFlush();
-                        Reveal();
-                    }
-                });
-            }
-        }
-        void TimedOut(DispatcherQueueTimer sender, object args) => Reveal();
-        void Closed(object sender, WindowEventArgs args) => Stop();
-        void Stop()
-        {
-            waiting = false;
-            CompositionTarget.Rendered -= Render;
-            timeout.Tick -= TimedOut;
-            timeout.Stop();
-            window.Closed -= Closed;
-        }
-        void Reveal()
-        {
-            if (waiting)
-            {
-                Stop();
-                cloak = 0;
-                _ = DwmSetWindowAttribute(hwnd, DwmwaCloak, ref cloak, sizeof(int));
-            }
-        }
+        window.ActivateWithFirstFrame();
     }
 }

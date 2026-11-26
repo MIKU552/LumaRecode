@@ -4,6 +4,12 @@
 
 ## 简体中文
 
+### 5.0.3
+
+- 改善 Windows 启动。图形界面启动时隐藏后台控制台，先显示与主题匹配的启动图标，等主界面画好后平滑淡出，避免首帧闪黑。
+- Windows 外观菜单新增原生亚克力材质，可用于主窗口和预览。
+- 移除鼠标悬停时在整个主窗口冒出的 Esc 提示。按 Esc 仍可关闭预览。
+
 ### 5.0.2
 
 - 修复 Microsoft Store 安装包的图标资源索引。Windows 现在可以按应用清单中的路径找到任务栏的透明图标，以及开始菜单和搜索结果所需的高分辨率图标。
@@ -312,6 +318,12 @@
 - 支持素材自动识别与三组色彩转换。
 
 ## English
+
+### 5.0.3
+
+- Improved Windows startup. The GUI starts without showing a console, and a themed splash screen fades out once the main window is ready to prevent a black flash.
+- Added a native Acrylic option to the Windows appearance menu for the main window and preview.
+- Removed the window-wide Esc tooltip. Esc still closes the preview.
 
 ### 5.0.2
 

@@ -40,6 +40,7 @@ public sealed partial class MainWindow
                 CloseTimelineOverlay();
             }
         };
+        root.KeyboardAcceleratorPlacementMode = KeyboardAcceleratorPlacementMode.Hidden;
         root.KeyboardAccelerators.Add(escape);
 
         root.PreviewKeyDown += (_, args) =>
@@ -123,12 +124,12 @@ public sealed partial class MainWindow
             if (overlay.Visibility != Visibility.Visible)
             {
                 // Prepare the composited layer before showing its XAML host.
-                // The main window's Mica always sits behind both layers.
+                // The main window's backdrop always sits behind both layers.
                 panel.Opacity = 0;
                 var material = Control<SystemBackdropElement>("PreviewMaterial");
-                if (settings.Backdrop != "solid" && !new AccessibilitySettings().HighContrast)
+                if (!new AccessibilitySettings().HighContrast)
                 {
-                    material.SystemBackdrop = new MicaBackdrop();
+                    material.SystemBackdrop = HdrBackdropCompatibility.ResolveMaterial(settings.Backdrop, material.SystemBackdrop);
                 }
 
                 overlay.Visibility = Visibility.Visible;

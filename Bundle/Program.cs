@@ -45,7 +45,7 @@ internal static class Program
                 throw new FileNotFoundException("LumaRecode application is missing. Please download the complete EXE again.");
             }
 
-            var info = new ProcessStartInfo(executable) { UseShellExecute = false };
+            var info = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = !cli };
             foreach (var argument in args)
             {
                 info.ArgumentList.Add(argument);

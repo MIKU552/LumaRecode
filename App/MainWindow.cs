@@ -80,9 +80,10 @@ public sealed partial class MainWindow : Window
     public MainWindow(UserSettings settings)
     {
         this.settings = settings;
+        PrepareStartupWindow();
         Title = L.T("映码 · LumaRecode");
         // Compiled XBF avoids runtime XML parsing and reflection over controls.
-        // Appearance selects the appropriate native Mica host once the view exists.
+        // Paint the themed view before enabling the native material.
         root = new MainView();
         Content = root;
         ExtendsContentIntoTitleBar = true;

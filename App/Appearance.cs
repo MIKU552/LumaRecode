@@ -95,6 +95,9 @@ public sealed class Appearance
         }
     }
 
+    internal Color StartupBackground => backdrop.SolidBackground;
+    internal void EnableNativeBackdrop() => backdrop.EnableNativeMaterial();
+
     public void ApplyTheme()
     {
         applying = true;
@@ -287,8 +290,10 @@ public sealed class Appearance
         materialChoice = new ComboBox { Header = L.T("窗口材质"), HorizontalAlignment = HorizontalAlignment.Stretch };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(materialChoice, L.T("窗口材质"));
         materialChoice.Items.Add(new ComboBoxItem { Tag = "mica", Content = L.T("原生云母 · Mica") });
+        materialChoice.Items.Add(new ComboBoxItem { Tag = "acrylic", Content = L.T("亚克力 · Acrylic") });
         materialChoice.Items.Add(new ComboBoxItem { Tag = "solid", Content = L.T("纯色 · 兼容模式") });
-        materialChoice.SelectedIndex = settings.Backdrop == "solid" ? 1 : 0;
+        materialChoice.SelectedItem = materialChoice.Items.OfType<ComboBoxItem>()
+            .FirstOrDefault(item => (string)item.Tag == settings.Backdrop) ?? materialChoice.Items[0];
         materialChoice.SelectionChanged += (_, _) =>
         {
             if (applying || materialChoice.SelectedItem is not ComboBoxItem { Tag: string key } || settings.Backdrop == key)
@@ -301,7 +306,7 @@ public sealed class Appearance
             backdrop.Refresh();
         };
         content.Children.Add(materialChoice);
-        content.Children.Add(new TextBlock { Text = L.T("保留系统云母观感；遇到显示异常时可切换纯色背景。"), TextWrapping = TextWrapping.Wrap, Opacity = .65, FontSize = 12 });
+        content.Children.Add(new TextBlock { Text = L.T("遇到显示异常时可切换纯色背景。"), TextWrapping = TextWrapping.Wrap, Opacity = .65, FontSize = 12 });
         var note = new TextBlock { Text = L.T("为按钮、选择状态和进度设置强调色。"), TextWrapping = TextWrapping.Wrap, Opacity = .65, FontSize = 13 };
         content.Children.Add(note);
         systemSwitch = new ToggleSwitch { Header = L.T("使用系统强调色"), IsOn = settings.SystemAccent, OnContent = L.T("跟随 Windows"), OffContent = L.T("自定义颜色") };
